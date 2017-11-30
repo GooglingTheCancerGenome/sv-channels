@@ -376,8 +376,6 @@ def clipped_rds_right_fcn(matrix_int_right_updated,current_ref):
     return clipped_rds_right_channel
 
 
-''' Need to test the functions below this line '''
-
 #Need to code this one after the final 8 channels
 #THINK ABOUT HOW TO GET 12*2 + 1 CHANNELS HERE! NEED TO HAVE PAIR CHANNELS HERE AS WELL!
 def channels_12_vstacker(matrix_str_updated,matrix_int_left_updated,matrix_int_right_updated,current_ref):
@@ -397,7 +395,7 @@ def channels_12_vstacker(matrix_str_updated,matrix_int_left_updated,matrix_int_r
     ''' remember also to include GC content after calling channels_12_vstacker twice on the properly paired pair of files! '''
 
 
-
+''' Need to test the functions below this line '''
 
 ''' >>> Need these function here below for the last 8 channels: IGNORE '*' FOR THESE CHANNELS! <<< '''
 def find_mates(sam_file, id_, counter): #%(GS_bam_30xsubsample_file,rd_name) #counter? or column?
