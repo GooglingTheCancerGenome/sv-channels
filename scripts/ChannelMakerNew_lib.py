@@ -28,7 +28,7 @@ def add_dels(seq, cigar):
     for n,v in get_cigar_coord(cigar):
         if v == 'D':
             seq = seq[:i]+'D'*n+seq[i:]
-            #print seq
+            ##print seq
             i += n
         elif v == 'H':
             pass
@@ -46,7 +46,7 @@ def rem_ins(seq_with_del, cigar):
     for n,v in get_cigar_coord(cigar):
         if v == 'I':
             seq = seq[:i] + seq[i+n:]
-            #print seq
+            ##print seq
             i += n
         elif v == 'H': #or v == 'S'
             pass
@@ -65,7 +65,7 @@ def rem_softclips(seq_with_rem_ins,cigar):
         if v == 'S':
             seq = list(seq)
             del seq[i:i+n]
-            #print seq
+            ##print seq
             #i += n # i think sequence is now shorter so don't boost by n!
         elif v == 'H' or v == 'I': #ignore values for insertions #can have a hard clip occuring when have a soft clip in seq too!
             pass
@@ -95,18 +95,18 @@ def one_liner(data):
     for line in data.xreadlines():
         if line.startswith('>'):
             line = line.rstrip('\n')
-            #print line
+            ##print line
             currentline = ""
         else:
             line = line.rstrip('\n')
             currentline += line
     #data.close()
 
-    #print 'currentline[0:5]:', currentline[0:5]
+    ##print 'currentline[0:5]:', currentline[0:5]
     return currentline
 
 
-def GC_content_dict(entry):
+def GC_content_dict_fcn(entry):
 
     GC_content_dict = {'G':1,'C':1,'A':0,'T':0}
     GC_contents = [GC_content_dict[k] for k in [i for i in entry]]
@@ -134,7 +134,7 @@ def locations_DEL_INS(truth_file):
                 end_SV_DEL.append(int(columns[3]))
                 #SV_type_DEL.append("DEL")
                 chr_list_DEL.append(int(columns[0])) #re.findall(r"(\d+)[AB]",columns[0])
-                #print 'chromosome:', chromosome
+                ##print 'chromosome:', chromosome
                 #chr_list.append(chromosome)
                 #start_end_SV_list.append([int(columns[1]),int(columns[4])])
                 #break
@@ -150,7 +150,7 @@ def locations_DEL_INS(truth_file):
     return start_end_SV_DEL, start_end_SV_DEL_INS
 
 
-def make_window(breakpoint,window_to_each_side):
+def make_window(breakpoint,window_to_each_side): #breakpoint is the same as coord
     left = breakpoint - window_to_each_side
     right = breakpoint + window_to_each_side
     window_arange = arange(left,right)
@@ -161,7 +161,7 @@ def make_window(breakpoint,window_to_each_side):
 def current_reference_fcn(current_line_on_reference,left,right):
     current_ref = current_line_on_reference[left:right]
 
-    #print 'current_ref:', current_ref
+    ##print 'current_ref:', current_ref
     return current_ref
 
 
@@ -201,11 +201,19 @@ def all_reads_in_window(bam_file,chr_number,left,right,name,counter): #sambamba 
     #''' FOR HPC USE THE FOLLOWING LINE because on laptop have '*' in the RNAME and RNEXT fields which correspond to sambamba's ref_name and mate_ref_name '''
     ''' cigar != '*' and sequence != '*' doesn't work in sambamba but its ok as have taken these exemption into account and will map '*' in my matrix '''
     ''' and cigar != '*' and sequence != '*' >>> removed from the code as output '*' to the matrix and then will avoid it! So all ok! '''
-    cmd_all_reads_in_window = "sambamba view -F \"ref_name == '17' and mate_ref_name == '17'\" %s %d:%d-%d > all_reads_in_window_%s_%s_new_new.sam" %(bam_file,chr_number,left,right,name,counter) #name = GS,G1,S3,S1... #_new added 29.11.17
+    '''
+    Need to add +1 here too since sam file is 1-based and get situation earlier when fetched reads from 977 - 987 in sambamba command and got a read
+    that started at 827 with 150M so 827 + 150 = 977 which is in the range [977,987] but its 1-based so actually its 826 + 150 which is outside the range!
+    so need to add 1 to left side and subtract 1 from right side!
+    '''
+    left1 = left +1
+    right1 = right -1
+    cmd_all_reads_in_window = "sambamba view -F \"ref_name == '17' and mate_ref_name == '17'\" %s %d:%d-%d > all_reads_in_window_%s_newVer_100window.sam" %(bam_file,chr_number,left1,right1,name) #counter removed #name = GS,G1,S3,S1... #_new added 29.11.17
     #''' The line below here have been using on local files on my laptop '''
     #cmd_all_reads_in_window = "sambamba view %s %d:%d-%d > all_reads_in_window_%s_%s.sam" %(bam_file,chr_number,left,right,name,counter) #name = GS,G1,S3,S1...
     call(cmd_all_reads_in_window, shell=True)
-    all_reads_in_window_file = "all_reads_in_window_%s_%s_new_new.sam" %(name,counter) #_new added 29.11.17
+    all_reads_in_window_file = "all_reads_in_window_%s_newVer_100window.sam" %(name) #counter removed #_new added 29.11.17
+    ##print all_reads_in_window_file
 
     return all_reads_in_window_file
 
@@ -243,12 +251,15 @@ def read_info_extractor(element): #(sam_file):
 
 def read_content_in_window_fcn(line,coord,window_to_each_side):
     window_arange, left, right = make_window(coord,window_to_each_side)
+    #print 'window_arange:', window_arange
     rd_name, sam_flag, rd_pos_start, rd_cigar, rd_sequence_raw = read_info_extractor(line) #, rd_RNAME, rd_RNEXT
     read_cleaned = read_reconstruct(rd_sequence_raw, rd_cigar)
     read_cleaned_length = len(read_cleaned)
+    #print 'read_cleaned_length:', read_cleaned_length
     read_cleaned_length_computed_end = rd_pos_start + read_cleaned_length
 
     read_cleaned_length_arange = arange(rd_pos_start,read_cleaned_length_computed_end)
+    #print 'read_cleaned_length_arange:', read_cleaned_length_arange
     read_content_in_window = intersect1d(window_arange,read_cleaned_length_arange)
 
     return read_content_in_window, read_cleaned_length_computed_end, read_cleaned_length_arange
@@ -259,8 +270,6 @@ def clean_read_mapper(line,coord,window_to_each_side,rd_sequence_raw,rd_cigar): 
     #number_of_reads_in_window = number_of_reads_in_window_compute(all_reads_in_window_file_name)
     #matrix_str, matrix_int = make_matrix(number_of_reads_in_window,full_window_length)
     window_arange = make_window(coord,window_to_each_side)[0]
-    read_cleaned_length_arange = read_content_in_window_fcn(line,coord,window_to_each_side)[2]
-
     read_cleaned = read_reconstruct(rd_sequence_raw, rd_cigar)
     read_content_in_window, read_cleaned_length_computed_end, read_cleaned_length_arange = read_content_in_window_fcn(line,coord,window_to_each_side)
     begin_of_intersection = read_content_in_window[0]
@@ -278,20 +287,22 @@ def clean_read_mapper(line,coord,window_to_each_side,rd_sequence_raw,rd_cigar): 
 
 def matrix_read_updater_for_str_int(all_reads_in_window_file_name,coord,window_to_each_side,number_of_reads_in_window_total,full_window_length): #coord is 'i' in first/outermost for-loop
     matrix_str, matrix_int_left_clip, matrix_int_right_clip = make_matrix(number_of_reads_in_window_total,full_window_length) #matrices initialized #, matrix_int
-    #print 'shape(matrix_int_left_clip):', shape(matrix_int_left_clip)
+    ##print 'shape(matrix_int_left_clip):', shape(matrix_int_left_clip)
     window_arange = make_window(coord,window_to_each_side)[0]
     with ( open(all_reads_in_window_file_name,'r') ) as j:
         rd_counter = 0
         for line in j:
+            #print 'line:', line #line.rstrip().split("\t")[3]
             rd_name, sam_flag, rd_pos_start, rd_cigar, rd_sequence_raw = read_info_extractor(line) #, rd_RNAME, rd_RNEXT
             #''' Need to have header in the sam,bam files that work with, otherwise seems that sambamba filter will yield a '*' for rd_RNAME, rd_RNEXT which is not good '''
             #if rd_RNAME; don't need this anymore since only getting reads that map to chromosome 17 exclusively!
             read_cleaned = read_reconstruct(rd_sequence_raw, rd_cigar)
             read_content_in_window, read_cleaned_length_computed_end, read_cleaned_length_arange = read_content_in_window_fcn(line,coord,window_to_each_side)
-            begin_of_intersection = read_content_in_window[0]
-            end_of_intersection = read_content_in_window[len(read_content_in_window)-1]
+
             if len(read_content_in_window) == 0: #''' If read present inside the window! ''' All reads should be present by definition of fetching the reads!
                 raise ValueError('primary read outside window')
+            begin_of_intersection = read_content_in_window[0]
+            end_of_intersection = read_content_in_window[len(read_content_in_window)-1]
             window_begin_intersect_index, window_end_intersect_index, rd_begin_intersect_index, rd_end_intersect_index = clean_read_mapper(line,coord,window_to_each_side,rd_sequence_raw,rd_cigar)
             matrix_str[rd_counter][window_begin_intersect_index:window_end_intersect_index+1] = list(read_cleaned)[rd_begin_intersect_index:rd_end_intersect_index+1]
             ''' cigar can also be equal to '*' if unavailable; that's why include in regex expression a '*' '''
@@ -314,9 +325,9 @@ def matrix_read_updater_for_str_int(all_reads_in_window_file_name,coord,window_t
             rd_counter += 1
 
             #number_of_read_artifacts_found_deviating_from_chr17 = number_of_reads_in_window_total - rd_counter
-    #print 'matrix_str:', matrix_str
-    #print 'matrix_int_left_clip:', matrix_int_left_clip
-    #print 'matrix_int_right_clip:', matrix_int_right_clip
+    ###print 'matrix_str:', matrix_str
+    ##print 'matrix_int_left_clip:', matrix_int_left_clip
+    ##print 'matrix_int_right_clip:', matrix_int_right_clip
     return matrix_str, matrix_int_left_clip, matrix_int_right_clip #, number_of_read_artifacts_found_deviating_from_chr17 #,matrix_int
 
 
@@ -324,12 +335,12 @@ def get_exact_matches(position, matrix_str_updated,current_ref): #current_line_o
     #current_ref = current_reference_fcn(current_line_on_reference,left,right)
     matrix_str_updated_transpose = matrix_str_updated.transpose()
     tally1 = len(where(matrix_str_updated_transpose[position] == current_ref[position])[0]) #right side is a single letter
-    #print 'tally1:', tally1
+    ##print 'tally1:', tally1
     tally2 = len(where(matrix_str_updated_transpose[position] == '=')[0]) #ACCORDING TO THE SAM FILE, THE SEQ CAN HAVE AN '=' SIGN AT A BASE POSITION WHICH MEANS THAT ITS EQUAL TO THE REFERENCE THERE!
-    #print 'tally2:', tally2
+    ##print 'tally2:', tally2
     tally = tally1 + tally2
 
-    #print 'tally:', tally
+    ##print 'tally:', tally
     return tally
 
 
@@ -392,7 +403,18 @@ def channels_12_vstacker(matrix_str_updated,matrix_int_left_updated,matrix_int_r
     vstack_12_channels = array(vstack((exact_matches_channel,coverage_channel,clipped_rds_left_channel,clipped_rds_right_channel)),dtype=int)
 
     return vstack_12_channels
-    ''' remember also to include GC content after calling channels_12_vstacker twice on the properly paired pair of files! '''
+    #''' remember also to include GC content after calling channels_12_vstacker twice on the properly paired pair of files! '''
+
+
+def vstack_12_channel_pairer_plus_GC_chanel_fcn(vstack_12_channels1,vstack_12_channels2,GC_contents):
+
+    vstack_12_channel_pairer_plus_GC_chanel = vstack((vstack_12_channels1,vstack_12_channels2,GC_contents))
+
+    return vstack_12_channel_pairer_plus_GC_chanel
+
+
+#def proper_category_pairer_fcn():
+
 
 
 ''' Need to test the functions below this line '''

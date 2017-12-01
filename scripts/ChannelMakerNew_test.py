@@ -75,18 +75,18 @@ class TestOneLinerRefChr17(unittest.TestCase):
         self.assertEqual(current_reference_fcn(current_line_on_reference,977,987),'GCTTGAGCCC')
 
 
-class TestGCcontentDict(unittest.TestCase):
+class TestGCcontentDictFcn(unittest.TestCase):
 
-    def test_GC_content_dict(self):
+    def test_GC_content_dict_fcn(self):
         GC_content_test1 = 'GCCATTCCG'
         expected_GC_output = [1,1,1,0,0,0,1,1,1]
-        self.assertEqual(GC_content_dict(GC_content_test1),expected_GC_output)
+        self.assertEqual(GC_content_dict_fcn(GC_content_test1),expected_GC_output)
 
 
-    def test_GC_content(self):
+    def test_GC_content_fcn(self):
         GC_content_test1 = 'GCCATTCCG'
         expected_GC_output = [1,1,1,0,0,0,1,1,1]
-        self.assertEqual(len(GC_content_dict(GC_content_test1)),9)
+        self.assertEqual(len(GC_content_dict_fcn(GC_content_test1)),9)
 
 
 class TestBreakPointPresence(unittest.TestCase):
@@ -337,10 +337,34 @@ class TestVstackChannels(unittest.TestCase):
             '''
             ORDER FROM TOP TO BOTTOM IS: exact_matches_channel,coverage_channel,lipped_rds_left_channel,clipped_rds_right_channel
             '''
-            self.assertEqual(all(vstack_12_channels[0] == array(exact_matches_channel_fcn(matrix_str_updated,current_ref),dtype=int)),True)
-            self.assertEqual(all(vstack_12_channels[1] == array(coverage_channel_fcn(matrix_str_updated,current_ref),dtype=int)),True)
+            self.assertEqual(all(vstack_12_channels[0] == array(exact_matches_channel_fcn(matrix_str_updated,current_ref))),True) #,dtype=int
+            self.assertEqual(all(vstack_12_channels[1] == array(coverage_channel_fcn(matrix_str_updated,current_ref))),True) #,dtype=int
             self.assertEqual(all(vstack_12_channels[2] == array(clipped_rds_left_fcn(matrix_int_left_updated,current_ref))),True)
             self.assertEqual(all(vstack_12_channels[3] == array(clipped_rds_right_fcn(matrix_int_right_updated,current_ref))),True)
+
+
+        def test_vstack_12_channel_pairer_plus_GC_chanel_fcn(self):
+            data_chr17_fasta_file_data = open(data_chr17_fasta_file,'r')
+            current_line_on_reference = one_liner(data_chr17_fasta_file_data)
+            data_chr17_fasta_file_data.close()
+
+            all_reads_in_window_file_name = all_reads_in_window(GS_bam_30xsubsample_file,17,977,987,'GS',0)
+            matrix_str_updated, matrix_int_left_updated, matrix_int_right_updated = matrix_read_updater_for_str_int(all_reads_in_window_file_name,982,5,79,10)
+            current_ref = current_reference_fcn(current_line_on_reference,977,987)
+
+            vstack_12_channels1 = channels_12_vstacker(matrix_str_updated,matrix_int_left_updated,matrix_int_right_updated,current_ref)
+            vstack_12_channels2 = channels_12_vstacker(matrix_str_updated,matrix_int_left_updated,matrix_int_right_updated,current_ref)
+
+            GC_contents = GC_content_dict_fcn(current_ref)
+
+            vstack_12_channel_pairer_plus_GC_chanel = vstack_12_channel_pairer_plus_GC_chanel_fcn(vstack_12_channels1,vstack_12_channels2,GC_contents)
+            print 'vstack_12_channel_pairer_plus_GC_chanel:', vstack_12_channel_pairer_plus_GC_chanel
+
+            self.assertEqual(shape(vstack_12_channel_pairer_plus_GC_chanel),(9,10))
+            self.assertEqual(all(vstack_12_channel_pairer_plus_GC_chanel[0] == array(exact_matches_channel_fcn(matrix_str_updated,current_ref))),True)
+            self.assertEqual(all(vstack_12_channel_pairer_plus_GC_chanel[8] == GC_contents),True) #AT THE MOMENT 9TH ROW IS THE GC CONTENT; 4X2 + 1 = 9
+
+
 
 
 if __name__ == '__main__':
