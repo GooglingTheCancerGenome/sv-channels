@@ -73,12 +73,13 @@ Sclass_keys = Sclass.keys()
 
 def main():
     t0 = time()
+    counter = 0
     ''' THESE TRUTH COORDINATES ARE ONLY FOR G1,GS AND S2,S3N FILES AND NOT YET FOR NOSV1,NOSV2 FILES '''
     '''start_end_SV_DEL = locations_DEL_INS(Truth_set_file)[0]'''
     start_end_SV_DEL, start_end_SV_DEL_INS = locations_DEL_INS(Truth_set_file)
     #print '##DEBUG',start_end_SV_DEL, start_end_SV_DEL_INS
     '''*******CHANGE TO THIS: for coord in start_end_SV_DEL: change coord dependency in name after have tried making 10 windows! change window length to each side to 100*******'''
-    for coord in start_end_SV_DEL[0:100]: #changed 'i' to 'coord'
+    for coord in start_end_SV_DEL: #[0:100] #changed 'i' to 'coord'
         print 'coord:', coord
         window_arange, left, right = make_window(coord,window_to_each_side)
         current_genome_reference = current_reference_fcn(current_line_on_reference,left,right)
@@ -103,14 +104,14 @@ def main():
             matrix_str_updated_G, matrix_int_left_updated_G, matrix_int_right_updated_G = matrix_read_updater_for_str_int(all_reads_in_window_file_name_G,coord,window_to_each_side,number_of_reads_in_window_total_G,full_window_length)
             vstack_12_channels_G = channels_12_vstacker(matrix_str_updated_G,matrix_int_left_updated_G,matrix_int_right_updated_G,current_genome_reference)
             vstack_12_channels_pair_Gclass_list.append(vstack_12_channels_G)
-            '''counter += 1'''
+            counter += 1
 
         #print 'vstack_12_channels_pair_Gclass_list:', vstack_12_channels_pair_Gclass_list
         #print 'len(vstack_12_channels_pair_Gclass_list):', len(vstack_12_channels_pair_Gclass_list)
         vstack_12_channel_pairer_plus_GC_chanel_G = vstack_12_channel_pairer_plus_GC_chanel_fcn(vstack_12_channels_pair_Gclass_list[0],vstack_12_channels_pair_Gclass_list[1],GC_content)
         #print 'vstack_12_channel_pairer_plus_GC_chanel_G:', vstack_12_channel_pairer_plus_GC_chanel_G
         channel_matrix_list_Somatic_categ.append(vstack_12_channel_pairer_plus_GC_chanel_G)
-        print 'channel_matrix_list_Somatic_categ:', channel_matrix_list_Somatic_categ
+        ##############print 'channel_matrix_list_Somatic_categ:', channel_matrix_list_Somatic_categ
         label_list_Somatic.append('somatic')
         '''print 'counter == 9630:', counter == 9630 #TESTS THAT ARE USING all DELs that have simulated only and not the INS!'''
 
@@ -137,6 +138,8 @@ def main():
     np.save('germline_label_array_file',label_list_Germline)
 
     print 'done in ',time()-t0
+    print 'counter/2:', counter/2
+    print 'counter/2 == 9630:', counter/2 == 9630
 
 
 

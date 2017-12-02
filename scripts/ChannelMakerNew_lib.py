@@ -208,11 +208,11 @@ def all_reads_in_window(bam_file,chr_number,left,right,name,counter): #sambamba 
     '''
     left1 = left +1
     right1 = right -1
-    cmd_all_reads_in_window = "sambamba view -F \"ref_name == '17' and mate_ref_name == '17'\" %s %d:%d-%d > all_reads_in_window_%s_newVer_100window.sam" %(bam_file,chr_number,left1,right1,name) #counter removed #name = GS,G1,S3,S1... #_new added 29.11.17
+    cmd_all_reads_in_window = "sambamba view -F \"ref_name == '17' and mate_ref_name == '17'\" %s %d:%d-%d > all_reads_in_window_%s_newVer_10k_100window.sam" %(bam_file,chr_number,left1,right1,name) #counter removed #name = GS,G1,S3,S1... #_new added 29.11.17
     #''' The line below here have been using on local files on my laptop '''
     #cmd_all_reads_in_window = "sambamba view %s %d:%d-%d > all_reads_in_window_%s_%s.sam" %(bam_file,chr_number,left,right,name,counter) #name = GS,G1,S3,S1...
     call(cmd_all_reads_in_window, shell=True)
-    all_reads_in_window_file = "all_reads_in_window_%s_newVer_100window.sam" %(name) #counter removed #_new added 29.11.17
+    all_reads_in_window_file = "all_reads_in_window_%s_newVer_10k_100window.sam" %(name) #counter removed #_new added 29.11.17
     ##print all_reads_in_window_file
 
     return all_reads_in_window_file
