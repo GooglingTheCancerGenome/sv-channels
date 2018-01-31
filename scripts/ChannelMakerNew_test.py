@@ -92,7 +92,7 @@ class TestGCcontentDictFcn(unittest.TestCase):
 class TestBreakPointPresence(unittest.TestCase):
 
     def test_break_point_presence(self):
-        Truth_set_file = "chr17_somaticallele_10k_INS_DEL.copy.sorted.bed"
+        Truth_set_file = wd+"SURVIVOR-master/Debug/chr17_somaticallele_10k_INS_DEL.copy.sorted.bed"
         self.assertEqual(len(locations_DEL_INS(Truth_set_file)[0]),9630) #4815; number of simulated DELs * 2 = 9630
         self.assertEqual(len(locations_DEL_INS(Truth_set_file)[1]),14815) #9630 + 5185 INS bps = 14815 total bps for DEL and INS
         #print locations_DEL_INS(Truth_set_file)[0][0:10]

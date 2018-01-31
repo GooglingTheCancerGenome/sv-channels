@@ -41,7 +41,7 @@ data_chr17_fasta.close()
 #lines in this file look like:  17	982	17	1910	INS
 
 '''on local machine'''
-cmd = "sambamba"
+cmd = "/Users/lsantuari/Applications/SAM/sambamba/sambamba"
 
 ''' #uncomment for use on hpc
 #cmd = "module load sambamcram/sambamba"

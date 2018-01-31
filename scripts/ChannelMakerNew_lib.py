@@ -11,6 +11,8 @@ from subprocess import call
 #cmd = f'{sambamba} view {input} {output}'
 #run(cmd0 +'&&' + cmd, shell=True)
 
+sambambadir = "/Users/lsantuari/Applications/SAM/sambamba/"
+
 def get_cigar_coord(cigar):
     re1='(\\d+)'	# Integer Number 1
     re2='([a-z])'	# Any Single Word Character (Not Whitespace) 1
@@ -208,7 +210,7 @@ def all_reads_in_window(bam_file,chr_number,left,right,name,counter): #sambamba 
     '''
     left1 = left +1
     right1 = right -1
-    cmd_all_reads_in_window = "sambamba view -F \"ref_name == '17' and mate_ref_name == '17'\" %s %d:%d-%d > all_reads_in_window_%s_newVer_10k_100window.sam" %(bam_file,chr_number,left1,right1,name) #counter removed #name = GS,G1,S3,S1... #_new added 29.11.17
+    cmd_all_reads_in_window = sambambadir+"sambamba view -F \"ref_name == '17' and mate_ref_name == '17'\" %s %d:%d-%d > all_reads_in_window_%s_newVer_10k_100window.sam" %(bam_file,chr_number,left1,right1,name) #counter removed #name = GS,G1,S3,S1... #_new added 29.11.17
     #''' The line below here have been using on local files on my laptop '''
     #cmd_all_reads_in_window = "sambamba view %s %d:%d-%d > all_reads_in_window_%s_%s.sam" %(bam_file,chr_number,left,right,name,counter) #name = GS,G1,S3,S1...
     call(cmd_all_reads_in_window, shell=True)
@@ -421,11 +423,11 @@ def vstack_12_channel_pairer_plus_GC_chanel_fcn(vstack_12_channels1,vstack_12_ch
 
 ''' >>> Need these function here below for the last 8 channels: IGNORE '*' FOR THESE CHANNELS! <<< '''
 def find_mates(sam_file, id_, counter): #%(GS_bam_30xsubsample_file,rd_name) #counter? or column?
-    cmd_mate = "sambamba view -F \"read_name == %s\" %s > reads_with_same_name_%s.sam" %(id_,sam_file,counter)
+    cmd_mate = sambambadir+"sambamba view -F \"read_name == %s\" %s > reads_with_same_name_%s.sam" %(id_,sam_file,counter)
     call(cmd_mate, shell=True)
 
 def all_unique_read_ids_in_window(bam_file,chr_number,left,right,name,counter): #replace counter with column?
-    cmd_id = "sambamba view %s %d:%d-%d | cut -f1 | uniq > idFile_%s_%s.txt" %(bam_file,chr_number,left,right,name,counter) #name = GS,G1,S3,S1...
+    cmd_id = sambambadir+"sambamba view %s %d:%d-%d | cut -f1 | uniq > idFile_%s_%s.txt" %(bam_file,chr_number,left,right,name,counter) #name = GS,G1,S3,S1...
     call(cmd_id, shell=True)
 
     with(open('idFile_%s_%s.txt','r') %(name,counter)) as i:
@@ -442,23 +444,26 @@ def all_unique_read_ids_in_window(bam_file,chr_number,left,right,name,counter): 
 
 ''' Replace these files with local machine locations and group into 3 pairs of 2 windows each '''
 
-data_chr17_fasta_file="chr17_human.fasta"
-Truth_set_file = "chr17_somaticallele_10k_INS_DEL.copy.sorted.bed"
+#wd="/Users/lsantuari/Documents/hpc_mnt/"
+wd="/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/"
+
+data_chr17_fasta_file=wd+"SURVIVOR-master/Debug/"+"chr17_human.fasta"
+Truth_set_file = wd+"SURVIVOR-master/Debug/"+"chr17_somaticallele_10k_INS_DEL.copy.sorted.bed"
 ''' Make sure this bed file excludes the 24 clips that are very close or maybe keep them in? In reality can have overlapping deletions or those that are close by'''
 
-G1_bam_30x_file = "G1_dedup.bam"
+G1_bam_30x_file = wd+"SURVIVOR-master/Debug/reads_chr17_SURV10kDEL_INS_Germline1_mapped/G1/mapping/"+"G1_dedup.bam"
 #"/hpc/cog_bioinf/ridder/users/cshneider/SURVIVOR-master/Debug/reads_chr17_SURV10kDEL_INS_Germline1_mapped/G1/mapping/G1_dedup.bam"
-GS_bam_30xsubsample_file = "GS_dedup.subsampledto30x.bam"
+GS_bam_30xsubsample_file = wd+"SURVIVOR-master/Debug/reads_chr17_SURV10kDEL_INS_Germline2_Somatic1_mapped/GS/mapping/"+"GS_dedup.subsampledto30x.bam"
 #"/hpc/cog_bioinf/ridder/users/cshneider/SURVIVOR-master/Debug/reads_chr17_SURV10kDEL_INS_Germline2_Somatic1_mapped/GS/mapping/GS_dedup.subsampledto30x.bam"
-G1_sam_30x_file = "/hpc/cog_bioinf/ridder/users/cshneider/SURVIVOR-master/Debug/reads_chr17_SURV10kDEL_INS_Germline1_mapped/G1/mapping/G1_dedup.sam"
-GS_sam_30xsubsample_file = "GS_dedup.subsampledto30x.sam"
+#G1_sam_30x_file = "/hpc/cog_bioinf/ridder/users/cshneider/SURVIVOR-master/Debug/reads_chr17_SURV10kDEL_INS_Germline1_mapped/G1/mapping/G1_dedup.sam"
+#GS_sam_30xsubsample_file = "GS_dedup.subsampledto30x.sam"
 #"/hpc/cog_bioinf/ridder/users/cshneider/SURVIVOR-master/Debug/reads_chr17_SURV10kDEL_INS_Germline2_Somatic1_mapped/GS/mapping/GS_dedup.subsampledto30x.sam"
 
-S2_bam_file = "S2_dedup.bam"
+S2_bam_file = wd+"SURVIVOR-master/Debug/reads_chr17_SURV10kDEL_INS_Somatic2_mapped/S2/mapping/"+"S2_dedup.bam"
 #"/hpc/cog_bioinf/ridder/users/cshneider/SURVIVOR-master/Debug/reads_chr17_SURV10kDEL_INS_Somatic2_mapped/S2/mapping/S2_dedup.bam"
-S3N_bam_file  = "S3N_dedup.bam"
+S3N_bam_file  = wd+"SURVIVOR-master/Debug/reads_chr17_SURV10kDEL_INS_Somatic3_new_mapped/S3N/mapping/"+"S3N_dedup.bam"
 #"/hpc/cog_bioinf/ridder/users/cshneider/SURVIVOR-master/Debug/reads_chr17_SURV10kDEL_INS_Somatic3_new_mapped/S3N/mapping/S3N_dedup.bam"
-S2_sam_file = "/hpc/cog_bioinf/ridder/users/cshneider/SURVIVOR-master/Debug/chr17_SURV10kDEL_INS_truth_clipped_vcfs_4callers/S2_dedup_clippedrds.sam"
-S3N_sam_file = "/hpc/cog_bioinf/ridder/users/cshneider/SURVIVOR-master/Debug/chr17_SURV10kDEL_INS_truth_clipped_vcfs_4callers/S3N_dedup_clippedrds.sam"
+#S2_sam_file = "/hpc/cog_bioinf/ridder/users/cshneider/SURVIVOR-master/Debug/chr17_SURV10kDEL_INS_truth_clipped_vcfs_4callers/S2_dedup_clippedrds.sam"
+#S3N_sam_file = "/hpc/cog_bioinf/ridder/users/cshneider/SURVIVOR-master/Debug/chr17_SURV10kDEL_INS_truth_clipped_vcfs_4callers/S3N_dedup_clippedrds.sam"
 
 ''' MAKE THE NOSV CATEGORY FILE LOCATIONS!!! '''
