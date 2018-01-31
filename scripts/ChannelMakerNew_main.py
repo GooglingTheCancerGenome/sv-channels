@@ -40,15 +40,6 @@ data_chr17_fasta.close()
 # Truth_set_file = "chr17_somaticallele_10k_INS_DEL.copy.sorted.bed" #contains DELs and INs 4.815 DELs and 5.185 INS, INS we don't consider for the moment
 # lines in this file look like:  17	982	17	1910	INS
 
-'''on local machine'''
-cmd = "sambamba"
-
-#''' #uncomment for use on hpc
-#cmd = "module load sambamcram/sambamba"
-cmd_hpc = "module load sambamcram/sambamba" #on the HPC cluster #sambamcram/samtools"
-#call(cmd_hpc, shell=True)
-#'''
-
 from time import time
 
 # from subprocess import call

@@ -14,11 +14,21 @@ import pysam
 
 HPC_MODE = False
 
-#sambamba 0.6.6 must be in PATH
+'''on local machine'''
+# sambamba 0.6.6 must be in PATH
 sambambadir = "/Users/lsantuari/Applications/SAM/sambamba/"
+
+#''' #uncomment for use on hpc
+#sambamba v0.5.8 on the HPC
+#cmd = "module load sambamcram/sambamba"
+cmd_hpc = "module load sambamcram/sambamba" #on the HPC cluster #sambamcram/samtools"
+call(cmd_hpc, shell=True)
+#'''
+
 
 def bash_command(cmd):
     Popen(['/bin/bash', '-c', cmd])
+
 
 def get_cigar_coord(cigar):
     re1 = '(\\d+)'  # Integer Number 1
@@ -217,8 +227,12 @@ def all_reads_in_window(bam_file, chr_number, left, right, name,
     '''
     left1 = left + 1
     right1 = right - 1
-    cmd_all_reads_in_window = sambambadir + "sambamba view -F \"ref_name == '17' and mate_ref_name == '17'\" %s %d:%d-%d > all_reads_in_window_%s_newVer_10k_100window.sam" % (
-    bam_file, chr_number, left1, right1, name)  # counter removed #name = GS,G1,S3,S1... #_new added 29.11.17
+    cmd_all_reads_in_window = "sambamba view -F \"ref_name == '17' and mate_ref_name == '17'\" %s %d:%d-%d > all_reads_in_window_%s_newVer_10k_100window.sam" % (
+        bam_file, chr_number, left1, right1, name)  # counter removed #name = GS,G1,S3,S1... #_new added 29.11.17
+
+    if(not HPC_MODE):
+        cmd_all_reads_in_window = sambambadir + cmd_all_reads_in_window
+
     # ''' The line below here have been using on local files on my laptop '''
     # cmd_all_reads_in_window = "sambamba view %s %d:%d-%d > all_reads_in_window_%s_%s.sam" %(bam_file,chr_number,left,right,name,counter) #name = GS,G1,S3,S1...
     call(cmd_all_reads_in_window, shell=True)
@@ -451,22 +465,23 @@ def vstack_12_channel_pairer_plus_GC_chanel_fcn(vstack_12_channels1, vstack_12_c
 
 ''' >>> Need these function here below for the last 8 channels: IGNORE '*' FOR THESE CHANNELS! <<< '''
 
-
+'''
 def find_mates(sam_file, id_, counter):  # %(GS_bam_30xsubsample_file,rd_name) #counter? or column?
     cmd_mate = "sambamba view -F \"read_name == %s\" %s > reads_with_same_name_%s.sam" % (
-    id_, sam_file, counter)
+        id_, sam_file, counter)
     bash_command(cmd_mate)
 
 
 def all_unique_read_ids_in_window(bam_file, chr_number, left, right, name, counter):  # replace counter with column?
     cmd_id = "sambamba view %s %d:%d-%d | cut -f1 | uniq > idFile_%s_%s.txt" % (
-    bam_file, chr_number, left, right, name, counter)  # name = GS,G1,S3,S1...
+        bam_file, chr_number, left, right, name, counter)  # name = GS,G1,S3,S1...
     bash_command(cmd_id)
 
     with(open('idFile_%s_%s.txt', 'r') % (name, counter)) as i:
         for line in i:
             id_ = line.rstrip()
             find_mates(sam_file, id_)
+'''
 
 
 '''Extract all position of soft/hard clipped reads in a BAM alignment window [chr:start-end]'''
@@ -482,19 +497,19 @@ def get_clipped_positions(bamfile, chr, start, end):
     :return: list of unique (Hard or Soft)-clipped positions
     '''
 
-    #print('Reading BAM:%s' % bamfile)
+    # print('Reading BAM:%s' % bamfile)
     samfile = pysam.AlignmentFile(bamfile, "r")
     read_count = samfile.count(chr, start, end)
     iter = samfile.fetch(chr, start, end)
     clipped_pos = set()
     for read in iter:
-        #print(str(read))
+        # print(str(read))
         if read.cigartuples != None:
             if read.cigartuples[0][0] in [4, 5]:
-                #print('Clipped at the start: %s -> %s' % (str(read.cigarstring), str(read.cigartuples)))
+                # print('Clipped at the start: %s -> %s' % (str(read.cigarstring), str(read.cigartuples)))
                 clipped_pos.add(read.get_reference_positions()[0] + 1)
             if read.cigartuples[-1][0] in [4, 5]:
-                #print('Clipped at the end: %s -> %s' % (str(read.cigarstring), str(read.cigartuples)))
+                # print('Clipped at the end: %s -> %s' % (str(read.cigarstring), str(read.cigartuples)))
                 clipped_pos.add(read.get_reference_positions()[-1] + 1)
     return list(clipped_pos)
 
@@ -505,18 +520,17 @@ def get_clipped_positions(bamfile, chr, start, end):
 
 ''' Replace these files with local machine locations and group into 3 pairs of 2 windows each '''
 
-
-#G1_bam_30x_file = wd + "SURVIVOR-master/Debug/reads_chr17_SURV10kDEL_INS_Germline1_mapped/G1/mapping/" + "G1_dedup.bam"
+# G1_bam_30x_file = wd + "SURVIVOR-master/Debug/reads_chr17_SURV10kDEL_INS_Germline1_mapped/G1/mapping/" + "G1_dedup.bam"
 # "/hpc/cog_bioinf/ridder/users/cshneider/SURVIVOR-master/Debug/reads_chr17_SURV10kDEL_INS_Germline1_mapped/G1/mapping/G1_dedup.bam"
-#GS_bam_30xsubsample_file = wd + "SURVIVOR-master/Debug/reads_chr17_SURV10kDEL_INS_Germline2_Somatic1_mapped/GS/mapping/" + "GS_dedup.subsampledto30x.bam"
+# GS_bam_30xsubsample_file = wd + "SURVIVOR-master/Debug/reads_chr17_SURV10kDEL_INS_Germline2_Somatic1_mapped/GS/mapping/" + "GS_dedup.subsampledto30x.bam"
 # "/hpc/cog_bioinf/ridder/users/cshneider/SURVIVOR-master/Debug/reads_chr17_SURV10kDEL_INS_Germline2_Somatic1_mapped/GS/mapping/GS_dedup.subsampledto30x.bam"
 # G1_sam_30x_file = "/hpc/cog_bioinf/ridder/users/cshneider/SURVIVOR-master/Debug/reads_chr17_SURV10kDEL_INS_Germline1_mapped/G1/mapping/G1_dedup.sam"
 # GS_sam_30xsubsample_file = "GS_dedup.subsampledto30x.sam"
 # "/hpc/cog_bioinf/ridder/users/cshneider/SURVIVOR-master/Debug/reads_chr17_SURV10kDEL_INS_Germline2_Somatic1_mapped/GS/mapping/GS_dedup.subsampledto30x.sam"
 
-#S2_bam_file = wd + "SURVIVOR-master/Debug/reads_chr17_SURV10kDEL_INS_Somatic2_mapped/S2/mapping/" + "S2_dedup.bam"
+# S2_bam_file = wd + "SURVIVOR-master/Debug/reads_chr17_SURV10kDEL_INS_Somatic2_mapped/S2/mapping/" + "S2_dedup.bam"
 # "/hpc/cog_bioinf/ridder/users/cshneider/SURVIVOR-master/Debug/reads_chr17_SURV10kDEL_INS_Somatic2_mapped/S2/mapping/S2_dedup.bam"
-#S3N_bam_file = wd + "SURVIVOR-master/Debug/reads_chr17_SURV10kDEL_INS_Somatic3_new_mapped/S3N/mapping/" + "S3N_dedup.bam"
+# S3N_bam_file = wd + "SURVIVOR-master/Debug/reads_chr17_SURV10kDEL_INS_Somatic3_new_mapped/S3N/mapping/" + "S3N_dedup.bam"
 # "reads_chr17_SURV10kDEL_INS_Somatic3_new_mapped/S3N/mapping/S3N_dedup.bam"
 # S2_sam_file = "/hpc/cog_bioinf/ridder/users/cshneider/SURVIVOR-master/Debug/chr17_SURV10kDEL_INS_truth_clipped_vcfs_4callers/S2_dedup_clippedrds.sam"
 # S3N_sam_file = "/hpc/cog_bioinf/ridder/users/cshneider/SURVIVOR-master/Debug/chr17_SURV10kDEL_INS_truth_clipped_vcfs_4callers/S3N_dedup_clippedrds.sam"
@@ -542,6 +556,5 @@ else:
     GS_bam_30xsubsample_file = wd + "reads_chr17_SURV10kDEL_INS_Germline2_Somatic1_mapped/GS/mapping/" + "GS_dedup.subsampledto30x.bam"
     S2_bam_file = wd + "reads_chr17_SURV10kDEL_INS_Somatic2_mapped/S2/mapping/" + "S2_dedup.bam"
     S3N_bam_file = wd + "reads_chr17_SURV10kDEL_INS_Somatic3_new_mapped/S3N/mapping/" + "S3N_dedup.bam"
-
 
 ''' MAKE THE NOSV CATEGORY FILE LOCATIONS!!! '''
