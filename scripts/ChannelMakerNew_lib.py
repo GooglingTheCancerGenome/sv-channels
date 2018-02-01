@@ -1,11 +1,15 @@
+import logging
 import re  # regex
-from numpy import *
-import numpy as np
-import os
 import sys
-from time import time
+import os
+
 from subprocess import call, Popen
+
 import pysam
+from numpy import *
+
+# DEBUG printing
+logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
 # sambamba = 'path to sambamba'
 # cmd0 = 'module load sambamba'
@@ -18,12 +22,13 @@ HPC_MODE = False
 # sambamba 0.6.6 must be in PATH
 sambambadir = "/Users/lsantuari/Applications/SAM/sambamba/"
 
-#''' #uncomment for use on hpc
-#sambamba v0.5.8 on the HPC
-#cmd = "module load sambamcram/sambamba"
-cmd_hpc = "module load sambamcram/sambamba" #on the HPC cluster #sambamcram/samtools"
-call(cmd_hpc, shell=True)
-#'''
+
+# ''' #uncomment for use on hpc
+# sambamba v0.5.8 on the HPC
+# cmd = "module load sambamcram/sambamba"
+# cmd_hpc = "module load sambamcram/sambamba" #on the HPC cluster #sambamcram/samtools"
+# call(cmd_hpc, shell=True)
+# '''
 
 
 def bash_command(cmd):
@@ -164,7 +169,7 @@ def locations_DEL_INS(truth_file):
     start_end_SV_DEL = start_SV_DEL + end_SV_DEL
     start_end_SV_DEL_INS = start_end_SV_DEL + start_SV_INS
 
-    return start_end_SV_DEL, start_end_SV_DEL_INS
+    return start_end_SV_DEL, start_SV_INS
 
 
 def make_window(breakpoint, window_to_each_side):  # breakpoint is the same as coord
@@ -230,7 +235,7 @@ def all_reads_in_window(bam_file, chr_number, left, right, name,
     cmd_all_reads_in_window = "sambamba view -F \"ref_name == '17' and mate_ref_name == '17'\" %s %d:%d-%d > all_reads_in_window_%s_newVer_10k_100window.sam" % (
         bam_file, chr_number, left1, right1, name)  # counter removed #name = GS,G1,S3,S1... #_new added 29.11.17
 
-    if(not HPC_MODE):
+    if (not HPC_MODE):
         cmd_all_reads_in_window = sambambadir + cmd_all_reads_in_window
 
     # ''' The line below here have been using on local files on my laptop '''
@@ -434,19 +439,21 @@ def clipped_rds_right_fcn(matrix_int_right_updated, current_ref):
 # Need to code this one after the final 8 channels
 # THINK ABOUT HOW TO GET 12*2 + 1 CHANNELS HERE! NEED TO HAVE PAIR CHANNELS HERE AS WELL!
 def channels_12_vstacker(matrix_str_updated, matrix_int_left_updated, matrix_int_right_updated, current_ref):
-    exact_matches_channel = exact_matches_channel_fcn(matrix_str_updated, current_ref)
-    coverage_channel = coverage_channel_fcn(matrix_str_updated, current_ref)
-    clipped_rds_left_channel = clipped_rds_left_fcn(matrix_int_left_updated, current_ref)
-    clipped_rds_right_channel = clipped_rds_right_fcn(matrix_int_right_updated, current_ref)
     ''' Need the 8 remaining channels here!
     .
     .
     .
     '''
 
+    exact_matches_channel = exact_matches_channel_fcn(matrix_str_updated, current_ref)
+    coverage_channel = coverage_channel_fcn(matrix_str_updated, current_ref)
+    clipped_rds_left_channel = clipped_rds_left_fcn(matrix_int_left_updated, current_ref)
+    clipped_rds_right_channel = clipped_rds_right_fcn(matrix_int_right_updated, current_ref)
+
     vstack_12_channels = array(
         vstack((exact_matches_channel, coverage_channel, clipped_rds_left_channel, clipped_rds_right_channel)),
         dtype=int)
+    #print(vstack_12_channels)
 
     return vstack_12_channels
     # ''' remember also to include GC content after calling channels_12_vstacker twice on the properly paired pair of files! '''
@@ -483,7 +490,6 @@ def all_unique_read_ids_in_window(bam_file, chr_number, left, right, name, count
             find_mates(sam_file, id_)
 '''
 
-
 '''Extract all position of soft/hard clipped reads in a BAM alignment window [chr:start-end]'''
 
 
@@ -497,21 +503,68 @@ def get_clipped_positions(bamfile, chr, start, end):
     :return: list of unique (Hard or Soft)-clipped positions
     '''
 
-    # print('Reading BAM:%s' % bamfile)
+    assert os.path.isfile(bamfile)
+    #print('Reading BAM:%s' % bamfile)
     samfile = pysam.AlignmentFile(bamfile, "r")
-    read_count = samfile.count(chr, start, end)
+    # read_count = samfile.count(chr, start, end)
     iter = samfile.fetch(chr, start, end)
     clipped_pos = set()
     for read in iter:
-        # print(str(read))
-        if read.cigartuples != None:
-            if read.cigartuples[0][0] in [4, 5]:
-                # print('Clipped at the start: %s -> %s' % (str(read.cigarstring), str(read.cigartuples)))
-                clipped_pos.add(read.get_reference_positions()[0] + 1)
-            if read.cigartuples[-1][0] in [4, 5]:
-                # print('Clipped at the end: %s -> %s' % (str(read.cigarstring), str(read.cigartuples)))
-                clipped_pos.add(read.get_reference_positions()[-1] + 1)
+        #print(str(read))
+        if not read.is_unmapped:
+            if read.cigartuples is not None:
+                if read.cigartuples[0][0] in [4, 5]:
+                    #print(str(read))
+                    #print('Clipped at the start: %s -> %s' % (str(read.cigarstring), str(read.cigartuples)))
+                    #print('Pos:%d, clipped_pos:%d' % (read.reference_start, read.get_reference_positions()[0]))
+                    clipped_pos.add(read.get_reference_positions()[0] + 1)
+                if read.cigartuples[-1][0] in [4, 5]:
+                    #print('Clipped at the end: %s -> %s' % (str(read.cigarstring), str(read.cigartuples)))
+                    #print('Pos:%d, clipped_pos:%d' %(read.reference_end, read.get_reference_positions()[-1]))
+                    clipped_pos.add(read.get_reference_positions()[-1] + 1)
     return list(clipped_pos)
+
+
+'''In a BAM alignment window [chr:start-end], get array with count of reads per position
+for reads with absolute insert size larger than 3 standard deviations as estimate by picard'''
+
+
+def get_del_reads_per_pos(bamfile, chr, start, end):
+    '''
+
+    :param bamfile: filepath of BAM alignment
+    :param chr: chromosome
+    :param start: start position of window
+    :param end: end position of window
+    :return: array with counts of reads from properly aligned pairs per position
+    '''
+
+    median_insert_size, median_standard_deviation = (352, 66)
+    print('Reading BAM:%s\n%s:%d-%d' % (bamfile, chr, start, end))
+    samfile = pysam.AlignmentFile(bamfile, "r")
+    iter = samfile.fetch(chr, start, end)
+    cnt_reads = samfile.count(chr, start, end)
+    print('Counted: %d reads' % cnt_reads)
+    insert_size = []
+    assert (end - start) >= 0
+    counter = 0
+    cnt_array = zeros((end - start,), dtype=int)
+    print('cnt_array length: %d' % len(cnt_array))
+    for read in iter:
+        # print(str(read))
+        # print('Paired:%s\tUnmapped:%s\tMate_unmapped:%s' % (read.is_paired, read.is_unmapped, read.mate_is_unmapped))
+        # print(str(read.reference_start - read.next_reference_start))
+        if (not read.is_unmapped) and read.is_paired and (not read.mate_is_unmapped) \
+                and read.next_reference_name == read.reference_name:
+            if abs(read.next_reference_start - read.reference_start) > (
+                    median_insert_size + 3 * median_standard_deviation ):
+                # print(str(read))
+                # print('Mate %s:%d' % (read.next_reference_name, read.next_reference_start))
+                cnt_array[read.reference_start - start] += 1
+                counter += 1
+    print(str(cnt_array))
+    print('Processed: %d reads, cnt_array sum:%d' % (counter, sum(cnt_array)))
+    return cnt_array
 
 
 ''' >>> FILE LOCATIONS <<<'''
