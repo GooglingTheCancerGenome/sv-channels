@@ -3,22 +3,16 @@
 #
 # Dependencies: sambamba or samtools
 #
-import re  # regex
-from numpy import *
-import numpy as np
-import os
-import sys
 
 from ChannelMakerNew_lib import *
-from subprocess import call
 
 # argparser look up for flag args for future pipeline
 
 ''' >>> Some parameters <<< '''
 window_to_each_side = 100  # 5 #10 #100 #500                           #SHOUD BE 100
-print 'window_to_each_side:', window_to_each_side
+logging.debug('window_to_each_side: %d', window_to_each_side)
 full_window_length = window_to_each_side * 2  # +1                  #SHOULD BE 200
-print 'full_window_length:', full_window_length
+logging.debug('full_window_length: %d', full_window_length)
 # max_coverage_depth_from_30x = 80 #1000 #200 #hardcoded number based on 6*30; expect at most 100 reads at one location; matrix below is just for testing really.
 # '''
 # For future use, need to have max_coverage_depth_from_30x as a non-hardcoded number
@@ -27,9 +21,10 @@ print 'full_window_length:', full_window_length
 # '''
 # print 'max_coverage_depth_from_30x:', max_coverage_depth_from_30x
 illumina_rd_length_fixed = 150
-print 'illumina_rd_length_fixed:', illumina_rd_length_fixed
+logging.debug('illumina_rd_length_fixed: %d', illumina_rd_length_fixed)
 chromosome_number = 17  # Perhaps un-hardcode in future
-print chromosome_number
+logging.debug('Using chromosome %d', chromosome_number)
+
 ''' >>> Some parameters <<<'''
 
 # data_chr17_fasta=open("chr17_human.fasta",'r')
@@ -65,21 +60,36 @@ Sclass_keys = Sclass.keys()
 def main():
     t0 = time()
     counter = 0
+    #positions with no clipped reads
+    no_clip_coord = []
     ''' THESE TRUTH COORDINATES ARE ONLY FOR G1,GS AND S2,S3N FILES AND NOT YET FOR NOSV1,NOSV2 FILES '''
     '''start_end_SV_DEL = locations_DEL_INS(Truth_set_file)[0]'''
-    start_end_SV_DEL, start_end_SV_DEL_INS = locations_DEL_INS(Truth_set_file)
+    start_end_SV_DEL, start_SV_INS = locations_DEL_INS(Truth_set_file)
     # print '##DEBUG',start_end_SV_DEL, start_end_SV_DEL_INS
+    #print(start_end_SV_DEL_INS)
     '''*******CHANGE TO THIS: for coord in start_end_SV_DEL: change coord dependency in name after have tried making 10 windows! change window length to each side to 100*******'''
-    for outcoord in start_end_SV_DEL:  # [0:100] #changed 'i' to 'coord'
-        print 'coord:', outcoord
+    for outcoord in start_SV_INS:  # [0:100] #changed 'i' to 'coord'
+        logging.debug('coord: %d', outcoord)
 
-        clipped_pos_list = [ el
-                             for sample in Gclass.values() + Sclass.values()
-                             for el in get_clipped_positions(sample, str(chromosome_number),
-                                                  outcoord - window_to_each_side, outcoord + window_to_each_side - 1 )
-                              ]
+        clipped_pos_list = [el
+                            for sample in Gclass.values() + Sclass.values()
+                            for el in get_clipped_positions(sample, str(chromosome_number),
+                                                            outcoord - window_to_each_side,
+                                                            outcoord + window_to_each_side)
+                            ]
+
+        if len(clipped_pos_list) == 0:
+            no_clip_coord.append(outcoord)
+
+        '''
+        for sample in Gclass.values() + Sclass.values():
+            get_del_reads_per_pos(sample, str(chromosome_number),
+                            outcoord - window_to_each_side,
+                            outcoord + window_to_each_side)
+        '''
+
         for coord in sorted(list(set((clipped_pos_list)))):
-            print 'inner coord:', coord
+            logging.debug('inner coord: %d', coord)
 
             window_arange, left, right = make_window(coord, window_to_each_side)
             current_genome_reference = current_reference_fcn(current_line_on_reference, left, right)
