@@ -2,11 +2,9 @@ import logging
 import re  # regex
 import sys
 import os
-
-from subprocess import call, Popen
-
 import pysam
-from numpy import *
+import numpy as np
+from subprocess import call, Popen
 
 # DEBUG printing
 logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
@@ -175,7 +173,7 @@ def locations_DEL_INS(truth_file):
 def make_window(breakpoint, window_to_each_side):  # breakpoint is the same as coord
     left = breakpoint - window_to_each_side
     right = breakpoint + window_to_each_side
-    window_arange = arange(left, right)
+    window_arange = np.arange(left, right)
 
     return window_arange, left, right
 
@@ -188,9 +186,9 @@ def current_reference_fcn(current_line_on_reference, left, right):
 
 
 def make_matrix(number_of_reads_in_window_total, full_window_length):
-    matrix_str = array(zeros((number_of_reads_in_window_total, full_window_length)), dtype='|S1')
-    matrix_int_left_clip = zeros((number_of_reads_in_window_total, full_window_length))
-    matrix_int_right_clip = zeros((number_of_reads_in_window_total, full_window_length))
+    matrix_str = np.array(np.zeros((number_of_reads_in_window_total, full_window_length)), dtype='|S1')
+    matrix_int_left_clip = np.zeros((number_of_reads_in_window_total, full_window_length))
+    matrix_int_right_clip = np.zeros((number_of_reads_in_window_total, full_window_length))
     # matrix_int = zeros((number_of_reads_in_window_total,full_window_length))
 
     return matrix_str, matrix_int_left_clip, matrix_int_right_clip  # ,matrix_int
@@ -291,9 +289,9 @@ def read_content_in_window_fcn(line, coord, window_to_each_side):
     # print 'read_cleaned_length:', read_cleaned_length
     read_cleaned_length_computed_end = rd_pos_start + read_cleaned_length
 
-    read_cleaned_length_arange = arange(rd_pos_start, read_cleaned_length_computed_end)
+    read_cleaned_length_arange = np.arange(rd_pos_start, read_cleaned_length_computed_end)
     # print 'read_cleaned_length_arange:', read_cleaned_length_arange
-    read_content_in_window = intersect1d(window_arange, read_cleaned_length_arange)
+    read_content_in_window = np.intersect1d(window_arange, read_cleaned_length_arange)
 
     return read_content_in_window, read_cleaned_length_computed_end, read_cleaned_length_arange
 
@@ -310,10 +308,10 @@ def clean_read_mapper(line, coord, window_to_each_side, rd_sequence_raw,
     begin_of_intersection = read_content_in_window[0]
     end_of_intersection = read_content_in_window[len(read_content_in_window) - 1]
 
-    window_begin_intersect_index = where(window_arange == begin_of_intersection)[0][0]
-    window_end_intersect_index = where(window_arange == end_of_intersection)[0][0]
-    rd_begin_intersect_index = where(read_cleaned_length_arange == begin_of_intersection)[0][0]
-    rd_end_intersect_index = where(read_cleaned_length_arange == end_of_intersection)[0][0]
+    window_begin_intersect_index = np.where(window_arange == begin_of_intersection)[0][0]
+    window_end_intersect_index = np.where(window_arange == end_of_intersection)[0][0]
+    rd_begin_intersect_index = np.where(read_cleaned_length_arange == begin_of_intersection)[0][0]
+    rd_end_intersect_index = np.where(read_cleaned_length_arange == end_of_intersection)[0][0]
 
     # matrix_str[counter][window_begin_intersect_index:window_end_intersect_index+1] = list(read_cleaned)[rd_begin_intersect_index:rd_end_intersect_index+1]
 
@@ -379,9 +377,9 @@ def get_exact_matches(position, matrix_str_updated, current_ref):  # current_lin
     # current_ref = current_reference_fcn(current_line_on_reference,left,right)
     matrix_str_updated_transpose = matrix_str_updated.transpose()
     tally1 = len(
-        where(matrix_str_updated_transpose[position] == current_ref[position])[0])  # right side is a single letter
+        np.where(matrix_str_updated_transpose[position] == current_ref[position])[0])  # right side is a single letter
     ##print 'tally1:', tally1
-    tally2 = len(where(matrix_str_updated_transpose[position] == '=')[
+    tally2 = len(np.where(matrix_str_updated_transpose[position] == '=')[
                      0])  # ACCORDING TO THE SAM FILE, THE SEQ CAN HAVE AN '=' SIGN AT A BASE POSITION WHICH MEANS THAT ITS EQUAL TO THE REFERENCE THERE!
     ##print 'tally2:', tally2
     tally = tally1 + tally2
@@ -404,7 +402,7 @@ def exact_matches_channel_fcn(matrix_str_updated, current_ref):
 
 def get_coverage(position, matrix_str_updated):
     matrix_str_updated_transpose = matrix_str_updated.transpose()
-    coverage = len(where(matrix_str_updated_transpose[position] != '0')[0])
+    coverage = len(np.where(matrix_str_updated_transpose[position] != '0')[0])
 
     return coverage
 
@@ -417,7 +415,7 @@ def coverage_channel_fcn(matrix_str_updated, current_ref):
 
 def get_clips_right_left(position, matrix_int_updated):  # i think should do the updating inside the function
     matrix_int_updated_transpose = matrix_int_updated.transpose()
-    clips_right_left = len(where(matrix_int_updated_transpose[position] == 1)[0])
+    clips_right_left = len(np.where(matrix_int_updated_transpose[position] == 1)[0])
 
     return clips_right_left
 
@@ -450,17 +448,17 @@ def channels_12_vstacker(matrix_str_updated, matrix_int_left_updated, matrix_int
     clipped_rds_left_channel = clipped_rds_left_fcn(matrix_int_left_updated, current_ref)
     clipped_rds_right_channel = clipped_rds_right_fcn(matrix_int_right_updated, current_ref)
 
-    vstack_12_channels = array(
-        vstack((exact_matches_channel, coverage_channel, clipped_rds_left_channel, clipped_rds_right_channel)),
+    vstack_12_channels = np.array(
+        np.vstack((exact_matches_channel, coverage_channel, clipped_rds_left_channel, clipped_rds_right_channel)),
         dtype=int)
-    #print(vstack_12_channels)
+    # print(vstack_12_channels)
 
     return vstack_12_channels
     # ''' remember also to include GC content after calling channels_12_vstacker twice on the properly paired pair of files! '''
 
 
 def vstack_12_channel_pairer_plus_GC_chanel_fcn(vstack_12_channels1, vstack_12_channels2, GC_contents):
-    vstack_12_channel_pairer_plus_GC_chanel = vstack((vstack_12_channels1, vstack_12_channels2, GC_contents))
+    vstack_12_channel_pairer_plus_GC_chanel = np.vstack((vstack_12_channels1, vstack_12_channels2, GC_contents))
 
     return vstack_12_channel_pairer_plus_GC_chanel
 
@@ -504,23 +502,23 @@ def get_clipped_positions(bamfile, chr, start, end):
     '''
 
     assert os.path.isfile(bamfile)
-    #print('Reading BAM:%s' % bamfile)
+    # print('Reading BAM:%s' % bamfile)
     samfile = pysam.AlignmentFile(bamfile, "r")
     # read_count = samfile.count(chr, start, end)
     iter = samfile.fetch(chr, start, end)
     clipped_pos = set()
     for read in iter:
-        #print(str(read))
+        # print(str(read))
         if not read.is_unmapped:
             if read.cigartuples is not None:
                 if read.cigartuples[0][0] in [4, 5]:
-                    #print(str(read))
-                    #print('Clipped at the start: %s -> %s' % (str(read.cigarstring), str(read.cigartuples)))
-                    #print('Pos:%d, clipped_pos:%d' % (read.reference_start, read.get_reference_positions()[0]))
+                    # print(str(read))
+                    # print('Clipped at the start: %s -> %s' % (str(read.cigarstring), str(read.cigartuples)))
+                    # print('Pos:%d, clipped_pos:%d' % (read.reference_start, read.get_reference_positions()[0]))
                     clipped_pos.add(read.get_reference_positions()[0] + 1)
                 if read.cigartuples[-1][0] in [4, 5]:
-                    #print('Clipped at the end: %s -> %s' % (str(read.cigarstring), str(read.cigartuples)))
-                    #print('Pos:%d, clipped_pos:%d' %(read.reference_end, read.get_reference_positions()[-1]))
+                    # print('Clipped at the end: %s -> %s' % (str(read.cigarstring), str(read.cigartuples)))
+                    # print('Pos:%d, clipped_pos:%d' %(read.reference_end, read.get_reference_positions()[-1]))
                     clipped_pos.add(read.get_reference_positions()[-1] + 1)
     return list(clipped_pos)
 
@@ -557,7 +555,7 @@ def get_del_reads_per_pos(bamfile, chr, start, end):
         if (not read.is_unmapped) and read.is_paired and (not read.mate_is_unmapped) \
                 and read.next_reference_name == read.reference_name:
             if abs(read.next_reference_start - read.reference_start) > (
-                    median_insert_size + 3 * median_standard_deviation ):
+                    median_insert_size + 3 * median_standard_deviation):
                 # print(str(read))
                 # print('Mate %s:%d' % (read.next_reference_name, read.next_reference_start))
                 cnt_array[read.reference_start - start] += 1
