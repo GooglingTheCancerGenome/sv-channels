@@ -49,13 +49,9 @@ channel_matrix_list_Germline_categ = []
 channel_matrix_list_Somatic_categ = []
 channel_matrix_list_NoSV_categ = []
 
-channel_matrix_list_TumorNormal_categ = []
-
 label_list_Somatic = []
 label_list_Germline = []
 label_list_NOSV = []
-
-label_list_TumorNormal = []
 
 Gclass = {'GS': GS_bam_30xsubsample_file, 'G1': G1_bam_30x_file}
 Sclass = {'S2': S2_bam_file, 'S3N': S3N_bam_file}
@@ -192,6 +188,10 @@ def bam_to_channels():
     clipped_pos = get_clipped_positions_from_CR_BAM(inbam)
 
     for chr in clipped_pos.keys():
+
+        channel_matrix_list_TumorNormal_categ = []
+        label_list_TumorNormal = []
+
         for coord in sorted(clipped_pos[chr]):
             logging.debug('coord: %d', coord)
 
@@ -223,8 +223,8 @@ def bam_to_channels():
             channel_matrix_list_TumorNormal_categ.append(vstack_12_channel_pairer_plus_GC_chanel_TN)
             label_list_TumorNormal.append('tumor_normal')
 
-    np.save('tumornormal_cube_data_file', channel_matrix_list_TumorNormal_categ)
-    np.save('tumornormal_label_array_file', label_list_TumorNormal)
+        np.save('tumornormal_cube_data_file_chr_' + chr, channel_matrix_list_TumorNormal_categ)
+        np.save('tumornormal_label_array_file_chr_' + chr, label_list_TumorNormal)
 
     print 'done in ', time() - t0
     print 'counter:', counter
