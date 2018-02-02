@@ -9,6 +9,10 @@ from ChannelMakerNew_lib import *
 # argparser look up for flag args for future pipeline
 
 ''' >>> Some parameters <<< '''
+
+# Is it generating the training set?
+TRAINING_MODE = True
+
 window_to_each_side = 100  # 5 #10 #100 #500                           #SHOUD BE 100
 logging.debug('window_to_each_side: %d', window_to_each_side)
 full_window_length = window_to_each_side * 2  # +1                  #SHOULD BE 200
@@ -45,9 +49,13 @@ channel_matrix_list_Germline_categ = []
 channel_matrix_list_Somatic_categ = []
 channel_matrix_list_NoSV_categ = []
 
+channel_matrix_list_TumorNormal_categ = []
+
 label_list_Somatic = []
 label_list_Germline = []
 label_list_NOSV = []
+
+label_list_TumorNormal = []
 
 Gclass = {'GS': GS_bam_30xsubsample_file, 'G1': G1_bam_30x_file}
 Sclass = {'S2': S2_bam_file, 'S3N': S3N_bam_file}
@@ -57,16 +65,17 @@ Sclass_keys = Sclass.keys()
 '''NOSVclass_keys = NOSVclass.keys()'''
 
 
-def main():
+def generate_training_set():
     t0 = time()
     counter = 0
-    #positions with no clipped reads
+    # positions with no clipped reads
     no_clip_coord = []
     ''' THESE TRUTH COORDINATES ARE ONLY FOR G1,GS AND S2,S3N FILES AND NOT YET FOR NOSV1,NOSV2 FILES '''
     '''start_end_SV_DEL = locations_DEL_INS(Truth_set_file)[0]'''
     start_end_SV_DEL, start_SV_INS = locations_DEL_INS(Truth_set_file)
     # print '##DEBUG',start_end_SV_DEL, start_end_SV_DEL_INS
-    #print(start_end_SV_DEL_INS)
+    # print(start_end_SV_DEL_INS)
+
     '''*******CHANGE TO THIS: for coord in start_end_SV_DEL: change coord dependency in name after have tried making 10 windows! change window length to each side to 100*******'''
     for outcoord in start_SV_INS:  # [0:100] #changed 'i' to 'coord'
         logging.debug('coord: %d', outcoord)
@@ -158,6 +167,74 @@ def main():
     print 'done in ', time() - t0
     print 'counter/2:', counter / 2
     print 'counter/2 == 9630:', counter / 2 == 9630
+
+
+def bam_to_channels():
+    '''
+    Converts the Tumor and Normal BAM files into Channel data
+    :return:
+    '''
+
+    t0 = time()
+    counter = 0
+
+    # Input files
+    wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/GiaB/Synthetic_tumor/BAM/'
+
+    # Requires BAM files with Clipped reads only:
+    # sambamba view -F "cigar =~ /^\d[S|H]/ or cigar =~ /[S|H]$/" -f bam CPCT11111111T_dedup.realigned.bam
+    inbam = wd + 'Tumor/' + 'CPCT11111111T_dedup.realigned.cr.bam'
+
+    tumor_bam = wd + 'Tumor/' + 'CPCT11111111T_dedup.realigned.bam'
+    normal_bam = wd + 'Reference/' + 'CPCT11111111R_dedup.realigned.bam'
+    tn_dict = {'Tumor': tumor_bam, 'Normal': normal_bam}
+
+    clipped_pos = get_clipped_positions_from_CR_BAM(inbam)
+
+    for chr in clipped_pos.keys():
+        for coord in sorted(clipped_pos[chr]):
+            logging.debug('coord: %d', coord)
+
+            window_arange, left, right = make_window(coord, window_to_each_side)
+            current_genome_reference = current_reference_fcn(current_line_on_reference, left, right)
+            # print 'current_genome_reference:', current_genome_reference
+            GC_content = GC_content_dict_fcn(current_genome_reference)
+            # print 'GC_content:', GC_content
+
+            vstack_12_channels_pair_TN_class_list = []
+            for element in tn_dict.keys():  # should be 2 elements
+
+                all_reads_in_window_file_name_TN = all_reads_in_window(tn_dict[element], chr, left, right,
+                                                                       element, 0)
+
+                number_of_reads_in_window_total_TN = number_of_reads_in_window_compute(all_reads_in_window_file_name_TN)
+
+                matrix_str_updated_TN, matrix_int_left_updated_TN, matrix_int_right_updated_TN = matrix_read_updater_for_str_int(
+                    all_reads_in_window_file_name_TN, coord, window_to_each_side, number_of_reads_in_window_total_TN,
+                    full_window_length)
+                vstack_12_channels_TN = channels_12_vstacker(matrix_str_updated_TN, matrix_int_left_updated_TN,
+                                                             matrix_int_right_updated_TN, current_genome_reference)
+                vstack_12_channels_pair_TN_class_list.append(vstack_12_channels_TN)
+                counter += 1
+
+            vstack_12_channel_pairer_plus_GC_chanel_TN = vstack_12_channel_pairer_plus_GC_chanel_fcn(
+                vstack_12_channels_pair_TN_class_list[0], vstack_12_channels_pair_TN_class_list[1], GC_content)
+
+            channel_matrix_list_TumorNormal_categ.append(vstack_12_channel_pairer_plus_GC_chanel_TN)
+            label_list_TumorNormal.append('tumor_normal')
+
+    np.save('tumornormal_cube_data_file', channel_matrix_list_TumorNormal_categ)
+    np.save('tumornormal_label_array_file', label_list_TumorNormal)
+
+    print 'done in ', time() - t0
+    print 'counter:', counter
+
+
+def main():
+    if TRAINING_MODE:
+        generate_training_set()
+    else:
+        bam_to_channels()
 
 
 if __name__ == '__main__':

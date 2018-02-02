@@ -520,7 +520,41 @@ def get_clipped_positions(bamfile, chr, start, end):
                     # print('Clipped at the end: %s -> %s' % (str(read.cigarstring), str(read.cigartuples)))
                     # print('Pos:%d, clipped_pos:%d' %(read.reference_end, read.get_reference_positions()[-1]))
                     clipped_pos.add(read.get_reference_positions()[-1] + 1)
+    samfile.close()
     return list(clipped_pos)
+
+
+def get_clipped_positions_from_CR_BAM(bamfile):
+    '''
+
+    :param bamfile: filepath of BAM alignment with Hard/Soft clipped reads only
+    :return: dictionary of list of unique genomic positions per chromosome
+    '''
+
+    assert os.path.isfile(bamfile)
+
+    # print('Reading BAM:%s' % bamfile)
+    samfile = pysam.AlignmentFile(bamfile, "r")
+    print(str(samfile.header))
+
+    # chr name from header
+    clipped_pos = dict()
+    for el in samfile.header['SQ']:
+        clipped_pos[el['SN']] = set()
+    # read_count = samfile.count(chr, start, end)
+    for read in samfile.fetch():
+        if (not read.is_unmapped) and (not read.mate_is_unmapped):
+            # assert read.cigartuples[0][0] in [4, 5] or read.cigartuples[-1][0] in [4, 5]
+            if read.cigartuples[0][0] in [4, 5]:
+                cpos = read.get_reference_positions()[0] + 1
+                if cpos not in clipped_pos[read.reference_name]:
+                    clipped_pos[read.reference_name].add(cpos)
+            if read.cigartuples[-1][0] in [4, 5]:
+                cpos = read.get_reference_positions()[-1] + 1
+                if cpos not in clipped_pos[read.reference_name]:
+                    clipped_pos[read.reference_name].add(cpos)
+    samfile.close()
+    return clipped_pos
 
 
 '''In a BAM alignment window [chr:start-end], get array with count of reads per position
@@ -597,6 +631,7 @@ if HPC_MODE:
     GS_bam_30xsubsample_file = wd + "reads_chr17_SURV10kDEL_INS_Germline2_Somatic1_mapped/GS/mapping/" + "GS_dedup.subsampledto30x.bam"
     S2_bam_file = wd + "reads_chr17_SURV10kDEL_INS_Somatic2_mapped/S2/mapping/" + "S2_dedup.bam"
     S3N_bam_file = wd + "reads_chr17_SURV10kDEL_INS_Somatic3_new_mapped/S3N/mapping/" + "S3N_dedup.bam"
+
 else:
     wd = "/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/SURVIVOR-master/Debug/"
     data_chr17_fasta_file = wd + "chr17_human.fasta"
