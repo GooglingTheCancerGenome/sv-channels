@@ -53,6 +53,9 @@ label_list_Somatic = []
 label_list_Germline = []
 label_list_NOSV = []
 
+#Is the window centered on the breakpoint junction (BPJ)?
+bpj_flag = []
+
 Gclass = {'GS': GS_bam_30xsubsample_file, 'G1': G1_bam_30x_file}
 Sclass = {'S2': S2_bam_file, 'S3N': S3N_bam_file}
 ''' NOSVclass = {'':,'':} '''
@@ -61,30 +64,85 @@ Sclass_keys = Sclass.keys()
 '''NOSVclass_keys = NOSVclass.keys()'''
 
 
+# Output file with information about the program execution
+# info_file = open('ChannelMaker_run_info.txt', 'w')
+# info_file.write('\t'.join(['OUTCOORD', 'COORD', 'INDEX']) + '\n')
+
+
+def get_ch_mtx(coord, bam_class, win_left, win_right, current_genome_reference, GC_content):
+    '''
+    Returns a channel matrix for a location and for a class of BAM files
+    :param coord:
+    :param bam_class:
+    :param win_left:
+    :param win_right:
+    :param GC_content:
+    :return:
+    '''
+
+    vstack_pair = []
+
+    for element in bam_class.keys():
+        # print(element)
+        all_reads = all_reads_in_window(bam_class[element], chromosome_number,
+                                        win_left, win_right,
+                                        element, 0)
+        n_reads = number_of_reads_in_window_compute(all_reads)
+        # print('N reads:%d' % n_reads)
+        matrix_str_updated, matrix_int_left_updated, matrix_int_right_updated = matrix_read_updater_for_str_int(
+            all_reads, coord, window_to_each_side, n_reads, full_window_length)
+
+        vstack_ch = channels_12_vstacker(matrix_str_updated, matrix_int_left_updated,
+                                         matrix_int_right_updated, current_genome_reference)
+        vstack_pair.append(vstack_ch)
+
+    vstack_with_GC = vstack_12_channel_pairer_plus_GC_chanel_fcn(
+        vstack_pair[0], vstack_pair[1], GC_content)
+
+    return vstack_with_GC
+
+
 def generate_training_set():
+    '''
+
+    :return:
+    '''
+
     t0 = time()
     counter = 0
     # positions with no clipped reads
     no_clip_coord = []
     ''' THESE TRUTH COORDINATES ARE ONLY FOR G1,GS AND S2,S3N FILES AND NOT YET FOR NOSV1,NOSV2 FILES '''
     '''start_end_SV_DEL = locations_DEL_INS(Truth_set_file)[0]'''
-    start_end_SV_DEL, start_SV_INS = locations_DEL_INS(Truth_set_file)
+    # start_SV_DEL, end_SV_DEL, start_SV_INS = locations_DEL_INS(Truth_set_file)
+
+    start_SV_DEL, end_SV_DEL, start_SV_INS = locations_DEL_INS(Truth_set_file)
+
     # print '##DEBUG',start_end_SV_DEL, start_end_SV_DEL_INS
     # print(start_end_SV_DEL_INS)
 
     '''*******CHANGE TO THIS: for coord in start_end_SV_DEL: change coord dependency in name after have tried making 10 windows! change window length to each side to 100*******'''
-    for outcoord in start_SV_INS:  # [0:100] #changed 'i' to 'coord'
+    for outzipped in zip(start_SV_DEL + end_SV_DEL + start_SV_INS,
+                         ['del_start'] * len(start_SV_DEL) +
+                         ['del_end'] * len(end_SV_DEL) +
+                         ['ins_start'] * len(start_SV_INS)):  # [0:100] #changed 'i' to 'coord'
+
+        outcoord = outzipped[0]
+        # print(outzipped[1])
+
         logging.debug('coord: %d', outcoord)
 
         clipped_pos_list = [el
-                            for sample in Gclass.values() + Sclass.values()
-                            for el in get_clipped_positions(sample, str(chromosome_number),
+                            # for sample in Gclass.values() + Sclass.values()
+                            for el in get_clipped_positions(Gclass.values()[0], str(chromosome_number),
                                                             outcoord - window_to_each_side,
                                                             outcoord + window_to_each_side)
                             ]
 
+        # List of clipped positions should have at least the PBJ position
         if len(clipped_pos_list) == 0:
-            no_clip_coord.append(outcoord)
+            print outcoord
+        # print(clipped_pos_list)
 
         '''
         for sample in Gclass.values() + Sclass.values():
@@ -94,7 +152,13 @@ def generate_training_set():
         '''
 
         for coord in sorted(list(set((clipped_pos_list)))):
+
             logging.debug('inner coord: %d', coord)
+
+            #print(outcoord == coord)
+            bpj_flag.append(outcoord == coord)
+
+            # info_file.write('\t'.join([str(outcoord), str(coord), str(counter)]) + '\n')
 
             window_arange, left, right = make_window(coord, window_to_each_side)
             current_genome_reference = current_reference_fcn(current_line_on_reference, left, right)
@@ -103,66 +167,43 @@ def generate_training_set():
             # print 'GC_content:', GC_content
 
             '''The _G indicates that have a germline pure plus 50 percent mix germline and somatic and these files start with a 'G', these are used to form the somatic category '''
-            vstack_12_channels_pair_Gclass_list = []
-            for element1 in Gclass.keys():  # should be 2 elements
-                '''counter = 0 #counts number of windows #reset counter for every new break point
-                print 'counter:', counter
-                if counter == 1: #then do 10 #then do all #so 10 main windows only w/o embedded windows for the moment
-                    break
-                '''
-                # print 'element1:', element1
-                # print 'Gclass[element1]:', Gclass[element1]
-                all_reads_in_window_file_name_G = all_reads_in_window(Gclass[element1], chromosome_number, left, right,
-                                                                      element1, 0)
-                # print 'all_reads_in_window_file_name_G:', all_reads_in_window_file_name_G
-                number_of_reads_in_window_total_G = number_of_reads_in_window_compute(all_reads_in_window_file_name_G)
-                # print 'number_of_reads_in_window_total_G:', number_of_reads_in_window_total_G
-                matrix_str_updated_G, matrix_int_left_updated_G, matrix_int_right_updated_G = matrix_read_updater_for_str_int(
-                    all_reads_in_window_file_name_G, coord, window_to_each_side, number_of_reads_in_window_total_G,
-                    full_window_length)
-                vstack_12_channels_G = channels_12_vstacker(matrix_str_updated_G, matrix_int_left_updated_G,
-                                                            matrix_int_right_updated_G, current_genome_reference)
-                vstack_12_channels_pair_Gclass_list.append(vstack_12_channels_G)
-                counter += 1
 
-            # print 'vstack_12_channels_pair_Gclass_list:', vstack_12_channels_pair_Gclass_list
-            # print 'len(vstack_12_channels_pair_Gclass_list):', len(vstack_12_channels_pair_Gclass_list)
-            vstack_12_channel_pairer_plus_GC_chanel_G = vstack_12_channel_pairer_plus_GC_chanel_fcn(
-                vstack_12_channels_pair_Gclass_list[0], vstack_12_channels_pair_Gclass_list[1], GC_content)
-            # print 'vstack_12_channel_pairer_plus_GC_chanel_G:', vstack_12_channel_pairer_plus_GC_chanel_G
-            channel_matrix_list_Somatic_categ.append(vstack_12_channel_pairer_plus_GC_chanel_G)
-            ##############print 'channel_matrix_list_Somatic_categ:', channel_matrix_list_Somatic_categ
-            label_list_Somatic.append('somatic')
+            channel_matrix_list_Somatic_categ.append(
+                get_ch_mtx(coord, Gclass, left, right, current_genome_reference, GC_content)
+            )
+            label_list_Somatic.append('somatic_' + outzipped[1])
+
             '''print 'counter == 9630:', counter == 9630 #TESTS THAT ARE USING all DELs that have simulated only and not the INS!'''
 
             ''' The _S here indicates that have somatic files starting with 'S' but these are used to form the germline category!'''
-            vstack_12_channels_pair_Sclass_list = []  # should be 2 elements
-            for element2 in Sclass.keys():
-                all_reads_in_window_file_name_S = all_reads_in_window(Sclass[element2], chromosome_number, left, right,
-                                                                      element2, 0)
-                number_of_reads_in_window_total_S = number_of_reads_in_window_compute(all_reads_in_window_file_name_S)
-                matrix_str_updated_S, matrix_int_left_updated_S, matrix_int_right_updated_S = matrix_read_updater_for_str_int(
-                    all_reads_in_window_file_name_S, coord, window_to_each_side, number_of_reads_in_window_total_S,
-                    full_window_length)
-                vstack_12_channels_S = channels_12_vstacker(matrix_str_updated_S, matrix_int_left_updated_S,
-                                                            matrix_int_right_updated_S, current_genome_reference)
-                vstack_12_channels_pair_Sclass_list.append(vstack_12_channels_S)
-            # print 'vstack_12_channels_pair_Sclass_list:', vstack_12_channels_pair_Sclass_list
-            # print 'len(vstack_12_channels_pair_Sclass_list):', len(vstack_12_channels_pair_Sclass_list)
-            vstack_12_channel_pairer_plus_GC_chanel_S = vstack_12_channel_pairer_plus_GC_chanel_fcn(
-                vstack_12_channels_pair_Sclass_list[0], vstack_12_channels_pair_Sclass_list[1], GC_content)
-            # print 'vstack_12_channel_pairer_plus_GC_chanel_S:', vstack_12_channel_pairer_plus_GC_chanel_S
-            channel_matrix_list_Germline_categ.append(vstack_12_channel_pairer_plus_GC_chanel_S)
-            label_list_Germline.append('germline')
+
+            channel_matrix_list_Germline_categ.append(
+                get_ch_mtx(coord, Sclass, left, right, current_genome_reference, GC_content)
+            )
+            label_list_Germline.append('germline_' + outzipped[1])
+
+            # for i in range(len(channel_matrix_list_Somatic_categ[0])):
+            #    print(channel_matrix_list_Somatic_categ[0][i])
+
+            # Plot channels
+            # plot_channels_mtx(channel_matrix_list_Somatic_categ[-1], 'Somatic: outCoord:'+str(outcoord)+
+            #                  ' coord:'+str(coord))
+            # plot_channels_mtx(channel_matrix_list_Germline_categ[-1], 'Germline: outCoord:'+str(outcoord)+
+            #                  ' coord:'+str(coord))
+
+            # print(channel_matrix_list_Germline_categ[0])
+
+            counter += 1
 
     np.save('somatic_cube_data_file', channel_matrix_list_Somatic_categ)
     np.save('germline_cube_data_file', channel_matrix_list_Germline_categ)
     np.save('somatic_label_array_file', label_list_Somatic)
     np.save('germline_label_array_file', label_list_Germline)
+    np.save('BPJ_flag', bpj_flag)
 
     print 'done in ', time() - t0
-    print 'counter/2:', counter / 2
-    print 'counter/2 == 9630:', counter / 2 == 9630
+    # print 'counter/2:', counter / 2
+    # print 'counter/2 == 9630:', counter / 2 == 9630
 
 
 def bam_to_channels():
@@ -201,27 +242,12 @@ def bam_to_channels():
             GC_content = GC_content_dict_fcn(current_genome_reference)
             # print 'GC_content:', GC_content
 
-            vstack_12_channels_pair_TN_class_list = []
-            for element in tn_dict.keys():  # should be 2 elements
-
-                all_reads_in_window_file_name_TN = all_reads_in_window(tn_dict[element], chr, left, right,
-                                                                       element, 0)
-
-                number_of_reads_in_window_total_TN = number_of_reads_in_window_compute(all_reads_in_window_file_name_TN)
-
-                matrix_str_updated_TN, matrix_int_left_updated_TN, matrix_int_right_updated_TN = matrix_read_updater_for_str_int(
-                    all_reads_in_window_file_name_TN, coord, window_to_each_side, number_of_reads_in_window_total_TN,
-                    full_window_length)
-                vstack_12_channels_TN = channels_12_vstacker(matrix_str_updated_TN, matrix_int_left_updated_TN,
-                                                             matrix_int_right_updated_TN, current_genome_reference)
-                vstack_12_channels_pair_TN_class_list.append(vstack_12_channels_TN)
-                counter += 1
-
-            vstack_12_channel_pairer_plus_GC_chanel_TN = vstack_12_channel_pairer_plus_GC_chanel_fcn(
-                vstack_12_channels_pair_TN_class_list[0], vstack_12_channels_pair_TN_class_list[1], GC_content)
-
-            channel_matrix_list_TumorNormal_categ.append(vstack_12_channel_pairer_plus_GC_chanel_TN)
+            channel_matrix_list_TumorNormal_categ.append(
+                get_ch_mtx(coord, tn_dict, left, right, current_genome_reference, GC_content)
+            )
             label_list_TumorNormal.append('tumor_normal')
+
+            counter += 1
 
         np.save('tumornormal_cube_data_file_chr_' + chr, channel_matrix_list_TumorNormal_categ)
         np.save('tumornormal_label_array_file_chr_' + chr, label_list_TumorNormal)
@@ -231,10 +257,14 @@ def bam_to_channels():
 
 
 def main():
+    # load_channels()
+
     if TRAINING_MODE:
         generate_training_set()
     else:
         bam_to_channels()
+
+    # info_file.close()
 
 
 if __name__ == '__main__':

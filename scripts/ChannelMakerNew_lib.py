@@ -4,10 +4,11 @@ import sys
 import os
 import pysam
 import numpy as np
+import matplotlib.pyplot as plt
 from subprocess import call, Popen
 
 # DEBUG printing
-logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
 
 # sambamba = 'path to sambamba'
 # cmd0 = 'module load sambamba'
@@ -167,7 +168,7 @@ def locations_DEL_INS(truth_file):
     start_end_SV_DEL = start_SV_DEL + end_SV_DEL
     start_end_SV_DEL_INS = start_end_SV_DEL + start_SV_INS
 
-    return start_end_SV_DEL, start_SV_INS
+    return start_SV_DEL, end_SV_DEL, start_SV_INS
 
 
 def make_window(breakpoint, window_to_each_side):  # breakpoint is the same as coord
@@ -321,6 +322,8 @@ def clean_read_mapper(line, coord, window_to_each_side, rd_sequence_raw,
 def matrix_read_updater_for_str_int(all_reads_in_window_file_name, coord, window_to_each_side,
                                     number_of_reads_in_window_total,
                                     full_window_length):  # coord is 'i' in first/outermost for-loop
+
+    # print(all_reads_in_window_file_name)
     matrix_str, matrix_int_left_clip, matrix_int_right_clip = make_matrix(number_of_reads_in_window_total,
                                                                           full_window_length)  # matrices initialized #, matrix_int
     ##print 'shape(matrix_int_left_clip):', shape(matrix_int_left_clip)
@@ -352,12 +355,14 @@ def matrix_read_updater_for_str_int(all_reads_in_window_file_name, coord, window
             if (letter_order[0] == 'S' or letter_order[0] == 'H'):  # read already present in window
                 # rd_pos_start >= begin_of_intersection and ###WILL NOT BE MAPPING THE MATES IN ANY CASE, JUST GIVING DISTANCES INSTEAD OF SAY ENTRY OF '1'
                 # ind_rd_start = where(rd_pos_start == window_arange)[0][0]
+                # print('Left clipped')
                 matrix_int_left_clip[rd_counter][window_begin_intersect_index] = 1
                 # matrix_int_left_clip[rd_counter][ind_rd_start] = 1
             if (letter_order[len(letter_order) - 1] == 'S' or letter_order[
                 len(letter_order) - 1] == 'H'):  # read already present in window
                 # end_of_intersection >= read_cleaned_length_computed_end and
                 # ind_rd_end = where(read_cleaned_length_computed_end == window_arange)[0][0]
+                # print('Right clipped')
                 matrix_int_right_clip[rd_counter][window_end_intersect_index] = 1
                 # matrix_int_right_clip[rd_counter][ind_rd_end] = 1
             ''' make to comment out self.assertEqual(all(matrix_int_left_clip == zeros((79,10))),True) when if rd_counter == 10: break is commented out here below '''
@@ -367,9 +372,12 @@ def matrix_read_updater_for_str_int(all_reads_in_window_file_name, coord, window
             rd_counter += 1
 
             # number_of_read_artifacts_found_deviating_from_chr17 = number_of_reads_in_window_total - rd_counter
-    ###print 'matrix_str:', matrix_str
-    ##print 'matrix_int_left_clip:', matrix_int_left_clip
-    ##print 'matrix_int_right_clip:', matrix_int_right_clip
+    # print 'matrix_str:', matrix_str
+    # print(np.shape(matrix_int_left_clip))
+    # for i in range(matrix_int_left_clip.shape[1]):
+    #    if(sum(matrix_int_left_clip[:][i]) > 0):
+    #        print 'matrix_int_left_clip:', matrix_int_left_clip[:][i]
+    # print 'matrix_int_right_clip:', matrix_int_right_clip
     return matrix_str, matrix_int_left_clip, matrix_int_right_clip  # , number_of_read_artifacts_found_deviating_from_chr17 #,matrix_int
 
 
@@ -447,6 +455,9 @@ def channels_12_vstacker(matrix_str_updated, matrix_int_left_updated, matrix_int
     coverage_channel = coverage_channel_fcn(matrix_str_updated, current_ref)
     clipped_rds_left_channel = clipped_rds_left_fcn(matrix_int_left_updated, current_ref)
     clipped_rds_right_channel = clipped_rds_right_fcn(matrix_int_right_updated, current_ref)
+
+    # print(clipped_rds_left_channel)
+    # print(clipped_rds_right_channel)
 
     vstack_12_channels = np.array(
         np.vstack((exact_matches_channel, coverage_channel, clipped_rds_left_channel, clipped_rds_right_channel)),
@@ -580,7 +591,7 @@ def get_del_reads_per_pos(bamfile, chr, start, end):
     insert_size = []
     assert (end - start) >= 0
     counter = 0
-    cnt_array = zeros((end - start,), dtype=int)
+    cnt_array = np.zeros((end - start,), dtype=int)
     print('cnt_array length: %d' % len(cnt_array))
     for read in iter:
         # print(str(read))
@@ -597,6 +608,75 @@ def get_del_reads_per_pos(bamfile, chr, start, end):
     print(str(cnt_array))
     print('Processed: %d reads, cnt_array sum:%d' % (counter, sum(cnt_array)))
     return cnt_array
+
+
+def plot_channels(start_window, n_windows, X_train, y_train):
+    '''
+    Function to plot channel from Sonya
+    :param start_window:
+    :param n_windows:
+    :param X_train:
+    :param y_train:
+    :return:
+    '''
+
+    number_channels = X_train.shape[1]
+    for i in range(start_window, start_window + n_windows):
+        print(y_train[i], 'id:', i)
+        for j in range(0, number_channels):
+            shift = 0
+            start = 0
+            if j in [0, 1, 4, 5]:
+                shift = -60
+            if j in [4, 5, 6, 7]:
+                start = 70
+            Z = [start + shift + x + 5 * j * 4 for x in X_train[i][j]]
+            plt.ylim([-65, 250])
+            plt.plot(Z)
+        # plt.savefig(y_train[i] + '_' + str(i) + '.png')
+        plt.show()
+
+
+def plot_channels_mtx(ch_mtx, title):
+
+    #print(ch_mtx.shape)
+    number_channels = ch_mtx.shape[0] - 1
+    for j in range(0, number_channels):
+        shift = 0
+        start = 0
+        if j in [0, 1, 4, 5]:
+            shift = -60
+        if j in [4, 5, 6, 7]:
+            start = 70
+        Z = [start + shift + x + 5 * j * 4 for x in ch_mtx[j]]
+        plt.ylim([-65, 250])
+        plt.plot(Z)
+    # plt.savefig(y_train[i] + '_' + str(i) + '.png')
+    plt.title(title)
+    plt.show()
+
+
+def load_channels():
+    '''
+    Load saved channel data and generate plots
+    :return:
+    '''
+    wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/ChannelMaker/DEL_clipped_win/' + \
+         'ChannelMaker_DEL_clipped_win/'
+    germline_cube = np.load(wd + 'germline_cube_data_file.npy')
+    somatic_cube = np.load(wd + 'somatic_cube_data_file.npy')
+    germline_label = np.load(wd + 'germline_label_array_file.npy')
+    somatic_label = np.load(wd + 'somatic_label_array_file.npy')
+
+    germline_cube_8channels = germline_cube[:, 0:8, :]
+    # germline_cube_8channels.shape
+    somatic_cube_8channels = somatic_cube[:, 0:8, :]
+    # somatic_cube_8channels.shape
+
+    start_window = 15000
+    n_windows = 30
+
+    plot_channels(start_window, n_windows, germline_cube_8channels, germline_label)
 
 
 ''' >>> FILE LOCATIONS <<<'''
