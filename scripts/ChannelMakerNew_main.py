@@ -65,8 +65,8 @@ Sclass_keys = Sclass.keys()
 
 
 # Output file with information about the program execution
-# info_file = open('ChannelMaker_run_info.txt', 'w')
-# info_file.write('\t'.join(['OUTCOORD', 'COORD', 'INDEX']) + '\n')
+info_file = open('ChannelMaker_run_info.txt', 'w')
+info_file.write('\t'.join(['OUTCOORD', 'COORD', 'INDEX']) + '\n')
 
 
 def get_ch_mtx(coord, bam_class, win_left, win_right, current_genome_reference, GC_content):
@@ -158,7 +158,7 @@ def generate_training_set():
             #print(outcoord == coord)
             bpj_flag.append(outcoord == coord)
 
-            # info_file.write('\t'.join([str(outcoord), str(coord), str(counter)]) + '\n')
+            info_file.write('\t'.join([str(outcoord), str(coord), str(counter)]) + '\n')
 
             window_arange, left, right = make_window(coord, window_to_each_side)
             current_genome_reference = current_reference_fcn(current_line_on_reference, left, right)
@@ -264,7 +264,7 @@ def main():
     else:
         bam_to_channels()
 
-    # info_file.close()
+    info_file.close()
 
 
 if __name__ == '__main__':
