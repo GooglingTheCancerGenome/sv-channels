@@ -12,6 +12,8 @@ from ChannelMakerNew_lib import *
 
 # Is it generating the training set?
 TRAINING_MODE = True
+# Write INFO file?
+INFO_MODE = True
 
 window_to_each_side = 100  # 5 #10 #100 #500                           #SHOUD BE 100
 logging.debug('window_to_each_side: %d', window_to_each_side)
@@ -65,8 +67,9 @@ Sclass_keys = Sclass.keys()
 
 
 # Output file with information about the program execution
-info_file = open('ChannelMaker_run_info.txt', 'w')
-info_file.write('\t'.join(['OUTCOORD', 'COORD', 'INDEX']) + '\n')
+if INFO_MODE:
+    info_file = open('ChannelMaker_run_info.txt', 'w')
+    info_file.write('\t'.join(['OUTCOORD', 'COORD', 'INDEX', 'SV']) + '\n')
 
 
 def get_ch_mtx(coord, bam_class, win_left, win_right, current_genome_reference, GC_content):
@@ -158,7 +161,8 @@ def generate_training_set():
             #print(outcoord == coord)
             bpj_flag.append(outcoord == coord)
 
-            info_file.write('\t'.join([str(outcoord), str(coord), str(counter)]) + '\n')
+            if INFO_MODE:
+                info_file.write('\t'.join([str(outcoord), str(coord), str(counter), outzipped[1]]) + '\n')
 
             window_arange, left, right = make_window(coord, window_to_each_side)
             current_genome_reference = current_reference_fcn(current_line_on_reference, left, right)
@@ -264,7 +268,8 @@ def main():
     else:
         bam_to_channels()
 
-    info_file.close()
+    if INFO_MODE:
+        info_file.close()
 
 
 if __name__ == '__main__':

@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from subprocess import call, Popen
 
 # DEBUG printing
-logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
+logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
 # sambamba = 'path to sambamba'
 # cmd0 = 'module load sambamba'
