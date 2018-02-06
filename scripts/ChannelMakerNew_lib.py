@@ -5,6 +5,7 @@ import os
 import pysam
 import numpy as np
 import matplotlib.pyplot as plt
+import cProfile
 from subprocess import call, Popen
 
 # DEBUG printing
@@ -546,7 +547,7 @@ def get_clipped_positions_from_CR_BAM(bamfile):
 
     # print('Reading BAM:%s' % bamfile)
     samfile = pysam.AlignmentFile(bamfile, "r")
-    print(str(samfile.header))
+    #print(str(samfile.header))
 
     # chr name from header
     clipped_pos = dict()

@@ -69,7 +69,7 @@ Sclass_keys = Sclass.keys()
 # Output file with information about the program execution
 if INFO_MODE:
     info_file = open('ChannelMaker_run_info.txt', 'w')
-    info_file.write('\t'.join(['OUTCOORD', 'COORD', 'INDEX', 'SV']) + '\n')
+    info_file.write('\t'.join(['CHR', 'OUTCOORD', 'COORD', 'INDEX', 'SV']) + '\n')
 
 
 def get_ch_mtx(coord, bam_class, win_left, win_right, current_genome_reference, GC_content):
@@ -162,7 +162,8 @@ def generate_training_set():
             bpj_flag.append(outcoord == coord)
 
             if INFO_MODE:
-                info_file.write('\t'.join([str(outcoord), str(coord), str(counter), outzipped[1]]) + '\n')
+                info_file.write('\t'.join([str(chromosome_number), str(outcoord),
+                                           str(coord), str(counter), outzipped[1]]) + '\n')
 
             window_arange, left, right = make_window(coord, window_to_each_side)
             current_genome_reference = current_reference_fcn(current_line_on_reference, left, right)
@@ -230,15 +231,21 @@ def bam_to_channels():
     normal_bam = wd + 'Reference/' + 'CPCT11111111R_dedup.realigned.bam'
     tn_dict = {'Tumor': tumor_bam, 'Normal': normal_bam}
 
+    logging.debug('STARTED:  Extract CR positions from BAM file')
     clipped_pos = get_clipped_positions_from_CR_BAM(inbam)
+    logging.debug('FINISHED: Extract CR positions from BAM file')
 
     for chr in clipped_pos.keys():
+        logging.debug('Running chr: %s', str(chr))
 
         channel_matrix_list_TumorNormal_categ = []
-        label_list_TumorNormal = []
 
         for coord in sorted(clipped_pos[chr]):
             logging.debug('coord: %d', coord)
+
+            if INFO_MODE:
+                info_file.write('\t'.join([str(chr), '.',
+                                           str(coord), str(counter), '.') + '\n')
 
             window_arange, left, right = make_window(coord, window_to_each_side)
             current_genome_reference = current_reference_fcn(current_line_on_reference, left, right)
@@ -249,12 +256,10 @@ def bam_to_channels():
             channel_matrix_list_TumorNormal_categ.append(
                 get_ch_mtx(coord, tn_dict, left, right, current_genome_reference, GC_content)
             )
-            label_list_TumorNormal.append('tumor_normal')
 
             counter += 1
 
-        np.save('tumornormal_cube_data_file_chr_' + chr, channel_matrix_list_TumorNormal_categ)
-        np.save('tumornormal_label_array_file_chr_' + chr, label_list_TumorNormal)
+        np.save('TumorNormal_cube_data_file_chr_' + chr, channel_matrix_list_TumorNormal_categ)
 
     print 'done in ', time() - t0
     print 'counter:', counter
