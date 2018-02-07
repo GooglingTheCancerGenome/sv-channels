@@ -97,6 +97,11 @@ def get_ch_mtx(coord, bam_class, win_left, win_right, current_genome_reference, 
 
         vstack_ch = channels_12_vstacker(matrix_str_updated, matrix_int_left_updated,
                                          matrix_int_right_updated, current_genome_reference)
+
+        print(str(win_left) + ' ' + str(win_right))
+        left_read_clipped_to_clipped_channel = get_pe_distance(bam_class[element], chromosome_number,
+                                                               win_left, win_right)
+
         vstack_pair.append(vstack_ch)
 
     vstack_with_GC = vstack_12_channel_pairer_plus_GC_chanel_fcn(
@@ -266,7 +271,9 @@ def bam_to_channels():
 
 
 def main():
-    load_channels()
+
+    # Inspect results?
+    #load_channels()
 
     if TRAINING_MODE:
         generate_training_set()

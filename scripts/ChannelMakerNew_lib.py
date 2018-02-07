@@ -9,7 +9,9 @@ import cProfile
 from subprocess import call, Popen
 
 # DEBUG printing
-logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+FORMAT = '%(asctime)s %(message)s'
+logging.basicConfig(format=FORMAT, stream=sys.stderr,
+                    level=logging.DEBUG)
 
 # sambamba = 'path to sambamba'
 # cmd0 = 'module load sambamba'
@@ -500,6 +502,65 @@ def all_unique_read_ids_in_window(bam_file, chr_number, left, right, name, count
             find_mates(sam_file, id_)
 '''
 
+def get_pe_distance(bamfile, chr, start, end):
+    '''
+    Compute distance between clipped read to non-clipped mate, clipped read to clipped mate and so on
+
+    :param bamfile:
+    :param chr:
+    :param start:
+    :param end:
+    :return:
+    '''
+
+    assert os.path.isfile(bamfile)
+    # print('Reading BAM:%s' % bamfile)
+    samfile = pysam.AlignmentFile(bamfile, "r")
+    # read_count = samfile.count(chr, start, end)
+    iter = samfile.fetch(str(chr), start, end)
+
+    next_pos = []
+    clipped_id = []
+    non_clipped_id = []
+    for read in iter:
+        if not read.is_unmapped and not read.mate_is_unmapped and len(read.get_reference_positions()) > 0 \
+                and read.is_reverse != read.mate_is_reverse and read.cigartuples is not None \
+                and read.reference_name == read.next_reference_name:
+            if read.cigartuples[0][0] in [4, 5] or read.cigartuples[-1][0] in [4, 5]:
+                print('\t'.join([read.next_reference_name, str(read.next_reference_start)]) + '\n')
+                next_pos.append(read.next_reference_start)
+                clipped_id.append(read.query_name)
+                print('Read is clipped')
+                print(str(read))
+            else:
+                non_clipped_id.append(read.query_name)
+
+    next_pos_min = min(next_pos)
+    next_pos_max = max(next_pos)
+    print(str(next_pos_max - next_pos_min))
+    #assert (next_pos_max - next_pos_min) <= 300
+
+    iter = samfile.fetch(str(chr), next_pos_min, next_pos_max)
+    for read in iter:
+        if not read.is_unmapped and not read.mate_is_unmapped and len(read.get_reference_positions()) > 0 \
+                and read.is_reverse != read.mate_is_reverse and read.cigartuples is not None \
+                and read.reference_name == read.next_reference_name:
+            if read.cigartuples[0][0] in [4, 5] or read.cigartuples[-1][0] in [4, 5]:
+                if read.query_name in clipped_id:
+                    print(read.query_name+' C-C')
+                    print('Mate is clipped')
+                    print(str(read))
+                elif read.query_name in non_clipped_id:
+                    print(read.query_name + ' !C-C')
+            else:
+                if read.query_name in clipped_id:
+                    print(read.query_name+' C-!C')
+                    print('Mate is clipped')
+                    print(str(read))
+                elif read.query_name in non_clipped_id:
+                    print(read.query_name + ' !C-!C')
+
+
 '''Extract all position of soft/hard clipped reads in a BAM alignment window [chr:start-end]'''
 
 
@@ -521,17 +582,26 @@ def get_clipped_positions(bamfile, chr, start, end):
     clipped_pos = set()
     for read in iter:
         # print(str(read))
-        if not read.is_unmapped:
+        if not read.is_unmapped and len(read.get_reference_positions()) > 0:
             if read.cigartuples is not None:
+                # if 5 in [ read.cigartuples[0][0], read.cigartuples[-1][0]] and read.is_secondary:
+                # print(str(read))
+                # Secondary alignment
+                # print(read.get_tag('SA'))
                 if read.cigartuples[0][0] in [4, 5]:
                     # print(str(read))
                     # print('Clipped at the start: %s -> %s' % (str(read.cigarstring), str(read.cigartuples)))
                     # print('Pos:%d, clipped_pos:%d' % (read.reference_start, read.get_reference_positions()[0]))
-                    clipped_pos.add(read.get_reference_positions()[0] + 1)
+                    ref_pos = read.get_reference_positions()[0] + 1
+                    # only consider CR positions in the window
+                    if start <= ref_pos <= end:
+                        clipped_pos.add(ref_pos)
                 if read.cigartuples[-1][0] in [4, 5]:
                     # print('Clipped at the end: %s -> %s' % (str(read.cigarstring), str(read.cigartuples)))
                     # print('Pos:%d, clipped_pos:%d' %(read.reference_end, read.get_reference_positions()[-1]))
-                    clipped_pos.add(read.get_reference_positions()[-1] + 1)
+                    ref_pos = read.get_reference_positions()[-1] + 1
+                    if start <= ref_pos <= end:
+                        clipped_pos.add(ref_pos)
     samfile.close()
     return list(clipped_pos)
 
@@ -547,17 +617,17 @@ def get_clipped_positions_from_CR_BAM(bamfile):
 
     # print('Reading BAM:%s' % bamfile)
     samfile = pysam.AlignmentFile(bamfile, "r")
-    #print(str(samfile.header))
+    # print(str(samfile.header))
 
     # chr name from header
     clipped_pos = dict()
     for el in samfile.header['SQ']:
         clipped_pos[el['SN']] = set()
-        logging.debug('clipped pos:' + str(clipped_pos))
+    # logging.debug('clipped pos:' + str(clipped_pos))
     # read_count = samfile.count(chr, start, end)
     for read in samfile.fetch():
         if (not read.is_unmapped) and (not read.mate_is_unmapped):
-            assert read.reference_name in samfile.header['SQ']
+            assert read.reference_name in clipped_pos.keys()
             # assert read.cigartuples[0][0] in [4, 5] or read.cigartuples[-1][0] in [4, 5]
             if read.cigartuples[0][0] in [4, 5]:
                 cpos = read.get_reference_positions()[0] + 1
@@ -637,12 +707,12 @@ def plot_channels(start_window, n_windows, X_train, y_train):
             plt.ylim([-65, 250])
             plt.plot(Z)
         # plt.savefig(y_train[i] + '_' + str(i) + '.png')
+        plt.title(str(i) + ' ' + str(y_train[i]))
         plt.show()
 
 
 def plot_channels_mtx(ch_mtx, title):
-
-    #print(ch_mtx.shape)
+    # print(ch_mtx.shape)
     number_channels = ch_mtx.shape[0] - 1
     for j in range(0, number_channels):
         shift = 0
@@ -664,7 +734,7 @@ def load_channels():
     Load saved channel data and generate plots
     :return:
     '''
-    #wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/ChannelMaker/DEL_clipped_win/' + \
+    # wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/ChannelMaker/DEL_clipped_win/' + \
     #     'ChannelMaker_DEL_clipped_win/'
 
     wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/ChannelMaker/' + \
@@ -680,8 +750,8 @@ def load_channels():
     somatic_cube_8channels = somatic_cube[:, 0:8, :]
     # somatic_cube_8channels.shape
 
-    start_window = 15000
-    n_windows = 30
+    start_window = 0
+    n_windows = 15000
 
     plot_channels(start_window, n_windows, germline_cube_8channels, germline_label)
 
