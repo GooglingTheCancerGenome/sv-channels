@@ -553,9 +553,11 @@ def get_clipped_positions_from_CR_BAM(bamfile):
     clipped_pos = dict()
     for el in samfile.header['SQ']:
         clipped_pos[el['SN']] = set()
+        logging.debug('clipped pos:' + str(clipped_pos))
     # read_count = samfile.count(chr, start, end)
     for read in samfile.fetch():
         if (not read.is_unmapped) and (not read.mate_is_unmapped):
+            assert read.reference_name in samfile.header['SQ']
             # assert read.cigartuples[0][0] in [4, 5] or read.cigartuples[-1][0] in [4, 5]
             if read.cigartuples[0][0] in [4, 5]:
                 cpos = read.get_reference_positions()[0] + 1
@@ -662,8 +664,12 @@ def load_channels():
     Load saved channel data and generate plots
     :return:
     '''
-    wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/ChannelMaker/DEL_clipped_win/' + \
-         'ChannelMaker_DEL_clipped_win/'
+    #wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/ChannelMaker/DEL_clipped_win/' + \
+    #     'ChannelMaker_DEL_clipped_win/'
+
+    wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/ChannelMaker/' + \
+         '060218/ChannelMaker_060218/'
+
     germline_cube = np.load(wd + 'germline_cube_data_file.npy')
     somatic_cube = np.load(wd + 'somatic_cube_data_file.npy')
     germline_label = np.load(wd + 'germline_label_array_file.npy')

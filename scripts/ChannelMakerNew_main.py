@@ -245,7 +245,7 @@ def bam_to_channels():
 
             if INFO_MODE:
                 info_file.write('\t'.join([str(chr), '.',
-                                           str(coord), str(counter), '.') + '\n')
+                                           str(coord), str(counter), '.']) + '\n')
 
             window_arange, left, right = make_window(coord, window_to_each_side)
             current_genome_reference = current_reference_fcn(current_line_on_reference, left, right)
@@ -266,7 +266,7 @@ def bam_to_channels():
 
 
 def main():
-    # load_channels()
+    load_channels()
 
     if TRAINING_MODE:
         generate_training_set()
