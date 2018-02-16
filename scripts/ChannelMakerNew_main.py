@@ -95,12 +95,15 @@ def get_ch_mtx(coord, bam_class, win_left, win_right, current_genome_reference, 
         matrix_str_updated, matrix_int_left_updated, matrix_int_right_updated = matrix_read_updater_for_str_int(
             all_reads, coord, window_to_each_side, n_reads, full_window_length)
 
+        print(str(win_left) + ' ' + str(win_right))
+        clipped_distance_vstack = get_clipped_read_distance(bam_class[element], chromosome_number,
+                                                    win_left, win_right)
+
         vstack_ch = channels_12_vstacker(matrix_str_updated, matrix_int_left_updated,
                                          matrix_int_right_updated, current_genome_reference)
 
-        print(str(win_left) + ' ' + str(win_right))
-        left_read_clipped_to_clipped_channel = get_pe_distance(bam_class[element], chromosome_number,
-                                                               win_left, win_right)
+        for i in range(len(clipped_distance_vstack)):
+            print(clipped_distance_vstack[i])
 
         vstack_pair.append(vstack_ch)
 

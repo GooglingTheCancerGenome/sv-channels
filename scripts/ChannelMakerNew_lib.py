@@ -502,6 +502,151 @@ def all_unique_read_ids_in_window(bam_file, chr_number, left, right, name, count
             find_mates(sam_file, id_)
 '''
 
+# Return if a read is clipped on the left
+def is_left_clipped(read):
+    if read.cigartuples is not None:
+        if read.cigartuples[0][0] in [4, 5]:
+            return True
+    return False
+
+# Return if a read is clipped on the right
+def is_right_clipped(read):
+    if read.cigartuples is not None:
+        if read.cigartuples[-1][0] in [4, 5]:
+            return True
+    return False
+
+# Return if a read is clipped on the right or on the left
+def is_clipped(read):
+    if read.cigartuples is not None:
+        if is_left_clipped(read) or is_right_clipped(read):
+            return True
+    return False
+
+
+def get_read_mate(read, bamfile):
+
+    #print(read)
+    if not read.is_unmapped and not read.mate_is_unmapped:
+        #print('Mate is mapped')
+        samfile = pysam.AlignmentFile(bamfile, "r")
+        iter = samfile.fetch(read.next_reference_name,
+                             read.next_reference_start, read.next_reference_start + 1)
+        for mate in iter:
+            if mate.query_name == read.query_name:
+                if ( read.is_read1 and mate.is_read2 ) or ( read.is_read2 and mate.is_read1 ):
+                    #print('Mate is: ' + str(mate))
+                    return mate
+    return None
+
+
+# Get distance between clipped/non-clipped reads and clipped/non-clipped mates
+def get_clipped_read_distance(bamfile, chr, start, end):
+    '''
+
+    :param bamfile:
+    :param chr:
+    :param start:
+    :param end:
+    :return:
+    '''
+
+    win_len = abs(end-start)
+    #print(win_len)
+
+    forward_clipped_2_clipped = np.zeros(win_len, dtype=int)
+    forward_clipped_2_non_clipped = np.zeros(win_len, dtype=int)
+    forward_non_clipped_2_clipped = np.zeros(win_len, dtype=int)
+    forward_non_clipped_2_non_clipped = np.zeros(win_len, dtype=int)
+
+    reverse_clipped_2_clipped = np.zeros(win_len, dtype=int)
+    reverse_clipped_2_non_clipped = np.zeros(win_len, dtype=int)
+    reverse_non_clipped_2_clipped = np.zeros(win_len, dtype=int)
+    reverse_non_clipped_2_non_clipped = np.zeros(win_len, dtype=int)
+
+    samfile = pysam.AlignmentFile(bamfile, "r")
+    iter = samfile.fetch(str(chr), start, end)
+
+    for read in iter:
+        if not read.is_unmapped and not read.mate_is_unmapped and read.reference_start >= start:
+            mate = get_read_mate(read, bamfile)
+
+            if read.reference_name == mate.reference_name:
+
+                if not read.is_reverse and mate.is_reverse and read.reference_start <= mate.reference_start:
+                    d = abs(read.reference_start - mate.reference_start)
+
+                    if is_clipped(read) and is_clipped(mate):
+                        if is_left_clipped(read):
+                            forward_clipped_2_clipped[read.get_reference_positions()[0]-start] += d
+                        elif is_right_clipped(read):
+                            if read.get_reference_positions()[-1] <= end:
+                                forward_clipped_2_clipped[read.get_reference_positions()[-1]-start] += d
+                    elif is_clipped(read) and not is_clipped(mate):
+                        if is_left_clipped(read):
+                            forward_clipped_2_non_clipped[read.get_reference_positions()[0]-start] += d
+                        elif is_right_clipped(read):
+                            if read.get_reference_positions()[-1] <= end:
+                                forward_clipped_2_non_clipped[read.get_reference_positions()[-1]-start] += d
+                    elif not is_clipped(read) and is_clipped(mate):
+                        forward_non_clipped_2_clipped[read.reference_start - start] += d
+                    elif not is_clipped(read) and not is_clipped(mate):
+                        forward_non_clipped_2_non_clipped[read.reference_start - start] += d
+
+                elif read.is_reverse and not mate.is_reverse and read.reference_start >= mate.reference_start:
+                    d = abs(read.reference_start - mate.reference_start)
+
+                    if is_clipped(read) and is_clipped(mate):
+                        if is_left_clipped(read):
+                            reverse_clipped_2_clipped[read.get_reference_positions()[0] - start] += d
+                        elif is_right_clipped(read):
+                            if read.get_reference_positions()[-1] <= end:
+                                reverse_clipped_2_clipped[read.get_reference_positions()[-1] - start] += d
+                    elif is_clipped(read) and not is_clipped(mate):
+                        if is_left_clipped(read):
+                            reverse_clipped_2_non_clipped[read.get_reference_positions()[0] - start] += d
+                        elif is_right_clipped(read):
+                            if read.get_reference_positions()[-1] <= end:
+                                reverse_clipped_2_non_clipped[read.get_reference_positions()[-1] - start] += d
+                    elif not is_clipped(read) and is_clipped(mate):
+                        reverse_non_clipped_2_clipped[read.reference_start - start] += d
+                    elif not is_clipped(read) and not is_clipped(mate):
+                        reverse_non_clipped_2_non_clipped[read.reference_start - start] += d
+
+    return np.vstack((forward_clipped_2_clipped,
+                      forward_clipped_2_non_clipped,
+                      forward_non_clipped_2_clipped,
+                      forward_non_clipped_2_non_clipped,
+                      reverse_clipped_2_clipped,
+                      reverse_clipped_2_non_clipped,
+                      reverse_non_clipped_2_clipped,
+                      reverse_non_clipped_2_non_clipped
+                      ))
+
+def get_split_read_distance(bamfile, chr, start, end):
+    '''
+
+    :param bamfile:
+    :param chr:
+    :param start:
+    :param end:
+    :return:
+    '''
+
+    win_len = abs(end-start)
+    #print(win_len)
+
+    right_split = np.zeros(win_len, dtype=int)
+    left_split = np.zeros(win_len, dtype=int)
+
+    samfile = pysam.AlignmentFile(bamfile, "r")
+    iter = samfile.fetch(str(chr), start, end)
+
+    #for read in iter:
+        #if not read.is_unmapped and not read.mate_is_unmapped and read.reference_start >= start:
+
+
+
 def get_pe_distance(bamfile, chr, start, end):
     '''
     Compute distance between clipped read to non-clipped mate, clipped read to clipped mate and so on
