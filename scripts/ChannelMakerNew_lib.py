@@ -598,15 +598,17 @@ def get_clipped_read_distance(bamfile, chr, start, end):
 
                     if is_clipped(read) and is_clipped(mate):
                         if is_left_clipped(read):
-                            forward_clipped_2_clipped[read.get_reference_positions()[0]-start] += d
+                            if 0 <= (read.get_reference_positions()[0] - start) < win_len:
+                                forward_clipped_2_clipped[read.get_reference_positions()[0]-start] += d
                         elif is_right_clipped(read):
-                            if read.get_reference_positions()[-1] <= end:
+                            if 0 <= (read.get_reference_positions()[-1] - start) < win_len:
                                 forward_clipped_2_clipped[read.get_reference_positions()[-1]-start] += d
                     elif is_clipped(read) and not is_clipped(mate):
                         if is_left_clipped(read):
-                            forward_clipped_2_non_clipped[read.get_reference_positions()[0]-start] += d
+                            if 0 <= (read.get_reference_positions()[0] - start) < win_len:
+                                forward_clipped_2_non_clipped[read.get_reference_positions()[0]-start] += d
                         elif is_right_clipped(read):
-                            if read.get_reference_positions()[-1] <= end:
+                            if 0 <= (read.get_reference_positions()[-1] - start) < win_len:
                                 forward_clipped_2_non_clipped[read.get_reference_positions()[-1]-start] += d
                     elif not is_clipped(read) and is_clipped(mate):
                         forward_non_clipped_2_clipped[read.reference_start - start] += d
@@ -617,15 +619,17 @@ def get_clipped_read_distance(bamfile, chr, start, end):
 
                     if is_clipped(read) and is_clipped(mate):
                         if is_left_clipped(read):
-                            reverse_clipped_2_clipped[read.get_reference_positions()[0] - start] += d
+                            if 0 <= (read.get_reference_positions()[0] - start) < win_len:
+                                reverse_clipped_2_clipped[read.get_reference_positions()[0] - start] += d
                         elif is_right_clipped(read):
-                            if read.get_reference_positions()[-1] <= end:
+                            if 0 <= (read.get_reference_positions()[-1] - start) < win_len:
                                 reverse_clipped_2_clipped[read.get_reference_positions()[-1] - start] += d
                     elif is_clipped(read) and not is_clipped(mate):
                         if is_left_clipped(read):
-                            reverse_clipped_2_non_clipped[read.get_reference_positions()[0] - start] += d
+                            if 0 <= (read.get_reference_positions()[0] - start) < win_len:
+                                reverse_clipped_2_non_clipped[read.get_reference_positions()[0] - start] += d
                         elif is_right_clipped(read):
-                            if read.get_reference_positions()[-1] <= end:
+                            if 0 <= (read.get_reference_positions()[-1] - start) < win_len:
                                 reverse_clipped_2_non_clipped[read.get_reference_positions()[-1] - start] += d
                     elif not is_clipped(read) and is_clipped(mate):
                         reverse_non_clipped_2_clipped[read.reference_start - start] += d
