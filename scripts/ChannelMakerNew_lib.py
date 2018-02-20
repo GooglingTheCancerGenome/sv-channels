@@ -669,7 +669,7 @@ def get_split_read_distance(bamfile, chr, start, end):
         if not read.is_unmapped and not read.mate_is_unmapped: # and read.reference_start >= start:
             if is_left_clipped(read) and read.has_tag('SA'):
                 chr, pos = get_suppl_aln(read)
-                if chr == read.reference_name:
+                if chr == read.reference_name and 0 <= (read.get_reference_positions()[0] - start) < win_len:
                     #print('Left split')
                     #print(str(read))
                     left_split[read.get_reference_positions()[0] - start] = left_split[
@@ -677,7 +677,7 @@ def get_split_read_distance(bamfile, chr, start, end):
                         read.get_reference_positions()[0] - pos)
             elif is_right_clipped(read) and read.has_tag('SA'):
                 chr, pos = get_suppl_aln(read)
-                if chr == read.reference_name:
+                if chr == read.reference_name and 0 <= (read.get_reference_positions()[-1] - start) < win_len:
                     #print('Right split')
                     #print(str(read))
                     chr, pos = get_suppl_aln(read)

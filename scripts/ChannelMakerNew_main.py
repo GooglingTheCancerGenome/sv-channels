@@ -180,7 +180,7 @@ def generate_training_set():
 
             logging.debug('inner coord: %d', coord)
 
-            print(outcoord == coord)
+            #print(outcoord == coord)
             bpj_flag.append(outcoord == coord)
 
             if INFO_MODE:
