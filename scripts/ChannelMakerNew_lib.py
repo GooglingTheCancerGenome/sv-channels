@@ -523,7 +523,22 @@ def is_clipped(read):
             return True
     return False
 
+# Return chromosome and starting position of a supplementary alignment (split reads)
+def get_suppl_aln(read):
 
+    if len(read.get_tag('SA')) > 0:
+        #print(read.get_tag('SA'))
+        supp_aln = read.get_tag('SA').split(';')[0]
+        sa_info = supp_aln.split(',')
+        #print(supp_aln)
+        #print(sa_info)
+        chr_sa = sa_info[0]
+        start_sa = int(sa_info[1])
+        return chr_sa, start_sa
+    else:
+        return None
+
+# Return the mate of a read
 def get_read_mate(read, bamfile):
 
     #print(read)
@@ -544,11 +559,16 @@ def get_read_mate(read, bamfile):
 def get_clipped_read_distance(bamfile, chr, start, end):
     '''
 
-    :param bamfile:
-    :param chr:
-    :param start:
-    :param end:
-    :return:
+    Returns a vstack with eight vectors of window length.
+    THe distance between a clipped/non-clipped read and its clipped/non-clipped mate is summed up for the reads clipped
+    (or starting, if not clipped) at a specific position, converted to window position. This is done for forward and
+    reverse reads, resulting in eight vectors: clipped/non-clipped read to clipped/non-clipped mate x forward/reverse
+
+    :param bamfile: BAM alignment file that contains the aligned reads
+    :param chr: chromosome for the window
+    :param start: start of the window
+    :param end: end of the window
+    :return: vstack with eight vectors of clipped/non-clipped distances
     '''
 
     win_len = abs(end-start)
@@ -572,9 +592,9 @@ def get_clipped_read_distance(bamfile, chr, start, end):
             mate = get_read_mate(read, bamfile)
 
             if read.reference_name == mate.reference_name:
+                d = abs(read.reference_start - mate.reference_start)
 
                 if not read.is_reverse and mate.is_reverse and read.reference_start <= mate.reference_start:
-                    d = abs(read.reference_start - mate.reference_start)
 
                     if is_clipped(read) and is_clipped(mate):
                         if is_left_clipped(read):
@@ -594,7 +614,6 @@ def get_clipped_read_distance(bamfile, chr, start, end):
                         forward_non_clipped_2_non_clipped[read.reference_start - start] += d
 
                 elif read.is_reverse and not mate.is_reverse and read.reference_start >= mate.reference_start:
-                    d = abs(read.reference_start - mate.reference_start)
 
                     if is_clipped(read) and is_clipped(mate):
                         if is_left_clipped(read):
@@ -623,14 +642,18 @@ def get_clipped_read_distance(bamfile, chr, start, end):
                       reverse_non_clipped_2_non_clipped
                       ))
 
+
 def get_split_read_distance(bamfile, chr, start, end):
     '''
+    Returns a vstack with two vectors of window length: left_split and right_split
+    The vector left_split contains the sum of split distances for reads that are split on the left.
+    Similarly, the vector right_split contains the sum of split distances for reads that are split on the right.
 
-    :param bamfile:
-    :param chr:
-    :param start:
-    :param end:
-    :return:
+    :param bamfile: BAM alignment file that contains the aligned reads
+    :param chr: chromosome for the window
+    :param start: start of the window
+    :param end: end of the window
+    :return: vstack with vectors left_split and right_split
     '''
 
     win_len = abs(end-start)
@@ -642,9 +665,30 @@ def get_split_read_distance(bamfile, chr, start, end):
     samfile = pysam.AlignmentFile(bamfile, "r")
     iter = samfile.fetch(str(chr), start, end)
 
-    #for read in iter:
-        #if not read.is_unmapped and not read.mate_is_unmapped and read.reference_start >= start:
+    for read in iter:
+        if not read.is_unmapped and not read.mate_is_unmapped: # and read.reference_start >= start:
+            if is_left_clipped(read) and read.has_tag('SA'):
+                chr, pos = get_suppl_aln(read)
+                if chr == read.reference_name:
+                    #print('Left split')
+                    #print(str(read))
+                    left_split[read.get_reference_positions()[0] - start] = left_split[
+                        read.get_reference_positions()[0] - start] + abs(
+                        read.get_reference_positions()[0] - pos)
+            elif is_right_clipped(read) and read.has_tag('SA'):
+                chr, pos = get_suppl_aln(read)
+                if chr == read.reference_name:
+                    #print('Right split')
+                    #print(str(read))
+                    chr, pos = get_suppl_aln(read)
+                    right_split[read.get_reference_positions()[-1] - start] = right_split[
+                        read.get_reference_positions()[-1] - start] + abs(
+                        pos - read.get_reference_positions()[-1])
 
+    return np.vstack((
+        left_split,
+        right_split
+    ))
 
 
 def get_pe_distance(bamfile, chr, start, end):
@@ -830,7 +874,7 @@ def get_del_reads_per_pos(bamfile, chr, start, end):
 
 def plot_channels(start_window, n_windows, X_train, y_train):
     '''
-    Function to plot channel from Sonya
+    Function to plot channel from Sonja
     :param start_window:
     :param n_windows:
     :param X_train:

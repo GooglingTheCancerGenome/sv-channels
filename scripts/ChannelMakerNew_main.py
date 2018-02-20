@@ -55,7 +55,7 @@ label_list_Somatic = []
 label_list_Germline = []
 label_list_NOSV = []
 
-#Is the window centered on the breakpoint junction (BPJ)?
+# Is the window centered on the breakpoint junction (BPJ)?
 bpj_flag = []
 
 Gclass = {'GS': GS_bam_30xsubsample_file, 'G1': G1_bam_30x_file}
@@ -64,7 +64,6 @@ Sclass = {'S2': S2_bam_file, 'S3N': S3N_bam_file}
 Gclass_keys = Gclass.keys()
 Sclass_keys = Sclass.keys()
 '''NOSVclass_keys = NOSVclass.keys()'''
-
 
 # Output file with information about the program execution
 if INFO_MODE:
@@ -95,17 +94,32 @@ def get_ch_mtx(coord, bam_class, win_left, win_right, current_genome_reference, 
         matrix_str_updated, matrix_int_left_updated, matrix_int_right_updated = matrix_read_updater_for_str_int(
             all_reads, coord, window_to_each_side, n_reads, full_window_length)
 
-        print(str(win_left) + ' ' + str(win_right))
+        # print(str(win_left) + ' ' + str(win_right))
         clipped_distance_vstack = get_clipped_read_distance(bam_class[element], chromosome_number,
-                                                    win_left, win_right)
+                                                            win_left, win_right)
+
+        split_distance_vstack = get_split_read_distance(bam_class[element], chromosome_number,
+                                                        win_left, win_right)
 
         vstack_ch = channels_12_vstacker(matrix_str_updated, matrix_int_left_updated,
                                          matrix_int_right_updated, current_genome_reference)
 
-        for i in range(len(clipped_distance_vstack)):
-            print(clipped_distance_vstack[i])
+        # for i in range(len(clipped_distance_vstack)):
+        #    print(clipped_distance_vstack[i])
 
-        vstack_pair.append(vstack_ch)
+        # for i in range(len(split_distance_vstack)):
+        #    print(split_distance_vstack[i])
+
+        vstack_all_ch = np.vstack((
+            vstack_ch,
+            clipped_distance_vstack,
+            split_distance_vstack
+        ))
+
+        #for i in range(len(vstack_all_ch)):
+        #    print(vstack_all_ch[i])
+
+        vstack_pair.append(vstack_all_ch)
 
     vstack_with_GC = vstack_12_channel_pairer_plus_GC_chanel_fcn(
         vstack_pair[0], vstack_pair[1], GC_content)
@@ -166,7 +180,7 @@ def generate_training_set():
 
             logging.debug('inner coord: %d', coord)
 
-            #print(outcoord == coord)
+            print(outcoord == coord)
             bpj_flag.append(outcoord == coord)
 
             if INFO_MODE:
@@ -274,9 +288,8 @@ def bam_to_channels():
 
 
 def main():
-
     # Inspect results?
-    #load_channels()
+    # load_channels()
 
     if TRAINING_MODE:
         generate_training_set()

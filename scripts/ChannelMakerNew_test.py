@@ -97,10 +97,12 @@ class TestGCcontentDictFcn(unittest.TestCase):
 class TestBreakPointPresence(unittest.TestCase):
 
     def test_break_point_presence(self):
-        Truth_set_file = wd + "SURVIVOR-master/Debug/chr17_somaticallele_10k_INS_DEL.copy.sorted.bed"
-        self.assertEqual(len(locations_DEL_INS(Truth_set_file)[0]), 9630)  # 4815; number of simulated DELs * 2 = 9630
+        Truth_set_file = wd + "chr17_somaticallele_10k_INS_DEL.copy.sorted.bed"
+        self.assertEqual(len(locations_DEL_INS(Truth_set_file)[0]), 4815)  # 4815; number of simulated DELs * 2 = 9630
         self.assertEqual(len(locations_DEL_INS(Truth_set_file)[1]),
-                         14815)  # 9630 + 5185 INS bps = 14815 total bps for DEL and INS
+                         4815)  # 4815; number of simulated DELs * 2 = 9630
+        self.assertEqual(len(locations_DEL_INS(Truth_set_file)[2]),
+                         5185)  # 9630 + 5185 INS bps = 14815 total bps for DEL and INS
         # print locations_DEL_INS(Truth_set_file)[0][0:10]
 
 
@@ -114,8 +116,8 @@ class TestWindow(unittest.TestCase):
 class TestMakeMatrix(unittest.TestCase):
 
     def test_make_matrix(self):
-        self.assertEqual(shape(make_matrix(2, 3)[0]), (2, 3))
-        self.assertEqual(shape(make_matrix(2, 3)[1]), (2, 3))
+        self.assertEqual(np.shape(make_matrix(2, 3)[0]), (2, 3))
+        self.assertEqual(np.shape(make_matrix(2, 3)[1]), (2, 3))
         self.assertEqual(make_matrix(2, 3)[0][0][0], '0')
         self.assertEqual(make_matrix(2, 3)[1][0][0], 0)
         self.assertEqual(make_matrix(2, 3)[2][0][0], 0)
@@ -164,14 +166,14 @@ class TestAllReadsinWindow(unittest.TestCase):
             line1, 982, 5)
         read_content_in_window_output2, read_cleaned_length_computed_end2, read_cleaned_length_arange2 = read_content_in_window_fcn(
             line7, 982, 5)
-        self.assertEqual(all(read_content_in_window_output1 == array([977])),
+        self.assertEqual(all(read_content_in_window_output1 == np.array([977])),
                          True)  # 828 + 150 = 978, so 978 - 1 = 977; from the above test function case used.
         self.assertEqual(read_cleaned_length_computed_end1, 978)
-        self.assertEqual(all(read_content_in_window_output2 == array([977, 978, 979, 980, 981])),
+        self.assertEqual(all(read_content_in_window_output2 == np.array([977, 978, 979, 980, 981])),
                          True)  # 843-1+140-1=981
         self.assertEqual(read_cleaned_length_computed_end2, 982)
-        self.assertEqual(all(read_cleaned_length_arange1 == arange(828, 978)), True)
-        self.assertEqual(all(read_cleaned_length_arange2 == arange(842, 982)), True)
+        self.assertEqual(all(read_cleaned_length_arange1 == np.arange(828, 978)), True)
+        self.assertEqual(all(read_cleaned_length_arange2 == np.arange(842, 982)), True)
 
 
 class TestCleanReadMapper(unittest.TestCase):
@@ -192,13 +194,13 @@ class TestMatrixReadUpdater(unittest.TestCase):
                                                             0)  # all reads here happen to be correctly on chr17 so get 79 rds!
         matrix_str, matrix_int_left_clip, matrix_int_right_clip = matrix_read_updater_for_str_int(
             all_reads_in_window_file_name, 982, 5, 79, 10)  # , number_of_read_artifacts_found_deviating_from_chr17
-        self.assertEqual(all(matrix_str[0] == array(['G', '0', '0', '0', '0', '0', '0', '0', '0', '0'])), True)
-        self.assertEqual(all(matrix_str[6] == array(['G', 'C', 'T', 'T', 'G', '0', '0', '0', '0', '0'])), True)
-        self.assertEqual(shape(matrix_int_left_clip), (79, 10))
-        self.assertEqual(shape(matrix_int_right_clip), (79, 10))
+        self.assertEqual(all(matrix_str[0] == np.array(['G', '0', '0', '0', '0', '0', '0', '0', '0', '0'])), True)
+        self.assertEqual(all(matrix_str[6] == np.array(['G', 'C', 'T', 'T', 'G', '0', '0', '0', '0', '0'])), True)
+        self.assertEqual(np.shape(matrix_int_left_clip), (79, 10))
+        self.assertEqual(np.shape(matrix_int_right_clip), (79, 10))
         # self.assertEqual(all(matrix_int_left_clip == zeros((79,10))),True) #true when the 'rd_counter = 10 then break' condition uncommented
-        self.assertEqual(all(matrix_int_right_clip[6] == array([0, 0, 0, 0, 1, 0, 0, 0, 0, 0])), True)
-        self.assertEqual(all(matrix_int_left_clip[75] == array([0, 0, 0, 0, 1, 0, 0, 0, 0, 0])), True)
+        self.assertEqual(all(matrix_int_right_clip[6] == np.array([0, 0, 0, 0, 1, 0, 0, 0, 0, 0])), True)
+        self.assertEqual(all(matrix_int_left_clip[75] == np.array([0, 0, 0, 0, 1, 0, 0, 0, 0, 0])), True)
         # print 'matrix_int_left_clip:', matrix_int_left_clip
 
         # 'TG' should be for line1
@@ -243,7 +245,7 @@ class TestChannels(unittest.TestCase):
         # print exact_matches_channel
         self.assertEqual(exact_matches_channel[0], 65)
         self.assertEqual(len(exact_matches_channel), 10)
-        self.assertEqual(all(array(exact_matches_channel) == array([65, 64, 64, 64, 71, 61, 63, 62, 61, 61])), True)
+        self.assertEqual(all(np.array(exact_matches_channel) == np.array([65, 64, 64, 64, 71, 61, 63, 62, 61, 61])), True)
 
     def test_get_coverage(self):
         data_chr17_fasta_file_data = open(data_chr17_fasta_file, 'r')
@@ -271,7 +273,7 @@ class TestChannels(unittest.TestCase):
         # print 'coverage_channel:', coverage_channel
         self.assertEqual(coverage_channel[4], 74)
         self.assertEqual(len(coverage_channel), 10)
-        self.assertEqual(all(array(coverage_channel) == array([65, 64, 64, 64, 74, 62, 63, 62, 61, 61])), True)
+        self.assertEqual(all(np.array(coverage_channel) == np.array([65, 64, 64, 64, 74, 62, 63, 62, 61, 61])), True)
 
         """
         first coordinate that based all the tests here on actually corresponds to an insertion! but that's fine for these tests.
@@ -321,7 +323,7 @@ class TestChannels(unittest.TestCase):
 
         self.assertEqual(clipped_rds_left_channel[4], 8)
         self.assertEqual(len(clipped_rds_left_channel), 10)
-        self.assertEqual(all(array(clipped_rds_left_channel) == array([0, 0, 0, 0, 8, 0, 0, 0, 0, 0])), True)
+        self.assertEqual(all(np.array(clipped_rds_left_channel) == np.array([0, 0, 0, 0, 8, 0, 0, 0, 0, 0])), True)
 
     def test_clipped_rds_right_fcn(self):
         data_chr17_fasta_file_data = open(data_chr17_fasta_file, 'r')
@@ -337,7 +339,7 @@ class TestChannels(unittest.TestCase):
 
         self.assertEqual(clipped_rds_right_channel[4], 10)
         self.assertEqual(len(clipped_rds_right_channel), 10)
-        self.assertEqual(all(array(clipped_rds_right_channel) == array([0, 0, 0, 0, 10, 0, 0, 0, 0, 0])), True)
+        self.assertEqual(all(np.array(clipped_rds_right_channel) == np.array([0, 0, 0, 0, 10, 0, 0, 0, 0, 0])), True)
 
 
 class TestVstackChannels(unittest.TestCase):
@@ -358,14 +360,14 @@ class TestVstackChannels(unittest.TestCase):
         ORDER FROM TOP TO BOTTOM IS: exact_matches_channel,coverage_channel,lipped_rds_left_channel,clipped_rds_right_channel
         '''
         self.assertEqual(
-            all(vstack_12_channels[0] == array(exact_matches_channel_fcn(matrix_str_updated, current_ref))),
+            all(vstack_12_channels[0] == np.array(exact_matches_channel_fcn(matrix_str_updated, current_ref))),
             True)  # ,dtype=int
-        self.assertEqual(all(vstack_12_channels[1] == array(coverage_channel_fcn(matrix_str_updated, current_ref))),
+        self.assertEqual(all(vstack_12_channels[1] == np.array(coverage_channel_fcn(matrix_str_updated, current_ref))),
                          True)  # ,dtype=int
         self.assertEqual(
-            all(vstack_12_channels[2] == array(clipped_rds_left_fcn(matrix_int_left_updated, current_ref))), True)
+            all(vstack_12_channels[2] == np.array(clipped_rds_left_fcn(matrix_int_left_updated, current_ref))), True)
         self.assertEqual(
-            all(vstack_12_channels[3] == array(clipped_rds_right_fcn(matrix_int_right_updated, current_ref))), True)
+            all(vstack_12_channels[3] == np.array(clipped_rds_right_fcn(matrix_int_right_updated, current_ref))), True)
 
     def test_vstack_12_channel_pairer_plus_GC_chanel_fcn(self):
         data_chr17_fasta_file_data = open(data_chr17_fasta_file, 'r')
@@ -389,8 +391,8 @@ class TestVstackChannels(unittest.TestCase):
                                                                                               GC_contents)
         print 'vstack_12_channel_pairer_plus_GC_chanel:', vstack_12_channel_pairer_plus_GC_chanel
 
-        self.assertEqual(shape(vstack_12_channel_pairer_plus_GC_chanel), (9, 10))
-        self.assertEqual(all(vstack_12_channel_pairer_plus_GC_chanel[0] == array(
+        self.assertEqual(np.shape(vstack_12_channel_pairer_plus_GC_chanel), (9, 10))
+        self.assertEqual(all(vstack_12_channel_pairer_plus_GC_chanel[0] == np.array(
             exact_matches_channel_fcn(matrix_str_updated, current_ref))), True)
         self.assertEqual(all(vstack_12_channel_pairer_plus_GC_chanel[8] == GC_contents),
                          True)  # AT THE MOMENT 9TH ROW IS THE GC CONTENT; 4X2 + 1 = 9
