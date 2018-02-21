@@ -822,14 +822,15 @@ def get_clipped_positions_from_CR_BAM(bamfile):
         if (not read.is_unmapped) and (not read.mate_is_unmapped):
             assert read.reference_name in clipped_pos.keys()
             # assert read.cigartuples[0][0] in [4, 5] or read.cigartuples[-1][0] in [4, 5]
-            if read.cigartuples[0][0] in [4, 5]:
-                cpos = read.get_reference_positions()[0] + 1
-                if cpos not in clipped_pos[read.reference_name]:
-                    clipped_pos[read.reference_name].add(cpos)
-            if read.cigartuples[-1][0] in [4, 5]:
-                cpos = read.get_reference_positions()[-1] + 1
-                if cpos not in clipped_pos[read.reference_name]:
-                    clipped_pos[read.reference_name].add(cpos)
+            if len(read.get_reference_positions()) > 0:
+                if read.cigartuples[0][0] in [4, 5]:
+                    cpos = read.get_reference_positions()[0] + 1
+                    if cpos not in clipped_pos[read.reference_name]:
+                        clipped_pos[read.reference_name].add(cpos)
+                if read.cigartuples[-1][0] in [4, 5]:
+                    cpos = read.get_reference_positions()[-1] + 1
+                    if cpos not in clipped_pos[read.reference_name]:
+                        clipped_pos[read.reference_name].add(cpos)
     samfile.close()
     return clipped_pos
 
