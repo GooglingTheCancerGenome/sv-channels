@@ -575,15 +575,35 @@ def get_clipped_read_distance(bamfile, chr, start, end):
     win_len = abs(end-start)
     #print(win_len)
 
-    forward_clipped_2_clipped = np.zeros(win_len, dtype=int)
-    forward_clipped_2_non_clipped = np.zeros(win_len, dtype=int)
-    forward_non_clipped_2_clipped = np.zeros(win_len, dtype=int)
-    forward_non_clipped_2_non_clipped = np.zeros(win_len, dtype=int)
+    forward_clipped_2_clipped_list = [[] for i in range(win_len)]
+    forward_clipped_2_non_clipped_list = [[] for i in range(win_len)]
+    forward_non_clipped_2_clipped_list = [[] for i in range(win_len)]
+    forward_non_clipped_2_non_clipped_list = [[] for i in range(win_len)]
 
-    reverse_clipped_2_clipped = np.zeros(win_len, dtype=int)
-    reverse_clipped_2_non_clipped = np.zeros(win_len, dtype=int)
-    reverse_non_clipped_2_clipped = np.zeros(win_len, dtype=int)
-    reverse_non_clipped_2_non_clipped = np.zeros(win_len, dtype=int)
+    forward_clipped_2_clipped_sum = np.zeros(win_len, dtype=int)
+    forward_clipped_2_non_clipped_sum = np.zeros(win_len, dtype=int)
+    forward_non_clipped_2_clipped_sum = np.zeros(win_len, dtype=int)
+    forward_non_clipped_2_non_clipped_sum = np.zeros(win_len, dtype=int)
+
+    forward_clipped_2_clipped_var = np.zeros(win_len, dtype=int)
+    forward_clipped_2_non_clipped_var = np.zeros(win_len, dtype=int)
+    forward_non_clipped_2_clipped_var = np.zeros(win_len, dtype=int)
+    forward_non_clipped_2_non_clipped_var = np.zeros(win_len, dtype=int)
+
+    reverse_clipped_2_clipped_list = [[] for i in range(win_len)]
+    reverse_clipped_2_non_clipped_list = [[] for i in range(win_len)]
+    reverse_non_clipped_2_clipped_list = [[] for i in range(win_len)]
+    reverse_non_clipped_2_non_clipped_list = [[] for i in range(win_len)]
+
+    reverse_clipped_2_clipped_sum = np.zeros(win_len, dtype=int)
+    reverse_clipped_2_non_clipped_sum = np.zeros(win_len, dtype=int)
+    reverse_non_clipped_2_clipped_sum = np.zeros(win_len, dtype=int)
+    reverse_non_clipped_2_non_clipped_sum = np.zeros(win_len, dtype=int)
+
+    reverse_clipped_2_clipped_var = np.zeros(win_len, dtype=int)
+    reverse_clipped_2_non_clipped_var = np.zeros(win_len, dtype=int)
+    reverse_non_clipped_2_clipped_var = np.zeros(win_len, dtype=int)
+    reverse_non_clipped_2_non_clipped_var = np.zeros(win_len, dtype=int)
 
     samfile = pysam.AlignmentFile(bamfile, "r")
     iter = samfile.fetch(str(chr), start, end)
@@ -600,51 +620,100 @@ def get_clipped_read_distance(bamfile, chr, start, end):
                     if is_clipped(read) and is_clipped(mate):
                         if is_left_clipped(read):
                             if 0 <= (read.get_reference_positions()[0] - start) < win_len:
-                                forward_clipped_2_clipped[read.get_reference_positions()[0]-start] += d
+                                forward_clipped_2_clipped_list[read.get_reference_positions()[0]-start].append(d)
                         elif is_right_clipped(read):
                             if 0 <= (read.get_reference_positions()[-1] - start) < win_len:
-                                forward_clipped_2_clipped[read.get_reference_positions()[-1]-start] += d
+                                forward_clipped_2_clipped_list[read.get_reference_positions()[-1]-start].append(d)
                     elif is_clipped(read) and not is_clipped(mate):
                         if is_left_clipped(read):
                             if 0 <= (read.get_reference_positions()[0] - start) < win_len:
-                                forward_clipped_2_non_clipped[read.get_reference_positions()[0]-start] += d
+                                forward_clipped_2_non_clipped_list[read.get_reference_positions()[0]-start].append(d)
                         elif is_right_clipped(read):
                             if 0 <= (read.get_reference_positions()[-1] - start) < win_len:
-                                forward_clipped_2_non_clipped[read.get_reference_positions()[-1]-start] += d
+                                forward_clipped_2_non_clipped_list[read.get_reference_positions()[-1]-start].append(d)
                     elif not is_clipped(read) and is_clipped(mate):
-                        forward_non_clipped_2_clipped[read.reference_start - start] += d
+                        forward_non_clipped_2_clipped_list[read.reference_start - start].append(d)
                     elif not is_clipped(read) and not is_clipped(mate):
-                        forward_non_clipped_2_non_clipped[read.reference_start - start] += d
+                        forward_non_clipped_2_non_clipped_list[read.reference_start - start].append(d)
 
                 elif read.is_reverse and not mate.is_reverse and read.reference_start >= mate.reference_start:
 
                     if is_clipped(read) and is_clipped(mate):
                         if is_left_clipped(read):
                             if 0 <= (read.get_reference_positions()[0] - start) < win_len:
-                                reverse_clipped_2_clipped[read.get_reference_positions()[0] - start] += d
+                                reverse_clipped_2_clipped_list[read.get_reference_positions()[0] - start].append(d)
                         elif is_right_clipped(read):
                             if 0 <= (read.get_reference_positions()[-1] - start) < win_len:
-                                reverse_clipped_2_clipped[read.get_reference_positions()[-1] - start] += d
+                                reverse_clipped_2_clipped_list[read.get_reference_positions()[-1] - start].append(d)
                     elif is_clipped(read) and not is_clipped(mate):
                         if is_left_clipped(read):
                             if 0 <= (read.get_reference_positions()[0] - start) < win_len:
-                                reverse_clipped_2_non_clipped[read.get_reference_positions()[0] - start] += d
+                                reverse_clipped_2_non_clipped_list[read.get_reference_positions()[0] - start].append(d)
                         elif is_right_clipped(read):
                             if 0 <= (read.get_reference_positions()[-1] - start) < win_len:
-                                reverse_clipped_2_non_clipped[read.get_reference_positions()[-1] - start] += d
+                                reverse_clipped_2_non_clipped_list[read.get_reference_positions()[-1] - start].append(d)
                     elif not is_clipped(read) and is_clipped(mate):
-                        reverse_non_clipped_2_clipped[read.reference_start - start] += d
+                        reverse_non_clipped_2_clipped_list[read.reference_start - start].append(d)
                     elif not is_clipped(read) and not is_clipped(mate):
-                        reverse_non_clipped_2_non_clipped[read.reference_start - start] += d
+                        reverse_non_clipped_2_non_clipped_list[read.reference_start - start].append(d)
 
-    return np.vstack((forward_clipped_2_clipped,
-                      forward_clipped_2_non_clipped,
-                      forward_non_clipped_2_clipped,
-                      forward_non_clipped_2_non_clipped,
-                      reverse_clipped_2_clipped,
-                      reverse_clipped_2_non_clipped,
-                      reverse_non_clipped_2_clipped,
-                      reverse_non_clipped_2_non_clipped
+    for i in range(win_len):
+
+        if len(forward_clipped_2_clipped_list[i]) != 0:
+            forward_clipped_2_clipped_sum[i] = sum(forward_clipped_2_clipped_list[i])
+            forward_clipped_2_clipped_var[i] = np.var(forward_clipped_2_clipped_list[i])
+        if len(forward_clipped_2_non_clipped_list[i]) != 0:
+            forward_clipped_2_non_clipped_sum[i] = sum(forward_clipped_2_non_clipped_list[i])
+            forward_clipped_2_non_clipped_var[i] = np.var(forward_clipped_2_non_clipped_list[i])
+        if len(forward_non_clipped_2_clipped_list[i]) != 0:
+            forward_non_clipped_2_clipped_sum[i] = sum(forward_clipped_2_non_clipped_list[i])
+            forward_non_clipped_2_clipped_var[i] = np.var(forward_clipped_2_non_clipped_list[i])
+        if len(forward_non_clipped_2_non_clipped_list[i]) != 0:
+            forward_non_clipped_2_non_clipped_sum[i] = sum(forward_non_clipped_2_non_clipped_list[i])
+            forward_non_clipped_2_non_clipped_var[i] = np.var(forward_non_clipped_2_non_clipped_list[i])
+
+        if len(reverse_clipped_2_clipped_list[i]) != 0:
+            reverse_clipped_2_clipped_sum[i] = sum(reverse_clipped_2_clipped_list[i])
+            reverse_clipped_2_clipped_var[i] = np.var(reverse_clipped_2_clipped_list[i])
+        if len(reverse_clipped_2_non_clipped_list[i]) != 0:
+            reverse_clipped_2_non_clipped_sum[i] = sum(reverse_clipped_2_non_clipped_list[i])
+            reverse_clipped_2_non_clipped_var[i] = np.var(reverse_clipped_2_non_clipped_list[i])
+        if len(reverse_non_clipped_2_clipped_list[i]) != 0:
+            reverse_non_clipped_2_clipped_sum[i] = sum(reverse_clipped_2_non_clipped_list[i])
+            reverse_non_clipped_2_clipped_var[i] = np.var(reverse_clipped_2_non_clipped_list[i])
+        if len(reverse_non_clipped_2_non_clipped_list[i]) != 0:
+            reverse_non_clipped_2_non_clipped_sum[i] = sum(reverse_non_clipped_2_non_clipped_list[i])
+            reverse_non_clipped_2_non_clipped_var[i] = np.var(reverse_non_clipped_2_non_clipped_list[i])
+
+    #print(forward_clipped_2_clipped_list)
+    #print(forward_clipped_2_non_clipped_list)
+    #print(forward_non_clipped_2_clipped_list)
+    #print(forward_non_clipped_2_non_clipped_list)
+
+    #print(reverse_clipped_2_clipped_list)
+    #print(reverse_clipped_2_non_clipped_list)
+    #print(reverse_non_clipped_2_clipped_list)
+    #print(reverse_non_clipped_2_non_clipped_list)
+
+    return np.vstack((forward_clipped_2_clipped_sum,
+                      forward_clipped_2_non_clipped_sum,
+                      forward_non_clipped_2_clipped_sum,
+                      forward_non_clipped_2_non_clipped_sum,
+
+                      reverse_clipped_2_clipped_sum,
+                      reverse_clipped_2_non_clipped_sum,
+                      reverse_non_clipped_2_clipped_sum,
+                      reverse_non_clipped_2_non_clipped_sum
+
+                      #forward_clipped_2_clipped_var,
+                      #forward_clipped_2_non_clipped_var,
+                      #forward_non_clipped_2_clipped_var,
+                      #forward_non_clipped_2_non_clipped_var,
+
+                      #reverse_clipped_2_clipped_var,
+                      #reverse_clipped_2_non_clipped_var,
+                      #reverse_non_clipped_2_clipped_var,
+                      #reverse_non_clipped_2_non_clipped_var
                       ))
 
 
@@ -664,8 +733,13 @@ def get_split_read_distance(bamfile, chr, start, end):
     win_len = abs(end-start)
     #print(win_len)
 
-    right_split = np.zeros(win_len, dtype=int)
-    left_split = np.zeros(win_len, dtype=int)
+    left_split_list = [[] for i in range(win_len)]
+    right_split_list = [[] for i in range(win_len)]
+
+    right_split_sum = np.zeros(win_len, dtype=int)
+    left_split_sum = np.zeros(win_len, dtype=int)
+    right_split_var = np.zeros(win_len, dtype=int)
+    left_split_var = np.zeros(win_len, dtype=int)
 
     samfile = pysam.AlignmentFile(bamfile, "r")
     iter = samfile.fetch(str(chr), start, end)
@@ -676,23 +750,33 @@ def get_split_read_distance(bamfile, chr, start, end):
                 chr, pos = get_suppl_aln(read)
                 if chr == read.reference_name and 0 <= (read.get_reference_positions()[0] - start) < win_len:
                     #print('Left split')
-                    #print(str(read))
-                    left_split[read.get_reference_positions()[0] - start] = left_split[
-                        read.get_reference_positions()[0] - start] + abs(
-                        read.get_reference_positions()[0] - pos)
+                    print(str(read))
+                    win_pos = read.get_reference_positions()[0] - start
+                    left_split_list[win_pos].append(abs(read.get_reference_positions()[0] - pos))
             elif is_right_clipped(read) and read.has_tag('SA'):
                 chr, pos = get_suppl_aln(read)
                 if chr == read.reference_name and 0 <= (read.get_reference_positions()[-1] - start) < win_len:
                     #print('Right split')
                     #print(str(read))
-                    chr, pos = get_suppl_aln(read)
-                    right_split[read.get_reference_positions()[-1] - start] = right_split[
-                        read.get_reference_positions()[-1] - start] + abs(
-                        pos - read.get_reference_positions()[-1])
+                    win_pos = read.get_reference_positions()[-1] - start
+                    right_split_list[win_pos].append(abs(pos - read.get_reference_positions()[-1]))
+
+    for i in range(win_len):
+        if len(left_split_list[i]) != 0:
+            left_split_sum[i] = sum(left_split_list[i])
+            left_split_var[i] = np.var(left_split_list[i])
+        if len(right_split_list[i]) != 0:
+            right_split_sum[i] = sum(right_split_list[i])
+            right_split_var[i] = np.var(right_split_list[i])
+
+    #print(right_split_sum)
+    #print(right_split_var)
 
     return np.vstack((
-        left_split,
-        right_split
+        left_split_sum,
+        right_split_sum
+        #left_split_var,
+        #right_split_var
     ))
 
 
@@ -720,7 +804,7 @@ def get_pe_distance(bamfile, chr, start, end):
         if not read.is_unmapped and not read.mate_is_unmapped and len(read.get_reference_positions()) > 0 \
                 and read.is_reverse != read.mate_is_reverse and read.cigartuples is not None \
                 and read.reference_name == read.next_reference_name:
-            if read.cigartuples[0][0] in [4, 5] or read.cigartuples[-1][0] in [4, 5]:
+            if is_clipped(read):
                 print('\t'.join([read.next_reference_name, str(read.next_reference_start)]) + '\n')
                 next_pos.append(read.next_reference_start)
                 clipped_id.append(read.query_name)
@@ -782,7 +866,7 @@ def get_clipped_positions(bamfile, chr, start, end):
                 # print(str(read))
                 # Secondary alignment
                 # print(read.get_tag('SA'))
-                if read.cigartuples[0][0] in [4, 5]:
+                if is_left_clipped(read):
                     # print(str(read))
                     # print('Clipped at the start: %s -> %s' % (str(read.cigarstring), str(read.cigartuples)))
                     # print('Pos:%d, clipped_pos:%d' % (read.reference_start, read.get_reference_positions()[0]))
@@ -790,7 +874,7 @@ def get_clipped_positions(bamfile, chr, start, end):
                     # only consider CR positions in the window
                     if start <= ref_pos <= end:
                         clipped_pos.add(ref_pos)
-                if read.cigartuples[-1][0] in [4, 5]:
+                if is_right_clipped(read):
                     # print('Clipped at the end: %s -> %s' % (str(read.cigarstring), str(read.cigartuples)))
                     # print('Pos:%d, clipped_pos:%d' %(read.reference_end, read.get_reference_positions()[-1]))
                     ref_pos = read.get_reference_positions()[-1] + 1
@@ -824,11 +908,11 @@ def get_clipped_positions_from_CR_BAM(bamfile):
             assert read.reference_name in clipped_pos.keys()
             # assert read.cigartuples[0][0] in [4, 5] or read.cigartuples[-1][0] in [4, 5]
             if len(read.get_reference_positions()) > 0:
-                if read.cigartuples[0][0] in [4, 5]:
+                if is_left_clipped(read):
                     cpos = read.get_reference_positions()[0] + 1
                     if cpos not in clipped_pos[read.reference_name]:
                         clipped_pos[read.reference_name].add(cpos)
-                if read.cigartuples[-1][0] in [4, 5]:
+                if is_right_clipped(read):
                     cpos = read.get_reference_positions()[-1] + 1
                     if cpos not in clipped_pos[read.reference_name]:
                         clipped_pos[read.reference_name].add(cpos)

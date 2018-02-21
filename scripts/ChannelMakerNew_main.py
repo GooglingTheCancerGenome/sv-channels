@@ -104,7 +104,7 @@ def get_ch_mtx(coord, bam_class, win_left, win_right, current_genome_reference, 
         vstack_ch = channels_12_vstacker(matrix_str_updated, matrix_int_left_updated,
                                          matrix_int_right_updated, current_genome_reference)
 
-        # for i in range(len(clipped_distance_vstack)):
+        #for i in range(len(clipped_distance_vstack)):
         #    print(clipped_distance_vstack[i])
 
         # for i in range(len(split_distance_vstack)):
@@ -254,15 +254,19 @@ def bam_to_channels():
     tn_dict = {'Tumor': tumor_bam, 'Normal': normal_bam}
 
     output_pickle = 'clipped_pos.pkl'
+    outfile_pickle = open(output_pickle,'wb')
 
     if not os.path.isfile(output_pickle):
         logging.debug('STARTED:  Extract CR positions from BAM file')
         clipped_pos = get_clipped_positions_from_CR_BAM(inbam)
         logging.debug('FINISHED: Extract CR positions from BAM file')
         # cPickle data persistence
-        cPickle.dump(clipped_pos, output_pickle)
+        cPickle.dump(clipped_pos, outfile_pickle)
+        outfile_pickle.close()
     else:
-        clipped_pos = cPickle.load(output_pickle)
+        infile_pickle = open(output_pickle,'rb')
+        clipped_pos = cPickle.load(infile_pickle)
+        infile_pickle.close()
 
     for chr in clipped_pos.keys():
         logging.debug('Running chr: %s', str(chr))
