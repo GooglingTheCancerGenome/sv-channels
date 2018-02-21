@@ -6,6 +6,7 @@ import pysam
 import numpy as np
 import matplotlib.pyplot as plt
 import cProfile
+import cPickle
 from subprocess import call, Popen
 
 # DEBUG printing

@@ -253,9 +253,16 @@ def bam_to_channels():
     normal_bam = wd + 'Reference/' + 'CPCT11111111R_dedup.realigned.bam'
     tn_dict = {'Tumor': tumor_bam, 'Normal': normal_bam}
 
-    logging.debug('STARTED:  Extract CR positions from BAM file')
-    clipped_pos = get_clipped_positions_from_CR_BAM(inbam)
-    logging.debug('FINISHED: Extract CR positions from BAM file')
+    output_pickle = 'clipped_pos.pkl'
+
+    if not os.path.isfile(output_pickle):
+        logging.debug('STARTED:  Extract CR positions from BAM file')
+        clipped_pos = get_clipped_positions_from_CR_BAM(inbam)
+        logging.debug('FINISHED: Extract CR positions from BAM file')
+        # cPickle data persistence
+        cPickle.dump(clipped_pos, output_pickle)
+    else:
+        clipped_pos = cPickle.load(output_pickle)
 
     for chr in clipped_pos.keys():
         logging.debug('Running chr: %s', str(chr))
