@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import cProfile
 import cPickle
 from subprocess import call, Popen
+from Bio import SeqIO
 
 # DEBUG printing
 FORMAT = '%(asctime)s %(message)s'
@@ -19,7 +20,45 @@ logging.basicConfig(format=FORMAT, stream=sys.stderr,
 # cmd = f'{sambamba} view {input} {output}'
 # run(cmd0 +'&&' + cmd, shell=True)
 
+#HPE mode on?
 HPC_MODE = False
+# Is it generating the training set?
+TRAINING_MODE = False
+# Write INFO file?
+INFO_MODE = True
+
+''' >>> FILE LOCATIONS <<<'''
+
+if HPC_MODE:
+
+    genome_wd = "/Users/lsantuari/Documents/Data/GiaB/reference/"
+    #genome_wd = "/hpc/cog_bioinf/GENOMES/Homo_sapiens.GRCh37.GATK.illumina/"
+    hg19_fasta_file = genome_wd + "Homo_sapiens.GRCh37.GATK.illumina.fasta"
+
+    wd = "/hpc/cog_bioinf/ridder/users/cshneider/SURVIVOR-master/Debug/"
+    data_chr17_fasta_file = wd + "chr17_human.fasta"
+    Truth_set_file = wd + "chr17_somaticallele_10k_INS_DEL.copy.sorted.bed"
+
+    G1_bam_30x_file = wd + "reads_chr17_SURV10kDEL_INS_Germline1_mapped/G1/mapping/" + "G1_dedup.bam"
+    GS_bam_30xsubsample_file = wd + "reads_chr17_SURV10kDEL_INS_Germline2_Somatic1_mapped/GS/mapping/" + "GS_dedup.subsampledto30x.bam"
+    S2_bam_file = wd + "reads_chr17_SURV10kDEL_INS_Somatic2_mapped/S2/mapping/" + "S2_dedup.bam"
+    S3N_bam_file = wd + "reads_chr17_SURV10kDEL_INS_Somatic3_new_mapped/S3N/mapping/" + "S3N_dedup.bam"
+
+else:
+
+    hg19_fasta_file = ""
+
+    wd = "/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/SURVIVOR-master/Debug/"
+    data_chr17_fasta_file = wd + "chr17_human.fasta"
+    Truth_set_file = wd + "chr17_somaticallele_10k_INS_DEL.copy.sorted.bed"
+    ''' Make sure this bed file excludes the 24 clips that are very close or maybe keep them in? In reality can have overlapping deletions or those that are close by'''
+
+    G1_bam_30x_file = wd + "reads_chr17_SURV10kDEL_INS_Germline1_mapped/G1/mapping/" + "G1_dedup.bam"
+    GS_bam_30xsubsample_file = wd + "reads_chr17_SURV10kDEL_INS_Germline2_Somatic1_mapped/GS/mapping/" + "GS_dedup.subsampledto30x.bam"
+    S2_bam_file = wd + "reads_chr17_SURV10kDEL_INS_Somatic2_mapped/S2/mapping/" + "S2_dedup.bam"
+    S3N_bam_file = wd + "reads_chr17_SURV10kDEL_INS_Somatic3_new_mapped/S3N/mapping/" + "S3N_dedup.bam"
+
+
 
 '''on local machine'''
 # sambamba 0.6.6 must be in PATH
@@ -235,7 +274,7 @@ def all_reads_in_window(bam_file, chr_number, left, right, name,
     '''
     left1 = left + 1
     right1 = right - 1
-    cmd_all_reads_in_window = "sambamba view -F \"ref_name == '17' and mate_ref_name == '17'\" %s %d:%d-%d > all_reads_in_window_%s_newVer_10k_100window.sam" % (
+    cmd_all_reads_in_window = "sambamba view -F \"ref_name == '" + str(chr_number) + "' and mate_ref_name == '" + str(chr_number) + "'\" %s %s:%d-%d > all_reads_in_window_%s_newVer_10k_100window.sam" % (
         bam_file, chr_number, left1, right1, name)  # counter removed #name = GS,G1,S3,S1... #_new added 29.11.17
 
     if (not HPC_MODE):
@@ -460,7 +499,14 @@ def channels_12_vstacker(matrix_str_updated, matrix_int_left_updated, matrix_int
     clipped_rds_left_channel = clipped_rds_left_fcn(matrix_int_left_updated, current_ref)
     clipped_rds_right_channel = clipped_rds_right_fcn(matrix_int_right_updated, current_ref)
 
+    # print('current_ref = ' + str(current_ref))
+    # print('exact_matches_channel')
+    # print(exact_matches_channel)
+    # print('coverage_channel')
+    # print(coverage_channel)
+    # print('clipped_rds_left_channel')
     # print(clipped_rds_left_channel)
+    # print('clipped_rds_right_channel')
     # print(clipped_rds_right_channel)
 
     vstack_12_channels = np.array(
@@ -666,8 +712,8 @@ def get_clipped_read_distance(bamfile, chr, start, end):
             forward_clipped_2_non_clipped_sum[i] = sum(forward_clipped_2_non_clipped_list[i])
             forward_clipped_2_non_clipped_var[i] = np.var(forward_clipped_2_non_clipped_list[i])
         if len(forward_non_clipped_2_clipped_list[i]) != 0:
-            forward_non_clipped_2_clipped_sum[i] = sum(forward_clipped_2_non_clipped_list[i])
-            forward_non_clipped_2_clipped_var[i] = np.var(forward_clipped_2_non_clipped_list[i])
+            forward_non_clipped_2_clipped_sum[i] = sum(forward_non_clipped_2_clipped_list[i])
+            forward_non_clipped_2_clipped_var[i] = np.var(forward_non_clipped_2_clipped_list[i])
         if len(forward_non_clipped_2_non_clipped_list[i]) != 0:
             forward_non_clipped_2_non_clipped_sum[i] = sum(forward_non_clipped_2_non_clipped_list[i])
             forward_non_clipped_2_non_clipped_var[i] = np.var(forward_non_clipped_2_non_clipped_list[i])
@@ -679,8 +725,8 @@ def get_clipped_read_distance(bamfile, chr, start, end):
             reverse_clipped_2_non_clipped_sum[i] = sum(reverse_clipped_2_non_clipped_list[i])
             reverse_clipped_2_non_clipped_var[i] = np.var(reverse_clipped_2_non_clipped_list[i])
         if len(reverse_non_clipped_2_clipped_list[i]) != 0:
-            reverse_non_clipped_2_clipped_sum[i] = sum(reverse_clipped_2_non_clipped_list[i])
-            reverse_non_clipped_2_clipped_var[i] = np.var(reverse_clipped_2_non_clipped_list[i])
+            reverse_non_clipped_2_clipped_sum[i] = sum(reverse_non_clipped_2_clipped_list[i])
+            reverse_non_clipped_2_clipped_var[i] = np.var(reverse_non_clipped_2_clipped_list[i])
         if len(reverse_non_clipped_2_non_clipped_list[i]) != 0:
             reverse_non_clipped_2_non_clipped_sum[i] = sum(reverse_non_clipped_2_non_clipped_list[i])
             reverse_non_clipped_2_non_clipped_var[i] = np.var(reverse_non_clipped_2_non_clipped_list[i])
@@ -750,7 +796,7 @@ def get_split_read_distance(bamfile, chr, start, end):
                 chr, pos = get_suppl_aln(read)
                 if chr == read.reference_name and 0 <= (read.get_reference_positions()[0] - start) < win_len:
                     #print('Left split')
-                    print(str(read))
+                    # print(str(read))
                     win_pos = read.get_reference_positions()[0] - start
                     left_split_list[win_pos].append(abs(read.get_reference_positions()[0] - pos))
             elif is_right_clipped(read) and read.has_tag('SA'):
@@ -884,7 +930,7 @@ def get_clipped_positions(bamfile, chr, start, end):
     return list(clipped_pos)
 
 
-def get_clipped_positions_from_CR_BAM(bamfile):
+def get_clipped_positions_from_CR_BAM(bamfile, chromosome):
     '''
 
     :param bamfile: filepath of BAM alignment with Hard/Soft clipped reads only
@@ -898,24 +944,29 @@ def get_clipped_positions_from_CR_BAM(bamfile):
     # print(str(samfile.header))
 
     # chr name from header
-    clipped_pos = dict()
-    for el in samfile.header['SQ']:
-        clipped_pos[el['SN']] = set()
+    #clipped_pos = dict()
+    #for el in samfile.header['SQ']:
+    #    clipped_pos[el['SN']] = set()
+
+    clipped_pos = set()
+
     # logging.debug('clipped pos:' + str(clipped_pos))
     # read_count = samfile.count(chr, start, end)
-    for read in samfile.fetch():
+    for read in samfile.fetch(chromosome):
         if (not read.is_unmapped) and (not read.mate_is_unmapped):
-            assert read.reference_name in clipped_pos.keys()
+            #assert read.reference_name in clipped_pos.keys()
             # assert read.cigartuples[0][0] in [4, 5] or read.cigartuples[-1][0] in [4, 5]
             if len(read.get_reference_positions()) > 0:
                 if is_left_clipped(read):
                     cpos = read.get_reference_positions()[0] + 1
-                    if cpos not in clipped_pos[read.reference_name]:
-                        clipped_pos[read.reference_name].add(cpos)
+                    if cpos not in clipped_pos: # [read.reference_name]:
+                        # clipped_pos[read.reference_name].add(cpos)
+                        clipped_pos.add(cpos)
                 if is_right_clipped(read):
                     cpos = read.get_reference_positions()[-1] + 1
-                    if cpos not in clipped_pos[read.reference_name]:
-                        clipped_pos[read.reference_name].add(cpos)
+                    if cpos not in clipped_pos: #[read.reference_name]:
+                        # clipped_pos[read.reference_name].add(cpos)
+                        clipped_pos.add(cpos)
     samfile.close()
     return clipped_pos
 
@@ -1055,28 +1106,5 @@ def load_channels():
 # "reads_chr17_SURV10kDEL_INS_Somatic3_new_mapped/S3N/mapping/S3N_dedup.bam"
 # S2_sam_file = "/hpc/cog_bioinf/ridder/users/cshneider/SURVIVOR-master/Debug/chr17_SURV10kDEL_INS_truth_clipped_vcfs_4callers/S2_dedup_clippedrds.sam"
 # S3N_sam_file = "/hpc/cog_bioinf/ridder/users/cshneider/SURVIVOR-master/Debug/chr17_SURV10kDEL_INS_truth_clipped_vcfs_4callers/S3N_dedup_clippedrds.sam"
-
-
-if HPC_MODE:
-    wd = "/hpc/cog_bioinf/ridder/users/cshneider/SURVIVOR-master/Debug/"
-
-    data_chr17_fasta_file = wd + "chr17_human.fasta"
-    Truth_set_file = wd + "chr17_somaticallele_10k_INS_DEL.copy.sorted.bed"
-
-    G1_bam_30x_file = wd + "reads_chr17_SURV10kDEL_INS_Germline1_mapped/G1/mapping/" + "G1_dedup.bam"
-    GS_bam_30xsubsample_file = wd + "reads_chr17_SURV10kDEL_INS_Germline2_Somatic1_mapped/GS/mapping/" + "GS_dedup.subsampledto30x.bam"
-    S2_bam_file = wd + "reads_chr17_SURV10kDEL_INS_Somatic2_mapped/S2/mapping/" + "S2_dedup.bam"
-    S3N_bam_file = wd + "reads_chr17_SURV10kDEL_INS_Somatic3_new_mapped/S3N/mapping/" + "S3N_dedup.bam"
-
-else:
-    wd = "/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/SURVIVOR-master/Debug/"
-    data_chr17_fasta_file = wd + "chr17_human.fasta"
-    Truth_set_file = wd + "chr17_somaticallele_10k_INS_DEL.copy.sorted.bed"
-    ''' Make sure this bed file excludes the 24 clips that are very close or maybe keep them in? In reality can have overlapping deletions or those that are close by'''
-
-    G1_bam_30x_file = wd + "reads_chr17_SURV10kDEL_INS_Germline1_mapped/G1/mapping/" + "G1_dedup.bam"
-    GS_bam_30xsubsample_file = wd + "reads_chr17_SURV10kDEL_INS_Germline2_Somatic1_mapped/GS/mapping/" + "GS_dedup.subsampledto30x.bam"
-    S2_bam_file = wd + "reads_chr17_SURV10kDEL_INS_Somatic2_mapped/S2/mapping/" + "S2_dedup.bam"
-    S3N_bam_file = wd + "reads_chr17_SURV10kDEL_INS_Somatic3_new_mapped/S3N/mapping/" + "S3N_dedup.bam"
 
 ''' MAKE THE NOSV CATEGORY FILE LOCATIONS!!! '''
