@@ -91,7 +91,7 @@ def main():
                         help="Specify input file (BAM)")
     parser.add_argument('-c', '--chr', type=str, default='17',
                         help="Specify chromosome")
-    parser.add_argument('-o', '--out', type=str, default='split_reads.pbz2',
+    parser.add_argument('-o', '--out', type=str, default='split_read_distance.pbz2',
                         help="Specify output")
 
     args = parser.parse_args()
