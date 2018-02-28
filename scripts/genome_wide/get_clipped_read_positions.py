@@ -1,9 +1,11 @@
 import argparse
-import pysam
 import bz2
 import cPickle as pickle
-from time import time
 import os
+from time import time
+
+import pysam
+
 import functions as fun
 
 
