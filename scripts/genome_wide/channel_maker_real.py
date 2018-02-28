@@ -1,5 +1,6 @@
 import pysam
 import bz2
+import os
 import cPickle as pickle
 from collections import Counter
 
@@ -25,7 +26,8 @@ def main():
             with bz2.BZ2File(outFile, 'rb') as f:
                 clipped_pos = pickle.load(f)
 
-            cpos_cnt = Counter(Counter(clipped_pos).values())
+            cpos_cnt = Counter(clipped_pos.values())
+            #cpos_cnt = Counter(Counter(clipped_pos).values())
 
             for i in range(2, 5):
                 print('Number of positions with at least %d clipped reads: %d' %

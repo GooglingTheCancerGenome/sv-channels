@@ -15,7 +15,7 @@ def get_clipped_reads(ibam, chrName, outFile):
     header_dict = bamfile.header
 
     # print([i['LN'] for i in header_dict['SQ'] if i['SN']])
-    print([i['SN'] for i in header_dict['SQ'] if i['SN']])
+    #print([i['SN'] for i in header_dict['SQ'] if i['SN']])
     chrLen = [i['LN'] for i in header_dict['SQ'] if i['SN'] == chrName][0]
 
     start_pos = 0
