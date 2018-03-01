@@ -9,6 +9,12 @@ from collections import Counter
 
 
 def get_clipped_read_distance(ibam, chrName, outFile):
+
+    # Load clipped reads sets
+    clipped_pos_file = './T/' + chrName + '_clipped_read_pos.pbz2'
+    with bz2.BZ2File(clipped_pos_file, 'rb') as f:
+        clipped_pos_cnt, clipped_read_1, clipped_read_2 = pickle.load(f)
+
     clipped_read_distance = dict()
     for direction in ['forward', 'reverse']:
         clipped_read_distance[direction] = dict()
@@ -16,9 +22,12 @@ def get_clipped_read_distance(ibam, chrName, outFile):
         for clipped_arrangement in ['c2c', 'nc2c', 'c2nc', 'nc2nc']:
             clipped_read_distance[direction][clipped_arrangement] = dict()
 
-    def get_distance(direction, read, mate):
+    def get_distance(direction, read):
 
-        if fun.is_clipped(read) and fun.is_clipped(mate):
+        mate_is_clipped = read.is_read1 and read.query_name in clipped_read_2 or \
+                          read.is_read2 and read.query_name in clipped_read_1
+
+        if fun.is_clipped(read) and mate_is_clipped:
             if fun.is_left_clipped(read):
                 pos = read.get_reference_positions()[0]
                 if pos not in clipped_read_distance[direction]['c2c'].keys():
@@ -32,7 +41,7 @@ def get_clipped_read_distance(ibam, chrName, outFile):
                 else:
                     clipped_read_distance[direction]['c2c'][pos].append(d)
 
-        elif fun.is_clipped(read) and not fun.is_clipped(mate):
+        elif fun.is_clipped(read) and not mate_is_clipped:
             if fun.is_left_clipped(read):
                 pos = read.get_reference_positions()[0]
                 if pos not in clipped_read_distance[direction]['c2nc'].keys():
@@ -45,12 +54,12 @@ def get_clipped_read_distance(ibam, chrName, outFile):
                     clipped_read_distance[direction]['c2nc'][pos] = [d]
                 else:
                     clipped_read_distance[direction]['c2nc'][pos].append(d)
-        elif not fun.is_clipped(read) and fun.is_clipped(mate):
+        elif not fun.is_clipped(read) and mate_is_clipped:
             if read.reference_start not in clipped_read_distance[direction]['nc2c'].keys():
                 clipped_read_distance[direction]['nc2c'][read.reference_start] = [d]
             else:
                 clipped_read_distance[direction]['nc2c'][read.reference_start].append(d)
-        elif not fun.is_clipped(read) and not fun.is_clipped(mate):
+        elif not fun.is_clipped(read) and not mate_is_clipped:
             if read.reference_start not in clipped_read_distance[direction]['nc2nc'].keys():
                 if read.reference_start not in clipped_read_distance[direction]['nc2nc'].keys():
                     clipped_read_distance[direction]['nc2nc'][read.reference_start] = [d]
@@ -63,23 +72,23 @@ def get_clipped_read_distance(ibam, chrName, outFile):
     chrLen = [i['LN'] for i in header_dict['SQ'] if i['SN'] == chrName][0]
 
     start_pos = 0
-    stop_pos = 10000
+    stop_pos = chrLen
     # print(chrLen)
 
     iter = bamfile.fetch(chrName, start_pos, stop_pos, multiple_iterators=True)
 
     for read in iter:
         if not read.is_unmapped and not read.mate_is_unmapped:
-            mate = fun.get_read_mate(read, bamfile)
-            if read.reference_name == mate.reference_name:
-                d = abs(read.reference_start - mate.reference_start)
+            # mate = fun.get_read_mate(read, bamfile)
+            if read.reference_name == read.next_reference_name:
+                d = abs(read.reference_start - read.next_reference_start)
 
-                if not read.is_reverse and mate.is_reverse and read.reference_start <= mate.reference_start:
+                if not read.is_reverse and read.mate_is_reverse and read.reference_start <= read.next_reference_start:
                     # pass
-                    get_distance('forward', read, mate)
-                elif read.is_reverse and not mate.is_reverse and read.reference_start >= mate.reference_start:
+                    get_distance('forward', read)
+                elif read.is_reverse and not read.mate_is_reverse and read.reference_start >= read.next_reference_start:
                     # pass
-                    get_distance('reverse', read, mate)
+                    get_distance('reverse', read)
 
     # print(clipped_read_distance)
     # cPickle data persistence
