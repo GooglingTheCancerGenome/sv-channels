@@ -930,7 +930,27 @@ def get_clipped_positions(bamfile, chr, start, end):
     return list(clipped_pos)
 
 
-def get_clipped_positions_from_CR_BAM(bamfile, chromosome):
+def read_GiaB_bed():
+
+    del_pos = dict()
+    bed_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/GiaB/Synthetic_tumor/' + \
+               'sv_classify/Personalis_1000_Genomes_deduplicated_deletions.bed'
+    with(open(bed_file, 'r')) as f:
+        for line in f:
+            line = line.rstrip()
+            columns = line.split("\t")
+            if columns[0] != 'Chr':
+                if columns[0] not in del_pos.keys():
+                    del_pos[columns[0]] = [columns[1]]
+                    del_pos[columns[0]].append(columns[2])
+                else:
+                    del_pos[columns[0]].append(columns[1])
+                    del_pos[columns[0]].append(columns[2])
+
+    return del_pos
+
+
+def get_clipped_positions_from_CR_BAM(bamfile, chromosome, window_to_each_side):
     '''
 
     :param bamfile: filepath of BAM alignment with Hard/Soft clipped reads only
@@ -950,23 +970,33 @@ def get_clipped_positions_from_CR_BAM(bamfile, chromosome):
 
     clipped_pos = set()
 
+    del_start, del_end = read_GiaB_bed()
+
     # logging.debug('clipped pos:' + str(clipped_pos))
     # read_count = samfile.count(chr, start, end)
-    for read in samfile.fetch(chromosome):
-        if (not read.is_unmapped) and (not read.mate_is_unmapped):
-            #assert read.reference_name in clipped_pos.keys()
-            # assert read.cigartuples[0][0] in [4, 5] or read.cigartuples[-1][0] in [4, 5]
-            if len(read.get_reference_positions()) > 0:
-                if is_left_clipped(read):
-                    cpos = read.get_reference_positions()[0] + 1
-                    if cpos not in clipped_pos: # [read.reference_name]:
-                        # clipped_pos[read.reference_name].add(cpos)
-                        clipped_pos.add(cpos)
-                if is_right_clipped(read):
-                    cpos = read.get_reference_positions()[-1] + 1
-                    if cpos not in clipped_pos: #[read.reference_name]:
-                        # clipped_pos[read.reference_name].add(cpos)
-                        clipped_pos.add(cpos)
+    for del_location in read_GiaB_bed():
+        clipped_cnt = 0
+        for read in samfile.fetch(chromosome, del_location - window_to_each_side,
+                                  del_location + window_to_each_side):
+            if (not read.is_unmapped) and (not read.mate_is_unmapped):
+                #assert read.reference_name in clipped_pos.keys()
+                # assert read.cigartuples[0][0] in [4, 5] or read.cigartuples[-1][0] in [4, 5]
+                if len(read.get_reference_positions()) > 0:
+                    if is_left_clipped(read):
+                        cpos = read.get_reference_positions()[0] + 1
+                        if cpos not in clipped_pos: # [read.reference_name]:
+                            # clipped_pos[read.reference_name].add(cpos)
+                            clipped_pos.add(cpos)
+                            clipped_cnt += 1
+                    if is_right_clipped(read):
+                        cpos = read.get_reference_positions()[-1] + 1
+                        if cpos not in clipped_pos: #[read.reference_name]:
+                            # clipped_pos[read.reference_name].add(cpos)
+                            clipped_pos.add(cpos)
+                            clipped_cnt += 1
+        if clipped_cnt == 0:
+            print('No clipped reads found at window: %d' % del_location)
+            
     samfile.close()
     return clipped_pos
 

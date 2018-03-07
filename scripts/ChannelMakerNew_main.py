@@ -268,7 +268,7 @@ def bam_to_channels(info_file, window_to_each_side):
 
         if not os.path.isfile(output_pickle):
             logging.debug('STARTED:  Extract CR positions from BAM file')
-            clipped_pos = get_clipped_positions_from_CR_BAM(inbam, chr)
+            clipped_pos = get_clipped_positions_from_CR_BAM(inbam, chr, window_to_each_side)
             logging.debug('FINISHED: Extract CR positions from BAM file')
             # cPickle data persistence
             outfile_pickle = open(output_pickle, 'wb')
