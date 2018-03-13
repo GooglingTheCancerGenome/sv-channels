@@ -6,9 +6,7 @@ import pysam
 import numpy as np
 import matplotlib.pyplot as plt
 import cProfile
-import cPickle
 from subprocess import call, Popen
-from Bio import SeqIO
 
 # DEBUG printing
 FORMAT = '%(asctime)s %(message)s'
@@ -23,7 +21,7 @@ logging.basicConfig(format=FORMAT, stream=sys.stderr,
 #HPE mode on?
 HPC_MODE = False
 # Is it generating the training set?
-TRAINING_MODE = False
+TRAINING_MODE = True
 # Write INFO file?
 INFO_MODE = True
 
@@ -31,8 +29,8 @@ INFO_MODE = True
 
 if HPC_MODE:
 
-    genome_wd = "/Users/lsantuari/Documents/Data/GiaB/reference/"
-    #genome_wd = "/hpc/cog_bioinf/GENOMES/Homo_sapiens.GRCh37.GATK.illumina/"
+    #genome_wd = "/Users/lsantuari/Documents/Data/GiaB/reference/"
+    genome_wd = "/hpc/cog_bioinf/GENOMES/Homo_sapiens.GRCh37.GATK.illumina/"
     hg19_fasta_file = genome_wd + "Homo_sapiens.GRCh37.GATK.illumina.fasta"
 
     wd = "/hpc/cog_bioinf/ridder/users/cshneider/SURVIVOR-master/Debug/"
@@ -158,7 +156,7 @@ def one_liner(data):
     this combines all lines into one line
     '''
     currentline = ""
-    for line in data.xreadlines():
+    for line in data.readlines():
         if line.startswith('>'):
             line = line.rstrip('\n')
             ##print line
@@ -293,7 +291,7 @@ def all_reads_in_window(bam_file, chr_number, left, right, name,
 def number_of_reads_in_window_compute(sam_file):
     counter_lines = 0
     sample_file_data = open(sam_file, 'r')
-    for line in sample_file_data.xreadlines():
+    for line in sample_file_data.readlines():
         counter_lines += 1
     sample_file_data.close()
 
@@ -657,51 +655,51 @@ def get_clipped_read_distance(bamfile, chr, start, end):
     for read in iter:
         if not read.is_unmapped and not read.mate_is_unmapped and read.reference_start >= start:
             mate = get_read_mate(read, bamfile)
+            if read is not None and mate is not None:
+                if read.reference_name == mate.reference_name:
+                    d = abs(read.reference_start - mate.reference_start)
 
-            if read.reference_name == mate.reference_name:
-                d = abs(read.reference_start - mate.reference_start)
+                    if not read.is_reverse and mate.is_reverse and read.reference_start <= mate.reference_start:
 
-                if not read.is_reverse and mate.is_reverse and read.reference_start <= mate.reference_start:
+                        if is_clipped(read) and is_clipped(mate):
+                            if is_left_clipped(read):
+                                if 0 <= (read.get_reference_positions()[0] - start) < win_len:
+                                    forward_clipped_2_clipped_list[read.get_reference_positions()[0]-start].append(d)
+                            elif is_right_clipped(read):
+                                if 0 <= (read.get_reference_positions()[-1] - start) < win_len:
+                                    forward_clipped_2_clipped_list[read.get_reference_positions()[-1]-start].append(d)
+                        elif is_clipped(read) and not is_clipped(mate):
+                            if is_left_clipped(read):
+                                if 0 <= (read.get_reference_positions()[0] - start) < win_len:
+                                    forward_clipped_2_non_clipped_list[read.get_reference_positions()[0]-start].append(d)
+                            elif is_right_clipped(read):
+                                if 0 <= (read.get_reference_positions()[-1] - start) < win_len:
+                                    forward_clipped_2_non_clipped_list[read.get_reference_positions()[-1]-start].append(d)
+                        elif not is_clipped(read) and is_clipped(mate):
+                            forward_non_clipped_2_clipped_list[read.reference_start - start].append(d)
+                        elif not is_clipped(read) and not is_clipped(mate):
+                            forward_non_clipped_2_non_clipped_list[read.reference_start - start].append(d)
 
-                    if is_clipped(read) and is_clipped(mate):
-                        if is_left_clipped(read):
-                            if 0 <= (read.get_reference_positions()[0] - start) < win_len:
-                                forward_clipped_2_clipped_list[read.get_reference_positions()[0]-start].append(d)
-                        elif is_right_clipped(read):
-                            if 0 <= (read.get_reference_positions()[-1] - start) < win_len:
-                                forward_clipped_2_clipped_list[read.get_reference_positions()[-1]-start].append(d)
-                    elif is_clipped(read) and not is_clipped(mate):
-                        if is_left_clipped(read):
-                            if 0 <= (read.get_reference_positions()[0] - start) < win_len:
-                                forward_clipped_2_non_clipped_list[read.get_reference_positions()[0]-start].append(d)
-                        elif is_right_clipped(read):
-                            if 0 <= (read.get_reference_positions()[-1] - start) < win_len:
-                                forward_clipped_2_non_clipped_list[read.get_reference_positions()[-1]-start].append(d)
-                    elif not is_clipped(read) and is_clipped(mate):
-                        forward_non_clipped_2_clipped_list[read.reference_start - start].append(d)
-                    elif not is_clipped(read) and not is_clipped(mate):
-                        forward_non_clipped_2_non_clipped_list[read.reference_start - start].append(d)
+                    elif read.is_reverse and not mate.is_reverse and read.reference_start >= mate.reference_start:
 
-                elif read.is_reverse and not mate.is_reverse and read.reference_start >= mate.reference_start:
-
-                    if is_clipped(read) and is_clipped(mate):
-                        if is_left_clipped(read):
-                            if 0 <= (read.get_reference_positions()[0] - start) < win_len:
-                                reverse_clipped_2_clipped_list[read.get_reference_positions()[0] - start].append(d)
-                        elif is_right_clipped(read):
-                            if 0 <= (read.get_reference_positions()[-1] - start) < win_len:
-                                reverse_clipped_2_clipped_list[read.get_reference_positions()[-1] - start].append(d)
-                    elif is_clipped(read) and not is_clipped(mate):
-                        if is_left_clipped(read):
-                            if 0 <= (read.get_reference_positions()[0] - start) < win_len:
-                                reverse_clipped_2_non_clipped_list[read.get_reference_positions()[0] - start].append(d)
-                        elif is_right_clipped(read):
-                            if 0 <= (read.get_reference_positions()[-1] - start) < win_len:
-                                reverse_clipped_2_non_clipped_list[read.get_reference_positions()[-1] - start].append(d)
-                    elif not is_clipped(read) and is_clipped(mate):
-                        reverse_non_clipped_2_clipped_list[read.reference_start - start].append(d)
-                    elif not is_clipped(read) and not is_clipped(mate):
-                        reverse_non_clipped_2_non_clipped_list[read.reference_start - start].append(d)
+                        if is_clipped(read) and is_clipped(mate):
+                            if is_left_clipped(read):
+                                if 0 <= (read.get_reference_positions()[0] - start) < win_len:
+                                    reverse_clipped_2_clipped_list[read.get_reference_positions()[0] - start].append(d)
+                            elif is_right_clipped(read):
+                                if 0 <= (read.get_reference_positions()[-1] - start) < win_len:
+                                    reverse_clipped_2_clipped_list[read.get_reference_positions()[-1] - start].append(d)
+                        elif is_clipped(read) and not is_clipped(mate):
+                            if is_left_clipped(read):
+                                if 0 <= (read.get_reference_positions()[0] - start) < win_len:
+                                    reverse_clipped_2_non_clipped_list[read.get_reference_positions()[0] - start].append(d)
+                            elif is_right_clipped(read):
+                                if 0 <= (read.get_reference_positions()[-1] - start) < win_len:
+                                    reverse_clipped_2_non_clipped_list[read.get_reference_positions()[-1] - start].append(d)
+                        elif not is_clipped(read) and is_clipped(mate):
+                            reverse_non_clipped_2_clipped_list[read.reference_start - start].append(d)
+                        elif not is_clipped(read) and not is_clipped(mate):
+                            reverse_non_clipped_2_non_clipped_list[read.reference_start - start].append(d)
 
     for i in range(win_len):
 
@@ -941,11 +939,14 @@ def read_GiaB_bed():
             columns = line.split("\t")
             if columns[0] != 'Chr':
                 if columns[0] not in del_pos.keys():
-                    del_pos[columns[0]] = [columns[1]]
-                    del_pos[columns[0]].append(columns[2])
+                    del_pos[columns[0]] = [int(columns[1])]
+                    del_pos[columns[0]].append(int(columns[2]))
                 else:
-                    del_pos[columns[0]].append(columns[1])
-                    del_pos[columns[0]].append(columns[2])
+                    del_pos[columns[0]].append(int(columns[1]))
+                    del_pos[columns[0]].append(int(columns[2]))
+
+    for chr in del_pos.keys():
+        del_pos[chr] = sorted(del_pos[chr])
 
     return del_pos
 
@@ -970,11 +971,13 @@ def get_clipped_positions_from_CR_BAM(bamfile, chromosome, window_to_each_side):
 
     clipped_pos = set()
 
-    del_start, del_end = read_GiaB_bed()
-
     # logging.debug('clipped pos:' + str(clipped_pos))
     # read_count = samfile.count(chr, start, end)
-    for del_location in read_GiaB_bed():
+
+    del_pos_by_chr = read_GiaB_bed()
+    del_pos_vec = del_pos_by_chr[chromosome]
+
+    for del_location in del_pos_vec:
         clipped_cnt = 0
         for read in samfile.fetch(chromosome, del_location - window_to_each_side,
                                   del_location + window_to_each_side):
@@ -984,19 +987,16 @@ def get_clipped_positions_from_CR_BAM(bamfile, chromosome, window_to_each_side):
                 if len(read.get_reference_positions()) > 0:
                     if is_left_clipped(read):
                         cpos = read.get_reference_positions()[0] + 1
-                        if cpos not in clipped_pos: # [read.reference_name]:
-                            # clipped_pos[read.reference_name].add(cpos)
-                            clipped_pos.add(cpos)
-                            clipped_cnt += 1
+                        clipped_pos.add(cpos)
+                        clipped_cnt += 1
                     if is_right_clipped(read):
                         cpos = read.get_reference_positions()[-1] + 1
-                        if cpos not in clipped_pos: #[read.reference_name]:
-                            # clipped_pos[read.reference_name].add(cpos)
-                            clipped_pos.add(cpos)
-                            clipped_cnt += 1
+                        clipped_pos.add(cpos)
+                        clipped_cnt += 1
+
         if clipped_cnt == 0:
             print('No clipped reads found at window: %d' % del_location)
-            
+
     samfile.close()
     return clipped_pos
 

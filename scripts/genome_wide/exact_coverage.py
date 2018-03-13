@@ -1,10 +1,11 @@
 import argparse
 import pysam
-import bz2
-import cPickle as pickle
+import bz2file
+import pickle
 from time import time
 import twobitreader as twobit
 from collections import Counter
+import logging
 
 
 def get_exact_coverage(ibam, chrName, outFile):
@@ -23,7 +24,20 @@ def get_exact_coverage(ibam, chrName, outFile):
     stop_pos = chrLen
     # print(chrLen)
 
-    for pile in bamfile.pileup(chrName, start_pos, stop_pos, truncate=True):
+    n_r = 10 ** 6
+    # print(n_r)
+    last_t = time()
+    # print(type(last_t))
+
+    for i, pile in enumerate(bamfile.pileup(chrName, start_pos, stop_pos, truncate=True), start=1):
+
+        if not i % n_r:
+            now_t = time()
+            # print(type(now_t))
+            logging.info("%d pileup positions processed (%f positions / s)" % (
+                i,
+                n_r / (now_t - last_t)))
+            last_t = time()
 
         while pile.pos != start_pos:
             cov.append(0)
@@ -37,7 +51,7 @@ def get_exact_coverage(ibam, chrName, outFile):
         start_pos = start_pos + 1
 
     # cPickle data persistence
-    with bz2.BZ2File(outFile, 'w') as f:
+    with bz2file.BZ2File(outFile, 'w') as f:
         pickle.dump(cov, f)
 
 
@@ -53,8 +67,17 @@ def main():
                         help="Specify chromosome")
     parser.add_argument('-o', '--out', type=str, default='exact_coverage.pbz2',
                         help="Specify output")
+    parser.add_argument('-l', '--logfile', default='exact_coverage.log',
+                        help='File in which to write logs.')
 
     args = parser.parse_args()
+
+    logfilename = args.logfile
+    FORMAT = '%(asctime)s %(message)s'
+    logging.basicConfig(
+        format=FORMAT,
+        filename=logfilename,
+        level=logging.INFO)
 
     t0 = time()
     get_exact_coverage(ibam=args.bam, chrName=args.chr, outFile=args.out)

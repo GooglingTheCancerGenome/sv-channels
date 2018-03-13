@@ -12,6 +12,7 @@ from ChannelMakerNew_lib import *
 
 ''' >>> Some parameters <<< '''
 
+
 # max_coverage_depth_from_30x = 80 #1000 #200 #hardcoded number based on 6*30; expect at most 100 reads at one location; matrix below is just for testing really.
 # '''
 # For future use, need to have max_coverage_depth_from_30x as a non-hardcoded number
@@ -65,15 +66,15 @@ def get_ch_mtx(coord, bam_class, chromosome, win_left, win_right, current_genome
         vstack_ch = channels_12_vstacker(matrix_str_updated, matrix_int_left_updated,
                                          matrix_int_right_updated, current_genome_reference)
 
-        #for i in range(len(clipped_distance_vstack)):
+        # for i in range(len(clipped_distance_vstack)):
         #    print(clipped_distance_vstack[i])
 
         # for i in range(len(split_distance_vstack)):
         #    print(split_distance_vstack[i])
 
-        #print('Shapes: vstack_ch' + str(np.shape(vstack_ch)))
-        #print('Shapes: clipped_distance_vstack' + str(np.shape(clipped_distance_vstack)))
-        #print('Shapes: split_distance_vstack' + str(np.shape(split_distance_vstack)))
+        # print('Shapes: vstack_ch' + str(np.shape(vstack_ch)))
+        # print('Shapes: clipped_distance_vstack' + str(np.shape(clipped_distance_vstack)))
+        # print('Shapes: split_distance_vstack' + str(np.shape(split_distance_vstack)))
 
         vstack_all_ch = np.vstack((
             vstack_ch,
@@ -81,7 +82,7 @@ def get_ch_mtx(coord, bam_class, chromosome, win_left, win_right, current_genome
             split_distance_vstack
         ))
 
-        #for i in range(len(vstack_all_ch)):
+        # for i in range(len(vstack_all_ch)):
         #    print(vstack_all_ch[i])
 
         vstack_pair.append(vstack_all_ch)
@@ -117,7 +118,6 @@ def generate_training_set(info_file, window_to_each_side):
     Sclass_keys = Sclass.keys()
     '''NOSVclass_keys = NOSVclass.keys()'''
 
-
     t0 = time()
     counter = 0
 
@@ -151,16 +151,13 @@ def generate_training_set(info_file, window_to_each_side):
 
         logging.debug('coord: %d', outcoord)
 
-        clipped_pos_list = [el
-                            # for sample in Gclass.values() + Sclass.values()
-                            for el in get_clipped_positions(Gclass.values()[0], str(chromosome),
-                                                            outcoord - window_to_each_side,
-                                                            outcoord + window_to_each_side)
-                            ]
+        clipped_pos_list = get_clipped_positions(Gclass['GS'], str(chromosome),
+                                                 outcoord - window_to_each_side,
+                                                 outcoord + window_to_each_side)
 
         # List of clipped positions should have at least the PBJ position
         if len(clipped_pos_list) == 0:
-            print outcoord
+            print(outcoord)
         # print(clipped_pos_list)
 
         '''
@@ -175,7 +172,7 @@ def generate_training_set(info_file, window_to_each_side):
 
                 logging.debug('inner coord: %d', coord)
 
-                #print(outcoord == coord)
+                # print(outcoord == coord)
                 bpj_flag.append(outcoord == coord)
 
                 if INFO_MODE:
@@ -184,7 +181,7 @@ def generate_training_set(info_file, window_to_each_side):
 
                 window_arange, left, right = make_window(coord, window_to_each_side)
                 current_genome_reference = current_reference_fcn(current_line_on_reference, left, right)
-                print 'current_genome_reference:', current_genome_reference
+                # print('current_genome_reference:', current_genome_reference)
                 GC_content = GC_content_dict_fcn(current_genome_reference)
                 # print 'GC_content:', GC_content
 
@@ -225,7 +222,7 @@ def generate_training_set(info_file, window_to_each_side):
     np.save('germline_label_array_file', label_list_Germline)
     np.save('BPJ_flag', bpj_flag)
 
-    print 'done in ', time() - t0
+    print('done in ', time() - t0)
     # print 'counter/2:', counter / 2
     # print 'counter/2 == 9630:', counter / 2 == 9630
 
@@ -239,13 +236,13 @@ def bam_to_channels(info_file, window_to_each_side):
     t0 = time()
     counter = 0
 
-    #Load genome FASTA file
+    # Load genome FASTA file
     logging.debug('STARTED:  Loading hg19 FASTA...')
     genome_dict = SeqIO.to_dict(SeqIO.parse(hg19_fasta_file, "fasta"))
     logging.debug('FINISHED:  Loaded hg19 FASTA')
 
     # Input files
-    #wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/GiaB/Synthetic_tumor/BAM/'
+    # wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/GiaB/Synthetic_tumor/BAM/'
     wd = '/Users/lsantuari/Documents/Data/GiaB/NA12878_NA24385_Tumor_like/BAM/'
 
     # Requires BAM files with Clipped reads only:
@@ -255,13 +252,16 @@ def bam_to_channels(info_file, window_to_each_side):
     tumor_bam = wd + 'Tumor/subsample/' + 'CPCT11111111T_dedup.realigned.subsampled.bam'
     normal_bam = wd + 'Reference/subsample/' + 'CPCT11111111R_dedup.realigned.subsampled.bam'
 
-    #inbam = wd + 'Tumor/' + 'CPCT11111111T_dedup.realigned.cr.bam'
-    #tumor_bam = wd + 'Tumor/' + 'CPCT11111111T_dedup.realigned.bam'
-    #normal_bam = wd + 'Reference/' + 'CPCT11111111R_dedup.realigned.bam'
+    # inbam = wd + 'Tumor/' + 'CPCT11111111T_dedup.realigned.cr.bam'
+    # tumor_bam = wd + 'Tumor/' + 'CPCT11111111T_dedup.realigned.bam'
+    # normal_bam = wd + 'Reference/' + 'CPCT11111111R_dedup.realigned.bam'
 
     tn_dict = {'Tumor': tumor_bam, 'Normal': normal_bam}
 
-    for chr in ['17']: #genome_dict.keys():
+    rg = map(str, range(6, 20))
+    rg.append('X')
+    # for chr in genome_dict.keys():
+    for chr in rg:
         logging.debug('Running chr: %s', str(chr))
 
         output_pickle = 'clipped_pos_' + chr + '.pkl'
@@ -285,8 +285,8 @@ def bam_to_channels(info_file, window_to_each_side):
 
         channel_matrix_list_TumorNormal_categ = []
 
-        for coord in sorted(clipped_pos): #[chr]):
-            if window_to_each_side <= coord <= ( len(current_line_on_reference) - window_to_each_side ):
+        for coord in sorted(clipped_pos):  # [chr]):
+            if window_to_each_side <= coord <= (len(current_line_on_reference) - window_to_each_side):
 
                 logging.debug('coord: %d', coord)
 
@@ -310,12 +310,11 @@ def bam_to_channels(info_file, window_to_each_side):
 
         np.save('TumorNormal_cube_data_file_chr_' + chr, channel_matrix_list_TumorNormal_categ)
 
-    print 'done in ', time() - t0
-    print 'counter:', counter
+    print('done in ', time() - t0)
+    print('counter:', counter)
 
 
 def main():
-
     illumina_rd_length_fixed = 150
     logging.debug('illumina_rd_length_fixed: %d', illumina_rd_length_fixed)
 
@@ -328,7 +327,6 @@ def main():
     if INFO_MODE:
         info_file = open('ChannelMaker_run_info.txt', 'w')
         info_file.write('\t'.join(['CHR', 'OUTCOORD', 'COORD', 'INDEX', 'SV']) + '\n')
-
 
     parser = argparse.ArgumentParser(description='Create channel data per chromosome')
     parser.add_argument('-c', '--chr', type=str, default='17',

@@ -1,19 +1,19 @@
 import argparse
 import pysam
-import bz2
-import cPickle as pickle
+import bz2file
+import pickle
 from time import time
 import functions as fun
-import twobitreader as twobit
-from collections import Counter
+import logging
 
 
-def get_clipped_read_distance(ibam, chrName, outFile):
+def get_clipped_read_distance(ibam, chrName, clipped_reads, outFile):
 
     # Load clipped reads sets
-    clipped_pos_file = './T/' + chrName + '_clipped_read_pos.pbz2'
-    with bz2.BZ2File(clipped_pos_file, 'rb') as f:
+    logging.info("Loading %s" % clipped_reads)
+    with bz2file.BZ2File(clipped_reads, 'rb') as f:
         clipped_pos_cnt, clipped_read_1, clipped_read_2 = pickle.load(f)
+    logging.info("Loaded")
 
     clipped_read_distance = dict()
     for direction in ['forward', 'reverse']:
@@ -75,9 +75,23 @@ def get_clipped_read_distance(ibam, chrName, outFile):
     stop_pos = chrLen
     # print(chrLen)
 
-    iter = bamfile.fetch(chrName, start_pos, stop_pos, multiple_iterators=True)
+    iter = bamfile.fetch(chrName, start_pos, stop_pos)
 
-    for read in iter:
+    i = 0
+    n_r = 10 ** 6
+    # print(n_r)
+    last_t = time()
+    # print(type(last_t))
+    for i, read in enumerate(iter, start=1):
+
+        if not i % n_r:
+            now_t = time()
+            # print(type(now_t))
+            logging.info("%d alignments processed (%f alignments / s)" % (
+                i,
+                n_r / (now_t - last_t)))
+            last_t = time()
+
         if not read.is_unmapped and not read.mate_is_unmapped:
             # mate = fun.get_read_mate(read, bamfile)
             if read.reference_name == read.next_reference_name:
@@ -92,7 +106,7 @@ def get_clipped_read_distance(ibam, chrName, outFile):
 
     # print(clipped_read_distance)
     # cPickle data persistence
-    with bz2.BZ2File(outFile, 'w') as f:
+    with bz2file.BZ2File(outFile, 'w') as f:
         pickle.dump(clipped_read_distance, f)
 
 
@@ -106,13 +120,24 @@ def main():
                         help="Specify input file (BAM)")
     parser.add_argument('-c', '--chr', type=str, default='17',
                         help="Specify chromosome")
+    parser.add_argument('-r', '--reads', type=str, default='clipped_read_pos.pbz2',
+                        help="Specify clipped read position file")
     parser.add_argument('-o', '--out', type=str, default='clipped_read_distance.pbz2',
                         help="Specify output")
+    parser.add_argument('-l', '--logfile', default='clipped_read_distance.log',
+                        help='File in which to write logs.')
 
     args = parser.parse_args()
 
+    logfilename = args.logfile
+    FORMAT = '%(asctime)s %(message)s'
+    logging.basicConfig(
+        format=FORMAT,
+        filename=logfilename,
+        level=logging.INFO)
+
     t0 = time()
-    get_clipped_read_distance(ibam=args.bam, chrName=args.chr, outFile=args.out)
+    get_clipped_read_distance(ibam=args.bam, chrName=args.chr, clipped_reads=args.reads, outFile=args.out)
     print(time() - t0)
 
 
