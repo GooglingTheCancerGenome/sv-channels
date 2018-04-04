@@ -52,11 +52,14 @@ def get_ch_mtx(coord, bam_class, chromosome, win_left, win_right, current_genome
             all_reads, coord, window_to_each_side, n_reads, window_to_each_side * 2)
 
         # print(str(win_left) + ' ' + str(win_right))
-        clipped_distance_vstack = get_clipped_read_distance(bam_class[element], chromosome,
-                                                            win_left, win_right)
+        clipped_distance_vstack = get_clipped_read_distance_by_direction(bam_class[element], chromosome,
+                                                                         win_left, win_right)
 
         split_distance_vstack = get_split_read_distance(bam_class[element], chromosome,
                                                         win_left, win_right)
+
+        split_reads_vstack = get_split_reads(bam_class[element], chromosome,
+                                             win_left, win_right)
 
         # print(matrix_str_updated)
         # print(matrix_int_left_updated)
@@ -79,6 +82,7 @@ def get_ch_mtx(coord, bam_class, chromosome, win_left, win_right, current_genome
         vstack_all_ch = np.vstack((
             vstack_ch,
             clipped_distance_vstack,
+            split_reads_vstack,
             split_distance_vstack
         ))
 
@@ -239,6 +243,7 @@ def bam_to_channels(info_file, window_to_each_side):
     # Load genome FASTA file
     logging.debug('STARTED:  Loading hg19 FASTA...')
     genome_dict = SeqIO.to_dict(SeqIO.parse(hg19_fasta_file, "fasta"))
+    #genome = twobit.TwoBitFile('/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/genomes/hg19.2bit')
     logging.debug('FINISHED:  Loaded hg19 FASTA')
 
     # Input files
@@ -260,8 +265,8 @@ def bam_to_channels(info_file, window_to_each_side):
 
     rg = map(str, range(6, 20))
     rg.append('X')
-    # for chr in genome_dict.keys():
-    for chr in rg:
+    for chr in genome_dict.keys():
+    #for chr in rg:
         logging.debug('Running chr: %s', str(chr))
 
         output_pickle = 'clipped_pos_' + chr + '.pkl'
@@ -272,11 +277,11 @@ def bam_to_channels(info_file, window_to_each_side):
             logging.debug('FINISHED: Extract CR positions from BAM file')
             # cPickle data persistence
             outfile_pickle = open(output_pickle, 'wb')
-            cPickle.dump(clipped_pos, outfile_pickle)
+            pickle.dump(clipped_pos, outfile_pickle)
             outfile_pickle.close()
         else:
             infile_pickle = open(output_pickle, 'rb')
-            clipped_pos = cPickle.load(infile_pickle)
+            clipped_pos = pickle.load(infile_pickle)
             infile_pickle.close()
 
         logging.debug('Number of clipped positions on chr %s: %d', chr, len(clipped_pos))

@@ -7,6 +7,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cProfile
 from subprocess import call, Popen
+from Bio import SeqIO
+import twobitreader as twobit
+import pickle
 
 # DEBUG printing
 FORMAT = '%(asctime)s %(message)s'
@@ -19,7 +22,7 @@ logging.basicConfig(format=FORMAT, stream=sys.stderr,
 # run(cmd0 +'&&' + cmd, shell=True)
 
 #HPE mode on?
-HPC_MODE = False
+HPC_MODE = True
 # Is it generating the training set?
 TRAINING_MODE = True
 # Write INFO file?
@@ -508,7 +511,8 @@ def channels_12_vstacker(matrix_str_updated, matrix_int_left_updated, matrix_int
     # print(clipped_rds_right_channel)
 
     vstack_12_channels = np.array(
-        np.vstack((exact_matches_channel, coverage_channel, clipped_rds_left_channel, clipped_rds_right_channel)),
+        #np.vstack((exact_matches_channel, coverage_channel, clipped_rds_left_channel, clipped_rds_right_channel)),
+        np.vstack((coverage_channel, clipped_rds_left_channel, clipped_rds_right_channel)),
         dtype=int)
     # print(vstack_12_channels)
 
@@ -760,6 +764,73 @@ def get_clipped_read_distance(bamfile, chr, start, end):
                       #reverse_non_clipped_2_non_clipped_var
                       ))
 
+# Get distance between clipped/non-clipped reads and clipped/non-clipped mates
+def get_clipped_read_distance_by_direction(bamfile, chr, start, end):
+    '''
+
+    Returns a vstack with four vectors of window length.
+    THe distance between a clipped/non-clipped read and its clipped/non-clipped mate is summed up for the reads clipped
+    (or starting, if not clipped) at a specific position, converted to window position. This is done for forward and
+    reverse reads, and left/right clipped reads, resulting in four vectors
+
+    :param bamfile: BAM alignment file that contains the aligned reads
+    :param chr: chromosome for the window
+    :param start: start of the window
+    :param end: end of the window
+    :return: vstack with eight vectors of clipped/non-clipped distances
+    '''
+
+    win_len = abs(end-start)
+    #print(win_len)
+
+    distance = dict()
+    dist_sum = dict()
+    for orientation in ['forward', 'reverse']:
+        distance[orientation] = dict()
+        dist_sum[orientation] = dict()
+        for direction in ['left', 'right']:
+            distance[orientation][direction] = [[] for i in range(win_len)]
+            dist_sum[orientation][direction] = np.zeros(win_len, dtype=int)
+
+    samfile = pysam.AlignmentFile(bamfile, "r")
+    iter = samfile.fetch(str(chr), start, end)
+
+    for read in iter:
+        if not read.is_unmapped and not read.mate_is_unmapped and read.reference_start >= start:
+            if read is not None:
+                if read.reference_name == read.next_reference_name:
+                    d = abs(read.reference_start - read.next_reference_start)
+
+                    if not read.is_reverse and read.mate_is_reverse \
+                            and read.reference_start <= read.next_reference_start:
+                        if is_left_clipped(read):
+                            if 0 <= (read.get_reference_positions()[0] - start) < win_len:
+                                distance['forward']['left'][read.get_reference_positions()[0]-start].append(d)
+                        elif is_right_clipped(read):
+                            if 0 <= (read.get_reference_positions()[-1] - start) < win_len:
+                                distance['forward']['right'][read.get_reference_positions()[-1]-start].append(d)
+
+                    elif read.is_reverse and not read.mate_is_reverse \
+                            and read.reference_start >= read.next_reference_start:
+                        if is_left_clipped(read):
+                            if 0 <= (read.get_reference_positions()[0] - start) < win_len:
+                                distance['reverse']['left'][read.get_reference_positions()[0] - start].append(d)
+                        elif is_right_clipped(read):
+                            if 0 <= (read.get_reference_positions()[-1] - start) < win_len:
+                                distance['reverse']['right'][read.get_reference_positions()[-1] - start].append(d)
+
+    for i in range(win_len):
+        for orientation in ['forward', 'reverse']:
+            for direction in ['left', 'right']:
+                if len(distance['forward']['left'][i]) != 0:
+                    dist_sum['reverse']['right'][i] = sum(distance['reverse']['right'][i])
+
+    return np.vstack((dist_sum['forward']['left'],
+                      dist_sum['forward']['right'],
+                      dist_sum['reverse']['left'],
+                      dist_sum['reverse']['right'],
+                      ))
+
 
 def get_split_read_distance(bamfile, chr, start, end):
     '''
@@ -821,6 +892,46 @@ def get_split_read_distance(bamfile, chr, start, end):
         right_split_sum
         #left_split_var,
         #right_split_var
+    ))
+
+def get_split_reads(bamfile, chr, start, end):
+    '''
+    Returns a vstack with two vectors of window length: left_split and right_split
+    The vector left_split contains the number of split reads that are split on the left.
+    Similarly, the vector right_split contains the number of split reads that are split on the right.
+
+    :param bamfile: BAM alignment file that contains the aligned reads
+    :param chr: chromosome for the window
+    :param start: start of the window
+    :param end: end of the window
+    :return: vstack with vectors left_split and right_split
+    '''
+
+    win_len = abs(end-start)
+    #print(win_len)
+
+    right_split = np.zeros(win_len, dtype=int)
+    left_split = np.zeros(win_len, dtype=int)
+
+    samfile = pysam.AlignmentFile(bamfile, "r")
+    iter = samfile.fetch(str(chr), start, end)
+
+    for read in iter:
+        if not read.is_unmapped and not read.mate_is_unmapped: # and read.reference_start >= start:
+            if is_left_clipped(read) and read.has_tag('SA'):
+                chr, pos = get_suppl_aln(read)
+                if chr == read.reference_name and 0 <= (read.get_reference_positions()[0] - start) < win_len:
+                    win_pos = read.get_reference_positions()[0] - start
+                    left_split[win_pos] += 1
+            elif is_right_clipped(read) and read.has_tag('SA'):
+                chr, pos = get_suppl_aln(read)
+                if chr == read.reference_name and 0 <= (read.get_reference_positions()[-1] - start) < win_len:
+                    win_pos = read.get_reference_positions()[-1] - start
+                    right_split[win_pos] += 1
+
+    return np.vstack((
+        left_split,
+        right_split
     ))
 
 

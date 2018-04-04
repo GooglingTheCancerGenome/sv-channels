@@ -43,6 +43,10 @@ def get_split_read_distance(ibam, chrName, outFile):
     for split_direction in ['left', 'right']:
         split_read_distance[split_direction] = dict()
 
+    split_reads = dict()
+    for split_direction in ['left', 'right']:
+        split_reads[split_direction] = dict()
+
     bamfile = pysam.AlignmentFile(ibam, "rb")
     header_dict = bamfile.header
 
@@ -81,6 +85,10 @@ def get_split_read_distance(ibam, chrName, outFile):
                             split_read_distance['left'][pos] = [abs(refpos - pos)]
                         else:
                             split_read_distance['left'][pos].append(abs(refpos - pos))
+                        if pos not in split_reads['left'].keys():
+                            split_reads['left'][pos] = 1
+                        else:
+                            split_reads['left'][pos] += 1
                 if is_right_clipped(read):
                     chr, pos = get_suppl_aln(read)
                     if chr == read.reference_name:
@@ -91,11 +99,15 @@ def get_split_read_distance(ibam, chrName, outFile):
                             split_read_distance['right'][pos] = [abs(pos - refpos)]
                         else:
                             split_read_distance['right'][pos].append(abs(pos - refpos))
+                        if pos not in split_reads['right'].keys():
+                            split_reads['right'][pos] = 1
+                        else:
+                            split_reads['right'][pos] += 1
 
     # print(split_read_distance)
     # cPickle data persistence
     with bz2file.BZ2File(outFile, 'w') as f:
-        pickle.dump(split_read_distance, f)
+        pickle.dump((split_read_distance, split_reads), f)
 
 
 def main():

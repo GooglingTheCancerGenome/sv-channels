@@ -54,11 +54,11 @@ def get_clipped_read_positions(ibam, chrName, outFile):
             # assert read.reference_name in clipped_pos.keys()
             # assert read.cigartuples[0][0] in [4, 5] or read.cigartuples[-1][0] in [4, 5]
             if fun.is_left_clipped(read):
-                add_clipped_read(read)
+                # add_clipped_read(read)
                 cpos = read.get_reference_positions()[0] + 1
                 clipped_pos.append(cpos)
             if fun.is_right_clipped(read):
-                add_clipped_read(read)
+                # add_clipped_read(read)
                 cpos = read.get_reference_positions()[-1] + 1
                 clipped_pos.append(cpos)
 
@@ -68,9 +68,13 @@ def get_clipped_read_positions(ibam, chrName, outFile):
     clipped_pos_cnt = Counter(clipped_pos)
 
     # cPickle data persistence
+    outFile_base = os.path.splitext(os.path.basename(outFile))[0]
     with bz2file.BZ2File(outFile, 'wb') as f:
         # obj = (clipped_pos_cnt, clipped_read_1, clipped_read_2)
-        pickle.dump((clipped_pos_cnt, clipped_read_1, clipped_read_2), f)
+        pickle.dump(clipped_pos_cnt, f)
+    #with bz2file.BZ2File(outFile_base + '_cr.pbz2', 'wb') as f:
+        # obj = (clipped_pos_cnt, clipped_read_1, clipped_read_2)
+    #    pickle.dump((clipped_read_1, clipped_read_2), f)
 
 
 def main():

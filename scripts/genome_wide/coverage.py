@@ -4,9 +4,9 @@ import bz2file
 import pickle
 from time import time
 import logging
+import numpy as np
 
 def get_coverage(ibam, chrName, outFile):
-    cov = []
 
     bamfile = pysam.AlignmentFile(ibam, "rb")
     header_dict = bamfile.header
@@ -15,6 +15,7 @@ def get_coverage(ibam, chrName, outFile):
 
     start_pos = 0
     stop_pos = chrLen
+    cov = dict()
 
     i = 0
     n_r = 10 ** 6
@@ -31,12 +32,14 @@ def get_coverage(ibam, chrName, outFile):
                 i,
                 n_r / (now_t - last_t)))
             last_t = time()
+        #print('Pos: %d, Cov: %d' % (pile.pos, pile.n))
+        cov[pile.pos] = pile.n
 
-        while pile.pos != start_pos:
-            cov.append(0)
-            start_pos = start_pos + 1
-        cov.append(pile.n)
-        start_pos = start_pos + 1
+        #while pile.pos != start_pos:
+        #    cov.append(0)
+        #    start_pos = start_pos + 1
+        #cov.append(pile.n)
+        #start_pos = start_pos + 1
 
     # cPickle data persistence
 
