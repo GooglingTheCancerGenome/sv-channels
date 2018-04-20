@@ -53,13 +53,20 @@ def get_clipped_read_positions(ibam, chrName, outFile):
         if (not read.is_unmapped) and (not read.mate_is_unmapped) and len(read.get_reference_positions()) > 0:
             # assert read.reference_name in clipped_pos.keys()
             # assert read.cigartuples[0][0] in [4, 5] or read.cigartuples[-1][0] in [4, 5]
+            # get_reference_positions is 0-based
             if fun.is_left_clipped(read):
                 # add_clipped_read(read)
-                cpos = read.get_reference_positions()[0] + 1
+                # print("Left clipped")
+                # print(read)
+                # print(read.get_reference_positions()[0])
+                cpos = read.reference_start
                 clipped_pos.append(cpos)
             if fun.is_right_clipped(read):
                 # add_clipped_read(read)
-                cpos = read.get_reference_positions()[-1] + 1
+                # print("Right clipped")
+                # print(read)
+                # print(read.get_reference_positions()[-1])
+                cpos = read.reference_end + 1
                 clipped_pos.append(cpos)
 
     #clipped_pos = list(set(clipped_pos))
@@ -80,6 +87,9 @@ def get_clipped_read_positions(ibam, chrName, outFile):
 def main():
     wd = "/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/SURVIVOR-master/Debug/"
     inputBAM = wd + "reads_chr17_SURV10kDEL_INS_Germline2_Somatic1_mapped/GS/mapping/" + "GS_dedup.subsampledto30x.cr.bam"
+
+    #wd = "/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_indel/"
+    #inputBAM = wd + "BAM/S1_dedup.bam"
 
     parser = argparse.ArgumentParser(description='Get clipped reads positions')
     parser.add_argument('-b', '--bam', type=str,

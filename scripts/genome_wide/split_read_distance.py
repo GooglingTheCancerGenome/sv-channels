@@ -80,7 +80,7 @@ def get_split_read_distance(ibam, chrName, outFile):
                     if chr == read.reference_name:
                         # print('Left split')
                         # print(str(read))
-                        refpos = read.get_reference_positions()[0]
+                        refpos = read.reference_start
                         if pos not in split_read_distance['left'].keys():
                             split_read_distance['left'][pos] = [abs(refpos - pos)]
                         else:
@@ -94,7 +94,7 @@ def get_split_read_distance(ibam, chrName, outFile):
                     if chr == read.reference_name:
                         # print('Right split')
                         # print(str(read))
-                        refpos = read.get_reference_positions()[-1]
+                        refpos = read.reference_end + 1
                         if pos not in split_read_distance['right'].keys():
                             split_read_distance['right'][pos] = [abs(pos - refpos)]
                         else:

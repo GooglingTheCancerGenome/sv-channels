@@ -1,4 +1,5 @@
 import argparse
+import numpy as np
 import pysam
 import bz2file
 import pickle
@@ -16,6 +17,11 @@ def get_clipped_read_distance(ibam, chrName, clipped_reads, outFile):
         clipped_pos_cnt, clipped_read_1, clipped_read_2 = pickle.load(f)
     logging.info("Loaded")
     '''
+
+    bamfile = pysam.AlignmentFile(ibam, "rb")
+    header_dict = bamfile.header
+
+    chrLen = [i['LN'] for i in header_dict['SQ'] if i['SN'] == chrName][0]
 
     clipped_read_distance = dict()
     for direction in ['forward', 'reverse']:
@@ -87,11 +93,6 @@ def get_clipped_read_distance(ibam, chrName, clipped_reads, outFile):
                 else:
                     clipped_read_distance[direction]['nc2nc'][read.reference_start].append(d)
         '''
-
-    bamfile = pysam.AlignmentFile(ibam, "rb")
-    header_dict = bamfile.header
-
-    chrLen = [i['LN'] for i in header_dict['SQ'] if i['SN'] == chrName][0]
 
     start_pos = 0
     stop_pos = chrLen

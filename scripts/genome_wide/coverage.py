@@ -15,7 +15,7 @@ def get_coverage(ibam, chrName, outFile):
 
     start_pos = 0
     stop_pos = chrLen
-    cov = dict()
+    cov = np.zeros(chrLen, dtype=int)
 
     i = 0
     n_r = 10 ** 6
@@ -33,7 +33,10 @@ def get_coverage(ibam, chrName, outFile):
                 n_r / (now_t - last_t)))
             last_t = time()
         #print('Pos: %d, Cov: %d' % (pile.pos, pile.n))
-        cov[pile.pos] = pile.n
+        try:
+            cov[pile.pos] = pile.n
+        except MemoryError:
+            logging.info("Out of memory for chr %s and BAM file %s !" % (chrName, ibam))
 
         #while pile.pos != start_pos:
         #    cov.append(0)
@@ -44,7 +47,10 @@ def get_coverage(ibam, chrName, outFile):
     # cPickle data persistence
 
     with bz2file.BZ2File(outFile, 'w') as f:
-        pickle.dump(cov, f)
+        try:
+            np.save(file=f, arr=cov)
+        except MemoryError:
+            logging.info("Out of memory for chr %s and BAM file %s !" % (chrName, ibam))
 
 
 def main():
@@ -57,7 +63,7 @@ def main():
                         help="Specify input file (BAM)")
     parser.add_argument('-c', '--chr', type=str, default='17',
                         help="Specify chromosome")
-    parser.add_argument('-o', '--out', type=str, default='coverage.pbz2',
+    parser.add_argument('-o', '--out', type=str, default='coverage.npy.bz2',
                         help="Specify output")
     parser.add_argument('-l', '--logfile', default='coverage.log',
                         help='File in which to write logs.')
