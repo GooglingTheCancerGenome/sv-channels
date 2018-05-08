@@ -1,3 +1,4 @@
+# Imports
 import argparse
 import logging
 import os
@@ -5,44 +6,52 @@ import pickle
 import bz2file
 from collections import Counter
 from time import time
-
 import pysam
-
 import functions as fun
 
 
 def get_clipped_read_positions(ibam, chrName, outFile):
+    '''
+    
+    :param ibam: input BAM alignment file
+    :param chrName: chromosome name to consider
+    :param outFile: output file for the dictionary of clipped read positions
+    :return: None. Outputs a dictionary with the positions of clipped read positions as keys and
+    the number of clipped reads per position as values
+    '''''
 
+    # Check if the BAM file in input exists
     assert os.path.isfile(ibam)
 
+    # Minimum read mapping quality to consider
+    minMAPQ = 30
+
+    # Load the BAM file
     bamfile = pysam.AlignmentFile(ibam, "rb")
+    # Extract the header
     header_dict = bamfile.header
-
-    clipped_pos = []
-    clipped_read_1 = set()
-    clipped_read_2 = set()
-
-    def add_clipped_read(read):
-        if read.is_read1:
-            clipped_read_1.add(read.query_name)
-        if read.is_read2:
-            clipped_read_2.add(read.query_name)
-
+    # Get the chromosome length from the header
     chrLen = [i['LN'] for i in header_dict['SQ'] if i['SN'] == chrName][0]
 
+    # List to store the clipped read positions
+    clipped_pos = []
+
+    # Fetch reads over the entire chromosome between positions [0, chrLen]
     start_pos = 0
     stop_pos = chrLen
-
+    # Pysam iterator to fetch the reads
     iter = bamfile.fetch(chrName, start_pos, stop_pos)
 
-    i = 0
+    # Print every n_r alignments processed
     n_r = 10 ** 6
-    # print(n_r)
+    # Record the current time
     last_t = time()
-    # print(type(last_t))
+
     for i, read in enumerate(iter, start=1):
 
+        # Every n_r alignments, write log informations
         if not i % n_r:
+            # Record the current time
             now_t = time()
             # print(type(now_t))
             logging.info("%d alignments processed (%f alignments / s)" % (
@@ -50,47 +59,36 @@ def get_clipped_read_positions(ibam, chrName, outFile):
                 n_r / (now_t - last_t)))
             last_t = time()
 
-        if (not read.is_unmapped) and (not read.mate_is_unmapped) and len(read.get_reference_positions()) > 0:
-            # assert read.reference_name in clipped_pos.keys()
-            # assert read.cigartuples[0][0] in [4, 5] or read.cigartuples[-1][0] in [4, 5]
-            # get_reference_positions is 0-based
+        # Both read and mate should be mapped, read should have a minimum mapping quality
+        if (not read.is_unmapped) and (not read.mate_is_unmapped) and read.mapping_quality >= minMAPQ:
             if fun.is_left_clipped(read):
-                # add_clipped_read(read)
-                # print("Left clipped")
-                # print(read)
-                # print(read.get_reference_positions()[0])
+                # read.reference_start is the 1-based start position of the read mapped on the reference genome
                 cpos = read.reference_start
                 clipped_pos.append(cpos)
             if fun.is_right_clipped(read):
-                # add_clipped_read(read)
-                # print("Right clipped")
-                # print(read)
-                # print(read.get_reference_positions()[-1])
+                # read.reference_end is the 0-based end position of the read mapped on the reference genome
                 cpos = read.reference_end + 1
                 clipped_pos.append(cpos)
 
-    #clipped_pos = list(set(clipped_pos))
+    # Close the BAM file
     bamfile.close()
 
+    # Count the number of clipped reads per position
     clipped_pos_cnt = Counter(clipped_pos)
 
-    # cPickle data persistence
-    outFile_base = os.path.splitext(os.path.basename(outFile))[0]
+    # Write the output in pickle format
     with bz2file.BZ2File(outFile, 'wb') as f:
-        # obj = (clipped_pos_cnt, clipped_read_1, clipped_read_2)
         pickle.dump(clipped_pos_cnt, f)
-    #with bz2file.BZ2File(outFile_base + '_cr.pbz2', 'wb') as f:
-        # obj = (clipped_pos_cnt, clipped_read_1, clipped_read_2)
-    #    pickle.dump((clipped_read_1, clipped_read_2), f)
 
 
 def main():
-    wd = "/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/SURVIVOR-master/Debug/"
-    inputBAM = wd + "reads_chr17_SURV10kDEL_INS_Germline2_Somatic1_mapped/GS/mapping/" + "GS_dedup.subsampledto30x.cr.bam"
 
-    #wd = "/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_indel/"
-    #inputBAM = wd + "BAM/S1_dedup.bam"
+    # Default BAM file for testing
+    wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
+    inputBAM = wd + "T0_dedup.bam"
+    # Default chromosome is 17 for the artificial data
 
+    # Parse the arguments of the script
     parser = argparse.ArgumentParser(description='Get clipped reads positions')
     parser.add_argument('-b', '--bam', type=str,
                         default=inputBAM,
@@ -104,6 +102,7 @@ def main():
 
     args = parser.parse_args()
 
+    # Log file
     logfilename = args.logfile
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(
@@ -113,7 +112,7 @@ def main():
 
     t0 = time()
     get_clipped_read_positions(ibam=args.bam, chrName=args.chr, outFile=args.out)
-    print(time() - t0)
+    print('Time: clipped read positions on BAM %s and Chr %s: %f' % (args.bam, args.chr, (time() - t0)))
 
 
 if __name__ == '__main__':

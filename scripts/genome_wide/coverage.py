@@ -1,28 +1,40 @@
+# Imports
+
 import argparse
 import pysam
 import bz2file
-import pickle
 from time import time
 import logging
 import numpy as np
 
 def get_coverage(ibam, chrName, outFile):
+    '''
+    This function fills the coverage array for the chromosome
+    :param ibam: input BAM alignment file
+    :param chrName: chromosome name to consider
+    :param outFile: output file for the coverage array
+    :return: None
+    '''
 
+    # Open BAM file
     bamfile = pysam.AlignmentFile(ibam, "rb")
+    # Get chromosome length from BAM header
     header_dict = bamfile.header
-
     chrLen = [i['LN'] for i in header_dict['SQ'] if i['SN'] == chrName][0]
 
     start_pos = 0
     stop_pos = chrLen
+
+    # Numpy array to store the coverage
     cov = np.zeros(chrLen, dtype=int)
 
-    i = 0
+    # Log information every n_r base pair positions
     n_r = 10 ** 6
     # print(n_r)
     last_t = time()
     # print(type(last_t))
 
+    # Iterate over the chromosome positions
     for i, pile in enumerate(bamfile.pileup(chrName, start_pos, stop_pos, truncate=True), start=1):
 
         if not i % n_r:
@@ -38,14 +50,7 @@ def get_coverage(ibam, chrName, outFile):
         except MemoryError:
             logging.info("Out of memory for chr %s and BAM file %s !" % (chrName, ibam))
 
-        #while pile.pos != start_pos:
-        #    cov.append(0)
-        #    start_pos = start_pos + 1
-        #cov.append(pile.n)
-        #start_pos = start_pos + 1
-
-    # cPickle data persistence
-
+    # Save coverage numpy array
     with bz2file.BZ2File(outFile, 'w') as f:
         try:
             np.save(file=f, arr=cov)
@@ -54,8 +59,11 @@ def get_coverage(ibam, chrName, outFile):
 
 
 def main():
-    wd = "/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/SURVIVOR-master/Debug/"
-    inputBAM = wd + "reads_chr17_SURV10kDEL_INS_Germline2_Somatic1_mapped/GS/mapping/" + "GS_dedup.subsampledto30x.bam"
+
+    # Default BAM file for testing
+    wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
+    inputBAM = wd + "T0_dedup.bam"
+    # Default chromosome is 17 for the artificial data
 
     parser = argparse.ArgumentParser(description='Create coverage channel')
     parser.add_argument('-b', '--bam', type=str,
@@ -79,7 +87,7 @@ def main():
 
     t0 = time()
     get_coverage(ibam=args.bam, chrName=args.chr, outFile=args.out)
-    print(time() - t0)
+    print('Time: coverage on BAM %s and Chr %s: %f' % (args.bam, args.chr, (time() - t0)))
 
 
 if __name__ == '__main__':

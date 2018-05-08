@@ -1,3 +1,12 @@
+'''
+
+This file contains the functions to compute the channel for the exact coverage. In the current implementation of
+ChannelMaker, the exact coverage was discarded because considered unnecessary, given that the coverage channel is
+already present. Computing the exact coverage requires too much time.
+
+'''
+
+#Imports
 import argparse
 import pysam
 import bz2file
@@ -9,26 +18,42 @@ import logging
 
 
 def get_exact_coverage(ibam, chrName, outFile):
+    '''
 
-    genome = twobit.TwoBitFile('/Users/lsantuari/Documents/Data/GiaB/reference/hg19.2bit')
-    # genome = twobit.TwoBitFile('/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/genomes/hg19.2bit')
+        :param ibam: input BAM alignment file
+        :param chrName: chromosome name to consider
+        :param outFile: output file with the list containing the exact coverage per chromosome position. Exact coverage
+        is the number of bases mapped in a certain position that are equal to the reference base.
+        :return: None. It only writes the exact coverage in the output file
+    '''
 
+    # Path on the local machine of the 2bit version of the human reference genome (hg19)
+    # genome = twobit.TwoBitFile('/Users/lsantuari/Documents/Data/GiaB/reference/hg19.2bit')
+    # Path on the HPC of the 2bit version of the human reference genome (hg19)
+    genome = twobit.TwoBitFile('/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/genomes/hg19.2bit')
+
+    # List used to store the exact coverage
     cov = []
 
+    # Load the BAM file
     bamfile = pysam.AlignmentFile(ibam, "rb")
+    # Extract the header
     header_dict = bamfile.header
-
+    # Get the chromosome length from the header
     chrLen = [i['LN'] for i in header_dict['SQ'] if i['SN'] == chrName][0]
 
+    # Fetch reads over the entire chromosome between positions [0, chrLen]
     start_pos = 0
     stop_pos = chrLen
     # print(chrLen)
 
+    # Print every n_r alignments processed
     n_r = 10 ** 6
     # print(n_r)
+    # Record the current time
     last_t = time()
-    # print(type(last_t))
 
+    # Iterate over the chromosome positions
     for i, pile in enumerate(bamfile.pileup(chrName, start_pos, stop_pos, truncate=True), start=1):
 
         if not i % n_r:
@@ -43,6 +68,7 @@ def get_exact_coverage(ibam, chrName, outFile):
             cov.append(0)
             start_pos = start_pos + 1
 
+        # Calculate exact coverage
         excov = Counter([pileupread.alignment.query_sequence[pileupread.query_position]
                          for pileupread in pile.pileups if not pileupread.is_del and not pileupread.is_refskip
                          ])[genome['chr' + chrName][pile.pos].upper()]
@@ -50,14 +76,16 @@ def get_exact_coverage(ibam, chrName, outFile):
 
         start_pos = start_pos + 1
 
-    # cPickle data persistence
+    # Save the exact coverage list
     with bz2file.BZ2File(outFile, 'w') as f:
         pickle.dump(cov, f)
 
 
 def main():
-    wd = "/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/SURVIVOR-master/Debug/"
-    inputBAM = wd + "reads_chr17_SURV10kDEL_INS_Germline2_Somatic1_mapped/GS/mapping/" + "GS_dedup.subsampledto30x.bam"
+
+    # Default BAM file for testing
+    wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
+    inputBAM = wd + "T0_dedup.bam"
 
     parser = argparse.ArgumentParser(description='Create exact coverage channel')
     parser.add_argument('-b', '--bam', type=str,
@@ -80,6 +108,7 @@ def main():
         level=logging.INFO)
 
     t0 = time()
+    # Compute the exact coverage
     get_exact_coverage(ibam=args.bam, chrName=args.chr, outFile=args.out)
     print(time() - t0)
 

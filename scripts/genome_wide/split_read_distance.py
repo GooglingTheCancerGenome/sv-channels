@@ -1,3 +1,4 @@
+# Imports
 import argparse
 import pysam
 import bz2file
@@ -5,7 +6,7 @@ import pickle
 from time import time
 import logging
 
-# Return if a read is clipped on the left
+# Return if a read is soft/hard-clipped on the left
 def is_left_clipped(read):
     if read.cigartuples is not None:
         if read.cigartuples[0][0] in [4, 5]:
@@ -13,7 +14,7 @@ def is_left_clipped(read):
     return False
 
 
-# Return if a read is clipped on the right
+# Return if a read is soft/hard-clipped on the right
 def is_right_clipped(read):
     if read.cigartuples is not None:
         if read.cigartuples[-1][0] in [4, 5]:
@@ -23,7 +24,12 @@ def is_right_clipped(read):
 
 # Return chromosome and starting position of a supplementary alignment (split reads)
 def get_suppl_aln(read):
-
+    '''
+    This function returns the chromosome and start position of the first supplementary alignment ('SA' tag) for a read.
+    :param read: read object of the class pysam.AlignedSegment
+    :return: a tuple with chromosome and start position of the first supplementary alignment. None if there are no
+    supplementary alignments.
+    '''
     if len(read.get_tag('SA')) > 0:
         # print(read.get_tag('SA'))
         supp_aln = read.get_tag('SA').split(';')[0]
@@ -39,26 +45,33 @@ def get_suppl_aln(read):
 
 def get_split_read_distance(ibam, chrName, outFile):
 
+    # minimum mapping quality to consider
+    minMAPQ = 30
+
+    # Dictionary to store left/right split read distance
     split_read_distance = dict()
     for split_direction in ['left', 'right']:
         split_read_distance[split_direction] = dict()
 
+    # Dictionary to store number of left/right split reads
     split_reads = dict()
     for split_direction in ['left', 'right']:
         split_reads[split_direction] = dict()
 
+    # Load BAM file
     bamfile = pysam.AlignmentFile(ibam, "rb")
+    # Get chromosome length from BAM file
     header_dict = bamfile.header
-
     chrLen = [i['LN'] for i in header_dict['SQ'] if i['SN'] == chrName][0]
 
     start_pos = 0
     stop_pos = chrLen
     # print(chrLen)
 
+    # Fetch reads mapped on the chromosome
     iter = bamfile.fetch(chrName, start_pos, stop_pos)
 
-    i = 0
+    # Log information every n_r reads
     n_r = 10 ** 6
     # print(n_r)
     last_t = time()
@@ -73,10 +86,14 @@ def get_split_read_distance(ibam, chrName, outFile):
                 n_r / (now_t - last_t)))
             last_t = time()
 
-        if not read.is_unmapped and not read.mate_is_unmapped:  # and read.reference_start >= start:
+        # Read and mate should be mapped, read should have a minimum mapping quality
+        if not read.is_unmapped and not read.mate_is_unmapped and read.mapping_quality >= minMAPQ:
+            # Check if the read has a supplementary alignment: is the read a split read?
             if read.has_tag('SA'):
+                # The read is left clipped
                 if is_left_clipped(read):
                     chr, pos = get_suppl_aln(read)
+                    # The read and the supplementary alignment are on the same chromosome
                     if chr == read.reference_name:
                         # print('Left split')
                         # print(str(read))
@@ -89,8 +106,10 @@ def get_split_read_distance(ibam, chrName, outFile):
                             split_reads['left'][pos] = 1
                         else:
                             split_reads['left'][pos] += 1
+                # The read is right clipped
                 if is_right_clipped(read):
                     chr, pos = get_suppl_aln(read)
+                    # The read and the supplementary alignment are on the same chromosome
                     if chr == read.reference_name:
                         # print('Right split')
                         # print(str(read))
@@ -104,15 +123,17 @@ def get_split_read_distance(ibam, chrName, outFile):
                         else:
                             split_reads['right'][pos] += 1
 
-    # print(split_read_distance)
-    # cPickle data persistence
+
+    # Save two dictionaries: split_read_distance and split_reads
     with bz2file.BZ2File(outFile, 'w') as f:
         pickle.dump((split_read_distance, split_reads), f)
 
 
 def main():
-    wd = "/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/SURVIVOR-master/Debug/"
-    inputBAM = wd + "reads_chr17_SURV10kDEL_INS_Germline2_Somatic1_mapped/GS/mapping/" + "GS_dedup.subsampledto30x.bam"
+
+    # Default BAM file for testing
+    wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
+    inputBAM = wd + "T0_dedup.bam"
 
     parser = argparse.ArgumentParser(description='Create channels with split read distance for left/right split reads')
     parser.add_argument('-b', '--bam', type=str,

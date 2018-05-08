@@ -69,6 +69,7 @@ def get_ch_mtx(coord, bam_class, chromosome, win_left, win_right, current_genome
         vstack_ch = channels_12_vstacker(matrix_str_updated, matrix_int_left_updated,
                                          matrix_int_right_updated, current_genome_reference)
 
+        #print(vstack_ch)
         # for i in range(len(clipped_distance_vstack)):
         #    print(clipped_distance_vstack[i])
 
@@ -86,6 +87,8 @@ def get_ch_mtx(coord, bam_class, chromosome, win_left, win_right, current_genome
             split_distance_vstack
         ))
 
+        # print(vstack_all_ch)
+
         # for i in range(len(vstack_all_ch)):
         #    print(vstack_all_ch[i])
 
@@ -93,6 +96,8 @@ def get_ch_mtx(coord, bam_class, chromosome, win_left, win_right, current_genome
 
     vstack_with_GC = vstack_12_channel_pairer_plus_GC_chanel_fcn(
         vstack_pair[0], vstack_pair[1], GC_content)
+
+    print(vstack_with_GC.shape)
 
     return vstack_with_GC
 

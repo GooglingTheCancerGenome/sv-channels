@@ -22,7 +22,7 @@ logging.basicConfig(format=FORMAT, stream=sys.stderr,
 # run(cmd0 +'&&' + cmd, shell=True)
 
 #HPE mode on?
-HPC_MODE = True
+HPC_MODE = False
 # Is it generating the training set?
 TRAINING_MODE = True
 # Write INFO file?
@@ -231,6 +231,7 @@ def current_reference_fcn(current_line_on_reference, left, right):
 
 
 def make_matrix(number_of_reads_in_window_total, full_window_length):
+    # The following line generates an issue yet to be fixed in Python 3, see function get_coverage
     matrix_str = np.array(np.zeros((number_of_reads_in_window_total, full_window_length)), dtype='|S1')
     matrix_int_left_clip = np.zeros((number_of_reads_in_window_total, full_window_length))
     matrix_int_right_clip = np.zeros((number_of_reads_in_window_total, full_window_length))
@@ -454,6 +455,7 @@ def exact_matches_channel_fcn(matrix_str_updated, current_ref):
 
 def get_coverage(position, matrix_str_updated):
     matrix_str_updated_transpose = matrix_str_updated.transpose()
+
     coverage = len(np.where(matrix_str_updated_transpose[position] != '0')[0])
 
     return coverage

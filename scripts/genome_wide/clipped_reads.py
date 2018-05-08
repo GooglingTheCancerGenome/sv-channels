@@ -1,3 +1,5 @@
+# Imports
+
 import argparse
 import pysam
 import bz2file
@@ -21,25 +23,40 @@ def is_right_clipped(read):
 
 
 def get_clipped_reads(ibam, chrName, outFile):
+    '''
 
+    :param ibam: input BAM alignment file
+    :param chrName: chromosome name to consider
+    :param outFile: output file for the dictionary of clipped reads
+    :return: None
+    '''
+
+    # Check if the BAM file in input exists
+    assert os.path.isfile(ibam)
+
+    # Minimum read mapping quality to consider
+    minMAPQ = 30
+
+    # Dictionary to store number of clipped reads per position
     clipped_reads = dict()
+    # For left- and right-clipped reads
     for split_direction in ['left', 'right']:
         clipped_reads[split_direction] = dict()
 
+    # Open BAM file
     bamfile = pysam.AlignmentFile(ibam, "rb")
+    # Get chromosome length from the BAM header
     header_dict = bamfile.header
-
-    # print([i['LN'] for i in header_dict['SQ'] if i['SN']])
-    # print([i['SN'] for i in header_dict['SQ'] if i['SN']])
     chrLen = [i['LN'] for i in header_dict['SQ'] if i['SN'] == chrName][0]
 
+    # Consider all the chromosome: interval [0, chrLen]
     start_pos = 0
     stop_pos = chrLen
-    # print(chrLen)
 
+    # Fetch the reads mapped on the chromosome
     iter = bamfile.fetch(chrName, start_pos, stop_pos)
 
-    i = 0
+    # Log information every n_r reads
     n_r = 10**6
     #print(n_r)
     last_t = time()
@@ -54,7 +71,9 @@ def get_clipped_reads(ibam, chrName, outFile):
                 n_r / (now_t - last_t)))
             last_t = time()
 
-        if not read.is_unmapped and not read.mate_is_unmapped:
+        # Both read and mate should be mapped
+        if not read.is_unmapped and not read.mate_is_unmapped and read.mapping_quality >= minMAPQ:
+            # Read is left-clipped
             if is_left_clipped(read):
                 # print(str(read))
                 # print('Clipped at the start: %s -> %s' % (str(read.cigarstring), str(read.cigartuples)))
@@ -65,6 +84,7 @@ def get_clipped_reads(ibam, chrName, outFile):
                     clipped_reads['left'][ref_pos] = 1
                 else:
                     clipped_reads['left'][ref_pos] += 1
+            # Read is right-clipped
             if is_right_clipped(read):
                 # print('Clipped at the end: %s -> %s' % (str(read.cigarstring), str(read.cigartuples)))
                 # print('Pos:%d, clipped_pos:%d' %(read.reference_end, read.get_reference_positions()[-1]))
@@ -75,14 +95,17 @@ def get_clipped_reads(ibam, chrName, outFile):
                 else:
                     clipped_reads['right'][ref_pos] += 1
 
-    # cPickle data persistence
+    # save clipped reads dictionary
     with bz2file.BZ2File(outFile, 'wb') as f:
         pickle.dump(clipped_reads, f)
 
 
 def main():
-    wd = "/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/SURVIVOR-master/Debug/"
-    inputBAM = wd + "reads_chr17_SURV10kDEL_INS_Germline2_Somatic1_mapped/GS/mapping/" + "GS_dedup.subsampledto30x.bam"
+
+    # Default BAM file for testing
+    wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
+    inputBAM = wd + "T0_dedup.bam"
+    # Default chromosome is 17 for the artificial data
 
     parser = argparse.ArgumentParser(description='Create channels with number of left/right clipped reads')
     parser.add_argument('-b', '--bam', type=str,
@@ -106,7 +129,7 @@ def main():
 
     t0 = time()
     get_clipped_reads(ibam=args.bam, chrName=args.chr, outFile=args.out)
-    print(time() - t0)
+    print('Time: clipped reads on BAM %s and Chr %s: %f' % (args.bam, args.chr, (time() - t0)))
 
 
 if __name__ == '__main__':

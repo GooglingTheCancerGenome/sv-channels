@@ -1,5 +1,7 @@
+
+# Imports
+
 import argparse
-import numpy as np
 import pysam
 import bz2file
 import pickle
@@ -8,35 +10,44 @@ import functions as fun
 import logging
 
 
-def get_clipped_read_distance(ibam, chrName, clipped_reads, outFile):
+def get_clipped_read_distance(ibam, chrName, outFile):
 
     '''
-    # Load clipped reads sets
-    logging.info("Loading %s" % clipped_reads)
-    with bz2file.BZ2File(clipped_reads, 'rb') as f:
-        clipped_pos_cnt, clipped_read_1, clipped_read_2 = pickle.load(f)
-    logging.info("Loaded")
+
+    :param ibam: BAM file in input
+    :param chrName: chromosome to consider
+    :param outFile: output file where to store the clipped_read_distance dictionary
+    :return:
     '''
 
+    # Check if the BAM file in input exists
+    assert os.path.isfile(ibam)
+
+    # minimum read mapping quality to consider
+    minMAPQ = 30
+    # open BAM file
     bamfile = pysam.AlignmentFile(ibam, "rb")
+    # get chromosome length from BAM header
     header_dict = bamfile.header
-
     chrLen = [i['LN'] for i in header_dict['SQ'] if i['SN'] == chrName][0]
 
+    # Dictionary with positions as keys and list of clipped read distances as values
     clipped_read_distance = dict()
+    # For clipped reads mapped in the forward and reverse orientation
     for direction in ['forward', 'reverse']:
         clipped_read_distance[direction] = dict()
+        # For left- and right-clipped reads
         for clipped_arrangement in ['left', 'right']:
             clipped_read_distance[direction][clipped_arrangement] = dict()
 
-    #for direction in ['forward', 'reverse']:
-    #    clipped_read_distance[direction] = dict()
-    #for direction in ['forward', 'reverse']:
-    #    for clipped_arrangement in ['c2c', 'nc2c', 'c2nc', 'nc2nc']:
-    #        clipped_read_distance[direction][clipped_arrangement] = dict()
-
     def get_distance(direction, read, dist):
+        '''
 
+        :param direction: forward/reverse read direction
+        :param read: read object of the class pysam.AlignedSegment
+        :param dist: read to mate distance
+        :return: None. Adds dist to the list of distances at a clipped read position for a certain read direction
+        '''
         if fun.is_left_clipped(read):
             pos = read.reference_start
             if pos not in clipped_read_distance[direction]['left'].keys():
@@ -50,56 +61,13 @@ def get_clipped_read_distance(ibam, chrName, clipped_reads, outFile):
             else:
                 clipped_read_distance[direction]['right'][pos].append(dist)
 
-        '''
-        mate_is_clipped = read.is_read1 and read.query_name in clipped_read_2 or \
-                          read.is_read2 and read.query_name in clipped_read_1
-
-        if fun.is_clipped(read) and mate_is_clipped:
-            if fun.is_left_clipped(read):
-                pos = read.get_reference_positions()[0]
-                if pos not in clipped_read_distance[direction]['c2c'].keys():
-                    clipped_read_distance[direction]['c2c'][pos] = [d]
-                else:
-                    clipped_read_distance[direction]['c2c'][pos].append(d)
-            elif fun.is_right_clipped(read):
-                pos = read.get_reference_positions()[-1]
-                if pos not in clipped_read_distance[direction]['c2c'].keys():
-                    clipped_read_distance[direction]['c2c'][pos] = [d]
-                else:
-                    clipped_read_distance[direction]['c2c'][pos].append(d)
-
-        elif fun.is_clipped(read) and not mate_is_clipped:
-            if fun.is_left_clipped(read):
-                pos = read.get_reference_positions()[0]
-                if pos not in clipped_read_distance[direction]['c2nc'].keys():
-                    clipped_read_distance[direction]['c2nc'][pos] = [d]
-                else:
-                    clipped_read_distance[direction]['c2nc'][pos].append(d)
-            elif fun.is_right_clipped(read):
-                pos = read.get_reference_positions()[-1]
-                if pos not in clipped_read_distance[direction]['c2nc'].keys():
-                    clipped_read_distance[direction]['c2nc'][pos] = [d]
-                else:
-                    clipped_read_distance[direction]['c2nc'][pos].append(d)
-        elif not fun.is_clipped(read) and mate_is_clipped:
-            if read.reference_start not in clipped_read_distance[direction]['nc2c'].keys():
-                clipped_read_distance[direction]['nc2c'][read.reference_start] = [d]
-            else:
-                clipped_read_distance[direction]['nc2c'][read.reference_start].append(d)
-        elif not fun.is_clipped(read) and not mate_is_clipped:
-            if read.reference_start not in clipped_read_distance[direction]['nc2nc'].keys():
-                if read.reference_start not in clipped_read_distance[direction]['nc2nc'].keys():
-                    clipped_read_distance[direction]['nc2nc'][read.reference_start] = [d]
-                else:
-                    clipped_read_distance[direction]['nc2nc'][read.reference_start].append(d)
-        '''
-
+    # Consider all the chromosome: interval [0, chrLen]
     start_pos = 0
     stop_pos = chrLen
-    # print(chrLen)
-
+    # Fetch the reads mapped on the chromosome
     iter = bamfile.fetch(chrName, start_pos, stop_pos)
 
+    # Log information every n_r reads
     n_r = 10 ** 6
     # print(n_r)
     last_t = time()
@@ -114,27 +82,33 @@ def get_clipped_read_distance(ibam, chrName, clipped_reads, outFile):
                 n_r / (now_t - last_t)))
             last_t = time()
 
-        if not read.is_unmapped and not read.mate_is_unmapped and len(read.get_reference_positions()) > 0:
-            # mate = fun.get_read_mate(read, bamfile)
+        # Both read and mate should be mapped
+        if not read.is_unmapped and not read.mate_is_unmapped and read.mapping_quality >= minMAPQ:
+            # Read and mate should be mapped on the same chromosome
             if read.reference_name == read.next_reference_name:
+                # Calculate absolute read to mate distance
                 dist = abs(read.reference_start - read.next_reference_start)
-
+                # Read is mapped in forward orientation, mate is in reverse orientation, read is mapped before mate
                 if not read.is_reverse and read.mate_is_reverse and read.reference_start <= read.next_reference_start:
-                    # pass
                     get_distance('forward', read, dist)
+                # Read is mapped in reverse orientation, mate is in forward orientation, read is mapped after mate
                 elif read.is_reverse and not read.mate_is_reverse and read.reference_start >= read.next_reference_start:
-                    # pass
                     get_distance('reverse', read, dist)
 
-    # print(clipped_read_distance)
-    # cPickle data persistence
+    # Save clipped read distance dictionary
     with bz2file.BZ2File(outFile, 'w') as f:
         pickle.dump(clipped_read_distance, f)
 
 
 def main():
-    wd = "/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/SURVIVOR-master/Debug/"
-    inputBAM = wd + "reads_chr17_SURV10kDEL_INS_Germline2_Somatic1_mapped/GS/mapping/" + "GS_dedup.subsampledto30x.bam"
+
+    # Local path
+    # wd = "/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_indel/"
+    # inputBAM = wd + "BAM/S1_dedup.bam"
+
+    # Path on the HPC for the test BAM file
+    wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
+    inputBAM = wd + 'T0_dedup.bam'
 
     parser = argparse.ArgumentParser(description='Create channels with distance between clipped/non-clipped reads')
     parser.add_argument('-b', '--bam', type=str,
@@ -142,8 +116,6 @@ def main():
                         help="Specify input file (BAM)")
     parser.add_argument('-c', '--chr', type=str, default='17',
                         help="Specify chromosome")
-    parser.add_argument('-r', '--reads', type=str, default='clipped_read_pos_cr.pbz2',
-                        help="Specify clipped read position file")
     parser.add_argument('-o', '--out', type=str, default='clipped_read_distance.pbz2',
                         help="Specify output")
     parser.add_argument('-l', '--logfile', default='clipped_read_distance.log',
@@ -159,8 +131,8 @@ def main():
         level=logging.INFO)
 
     t0 = time()
-    get_clipped_read_distance(ibam=args.bam, chrName=args.chr, clipped_reads=args.reads, outFile=args.out)
-    print(time() - t0)
+    get_clipped_read_distance(ibam=args.bam, chrName=args.chr, outFile=args.out)
+    print('Time: clipped read distance on BAM %s and Chr %s: %f' % (args.bam, args.chr, (time() - t0)))
 
 
 if __name__ == '__main__':

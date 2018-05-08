@@ -1,7 +1,17 @@
+# Imports
 import pysam
+
+'''
+Generic functions used in the channel scripts
+'''
 
 # Return if a read is clipped on the left
 def is_left_clipped(read):
+    '''
+
+    :param read: read object of the class pysam.AlignedSegment
+    :return: True if the read is soft (4) or hard (5) clipped on the left, False otherwise
+    '''
     if read.cigartuples is not None:
         if read.cigartuples[0][0] in [4, 5]:
             return True
@@ -10,6 +20,11 @@ def is_left_clipped(read):
 
 # Return if a read is clipped on the right
 def is_right_clipped(read):
+    '''
+
+    :param read: read object of the class pysam.AlignedSegment
+    :return: True if the read is soft (4) or hard (5) clipped on the right, False otherwise
+    '''
     if read.cigartuples is not None:
         if read.cigartuples[-1][0] in [4, 5]:
             return True
@@ -18,6 +33,11 @@ def is_right_clipped(read):
 
 # Return if a read is clipped on the right or on the left
 def is_clipped(read):
+    '''
+
+    :param read: read object of the class pysam.AlignedSegment
+    :return: True if the read is soft (4) or hard (5) clipped on the left or on the right, False otherwise
+    '''
     if read.cigartuples is not None:
         if is_left_clipped(read) or is_right_clipped(read):
             return True
@@ -26,13 +46,26 @@ def is_clipped(read):
 
 # Return the mate of a read. Get read mate from BAM file
 def get_read_mate(read, bamfile):
+    '''
+    This function was used in a previous version of the code when we needed to check if the mate was clipped.
+    Retrieving the mate for each read is time consuming and should be avoided when not strictly necessary.
+
+    :param read: object of the class pysam.AlignedSegment whose mate needs to be retrieved
+    :param bamfile: BAM file containing both the read and its mate
+    :return: mate, object of the class pysam.AlignedSegment, if a mate for the read is found. Return None otherwise.
+    '''
     # print(read)
-    # print('Mate is mapped')
+    # The mate is located at:
+    # chromosome: read.next_reference_name
+    # positions: [read.next_reference_start, read.next_reference_start+1]
+    # Fetch all the reads in that location and retrieve the mate
     iter = bamfile.fetch(read.next_reference_name,
                          read.next_reference_start, read.next_reference_start + 1,
                          multiple_iterators=True)
     for mate in iter:
+        # A read and its mate have the same query_name
         if mate.query_name == read.query_name:
+            # Check if read is first in pair (read1) and mate is second in pair (read2) or viceversa
             if (read.is_read1 and mate.is_read2) or (read.is_read2 and mate.is_read1):
                 # print('Mate is: ' + str(mate))
                 return mate
