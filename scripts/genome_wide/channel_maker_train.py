@@ -39,7 +39,7 @@ def count_clipped_read_positions(cpos_cnt):
                      (i + 1, len([k for k, v in cpos_cnt.items() if v > i])))
 
 
-def read_BED():
+def read_BED(SVmode):
     '''
     
     :return: start_SV_DEL: list of start positions for deletions.
@@ -47,37 +47,61 @@ def read_BED():
              start_SV_INS: list of start positions for insertions.
     '''''
 
-    # Path on the HPC
-    if HPC_MODE:
-        wd = "/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/genomes/"
-        truth_file = wd + "SV/chr17_INDEL.bed"
-    else:
-        wd = "/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/"
-        truth_file = wd + "SV/chr17_INDEL.bed"
+    if SVmode == 'INDEL':
 
-    chr_list_DEL = []
-    start_SV_DEL = []
-    end_SV_DEL = []
+        # Path on the HPC
+        if HPC_MODE:
+            wd = "/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/genomes/"
+            truth_file = wd + "SV/chr17_INDEL.bed"
+        else:
+            wd = "/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/"
+            truth_file = wd + "SV/chr17_INDEL.bed"
 
-    chr_list_INS = []
-    start_SV_INS = []
+        chr_list_DEL = []
+        start_SV_DEL = []
+        end_SV_DEL = []
 
-    with(open(truth_file, 'r')) as i:
-        for line in i:
-            line = line.rstrip()
-            columns = line.split("\t")
-            if columns[4] == "DEL":
-                start_SV_DEL.append(int(columns[1]))
-                end_SV_DEL.append(int(columns[3]))
-                chr_list_DEL.append(int(columns[0]))
-            elif str(columns[4]) == "INS":
-                start_SV_INS.append(int(columns[1]))
-                chr_list_INS.append(int(columns[0]))
+        chr_list_INS = []
+        start_SV_INS = []
 
-    return start_SV_DEL, end_SV_DEL, start_SV_INS
+        with(open(truth_file, 'r')) as i:
+            for line in i:
+                line = line.rstrip()
+                columns = line.split("\t")
+                if columns[4] == "DEL":
+                    start_SV_DEL.append(int(columns[1]))
+                    end_SV_DEL.append(int(columns[3]))
+                    chr_list_DEL.append(int(columns[0]))
+                elif str(columns[4]) == "INS":
+                    start_SV_INS.append(int(columns[1]))
+                    chr_list_INS.append(int(columns[0]))
+
+        return start_SV_DEL, end_SV_DEL, start_SV_INS
+
+    elif SVmode == 'INV' or SVmode == 'DUP':
+
+        # Path on the HPC
+        if HPC_MODE:
+            wd = "/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INV/genomes/tmp/"
+            truth_file = wd + "chr17B_T.bed"
+
+        chr_list = []
+        start_SV = []
+        end_SV = []
+
+        with(open(truth_file, 'r')) as i:
+            for line in i:
+                line = line.rstrip()
+                columns = line.split("\t")
+                if columns[4] == "INV" or columns[4] == "DUP":
+                    start_SV.append(int(columns[1]))
+                    end_SV.append(int(columns[3]))
+                    chr_list.append(int(columns[0]))
+
+        return start_SV, end_SV
 
 
-def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
+def channel_maker(ibam, chrName, sampleName, trainingMode, SVmode, outFile):
     # Prefix for the relative path
     workdir = 'Training/'
     if not HPC_MODE:
@@ -173,8 +197,23 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
     clipped_pos = [k for k, v in clipped_pos_cnt.items() if v >= min_cr_support]
     print('Number of clipped read positions:%d' % len(clipped_pos))
 
-    # load the position for the artifically generated deletions (DEL, start and end) and insertion (only start)
-    start_SV_DEL, end_SV_DEL, start_SV_INS = read_BED()
+    if SVmode == 'INDEL':
+
+        # load the position for the artifically generated deletions (DEL, start and end) and insertion (only start)
+        start_SV_DEL, end_SV_DEL, start_SV_INS = read_BED(SVmode)
+        pos_list = start_SV_DEL + end_SV_DEL + start_SV_INS
+        label_list = ['DEL_start'] * len(start_SV_DEL) + \
+                     ['DEL_end'] * len(end_SV_DEL) + \
+                     ['INS_pos'] * len(start_SV_INS)
+
+    elif SVmode == 'INV' or SVmode == 'DUP':
+
+        # load the position for the artifically generated deletions (DEL, start and end) and insertion (only start)
+        start_SV, end_SV = read_BED(SVmode)
+        pos_list = start_SV + end_SV
+        label_list = [SVmode + '_start'] * len(start_SV) + \
+                     [SVmode + '_end'] * len(end_SV)
+
     label = []
     label_BPJ = []
     distance_BPJ = []
@@ -202,10 +241,7 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
     last_t = time()
 
     # Iterate over the SV positions
-    for i, outzipped in enumerate(zip(start_SV_DEL + end_SV_DEL + start_SV_INS,
-                                      ['DEL_start'] * len(start_SV_DEL) +
-                                      ['DEL_end'] * len(end_SV_DEL) +
-                                      ['INS_pos'] * len(start_SV_INS)), start=1):
+    for i, outzipped in enumerate(zip(pos_list, label_list), start=1):
 
         if not i % n_r:
             now_t = time()
@@ -403,8 +439,8 @@ def main():
 
     # Default BAM file for testing
     # On the HPC
-    #wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
-    #inputBAM = wd + "T0_dedup.bam"
+    # wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
+    # inputBAM = wd + "T0_dedup.bam"
     # Locally
     wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
     inputBAM = wd + "T1_dedup.bam"
@@ -419,6 +455,8 @@ def main():
                         help="Specify output")
     parser.add_argument('-s', '--sample', type=str, default='germline',
                         help="Specify sample")
+    parser.add_argument('-m', '--svmode', type=str, default='INDEL',
+                        help="Specify SV type")
     parser.add_argument('-t', '--train', type=bool, default=True,
                         help="Specify if training mode is active")
     parser.add_argument('-l', '--logfile', default='channel_maker_train.log',
@@ -434,7 +472,7 @@ def main():
         level=logging.INFO)
 
     t0 = time()
-    channel_maker(ibam=args.bam, chrName=args.chr, sampleName=args.sample,
+    channel_maker(ibam=args.bam, chrName=args.chr, sampleName=args.sample, SVmode=args.svmode,
                   trainingMode=args.train, outFile=args.out)
 
     print('Elapsed time channel_maker_train on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))
