@@ -8,7 +8,8 @@ import pickle
 from time import time
 import functions as fun
 import logging
-
+from collections import defaultdict
+import os
 
 def get_clipped_read_distance(ibam, chrName, outFile):
 
@@ -38,7 +39,7 @@ def get_clipped_read_distance(ibam, chrName, outFile):
         clipped_read_distance[direction] = dict()
         # For left- and right-clipped reads
         for clipped_arrangement in ['left', 'right']:
-            clipped_read_distance[direction][clipped_arrangement] = dict()
+            clipped_read_distance[direction][clipped_arrangement] = defaultdict(list)
 
     def get_distance(direction, read, dist):
         '''
@@ -50,16 +51,16 @@ def get_clipped_read_distance(ibam, chrName, outFile):
         '''
         if fun.is_left_clipped(read):
             pos = read.reference_start
-            if pos not in clipped_read_distance[direction]['left'].keys():
-                clipped_read_distance[direction]['left'][pos] = [dist]
-            else:
-                clipped_read_distance[direction]['left'][pos].append(dist)
+            #if pos not in clipped_read_distance[direction]['left'].keys():
+            #    clipped_read_distance[direction]['left'][pos] = [dist]
+            #else:
+            clipped_read_distance[direction]['left'][pos].append(dist)
         elif fun.is_right_clipped(read):
             pos = read.reference_end + 1
-            if pos not in clipped_read_distance[direction]['right'].keys():
-                clipped_read_distance[direction]['right'][pos] = [dist]
-            else:
-                clipped_read_distance[direction]['right'][pos].append(dist)
+            #if pos not in clipped_read_distance[direction]['right'].keys():
+            #    clipped_read_distance[direction]['right'][pos] = [dist]
+            #else:
+            clipped_read_distance[direction]['right'][pos].append(dist)
 
     # Consider all the chromosome: interval [0, chrLen]
     start_pos = 0
@@ -102,13 +103,13 @@ def get_clipped_read_distance(ibam, chrName, outFile):
 
 def main():
 
-    # Local path
-    # wd = "/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_indel/"
-    # inputBAM = wd + "BAM/S1_dedup.bam"
-
-    # Path on the HPC for the test BAM file
-    wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
-    inputBAM = wd + 'T0_dedup.bam'
+    # Default BAM file for testing
+    # On the HPC
+    #wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
+    #inputBAM = wd + "T0_dedup.bam"
+    # Locally
+    wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
+    inputBAM = wd + "T1_dedup.bam"
 
     parser = argparse.ArgumentParser(description='Create channels with distance between clipped/non-clipped reads')
     parser.add_argument('-b', '--bam', type=str,

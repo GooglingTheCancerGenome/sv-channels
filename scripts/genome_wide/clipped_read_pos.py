@@ -84,8 +84,13 @@ def get_clipped_read_positions(ibam, chrName, outFile):
 def main():
 
     # Default BAM file for testing
-    wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
-    inputBAM = wd + "T0_dedup.bam"
+    # On the HPC
+    #wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
+    #inputBAM = wd + "T0_dedup.bam"
+    # Locally
+    wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
+    inputBAM = wd + "T1_dedup.bam"
+
     # Default chromosome is 17 for the artificial data
 
     # Parse the arguments of the script

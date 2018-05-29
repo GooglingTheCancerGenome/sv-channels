@@ -1,19 +1,52 @@
 # Imports
 
 import pysam
+import statistics
 from pysam import VariantFile
+from collections import Counter
+from intervaltree import Interval, IntervalTree
+# from collections import defaultdict
+
 import numpy as np
 import argparse
 import bz2file
 import gzip
-import os
+import os, errno
 import pickle
 from time import time
 import logging
 import csv
+# import pandas as pd
+# from pybedtools import BedTool
+
+# from ggplot import *
 
 # Flag used to set either paths on the local machine or on the HPC
 HPC_MODE = True
+
+
+class SVRecord:
+
+    def __init__(self, record):
+        self.chrom = record.chrom
+        self.chrom2 = record.info['CHR2']
+        self.start = record.pos
+        self.end = record.stop
+        self.supp_vec = record.info['SUPP_VEC']
+        self.svtype = record.info['SVTYPE']
+
+
+def create_dir(directory):
+    '''
+    Create a directory if it does not exist. Raises an exception if the directory exists.
+    :param directory: directory to create
+    :return: None
+    '''
+    try:
+        os.makedirs(directory)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
 
 
 def count_clipped_read_positions(cpos_cnt):
@@ -26,7 +59,7 @@ def count_clipped_read_positions(cpos_cnt):
     '''
     for i in range(0, 5):
         logging.info('Number of positions with at least %d clipped reads: %d' %
-              (i + 1, len([k for k, v in cpos_cnt.items() if v > i])))
+                     (i + 1, len([k for k, v in cpos_cnt.items() if v > i])))
 
 
 def read_gold_positions():
@@ -48,8 +81,8 @@ def read_gold_positions():
     with open(gold_del_file, 'r') as csvfile:
         reader = csv.reader(csvfile, delimiter=';', quotechar='#')
         for row in reader:
-            #print row
-            if row[0]=='NA12878':
+            # print row
+            if row[0] == 'NA12878':
                 chr = row[1][3:]
                 # chr23 is chrX, rename it properly
                 if chr == '23':
@@ -59,15 +92,15 @@ def read_gold_positions():
                 else:
                     del_start[chr] = [int(row[2])]
                 if chr in del_end.keys():
-                     del_end[chr].append(int(row[2]))
+                    del_end[chr].append(int(row[2]))
                 else:
                     del_end[chr] = [int(row[2])]
 
     with open(gold_insdup_file, 'r') as csvfile:
         reader = csv.reader(csvfile, delimiter=';', quotechar='#')
         for row in reader:
-            #print(row[4])
-            if row[0]=='NA12878' and row[4] == 'INS':
+            # print(row[4])
+            if row[0] == 'NA12878' and row[4] == 'INS':
                 chr = row[1]
                 if chr in ins_start.keys():
                     ins_start[chr].append(int(row[2]))
@@ -90,11 +123,11 @@ def read_bpi_positions():
     with open(gold_del_file, 'r') as tsvfile:
         reader = csv.reader(tsvfile, delimiter='\t')
         for row in reader:
-            #print(row)
+            # print(row)
             if row[1] == 'DEL':
                 chrA, start = row[3].split(':')
                 chrB, end = row[4].split(':')
-                #print("%s %s %s %s" % (chrA, start, chrB, end))
+                # print("%s %s %s %s" % (chrA, start, chrB, end))
                 assert chrA == chrB
                 if chrA in del_start.keys():
                     del_start[chrA].append(int(start))
@@ -110,7 +143,6 @@ def read_bpi_positions():
 
 
 def generate_labels():
-
     '''
     For each chromosome, load the clipped read positions file (clipped_read_pos) and label each position according
     to the
@@ -213,14 +245,14 @@ def generate_labels():
 
         # (Locally) save the labels per chromosome
         outFile = '/Users/lsantuari/Documents/Data/HMF/ChannelMaker_results/200418/labels/' \
-                                    + chr + '_labels.npy.gz'
+                  + chr + '_labels.npy.gz'
         with gzip.GzipFile(outFile, "w") as f:
             np.save(file=f, arr=labels)
         f.close()
 
     # File with SV positions without clipped reads
     no_cr_File = '/Users/lsantuari/Documents/Data/HMF/ChannelMaker_results/200418/labels/' \
-                                + 'no_clipped_read_positions.pk.gz'
+                 + 'no_clipped_read_positions.pk.gz'
     with gzip.GzipFile(no_cr_File, "w") as f:
         pickle.dump(no_clipped_read_pos, f)
     f.close()
@@ -240,12 +272,15 @@ def get_Lumpy_positions():
     del_end = dict()
 
     # Local Lumpy VCF output file for the Z424 dataset
-    vcf_file = '/Users/lsantuari/Documents/Data/Breast_Cancer_Pilot/VCF/Z424/Lumpy.vcf'
+    # vcf_file = '/Users/lsantuari/Documents/Data/Breast_Cancer_Pilot/VCF/Z424/Lumpy.vcf'
+    # On the HPC
+    vcf_file = '/hpc/cog_bioinf/ridder/users/cshneider/Breast_Cancer_Pilot_outside_IAP/' + \
+               'Z424/Lumpy/somatic_SVs/Z424/lumpy_Z424.vcf'
     vcf_in = VariantFile(vcf_file)
 
     for rec in vcf_in.fetch():
-        if rec.info['SVTYPE']=='DEL' and rec.chrom not in ['Y', 'MT']:
-            #print (str(rec.chrom)+' '+str(rec.pos)+' '+str(rec.stop))
+        if rec.info['SVTYPE'] == 'DEL' and rec.chrom not in ['Y', 'MT']:
+            # print (str(rec.chrom)+' '+str(rec.pos)+' '+str(rec.stop))
 
             if rec.chrom in del_start.keys():
                 del_start[rec.chrom].append(rec.pos)
@@ -256,12 +291,203 @@ def get_Lumpy_positions():
                 del_end[rec.chrom].append(rec.stop)
             else:
                 del_end[rec.chrom] = [rec.stop]
-    #print(del_start.keys())
-    return  del_start, del_end
+    # print(del_start.keys())
+    return del_start, del_end
 
+
+def read_SURVIVOR_merge_VCF(sampleName):
+
+    if HPC_MODE:
+        channel_dir = ''
+        vcf_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/Breast_Cancer_Pilot_SV/Manta/survivor_merge.vcf'
+    else:
+        channel_dir = '/Users/lsantuari/Documents/Data/Breast_Cancer_Pilot/ChannelMaker'
+        vcf_file = '/Users/lsantuari/Documents/Data/Breast_Cancer_Pilot/SV/survivor_merge.vcf'
+
+    vec = 'clipped_read_pos'
+    min_CR_support = 3
+    confint = 100
+
+
+    vcf_in = VariantFile(vcf_file)
+    samples_list = list((vcf_in.header.samples))
+    samples = [w.split('_')[0].split('/')[1] for w in samples_list]
+
+    # sv_bedtool = BedTool(vcf_file)
+    # print(sv_bedtool)
+
+    sv = []
+
+    # create sv list with SVRecord objects
+    for rec in vcf_in.fetch():
+        #print(rec)
+        # print(rec.info['SUPP_VEC'][16])
+        # avoid SVs on chromosomes Y and MT
+        if rec.chrom not in ['Y', 'MT'] and rec.info['CHR2'] not in ['Y', 'MT']:
+            # print(rec)
+            sv.append(SVRecord(rec))
+
+    svtypes = set(var.svtype for var in sv)
+
+    #for t in svtypes:
+    #    for sample_idx in range(len(sv[0].supp_vec)):
+    #        pass
+            #print([var.supp_vec[0][0] for var in sv if var.svtype == t])
+            # print(
+            #      'Sample %s, SVTYPE:%s = %d' % (
+            #      sample_idx, t,
+            #      sum([int(var.supp_vec[sample_idx]) for var in sv if var.svtype == t])
+            #      )
+            # )
+
+    # chromosome to consider
+    # chr = '2'
+    # SVTYPE
+    # type = 'DEL'
+
+    cpos = dict()
+    for tn in ['Tumor', 'Normal']:
+        cpos[tn] = dict()
+
+    # for chr in set([var.chrom for var in sv]):
+    #
+    #     print('Loading CR positions for Chr %s' % chr)
+    #     # Load files
+    #     fn = '/'.join((channel_dir, sampleName, 'Tumor', vec, chr + '_' + vec + '.pbz2'))
+    #     with bz2file.BZ2File(fn, 'rb') as f:
+    #         cpos['Tumor'][chr] = pickle.load(f)
+    #     fn = '/'.join((channel_dir, sampleName, 'Normal', vec, chr + '_' + vec + '.pbz2'))
+    #     with bz2file.BZ2File(fn, 'rb') as f:
+    #         cpos['Normal'][chr] = pickle.load(f)
+
+    chr_list = set([var.chrom for var in sv])
+
+    # for chr in chr_list:
+    #
+    #     print('Considering Chr %s' % chr)
+    #
+    #     clipped_pos = [k for k, v in cpos['Tumor'][chr].items() if v >= min_CR_support]
+    #
+    #     #for cr in clipped_pos:
+    #     #    for type in set([var.svtype for var in sv]):
+    #
+    #     # Positions with at least cnt support
+    #     cpos_set1 = set([elem for elem, cnt in cpos['Tumor'][chr].items() if cnt >= min_CR_support])
+    #     cpos_set2 = set([elem for elem, cnt in cpos['Normal'][chr].items() if cnt >= 1])
+    #
+    #     set_diff = cpos_set1 - cpos_set2
+    #     set_int = cpos_set1 & cpos_set2
+    #
+    #     print('Tumor: %d, Normal: %d' % (len(cpos_set1), len(cpos_set2)))
+    #     print('Difference clipped reads Tumor - Normal: %d' % len(set_diff))
+    #     print('Intersection clipped reads Tumor/Normal: %d' % len(set_int))
+    #
+    #     for type in svtypes:
+    #
+    #         sv_pos = [var.start for var in sv if var.chrom == chr
+    #                   and var.svtype == type and var.supp_vec[16] == '1']
+    #
+    #         cnt_hist = []
+    #         crpos_cnt_per_int = []
+    #         for i in range(confint):
+    #             crpos_cnt_per_int = [len(set(range(p - i, p + i)) & cpos_set1) for p in sv_pos]
+    #             zero_cnt = [cnt for elem, cnt in Counter(crpos_cnt_per_int).items() if elem == 0]
+    #             if len(zero_cnt) > 0:
+    #                 cnt_hist.append(zero_cnt[0])
+    #         print([p for p, c in zip(sv_pos, crpos_cnt_per_int) if c == 0])
+    #
+    #         #print(str(Counter(crpos_cnt_per_int).most_common(3)))
+    #
+    #         df = pd.DataFrame({"Count": cnt_hist})
+    #
+    #         print('# SV %s:%d' % (type, len(sv_pos)))
+    #         print(df[-1:])
+
+    for chr in chr_list:
+
+        print('Loading CR positions for Chr %s' % chr)
+        # Load files
+        if HPC_MODE:
+            fn = '/'.join((sampleName, 'Tumor', vec, chr + '_' + vec + '.pbz2'))
+        else:
+            fn = '/'.join((channel_dir, sampleName, 'Tumor', vec, chr + '_' + vec + '.pbz2'))
+        with bz2file.BZ2File(fn, 'rb') as f:
+            cpos['Tumor'][chr] = pickle.load(f)
+
+        if HPC_MODE:
+            fn = '/'.join((sampleName, 'Normal', vec, chr + '_' + vec + '.pbz2'))
+        else:
+            fn = '/'.join((channel_dir, sampleName, 'Normal', vec, chr + '_' + vec + '.pbz2'))
+        with bz2file.BZ2File(fn, 'rb') as f:
+            cpos['Normal'][chr] = pickle.load(f)
+
+        cr_pos = [elem for elem, cnt in cpos['Tumor'][chr].items() if cnt >= min_CR_support]
+        labels = []
+
+        #for type in svtypes:
+        #    pass
+
+        #Using IntervalTree for interval search
+        t = IntervalTree()
+
+        if HPC_MODE:
+            sample_for_index = sampleName.split('/')[1]
+        else:
+            sample_for_index = sampleName
+
+        for var in sv:
+            if var.supp_vec[samples.index(sample_for_index)] == '1':
+                if var.chrom == chr:
+                    t[var.start - confint:var.start + confint] = var.svtype + '_start'
+                if var.chrom2 == chr:
+                    t[var.end - confint:var.end + confint] = var.svtype + '_end'
+        #print(t)
+        #print(len(cr_pos))
+        labels_list = [sorted(t[p]) for p in cr_pos]
+
+        #print(Counter(map(len, labels_list)))
+
+        def test_noSV(x):
+            if len(x) == 0:
+                return ['noSV']
+            else:
+                my_list = []
+                for elem in x:
+                    begin, end, data = elem
+                    my_list.append(data)
+                return my_list
+
+        label = list(map(test_noSV, labels_list))
+        print(Counter([x for elem in label for x in elem]))
+        output_dir = '/'.join((sampleName, 'label'))
+        create_dir(output_dir)
+
+        with gzip.GzipFile('/'.join((output_dir, chr + '_label.npy.gz')), "w") as f:
+            np.save(file=f, arr=label)
+        f.close()
+
+        #print([lambda x: ['noSV'] if len(x)==0 else x for x in labels_list])
+
+
+        # for p in cr_pos:
+        #     my_label = []
+        #     for var in sv:
+        #         if var.chrom == chr and var.svtype == 'DEL' and var.supp_vec[16] == '1':
+        #
+        #             if p in range(var.start - confint, var.start + confint):
+        #                 print('%s_start at pos %d in range (%d,%d)' % (var.svtype, p,
+        #                                                                 var.start - confint,
+        #                                                                 var.start + confint))
+        #                 my_label.append(var.svtype+'_start')
+        #             if p in range(var.end - confint, var.end + confint):
+        #                 print('%s_end at pos %d in range (%d,%d)' % (var.svtype, p,
+        #                                                                 var.end - confint,
+        #                                                                 var.end + confint))
+        #                 my_label.append(var.svtype + '_end')
+        #     labels.append(my_label)
+        # print(labels)
 
 def load_NoCR_positions():
-
     '''
     This function provides an overview of SV positions without clipped read support that are stored in the
     no_clipped_read_positions file.
@@ -338,7 +564,8 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
         sample_list = ['Tumor', 'Normal']
 
         # File with clipped read positions, output of the clipped_read_pos script
-        clipped_read_pos_file = prefix_train + sampleName + '/' + sample_list[0] + '/clipped_read_pos/' + chrName + '_clipped_read_pos.pbz2'
+        clipped_read_pos_file = prefix_train + sampleName + '/' + sample_list[
+            0] + '/clipped_read_pos/' + chrName + '_clipped_read_pos.pbz2'
         # File with the clipped read distances, output of the clipped_read_distance script
         clipped_read_distance_file = 'clipped_read_distance/' + chrName + '_clipped_read_distance.pbz2'
         # File with the clipped reads, output of the clipped_reads script
@@ -372,12 +599,13 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
     # Dictionaries where to load the channel data
     clipped_read_distance = dict()
     clipped_reads = dict()
+    clipped_reads_inversion = dict()
+    clipped_reads_duplication = dict()
     coverage = dict()
     split_reads = dict()
     split_read_distance = dict()
 
     for sample in sample_list:
-
         prefix = prefix_train + sampleName + '/' + sample + '/' if HPC_MODE else ''
 
         logging.info('Considering %s' % sample)
@@ -388,7 +616,7 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
 
         logging.info('Reading clipped reads')
         with bz2file.BZ2File(prefix + clipped_reads_file, 'rb') as f:
-            clipped_reads[sample] = pickle.load(f)
+            clipped_reads[sample], clipped_reads_inversion[sample], clipped_reads_duplication[sample] = pickle.load(f)
         logging.info('End of reading')
 
         logging.info('Reading coverage')
@@ -411,9 +639,19 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
 
     # Dictionaries where to store the channel arrays as generated from the dictionaries
     clipped_read_distance_array = dict()
+    clipped_read_distance_num = dict()
+    clipped_read_distance_median = dict()
+
     clipped_reads_array = dict()
+    clipped_reads_inversion_array = dict()
+    clipped_reads_duplication_array = dict()
+
     coverage_array = dict()
+
     split_read_distance_array = dict()
+    split_read_distance_num = dict()
+    split_read_distance_median = dict()
+
     split_reads_array = dict()
 
     # Log info every n_r times
@@ -442,17 +680,32 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
 
                 # clipped read distance
                 clipped_read_distance_array[sample] = dict()
+                clipped_read_distance_num[sample] = dict()
+                clipped_read_distance_median[sample] = dict()
+
                 for direction in ['forward', 'reverse']:
                     clipped_read_distance_array[sample][direction] = dict()
+                    clipped_read_distance_num[sample][direction] = dict()
+                    clipped_read_distance_median[sample][direction] = dict()
+
                 for direction in ['forward', 'reverse']:
                     # for clipped_arrangement in ['c2c', 'nc2c', 'c2nc', 'nc2nc']:
                     for clipped_arrangement in ['left', 'right']:
                         clipped_read_distance_array[sample][direction][clipped_arrangement] = np.zeros(win_len,
                                                                                                        dtype=int)
+                        clipped_read_distance_num[sample][direction][clipped_arrangement] = np.zeros(win_len,
+                                                                                                       dtype=int)
+                        clipped_read_distance_median[sample][direction][clipped_arrangement] = np.zeros(win_len,
+                                                                                                       dtype=int)
                         for pos in range(start_win, end_win):
                             if pos in clipped_read_distance[sample][direction][clipped_arrangement].keys():
                                 clipped_read_distance_array[sample][direction][clipped_arrangement][pos - start_win] = \
                                     sum(clipped_read_distance[sample][direction][clipped_arrangement][pos])
+                                clipped_read_distance_num[sample][direction][clipped_arrangement][pos - start_win] = \
+                                    len(clipped_read_distance[sample][direction][clipped_arrangement][pos])
+                                clipped_read_distance_median[sample][direction][clipped_arrangement][pos - start_win] = \
+                                    statistics.median(clipped_read_distance[sample][direction][clipped_arrangement][pos])
+
                         # print(clipped_read_distance_array[direction][clipped_arrangement])
 
                 # clipped reads
@@ -464,16 +717,44 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
                             clipped_reads_array[sample][split_direction][pos - start_win] = \
                                 clipped_reads[sample][split_direction][pos]
 
+                # clipped reads inversions
+                clipped_reads_inversion_array[sample] = dict()
+                for mate_position in ['before', 'after']:
+                    clipped_reads_inversion_array[sample][mate_position] = np.zeros(win_len, dtype=int)
+                    for pos in range(start_win, end_win):
+                        if pos in clipped_reads_inversion[sample][mate_position].keys():
+                            clipped_reads_inversion_array[sample][mate_position][pos - start_win] = \
+                                clipped_reads_inversion[sample][mate_position][pos]
+
+                # clipped reads duplication
+                clipped_reads_duplication_array[sample] = dict()
+                for mate_position in ['before', 'after']:
+                    clipped_reads_duplication_array[sample][mate_position] = np.zeros(win_len, dtype=int)
+                    for pos in range(start_win, end_win):
+                        if pos in clipped_reads_duplication[sample][mate_position].keys():
+                            clipped_reads_duplication_array[sample][mate_position][pos - start_win] = \
+                                clipped_reads_duplication[sample][mate_position][pos]
+
                 # coverage
                 coverage_array[sample] = coverage[sample][start_win:end_win]
                 assert len(coverage_array[sample]) == win_len
 
                 # split read distance
                 split_read_distance_array[sample] = dict()
+                split_read_distance_num[sample] = dict()
+                split_read_distance_median[sample] = dict()
+
                 for split_direction in ['left', 'right']:
                     split_read_distance_array[sample][split_direction] = np.zeros(win_len, dtype=int)
+                    split_read_distance_num[sample][split_direction] = np.zeros(win_len, dtype=int)
+                    split_read_distance_median[sample][split_direction] = np.zeros(win_len, dtype=int)
+
                     if pos in split_read_distance[sample][split_direction].keys():
                         split_read_distance_array[sample][split_direction][pos - start_win] = \
+                            sum(split_read_distance[sample][split_direction][pos])
+                        split_read_distance_num[sample][split_direction][pos - start_win] = \
+                            len(split_read_distance[sample][split_direction][pos])
+                        split_read_distance_median[sample][split_direction][pos - start_win] = \
                             sum(split_read_distance[sample][split_direction][pos])
 
                 # split reads
@@ -487,34 +768,37 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
 
             # Fill the numpy vstack
             # TODO: avoid for loop for filling the vstack. Use a list instead.
+            vstack_list = []
             for sample in sample_list:
                 # logging.info("Considering sample %s" % sample)
 
-                if sample == sample_list[0]:
-                    ch_vstack = np.vstack((
-                        coverage_array[sample],
-                        clipped_reads_array[sample]['left'],
-                        clipped_reads_array[sample]['right']))
-                else:
-                    ch_vstack = np.vstack((ch_vstack,
-                        coverage_array[sample],
-                        clipped_reads_array[sample]['left'],
-                        clipped_reads_array[sample]['right']))
+                vstack_list.append(coverage_array[sample])
+
+                for clipped_arrangement in ['left', 'right']:
+                    vstack_list.append(clipped_reads_array[sample][clipped_arrangement])
+
+                for mate_position in ['before', 'after']:
+                    vstack_list.append(clipped_reads_inversion_array[sample][mate_position])
+                for mate_position in ['before', 'after']:
+                    vstack_list.append(clipped_reads_duplication_array[sample][mate_position])
 
                 for direction in ['forward', 'reverse']:
-                    # for clipped_arrangement in ['c2c', 'nc2c', 'c2nc', 'nc2nc']:
                     for clipped_arrangement in ['left', 'right']:
-                        ch_vstack = np.vstack((ch_vstack,
-                                               clipped_read_distance_array[sample][direction][
-                                                   clipped_arrangement]))
+                        vstack_list.append(
+                            clipped_read_distance_array[sample][direction][clipped_arrangement])
+                        vstack_list.append(
+                            clipped_read_distance_num[sample][direction][clipped_arrangement])
+                        vstack_list.append(
+                            clipped_read_distance_median[sample][direction][clipped_arrangement])
                 for direction in ['left', 'right']:
-                    ch_vstack = np.vstack((ch_vstack,
-                                           split_reads_array[sample][direction]))
+                    vstack_list.append(split_reads_array[sample][direction])
                 for direction in ['left', 'right']:
-                    ch_vstack = np.vstack((ch_vstack,
-                                           split_read_distance_array[sample][direction]))
+                    vstack_list.append(split_read_distance_array[sample][direction])
+                    vstack_list.append(split_read_distance_num[sample][direction])
+                    vstack_list.append(split_read_distance_median[sample][direction])
 
             # logging.info("Shape of channel matrix: %s" % str(ch_vstack.shape))
+            ch_vstack = np.vstack(vstack_list)
             ch_list.append(ch_vstack)
 
     # Save the list of channel vstacks
@@ -524,7 +808,7 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
 
     # Write labels for noSV category
     if trainingMode and sampleName == 'noSV':
-        label = ['noSV']*len(ch_list)
+        label = ['noSV'] * len(ch_list)
         with gzip.GzipFile(sampleName + '_label.npy.gz', "w") as f:
             np.save(file=f, arr=label)
         f.close()
@@ -533,19 +817,22 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
 
 
 def main():
-
     '''
     Main function for parsing the input arguments and calling the channel_maker function
     :return: None
     '''
 
-    # Local path
-    #wd = "/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_indel/"
-    #inputBAM = wd + "BAM/S1_dedup.bam"
+    # Default BAM file for testing
+    # On the HPC
+    #wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
+    #inputBAM = wd + "T0_dedup.bam"
+    # Locally
+    wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
+    inputBAM = wd + "T1_dedup.bam"
 
     # Path on the HPC for the test BAM file
-    wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
-    inputBAM = wd + 'T0_dedup.bam'
+    #wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
+    #inputBAM = wd + 'T0_dedup.bam'
 
     parser = argparse.ArgumentParser(description='Create channels from saved data')
     parser.add_argument('-b', '--bam', type=str,
@@ -555,7 +842,7 @@ def main():
                         help="Specify chromosome")
     parser.add_argument('-o', '--out', type=str, default='channel_maker.npy.gz',
                         help="Specify output")
-    parser.add_argument('-s', '--sample', type=str, default='somatic',
+    parser.add_argument('-s', '--sample', type=str, default='Z424',
                         help="Specify sample")
     parser.add_argument('-t', '--train', type=bool, default=True,
                         help="Specify if training mode is active")
@@ -578,6 +865,7 @@ def main():
 
     # Generate labels for the datasets of real data (HMF or GiaB)
     # generate_labels()
+    #read_SURVIVOR_merge_VCF(sampleName=args.sample)
 
     print('Elapsed time channel_maker_real on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))
 

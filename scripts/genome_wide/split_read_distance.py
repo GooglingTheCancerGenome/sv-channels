@@ -5,22 +5,8 @@ import bz2file
 import pickle
 from time import time
 import logging
-
-# Return if a read is soft/hard-clipped on the left
-def is_left_clipped(read):
-    if read.cigartuples is not None:
-        if read.cigartuples[0][0] in [4, 5]:
-            return True
-    return False
-
-
-# Return if a read is soft/hard-clipped on the right
-def is_right_clipped(read):
-    if read.cigartuples is not None:
-        if read.cigartuples[-1][0] in [4, 5]:
-            return True
-    return False
-
+from functions import *
+from collections import defaultdict
 
 # Return chromosome and starting position of a supplementary alignment (split reads)
 def get_suppl_aln(read):
@@ -51,12 +37,12 @@ def get_split_read_distance(ibam, chrName, outFile):
     # Dictionary to store left/right split read distance
     split_read_distance = dict()
     for split_direction in ['left', 'right']:
-        split_read_distance[split_direction] = dict()
+        split_read_distance[split_direction] = defaultdict(list)
 
     # Dictionary to store number of left/right split reads
     split_reads = dict()
     for split_direction in ['left', 'right']:
-        split_reads[split_direction] = dict()
+        split_reads[split_direction] = defaultdict(int)
 
     # Load BAM file
     bamfile = pysam.AlignmentFile(ibam, "rb")
@@ -98,14 +84,14 @@ def get_split_read_distance(ibam, chrName, outFile):
                         # print('Left split')
                         # print(str(read))
                         refpos = read.reference_start
-                        if pos not in split_read_distance['left'].keys():
-                            split_read_distance['left'][pos] = [abs(refpos - pos)]
-                        else:
-                            split_read_distance['left'][pos].append(abs(refpos - pos))
-                        if pos not in split_reads['left'].keys():
-                            split_reads['left'][pos] = 1
-                        else:
-                            split_reads['left'][pos] += 1
+                        #if pos not in split_read_distance['left'].keys():
+                        #    split_read_distance['left'][pos] = [abs(refpos - pos)]
+                        #else:
+                        split_read_distance['left'][pos].append(abs(refpos - pos))
+                        #if pos not in split_reads['left'].keys():
+                        #    split_reads['left'][pos] = 1
+                        #else:
+                        split_reads['left'][pos] += 1
                 # The read is right clipped
                 if is_right_clipped(read):
                     chr, pos = get_suppl_aln(read)
@@ -114,14 +100,14 @@ def get_split_read_distance(ibam, chrName, outFile):
                         # print('Right split')
                         # print(str(read))
                         refpos = read.reference_end + 1
-                        if pos not in split_read_distance['right'].keys():
-                            split_read_distance['right'][pos] = [abs(pos - refpos)]
-                        else:
-                            split_read_distance['right'][pos].append(abs(pos - refpos))
-                        if pos not in split_reads['right'].keys():
-                            split_reads['right'][pos] = 1
-                        else:
-                            split_reads['right'][pos] += 1
+                        #if pos not in split_read_distance['right'].keys():
+                        #    split_read_distance['right'][pos] = [abs(pos - refpos)]
+                        #else:
+                        split_read_distance['right'][pos].append(abs(pos - refpos))
+                        #if pos not in split_reads['right'].keys():
+                        #    split_reads['right'][pos] = 1
+                        #else:
+                        split_reads['right'][pos] += 1
 
 
     # Save two dictionaries: split_read_distance and split_reads
@@ -132,8 +118,12 @@ def get_split_read_distance(ibam, chrName, outFile):
 def main():
 
     # Default BAM file for testing
-    wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
-    inputBAM = wd + "T0_dedup.bam"
+    # On the HPC
+    #wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
+    #inputBAM = wd + "T0_dedup.bam"
+    # Locally
+    wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
+    inputBAM = wd + "T1_dedup.bam"
 
     parser = argparse.ArgumentParser(description='Create channels with split read distance for left/right split reads')
     parser.add_argument('-b', '--bam', type=str,
