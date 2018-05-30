@@ -3,8 +3,9 @@
 # This script generate the channel data for the somatic and the germline categories of the Training data.
 # The NoSV category is also added here, but for the moment it is generated using the channel_maker_real.py script
 
+SVMODE='INV'
 
-INPATH='/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/'
+INPATH='/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_'$SVMODE'/samples/'
 
 # The Tumor/Normal sample pair for the somatic category
 SOMATIC1='T0'
@@ -63,7 +64,7 @@ PRG='channel_maker_train'
 for SAMPLE in somatic germline; do
 	for CHROMOSOME in 17; do
 		OUTDIR="Training/"$SAMPLE"/"${OUTARRAY[$i]}
-		qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=${OUTDIR} channel_script_by_name.sge
+		qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},SVMODEARG=${SVMODE},OUTARG=${OUTDIR} channel_script_by_name.sge
 	done
 done
 

@@ -59,6 +59,7 @@ elif [ ${PRGARG} == 'channel_maker_train' ]; then
                 --chr ${CHRARG} \
                 --sample ${SAMPLEARG} \
 		        --train True \
+		        --svmode ${SVMODEARG}
                 --out ${OUTARG}"/"${PRGARG}"/"$SAMPLEARG".npy.gz" \
                 --logfile ${OUTARG}"/"${PRGARG}"/"${CHRARG}"_${PRGARG}.log"
 
