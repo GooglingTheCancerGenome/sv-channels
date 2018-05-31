@@ -42,20 +42,26 @@ def count_clipped_read_positions(cpos_cnt):
 def read_BED(SVmode):
     '''
     
-    :return: start_SV_DEL: list of start positions for deletions.
+    :return: For INDELs: 
+             start_SV_DEL: list of start positions for deletions.
              end_SV_DEL: list of end positions for deletions. It corresponds to the start positions.
              start_SV_INS: list of start positions for insertions.
+             
+             For INV and DUP:
+             start_SV: list of start positions for inversion/duplication.
+             end_SV: list of end positions for inversion/duplication.
+             
     '''''
 
     if SVmode == 'INDEL':
 
         # Path on the HPC
         if HPC_MODE:
-            wd = "/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/genomes/"
-            truth_file = wd + "SV/chr17_INDEL.bed"
+            wd = "/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_"+SVmode+"/genomes/"
+            truth_file = wd + "SV/chr17_"+SVmode+".bed"
         else:
             wd = "/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/"
-            truth_file = wd + "SV/chr17_INDEL.bed"
+            truth_file = wd + "SV/chr17_"+SVmode+".bed"
 
         chr_list_DEL = []
         start_SV_DEL = []
@@ -82,8 +88,8 @@ def read_BED(SVmode):
 
         # Path on the HPC
         if HPC_MODE:
-            wd = "/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INV/genomes/tmp/"
-            truth_file = wd + "chr17B_T.bed"
+            wd = "/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_"+SVmode+"/genomes/SV/"
+            truth_file = wd + "chr17_"+SVmode+".bed"
 
         chr_list = []
         start_SV = []

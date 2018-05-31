@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This script generate the channel data for the somatic and the germline categories of the Training data.
-# The NoSV category is also added here, but for the moment it is generated using the channel_maker_real.py script
+# The NoSV category is also added here, but for the moment it is generated using the channel_maker_real_somatic.py script
 
 SVMODE='INV'
 

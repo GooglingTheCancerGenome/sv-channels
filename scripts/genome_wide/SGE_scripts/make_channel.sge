@@ -1,11 +1,8 @@
 #!/bin/bash -x
 #$ -S /bin/bash
-#$ -N ChMk
 #$ -l h_rt=2:00:00
 #$ -l h_vmem=6G
 #$ -q all.q
-#$ -e ChMk.err
-#$ -o ChMk.out
 #$ -wd scripts folder
 #$ -M mail
 #$ -m beas
@@ -43,7 +40,7 @@ if [ ${PRGARG} == 'coverage' ]; then
 
 # ChannelMaker for real data. Flag 'train' is only used to output the NoSV category for training, that for now it is
 # not implemented in the channel_make_train.py script
-elif [ ${PRGARG} == 'channel_maker_real_somatic' ]; then
+elif [ ${PRGARG} == 'channel_maker_real_germline' ]; then
         python "genome_wide/${PRGARG}.py" \
                 --bam ${BAMARG} \
                 --chr ${CHRARG} \
@@ -53,7 +50,7 @@ elif [ ${PRGARG} == 'channel_maker_real_somatic' ]; then
                 --logfile ${OUTARG}"/"${PRGARG}"/"${CHRARG}"_${PRGARG}.log"
 
 # ChannelMaker for training data
-elif [ ${PRGARG} == 'channel_maker_train_somatic' ]; then
+elif [ ${PRGARG} == 'channel_maker_train_germline' ]; then
         python "genome_wide/${PRGARG}.py" \
                 --bam ${BAMARG} \
                 --chr ${CHRARG} \
