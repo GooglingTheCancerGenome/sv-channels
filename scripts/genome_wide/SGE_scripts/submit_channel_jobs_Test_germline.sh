@@ -1,20 +1,12 @@
 #!/bin/bash
 
-# This script generate the channel data for the germline SVs of the Training data.
+# This script generate the channel data for the somatic and the germline categories of the Training data.
 # The NoSV category is also added here, but for the moment it is generated using the channel_maker_real_somatic.py script
 
-SVMODE='INDEL'
+#Add path to BAM files
 
-INPATH='/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/WG/run_'$SVMODE'_500K/samples/'
-
-# The germline category
-GERMLINE1='G1'
-GERMLINE2='G2'
-# The NoSV category
-NOSV1="N1"
-NOSV2="N2"
-
-SAMPLE_ARRAY=(${GERMLINE1} ${GERMLINE2} ${NOSV1} ${NOSV2})
+BAM_ARRAY=(${NA12878_BAM} ${NA12892_BAM} ${NA12891_BAM} ${PATIENT1_BAM} ${PATIENT2_BAM})
+SAMPLE_ARRAY=('NA12878' 'NA12878' 'GIAB12878' 'PATIENT1' 'PATIENT2')
 
 CHRARRAY=(`seq 1 22` 'X' 'Y' 'MT')
 
@@ -23,13 +15,17 @@ RUNALL=0
 
 if [ $RUNALL == 0 ]; then
 
-for SAMPLE in ${SAMPLE_ARRAY[@]}; do
+for i in ${#SAMPLE_ARRAY[@]}; do
+
+    SAMPLE=${SAMPLE_ARRAY[$i]}
+    BAM=${BAM_ARRAY[$i]}
+    OUTDIR=$SAMPLE
+
     for CHROMOSOME in ${CHRARRAY[@]}; do
         for PRG in clipped_read_pos coverage clipped_read_distance clipped_reads split_read_distance; do
 
-            BAM=${INPATH}"$SAMPLE""/BAM/"$SAMPLE"/mapping/"$SAMPLE"_dedup.bam"
-            OUTDIR="Training/"$SAMPLE
             JOB_NAME=$SAMPLE"_"$CHROMOSOME"_"${PRG}
+
             echo qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=$OUTDIR \
             -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_channel.sge
         done
@@ -47,14 +43,11 @@ i=0
 BAM=${INPATH}"$SAMPLE""/BAM/"$SAMPLE"/mapping/"$SAMPLE"_dedup.bam"
 
 # ChannelMaker script to generate channel data for Training data
-PRG='channel_maker_train_germline'
+PRG='channel_maker_real_germline'
 for SAMPLE in ${SAMPLE_ARRAY[@]}; do
 	for CHROMOSOME in ${CHRARRAY[@]}; do
-        for CHROMOSOME in ${CHRARRAY[@]}; do
-		    OUTDIR="Training/"$SAMPLE
-		    echo qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},SVMODEARG=${SVMODE},\
-		    OUTARG=${OUTDIR} channel_script_by_name.sge
-        done
+		    OUTDIR=$SAMPLE
+		    echo qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=${OUTDIR} make_channel.sge
     done
 done
 
