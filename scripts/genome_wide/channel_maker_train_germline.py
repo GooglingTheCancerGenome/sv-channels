@@ -133,7 +133,7 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, SVmode, outFile):
     min_cr_support = 3
 
     # Consider a single sample
-    sample_list = ['Sample']
+    sample_list = [sampleName]
 
     # File with clipped read positions, output of the clipped_read_pos script
     clipped_read_pos_file = workdir + sampleName + '/' + sample_list[

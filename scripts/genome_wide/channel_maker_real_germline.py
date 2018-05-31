@@ -561,8 +561,8 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
 
     else:
 
-        # Consider a Tumor/Normal pair
-        sample_list = ['Sample']
+        # Consider a single sample
+        sample_list = [sampleName]
 
         # File with clipped read positions, output of the clipped_read_pos script
         clipped_read_pos_file = prefix_train + sampleName + '/' + sample_list[
