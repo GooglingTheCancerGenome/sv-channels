@@ -39,7 +39,7 @@ def count_clipped_read_positions(cpos_cnt):
                      (i + 1, len([k for k, v in cpos_cnt.items() if v > i])))
 
 
-def read_BED(SVmode):
+def read_BED(SVmode, chrName):
     '''
     
     :return: For INDELs: 
@@ -57,11 +57,14 @@ def read_BED(SVmode):
 
         # Path on the HPC
         if HPC_MODE:
-            wd = "/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_"+SVmode+"/genomes/"
-            truth_file = wd + "SV/chr17_"+SVmode+".bed"
+            wd = "/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/WG/run_"+ SVmode \
+                 + "_500K/genomes/"
+            truth_file = wd + "SV/GRCh37_"+SVmode+".bed"
         else:
             wd = "/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/"
             truth_file = wd + "SV/chr17_"+SVmode+".bed"
+
+        assert os.path.isfile(truth_file)
 
         chr_list_DEL = []
         start_SV_DEL = []
@@ -74,13 +77,14 @@ def read_BED(SVmode):
             for line in i:
                 line = line.rstrip()
                 columns = line.split("\t")
-                if columns[4] == "DEL":
+                chrom = str(columns[0])
+                if columns[4] == "DEL" and chrom == chrName:
                     start_SV_DEL.append(int(columns[1]))
                     end_SV_DEL.append(int(columns[3]))
-                    chr_list_DEL.append(int(columns[0]))
-                elif str(columns[4]) == "INS":
+                    chr_list_DEL.append(chrom)
+                elif str(columns[4]) == "INS" and chrom == chrName:
                     start_SV_INS.append(int(columns[1]))
-                    chr_list_INS.append(int(columns[0]))
+                    chr_list_INS.append(chrom)
 
         return start_SV_DEL, end_SV_DEL, start_SV_INS
 
@@ -99,10 +103,11 @@ def read_BED(SVmode):
             for line in i:
                 line = line.rstrip()
                 columns = line.split("\t")
-                if columns[4] == "INV" or columns[4] == "DUP":
+                chrom = str(columns[0])
+                if ( columns[4] == "INV" or columns[4] == "DUP" ) and chrom == chrName:
                     start_SV.append(int(columns[1]))
                     end_SV.append(int(columns[3]))
-                    chr_list.append(int(columns[0]))
+                    chr_list.append(chrom)
 
         return start_SV, end_SV
 
@@ -136,8 +141,8 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, SVmode, outFile):
     sample_list = [sampleName]
 
     # File with clipped read positions, output of the clipped_read_pos script
-    clipped_read_pos_file = workdir + sampleName + '/' + sample_list[
-        0] + '/clipped_read_pos/' + chrName + '_clipped_read_pos.pbz2'
+    clipped_read_pos_file = workdir + sampleName + \
+        '/clipped_read_pos/' + chrName + '_clipped_read_pos.pbz2'
     # File with the clipped read distances, output of the clipped_read_distance script
     clipped_read_distance_file = 'clipped_read_distance/' + chrName + '_clipped_read_distance.pbz2'
     # File with the clipped reads, output of the clipped_reads script
@@ -151,10 +156,10 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, SVmode, outFile):
     assert os.path.isfile(clipped_read_pos_file)
 
     for sample in sample_list:
-        assert os.path.isfile(workdir + sampleName + '/' + sample + '/' + clipped_read_distance_file)
-        assert os.path.isfile(workdir + sampleName + '/' + sample + '/' + clipped_reads_file)
-        assert os.path.isfile(workdir + sampleName + '/' + sample + '/' + coverage_file)
-        assert os.path.isfile(workdir + sampleName + '/' + sample + '/' + split_read_distance_file)
+        assert os.path.isfile(workdir + sample + '/' + clipped_read_distance_file)
+        assert os.path.isfile(workdir + sample + '/' + clipped_reads_file)
+        assert os.path.isfile(workdir + sample + '/' + coverage_file)
+        assert os.path.isfile(workdir + sample + '/' + split_read_distance_file)
 
     logging.info('Chromosome %s' % chrName)
 
@@ -177,7 +182,7 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, SVmode, outFile):
     split_read_distance = dict()
 
     for sample in sample_list:
-        prefix = workdir + sampleName + '/' + sample + '/'
+        prefix = workdir + sample + '/'
 
         logging.info('Considering %s' % sample)
         logging.info('Reading clipped read distances')
@@ -206,8 +211,11 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, SVmode, outFile):
     if SVmode == 'INDEL':
 
         # load the position for the artifically generated deletions (DEL, start and end) and insertion (only start)
-        start_SV_DEL, end_SV_DEL, start_SV_INS = read_BED(SVmode)
+        start_SV_DEL, end_SV_DEL, start_SV_INS = read_BED(SVmode, chrName)
         pos_list = start_SV_DEL + end_SV_DEL + start_SV_INS
+
+        logging.info('Number of BPJ positions: %d' % len(pos_list))
+
         label_list = ['DEL_start'] * len(start_SV_DEL) + \
                      ['DEL_end'] * len(end_SV_DEL) + \
                      ['INS_pos'] * len(start_SV_INS)
@@ -215,8 +223,11 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, SVmode, outFile):
     elif SVmode == 'INV' or SVmode == 'DUP':
 
         # load the position for the artifically generated deletions (DEL, start and end) and insertion (only start)
-        start_SV, end_SV = read_BED(SVmode)
+        start_SV, end_SV = read_BED(SVmode, chrName)
         pos_list = start_SV + end_SV
+
+        logging.info('Number of BPJ positions: %d' % len(pos_list))
+
         label_list = [SVmode + '_start'] * len(start_SV) + \
                      [SVmode + '_end'] * len(end_SV)
 
@@ -266,7 +277,7 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, SVmode, outFile):
             # Consider all the clipped read positions that are within win_hlen from the breakpoint junction (center_pos)
             window_cr_pos = [p for p in clipped_pos if (center_pos - win_hlen) <= p <= (center_pos + win_hlen)]
 
-            print('Number of clipped read positions in window %d: %d' % (center_pos, len(window_cr_pos)))
+            # print('Number of clipped read positions in window %d: %d' % (center_pos, len(window_cr_pos)))
 
             for pos in window_cr_pos:
 
@@ -398,7 +409,7 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, SVmode, outFile):
                 # logging.info("Shape of channel matrix: %s" % str(ch_vstack.shape))
                 ch_vstack = np.vstack(vstack_list)
                 ch_list.append(ch_vstack)
-                print(len(ch_list))
+                # print(len(ch_list))
 
                 # print('Vstack:')
                 # for d in np.arange(ch_vstack.shape[0]):
@@ -420,17 +431,21 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, SVmode, outFile):
         np.save(file=f, arr=ch_list)
     f.close()
 
+    outDir = os.path.dirname(outFile)
+    labelDir = outDir +'/label/'
+    create_dir(labelDir)
+
     # print(Counter(label))
     # Save the list of labels
-    with gzip.GzipFile(sampleName + '_label.npy.gz', "w") as f:
+    with gzip.GzipFile(labelDir + sampleName + '_' + chrName + '_label.npy.gz', "w") as f:
         np.save(file=f, arr=label)
     f.close()
     # Save the list of flags for breakpoint junctions (True/False)
-    with gzip.GzipFile(sampleName + '_label_BPJ.npy.gz', "w") as f:
+    with gzip.GzipFile(labelDir + sampleName + '_' + chrName + '_label_BPJ.npy.gz', "w") as f:
         np.save(file=f, arr=label_BPJ)
     f.close()
     # Save the list of distances from positions to breakpoint junctions
-    with gzip.GzipFile(sampleName + '_distance_BPJ.npy.gz', "w") as f:
+    with gzip.GzipFile(labelDir + sampleName + '_' + chrName + '_distance_BPJ.npy.gz', "w") as f:
         np.save(file=f, arr=label)
     f.close()
 

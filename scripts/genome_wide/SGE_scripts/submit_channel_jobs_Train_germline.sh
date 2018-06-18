@@ -49,6 +49,10 @@ BAM=${INPATH}"$SAMPLE""/BAM/"$SAMPLE"/mapping/"$SAMPLE"_dedup.bam"
 # ChannelMaker script to generate channel data for Training data
 PRG='channel_maker_train_germline'
 for SAMPLE in ${SAMPLE_ARRAY[@]}; do
+
+    if [ $SAMPLE == 'N1' ] || [ $SAMPLE == 'N2' ]; then
+        PRG='channel_maker_real_germline'
+
 	for CHROMOSOME in ${CHRARRAY[@]}; do
         for CHROMOSOME in ${CHRARRAY[@]}; do
 		    OUTDIR="Training/"$SAMPLE
