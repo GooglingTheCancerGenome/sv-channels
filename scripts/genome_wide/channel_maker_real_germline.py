@@ -6,11 +6,9 @@ import statistics
 from pysam import VariantFile
 from collections import Counter
 from intervaltree import Interval, IntervalTree
-# from collections import defaultdict
-
+from collections import defaultdict
 import numpy as np
 from scipy.spatial import distance
-
 import argparse
 import bz2file
 import gzip
@@ -19,17 +17,23 @@ import pickle
 from time import time
 import logging
 import csv
-
 import pandas as pd
+from plotnine import *
 
-# from pybedtools import BedTool
-# from ggplot import *
+#import matplotlib.pyplot as plt
 
 # Flag used to set either paths on the local machine or on the HPC
 HPC_MODE = False
 
+# Only clipped read positions supported by at least min_cr_support clipped reads are considered
+min_cr_support = 3
+# Window half length
+win_hlen = 25
+# Window size
+win_len = win_hlen * 2
 
-class SVRecord:
+
+class SVRecord_SUR:
 
     def __init__(self, record):
         if type(record) != pysam.VariantRecord:
@@ -41,6 +45,7 @@ class SVRecord:
         self.end = record.stop
         self.supp_vec = record.info['SUPP_VEC']
         self.svtype = record.info['SVTYPE']
+        self.samples = record.samples
 
 
 class SVRecord_nanosv:
@@ -65,6 +70,7 @@ class SVRecord_nanosv:
         self.ciend = record.info['CIEND']
         self.filter = record.filter
 
+        # Deletions are defined by 3to5 connection, same chromosome for start and end, start before end
         if ct == '3to5' and self.chrom == self.chrom2 and self.start <= self.end:
             self.svtype = 'DEL'
         else:
@@ -81,9 +87,13 @@ class SVRecord_nanosv:
         # Modified from the function ctAndLocFromBkpt in mergevcf
 
     def locFromBkpt(self, ref, pre, delim1, pair, delim2, post):
-        # extract strand/orientation, position, and (possibly) inserted string
-        # length from record eg [9:1678896[N.
-        # result is result from re.match with the explicit BP regexp
+        '''
+        Function of the mergevcf tool by Jonathan Dursi (Simpson Lab)
+        URL: https://github.com/ljdursi/mergevcf
+        :param record: pysam.VariantRecord
+        :return: tuple with connection (3' to 5', 3' to 3', 5' to 5' or 5' to 3'), chromosome and position of the
+        second SV endpoint, length of the indel
+        '''
 
         chpos = pair.split(':')
         # print(chpos[0])
@@ -123,14 +133,19 @@ class SVRecord_nanosv:
         return ct, chr2, pos2, indellen
 
     def get_bnd_info(self, record):
-
+        '''
+        Function of the mergevcf tool by Jonathan Dursi (Simpson Lab)
+        URL: https://github.com/ljdursi/mergevcf
+        :param record: pysam.VariantRecord
+        :return: tuple with connection (3' to 5', 3' to 3', 5' to 5' or 5' to 3'), chromosome and position of the
+        second SV endpoint, length of the indel
+        '''
         setupREs()
 
         altstr = str(record.alts[0])
         resultBP = re.match(__bpRE__, altstr)
 
         if resultBP:
-            assert resultBP.group(2) == resultBP.group(4)
             ct, chr2, pos2, indellen = self.locFromBkpt(str(record.ref), resultBP.group(1),
                                                         resultBP.group(2), resultBP.group(3), resultBP.group(4),
                                                         resultBP.group(5))
@@ -142,6 +157,10 @@ __symbolicRE__ = None
 
 
 def setupREs():
+    '''
+    Function of the mergevcf tool by Jonathan Dursi (Simpson Lab)
+    URL: https://github.com/ljdursi/mergevcf
+    '''
     global __symbolicRE__
     global __bpRE__
     if __symbolicRE__ is None or __bpRE__ is None:
@@ -150,7 +169,6 @@ def setupREs():
 
 
 def get_chr_len(ibam, chrName):
-
     # check if the BAM file exists
     assert os.path.isfile(ibam)
     # open the BAM file
@@ -175,10 +193,8 @@ def create_dir(directory):
         if e.errno != errno.EEXIST:
             raise
 
+
 def load_clipped_read_positions(sampleName, chrName):
-
-    min_CR_support = 3
-
     channel_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth'
 
     vec_type = 'clipped_read_pos'
@@ -191,7 +207,7 @@ def load_clipped_read_positions(sampleName, chrName):
     with bz2file.BZ2File(fn, 'rb') as f:
         cpos = pickle.load(f)
 
-    cr_pos = [elem for elem, cnt in cpos.items() if cnt >= min_CR_support]
+    cr_pos = [elem for elem, cnt in cpos.items() if cnt >= min_cr_support]
 
     return cr_pos
 
@@ -293,12 +309,10 @@ def read_bpi_positions():
 def generate_labels():
     '''
     For each chromosome, load the clipped read positions file (clipped_read_pos) and label each position according
-    to the
-    :return:
+    to the informations in the VCF file for the HMF COLO829 dataset
+    :return: None
     '''
 
-    # Only clipped read positions supported by at least min_cr_support clipped reads are considered
-    min_cr_support = 3
     # Half of the window length centered on SV positions, where to consider clipped read positions
     confint = 25
 
@@ -447,7 +461,6 @@ def get_Lumpy_positions():
 
 
 def initialize_nanosv_vcf(sampleName):
-
     vcf_files = dict()
 
     if HPC_MODE:
@@ -495,7 +508,7 @@ def initialize_nanosv_vcf(sampleName):
 
         elif sampleName == 'Patient1' or sampleName == 'Patient2':
 
-            vcf_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth/'+sampleName+'/SV'
+            vcf_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth/' + sampleName + '/SV'
             vcf_files = dict()
 
             for mapper in ['last']:
@@ -508,7 +521,12 @@ def initialize_nanosv_vcf(sampleName):
 
 
 def read_nanosv_vcf(sampleName):
-
+    '''
+    This function parses the entries of the nanosv VCF file into SVRecord_nanosv objects and
+    returns them in a list
+    :param sampleName: str, name of the sample to consider
+    :return: list, list of SVRecord_nanosv objects with the SV entries from the nanosv VCF file
+    '''
     # Initialize regular expressions
     setupREs()
     # Setup locations of VCF files
@@ -528,8 +546,10 @@ def read_nanosv_vcf(sampleName):
                 svrec = SVRecord_nanosv(rec)
                 sv.append(svrec)
 
-        sv = [svrec for svrec in sv if svrec.svtype =='DEL'
-              if 'LowQual' not in list(svrec.filter)]
+        # Select good quality (no LowQual) deletions (DEL)
+        sv = [svrec for svrec in sv if svrec.svtype == 'DEL'
+              #if 'LowQual' not in list(svrec.filter)]
+              if 'PASS' in list(svrec.filter)]
 
         # How many distinct FILTERs?
         filter_set = set([f for svrec in sv for f in svrec.filter])
@@ -544,12 +564,20 @@ def read_nanosv_vcf(sampleName):
         s = s.append(pd.Series([len(sv)], index=['Total']))
         s = s.sort_values()
         # Print pd.Series with stats on FILTERs
-        #print(s)
+        # print(s)
 
         return sv
 
 
-def create_labels_nanosv_vcf(sampleName, chrName, ibam):
+def create_labels_nanosv_vcf(sampleName, ibam):
+    '''
+    This function writes the label files based on the nanosv VCF file information
+
+    :param sampleName: str, name of the sample considered
+    :param chrName: str, chromosome name
+    :param ibam: str, path of the BAM file in input
+    :return: None
+    '''
 
     def closest_loc(pos, pos_list):
         pos_array = np.asarray(pos_list)
@@ -559,8 +587,14 @@ def create_labels_nanosv_vcf(sampleName, chrName, ibam):
 
     # Load SV list
     sv_list = read_nanosv_vcf(sampleName)
+    # Select deletions
     sv_list = [sv for sv in sv_list if sv.svtype == 'DEL']
+    # list of chromosomes
     chr_list = set([var.chrom for var in sv_list])
+
+    # print('Plotting CI distribution')
+    # plot_ci_dist(sv_list, sampleName)
+
     print(chr_list)
     print('# DELs:%d' % len(sv_list))
 
@@ -570,16 +604,13 @@ def create_labels_nanosv_vcf(sampleName, chrName, ibam):
 
     assert sum(s) == len(sv_list)
 
-    win_hlen = 25
-    win_len = win_hlen * 2
-
     confint = 100
 
     for chrName in chr_list:
 
-        chrLen = get_chr_len(ibam, chrName)
+        sv_list_chr = [var for var in sv_list if var.chrom == chrName]
 
-        # if chrName == '17':
+        chrLen = get_chr_len(ibam, chrName)
 
         # Load CR positions
         cr_pos = load_clipped_read_positions(sampleName, chrName)
@@ -587,75 +618,102 @@ def create_labels_nanosv_vcf(sampleName, chrName, ibam):
         # Remove positions with windows falling off chromosome boundaries
         cr_pos = [pos for pos in cr_pos if win_hlen <= pos <= (chrLen - win_hlen)]
 
-        print(sorted(cr_pos))
+        # print(sorted(cr_pos))
 
         # Using IntervalTree for interval search
         t = IntervalTree()
 
-        for var in sv_list:
-            if var.chrom == chrName:
-                # cipos[0] and ciend[0] are negative in the VCF file
-                id_start =  var.svtype + '_start'
-                id_end = var.svtype + '_end'
+        for var in sv_list_chr:
+            # cipos[0] and ciend[0] are negative in the VCF file
+            id_start = var.svtype + '_start'
+            id_end = var.svtype + '_end'
 
-                #id_start = '_'.join((var.chrom, str(var.start+var.cipos[0]),  str(var.start+var.cipos[1])))
-                #id_end = '_'.join((var.chrom, str(var.end + var.ciend[0]), str(var.end+var.ciend[1])))
+            # id_start = '_'.join((var.chrom, str(var.start+var.cipos[0]),  str(var.start+var.cipos[1])))
+            # id_end = '_'.join((var.chrom, str(var.end + var.ciend[0]), str(var.end+var.ciend[1])))
 
-                t[var.start + var.cipos[0]:var.start + var.cipos[1] + 1] = id_start
-                t[var.end + var.ciend[0]:var.end + var.ciend[1] + 1] = id_end
+            t[var.start + var.cipos[0]:var.start + var.cipos[1] + 1] = id_start
+            t[var.end + var.ciend[0]:var.end + var.ciend[1] + 1] = id_end
 
-                #t[var.start - confint:var.start + confint + 1] = var.svtype + '_start'
-                #t[var.end - confint:var.end + confint + 1] = var.svtype + '_end'
+            # t[var.start - confint:var.start + confint + 1] = var.svtype + '_start'
+            # t[var.end - confint:var.end + confint + 1] = var.svtype + '_end'
 
         label = [sorted(t[p]) for p in cr_pos]
 
+        crpos_ci = get_crpos_win_with_full_ci_overlap(sv_list_chr, cr_pos)
+        print('Clipped read positions with complete CI overlap: %s' % crpos_ci)
+
+        count_zero_hits = 0
+        count_multiple_hits = 0
+
         label_ci = []
-        for elem in label:
+        label_ci_full_overlap = []
+
+        for elem, pos in zip(label, cr_pos):
             if len(elem) == 1:
-                #print(elem)
+                # print(elem)
                 label_ci.append(elem[0].data)
-            else:
+                if pos in crpos_ci:
+                    label_ci_full_overlap.append(elem[0].data)
+                else:
+                    label_ci_full_overlap.append('noSV')
+            elif len(elem) == 0:
+                count_zero_hits += 1
                 label_ci.append('noSV')
+                label_ci_full_overlap.append('noSV')
+            elif len(elem) > 1:
+                count_multiple_hits += 1
+                label_ci.append('noSV')
+                label_ci_full_overlap.append('noSV')
 
         print('CR positions: %d' % len(cr_pos))
         print('Label length: %d' % len(label))
         assert len(label_ci) == len(cr_pos)
-        print(Counter(label_ci))
+        assert len(label_ci_full_overlap) == len(cr_pos)
+
+        print('Label_CI: %s' % Counter(label_ci))
+        print('Label_CI_full_overlap: %s' % Counter(label_ci_full_overlap))
+        print('Zero hits:%d' % count_zero_hits)
+        print('Multiple hits:%d' % count_multiple_hits)
 
         hit_set = set([elem for l in label for elem in l])
+        # print(hit_set)
+        hits = [(var.start, var.end) for var in sv_list_chr
+                if var.start + var.cipos[0] in [start for start, end, lab in hit_set]
+                if var.start + var.cipos[1] + 1 in [end for start, end, lab in hit_set]
+                if var.end + var.ciend[0] in [start for start, end, lab in hit_set]
+                if var.end + var.ciend[1] + 1 in [end for start, end, lab in hit_set]]
+        # print(hits)
+        # no_hits = sorted(no_hits)
 
-        no_hits = [ (var.start + var.cipos[0], var.start + var.cipos[1]) for var in sv_list if var.chrom == chrName
-                   if var.start + var.cipos[0] not in [start for start,end,lab in hit_set]]
-        no_hits = sorted(no_hits)
+        print('No hits:%d/%d' % (len(sv_list_chr) - len(hits), len(sv_list_chr)))
+        # print(no_hits)
 
-        #print(len(no_hits))
-        #print(no_hits)
-
+        # Pick the clipped read position closest to either var.start or var.end
         label_close = []
         label_BPJ = []
         label_distance = []
 
-        start_positions = [var.start for var in sv_list if var.chrom == chrName]
-        end_positions = [var.end for var in sv_list if var.chrom == chrName]
+        start_positions = [var.start for var in sv_list_chr]
+        end_positions = [var.end for var in sv_list_chr]
 
         # Very slow:
         if len(start_positions) != 0 and len(end_positions) != 0:
             for pos in cr_pos:
-                #print('Pos: %d' % pos)
+                # print('Pos: %d' % pos)
                 close_start, close_start_dist = closest_loc(pos, start_positions)
                 close_end, close_end_dist = closest_loc(pos, end_positions)
                 if close_start_dist <= confint or close_end_dist <= confint:
                     if close_start_dist <= close_end_dist:
-                        #print(str(close_start_dist))
+                        # print(str(close_start_dist))
                         bpj_id = str(chrName) + '_' + str(close_start)
-                        #print(bpj_id)
+                        # print(bpj_id)
                         label_close.append('DEL_start')
                         label_BPJ.append(bpj_id)
                         label_distance.append(abs(pos - close_start))
                     else:
-                        #print(str(close_end_dist))
+                        # print(str(close_end_dist))
                         bpj_id = str(chrName) + '_' + str(close_end)
-                        #print(bpj_id)
+                        # print(bpj_id)
                         label_close.append('DEL_end')
                         label_BPJ.append(bpj_id)
                         label_distance.append(abs(pos - close_end))
@@ -684,6 +742,9 @@ def create_labels_nanosv_vcf(sampleName, chrName, ibam):
             with gzip.GzipFile('/'.join((output_dir, chrName + '_label_ci.npy.gz')), "w") as f:
                 np.save(file=f, arr=label_ci)
             f.close()
+            with gzip.GzipFile('/'.join((output_dir, chrName + '_label_ci_full_overlap.npy.gz')), "w") as f:
+                np.save(file=f, arr=label_ci_full_overlap)
+            f.close()
             with gzip.GzipFile('/'.join((output_dir, chrName + '_label.npy.gz')), "w") as f:
                 np.save(file=f, arr=label_close)
             f.close()
@@ -698,9 +759,209 @@ def create_labels_nanosv_vcf(sampleName, chrName, ibam):
             print('Chromosome %s is not in the SV file' % chrName)
 
 
+def write_sv_without_cr(sampleName, ibam):
+
+    '''
+
+    :param sampleName:
+    :param ibam:
+    :return:
+    '''
+
+    # Load SV list
+    sv_list = read_nanosv_vcf(sampleName)
+    # Select deletions
+    sv_list = [sv for sv in sv_list if sv.svtype == 'DEL' if sv.chrom == sv.chrom2 if sv.start < sv.end]
+    # list of chromosomes
+    chr_list = set([var.chrom for var in sv_list])
+
+    var_with_cr = 0
+
+    bedout = open(sampleName+'_nanosv_no_cr.bed', 'w')
+
+    for chrName in sorted(chr_list):
+
+        sv_list_chr = [var for var in sv_list if var.chrom == chrName]
+
+        chrLen = get_chr_len(ibam, chrName)
+
+        # Load CR positions
+        cr_pos = load_clipped_read_positions(sampleName, chrName)
+        # Remove positions with windows falling off chromosome boundaries
+        cr_pos = [pos for pos in cr_pos if win_hlen <= pos <= (chrLen - win_hlen)]
+
+        # Using IntervalTree for interval search
+        t = IntervalTree()
+
+        for var in sv_list_chr:
+            id_start = var.svtype + '_start'
+            id_end = var.svtype + '_end'
+
+            t[var.start + var.cipos[0]:var.start + var.cipos[1] + 1] = id_start
+            t[var.end + var.ciend[0]:var.end + var.ciend[1] + 1] = id_end
+
+        hits = [sorted(t[p]) for p in cr_pos]
+
+        inter_list = [nested_elem for elem in hits for nested_elem in elem]
+
+        start_var_list = []
+        end_var_list = []
+
+        for start, end, data in inter_list:
+            se = data.split('_')[1]
+            if se == 'start':
+                start_var_list.append(start)
+            elif se == 'end':
+                end_var_list.append(start)
+
+        for var in sv_list_chr:
+
+            if var.start + var.cipos[0] in start_var_list and \
+                var.end + var.ciend[0] in end_var_list:
+                var_with_cr += 1
+
+            if var.start + var.cipos[0] not in start_var_list:
+                bedout.write('\t'.join((var.chrom,
+                                        str(var.start + var.cipos[0]),
+                                        str(var.start + var.cipos[1]))) + '\n')
+            if var.end + var.ciend[0] not in end_var_list:
+                bedout.write('\t'.join((var.chrom,
+                                        str(var.end + var.ciend[0]),
+                                        str(var.end + var.ciend[1]))) + '\n')
+
+    bedout.close()
+
+    print('VCF entries with CR on both sides: %d/%d' % (var_with_cr, len(sv_list)))
+
+
+def get_crpos_win_with_full_ci_overlap(sv_list, cr_pos):
+    '''
+
+    :param sv_list: list, list of SVs
+    :param cr_pos: list, list of clipped read positions
+    :return: list, list of clipped read positions whose window completely overlap either the CIPOS interval
+    or the CIEND interval
+    '''
+    # Tree with windows for CR positions
+    t_cr = IntervalTree()
+    for pos in cr_pos:
+        t_cr[pos - win_hlen:pos + win_hlen + 1] = pos
+
+    cipos_1 = [sorted(t_cr[p]) for p in [var.start + var.cipos[0] for var in sv_list]]
+    # Unfold list of lists and extract data
+    cipos_1 = [data for elem in cipos_1 for start, end, data in elem]
+
+    cipos_2 = [sorted(t_cr[p]) for p in [var.start + var.cipos[1] for var in sv_list]]
+    # Unfold list of lists and extract data
+    cipos_2 = [data for elem in cipos_2 for start, end, data in elem]
+    # Both the start and end of CIPOS must overlap the window
+    set_cipos = set(cipos_1) & set(cipos_2)
+
+    ciend_1 = [sorted(t_cr[p]) for p in [var.end + var.ciend[0] for var in sv_list]]
+    # Unfold list of lists and extract data
+    ciend_1 = [data for elem in ciend_1 for start, end, data in elem]
+
+    ciend_2 = [sorted(t_cr[p]) for p in [var.end + var.ciend[1] for var in sv_list]]
+    # Unfold list of lists and extract data
+    ciend_2 = [data for elem in ciend_2 for start, end, data in elem]
+    # Both the start and end of CIEND must overlap the window
+    set_ciend = set(ciend_1) & set(ciend_2)
+
+    return sorted(list(set_cipos | set_ciend))
+
+
+def plot_ci_dist(sv_list, sampleName):
+    '''
+    Save the plots of the distributions of the confidence intervals reported by NanoSV
+    :param sv_list: list, a list of SVs
+    :param sampleName: str, name of the sample to consider
+    :return: None
+    '''
+
+    # Plot distribution of CIPOS and CIEND
+    df = pd.DataFrame({
+        "cipos": np.array([var.cipos[1] + abs(var.cipos[0]) for var in sv_list]),
+        "ciend": np.array([var.ciend[1] + abs(var.ciend[0]) for var in sv_list])
+    })
+
+    print('Max CIPOS:%d, max CIEND:%d' % (max(df['cipos']), max(df['ciend'])))
+
+    output_dir = '/Users/lsantuari/Documents/Data/germline/plots'
+    # the histogram of the data
+    p = ggplot(aes(x='cipos'), data=df) + \
+        geom_histogram(binwidth=1) + ggtitle(' '.join((sampleName, 'CIPOS', 'distribution')))
+    p.save(filename='_'.join((sampleName, 'CIPOS', 'distribution')), path=output_dir)
+
+    p = ggplot(aes(x='ciend'), data=df) + \
+        geom_histogram(binwidth=1) + ggtitle(' '.join((sampleName, 'CIEND', 'distribution')))
+    p.save(filename='_'.join((sampleName, 'CIEND', 'distribution')), path=output_dir)
+
+
+def get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName):
+    '''
+
+    :param sampleName: sample ID
+    :return: list of SVRecord_nanosv that overlap Manta SVs as reported in SURVIVOR merge VCF file
+    '''
+    sv_sur = read_SURVIVOR_merge_VCF(sampleName)
+    sv_nanosv = read_nanosv_vcf(sampleName)
+
+    common_sv = defaultdict(list)
+    for sv in sv_sur:
+        #print(sv.supp_vec)
+        #0:Delly, 1:GRIDSS, 2:nanosv, 3:Lumpy, 4:Manta
+        if sv.supp_vec[2] == '1' and sv.supp_vec[4] == '1':
+            #print(sv.samples.keys())
+            svtype = sv.samples.get('NanoSV').get('TY')
+            coord = sv.samples.get('NanoSV').get('CO')
+            if svtype == 'DEL' and coord != 'NaN':
+                coord_list = re.split('-|_', coord)
+                assert len(coord_list) == 4
+                common_sv[coord_list[0]].append(int(coord_list[1]))
+    #print(common_sv.keys())
+    sv_nanosv_manta = [sv for sv in sv_nanosv
+                       if sv.chrom in common_sv.keys() if sv.start in common_sv[sv.chrom]]
+    #print(common_sv['1'])
+    #print(len(sv_nanosv_manta))
+    return sv_nanosv_manta
+
+
 # END: NanoSV specific functions
 
 def read_SURVIVOR_merge_VCF(sampleName):
+
+    if HPC_MODE:
+        # To fill
+        survivor_vcf = ''
+    else:
+        if sampleName == 'NA12878':
+            context = 'trio'
+        elif sampleName == 'Patient1' or sampleName == 'Patient2':
+            context = 'patients'
+
+        survivor_vcf = '/Users/lsantuari/Documents/Data/germline/' + context + \
+                       '/' + sampleName + '/SV/Filtered/survivor_merge.vcf'
+
+    vcf_in = VariantFile(survivor_vcf)
+    samples_list = list((vcf_in.header.samples))
+    samples = samples_list
+    #samples = [w.split('_')[0].split('/')[1] for w in samples_list]
+    #print(samples)
+
+    sv = []
+
+    # create sv list with SVRecord_SUR objects
+    for rec in vcf_in.fetch():
+        # avoid SVs on chromosomes Y and MT
+        if rec.chrom not in ['Y', 'MT'] and rec.info['CHR2'] not in ['Y', 'MT']:
+            # print(rec)
+            #print(dir(rec))
+            sv.append(SVRecord_SUR(rec))
+
+    return sv
+
+
+def create_labels_from_SURVIVOR_merge_VCF(sampleName):
     if HPC_MODE:
         channel_dir = ''
         vcf_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/Breast_Cancer_Pilot_SV/Manta/survivor_merge.vcf'
@@ -709,7 +970,6 @@ def read_SURVIVOR_merge_VCF(sampleName):
         vcf_file = '/Users/lsantuari/Documents/Data/Breast_Cancer_Pilot/SV/survivor_merge.vcf'
 
     vec = 'clipped_read_pos'
-    min_CR_support = 3
     confint = 100
 
     vcf_in = VariantFile(vcf_file)
@@ -721,14 +981,14 @@ def read_SURVIVOR_merge_VCF(sampleName):
 
     sv = []
 
-    # create sv list with SVRecord objects
+    # create sv list with SVRecord_SUR objects
     for rec in vcf_in.fetch():
         # print(rec)
         # print(rec.info['SUPP_VEC'][16])
         # avoid SVs on chromosomes Y and MT
         if rec.chrom not in ['Y', 'MT'] and rec.info['CHR2'] not in ['Y', 'MT']:
             # print(rec)
-            sv.append(SVRecord(rec))
+            sv.append(SVRecord_SUR(rec))
 
     svtypes = set(var.svtype for var in sv)
 
@@ -824,7 +1084,7 @@ def read_SURVIVOR_merge_VCF(sampleName):
         with bz2file.BZ2File(fn, 'rb') as f:
             cpos['Normal'][chr] = pickle.load(f)
 
-        cr_pos = [elem for elem, cnt in cpos['Tumor'][chr].items() if cnt >= min_CR_support]
+        cr_pos = [elem for elem, cnt in cpos['Tumor'][chr].items() if cnt >= min_cr_support]
         labels = []
 
         # for type in svtypes:
@@ -894,7 +1154,7 @@ def load_NoCR_positions():
     '''
     This function provides an overview of SV positions without clipped read support that are stored in the
     no_clipped_read_positions file.
-    :return: None
+    :return: Noneq
     '''
 
     no_cr_File = '/Users/lsantuari/Documents/Data/HMF/ChannelMaker_results/HMF_Tumor/labels/' \
@@ -903,6 +1163,52 @@ def load_NoCR_positions():
         no_clipped_read_pos = pickle.load(f)
     f.close()
     print(list(no_clipped_read_pos))
+
+
+def clipped_read_positions_to_bed(sampleName):
+
+    chrlist = list(map(str, range(1,23)))
+    chrlist.extend(['X', 'Y'])
+    #print(chrlist)
+
+    lines = []
+    for chrName in chrlist:
+        crpos_list = load_clipped_read_positions(sampleName, chrName)
+        lines.extend([bytes(chrName+'\t'+str(crpos)+'\t'+str(crpos+1)+'\n', 'utf-8') for crpos in crpos_list])
+
+    crout = sampleName + '_clipped_read_pos.bed.gz'
+    f = gzip.open(crout, 'wb')
+    try:
+        for l in lines:
+            f.write(l)
+    finally:
+        f.close()
+
+def nanosv_vcf_to_bed(sampleName):
+
+    # Load SV list
+    #sv_list = read_nanosv_vcf(sampleName)
+    # nanoSV & Manta SVs
+    sv_list = get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName)
+
+    # Select deletions
+    sv_list = [sv for sv in sv_list if sv.svtype == 'DEL' if sv.chrom == sv.chrom2 if sv.start < sv.end]
+
+    lines = []
+    for sv in sv_list:
+        lines.append(bytes(sv.chrom + '\t' + str(sv.start+sv.cipos[0]) + '\t' \
+                           + str(sv.start+sv.cipos[1]+1) + '\n', 'utf-8'))
+        lines.append(bytes(sv.chrom + '\t' + str(sv.end + sv.ciend[0]) + '\t' \
+                           + str(sv.end + sv.ciend[1] + 1) + '\n', 'utf-8'))
+
+    #outfile = sampleName + '_nanosv_vcf_ci.bed.gz'
+    outfile = sampleName + '_manta_nanosv_vcf_ci.bed.gz'
+    f = gzip.open(outfile, 'wb')
+    try:
+        for l in lines:
+            f.write(l)
+    finally:
+        f.close()
 
 
 def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
@@ -933,11 +1239,9 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
     # TODO: the window length should be an input parameter
     win_hlen = 25
     win_len = win_hlen * 2
-    # Minimum clipped read support to consider
-    min_cr_support = 3
 
     # Set the correct prefix for the path
-    if trainingMode and ( sampleName == 'N1' or sampleName == 'N2' ):
+    if trainingMode and (sampleName == 'N1' or sampleName == 'N2'):
         prefix_train = 'Training/'
     else:
         prefix_train = ''
@@ -1033,7 +1337,7 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
         logging.info('End of reading')
 
     # If in 'NoSV' mode, consider all the clipped read positions (minimum clipped read support equal to 0)
-    if trainingMode and ( sampleName == 'N1' or sampleName == 'N2' ):
+    if trainingMode and (sampleName == 'N1' or sampleName == 'N2'):
         clipped_pos = [k for k, v in clipped_pos_cnt.items()]
     else:
         clipped_pos = [k for k, v in clipped_pos_cnt.items() if v >= min_cr_support]
@@ -1205,7 +1509,7 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
             ch_list.append(ch_vstack)
 
     outDir = os.path.dirname(outFile)
-    labelDir = outDir +'/label/'
+    labelDir = outDir + '/label/'
     create_dir(labelDir)
 
     # Save the list of channel vstacks
@@ -1214,8 +1518,8 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
     f.close()
 
     # Write labels for noSV category
-    #if trainingMode and sampleName == 'noSV':
-    if trainingMode and ( sampleName == 'N1' or sampleName == 'N2' ):
+    # if trainingMode and sampleName == 'noSV':
+    if trainingMode and (sampleName == 'N1' or sampleName == 'N2'):
         label = ['noSV'] * len(ch_list)
         with gzip.GzipFile(labelDir + sampleName + '_' + chrName + '_label.npy.gz', "w") as f:
             np.save(file=f, arr=label)
@@ -1269,16 +1573,25 @@ def main():
     t0 = time()
 
     # Get chromosome length
-    #chrlen = get_chr_len(args.bam, args.chr)
+    # chrlen = get_chr_len(args.bam, args.chr)
 
-    #channel_maker(ibam=args.bam, chrName=args.chr, sampleName=args.sample,
+    # channel_maker(ibam=args.bam, chrName=args.chr, sampleName=args.sample,
     #               trainingMode=args.train, outFile=args.out)
 
-    create_labels_nanosv_vcf(sampleName=args.sample, chrName=args.chr, ibam=args.bam)
+    #create_labels_nanosv_vcf(sampleName=args.sample, ibam=args.bam)
 
     # Generate labels for the datasets of real data (HMF or GiaB)
     # generate_labels()
     # read_SURVIVOR_merge_VCF(sampleName=args.sample)
+
+    # print(read_SURVIVOR_merge_VCF(sampleName=args.sample))
+
+    #write_sv_without_cr(sampleName=args.sample, ibam=args.bam)
+
+    #clipped_read_positions_to_bed(sampleName=args.sample)
+    nanosv_vcf_to_bed(sampleName=args.sample)
+
+    #get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName=args.sample)
 
     print('Elapsed time channel_maker_real on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))
 
