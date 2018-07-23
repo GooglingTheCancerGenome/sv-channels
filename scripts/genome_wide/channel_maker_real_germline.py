@@ -623,6 +623,8 @@ def create_labels_nanosv_vcf(sampleName, ibam):
         # Using IntervalTree for interval search
         t = IntervalTree()
 
+        print('# SVs in Chr: %d' % len(sv_list_chr))
+
         for var in sv_list_chr:
             # cipos[0] and ciend[0] are negative in the VCF file
             id_start = var.svtype + '_start'
@@ -637,10 +639,15 @@ def create_labels_nanosv_vcf(sampleName, ibam):
             # t[var.start - confint:var.start + confint + 1] = var.svtype + '_start'
             # t[var.end - confint:var.end + confint + 1] = var.svtype + '_end'
 
-        label = [sorted(t[p]) for p in cr_pos]
+        label = [sorted(t[p - win_hlen: p + win_hlen + 1]) for p in cr_pos]
 
-        crpos_ci = get_crpos_win_with_full_ci_overlap(sv_list_chr, cr_pos)
-        print('Clipped read positions with complete CI overlap: %s' % crpos_ci)
+        crpos_full_ci, crpos_partial_ci = get_crpos_win_with_ci_overlap(sv_list_chr, cr_pos)
+        print('Clipped read positions with complete CI overlap: %s' % crpos_full_ci)
+        print('Clipped read positions with partial CI overlap: %s' % crpos_partial_ci)
+        crpos_ci_isec = set(crpos_full_ci) & set(crpos_partial_ci)
+        print('Intersection: %s' % crpos_ci_isec)
+
+        print('# CRPOS in CI: %d' % len([l for l in label if len(l) != 0]))
 
         count_zero_hits = 0
         count_multiple_hits = 0
@@ -652,8 +659,10 @@ def create_labels_nanosv_vcf(sampleName, ibam):
             if len(elem) == 1:
                 # print(elem)
                 label_ci.append(elem[0].data)
-                if pos in crpos_ci:
+                if pos in crpos_full_ci:
                     label_ci_full_overlap.append(elem[0].data)
+                elif pos in crpos_partial_ci:
+                    label_ci_full_overlap.append('UK')
                 else:
                     label_ci_full_overlap.append('noSV')
             elif len(elem) == 0:
@@ -662,8 +671,15 @@ def create_labels_nanosv_vcf(sampleName, ibam):
                 label_ci_full_overlap.append('noSV')
             elif len(elem) > 1:
                 count_multiple_hits += 1
-                label_ci.append('noSV')
-                label_ci_full_overlap.append('noSV')
+                label_ci.append('UK')
+                label_ci_full_overlap.append('UK')
+                # if pos in crpos_full_ci:
+                #     label_ci_full_overlap.append('Multiple_Full')
+                #     #print('Multiple full: %s -> %s' % ( [d for s,e,d in elem], set([d for s,e,d in elem]) ) )
+                #     #for s, e, d in elem:
+                #     #    print('%d -> %d %d %s' % (pos, s, e, d))
+                # #else:
+                #     #label_ci_full_overlap.append('Multiple_Partial')
 
         print('CR positions: %d' % len(cr_pos))
         print('Label length: %d' % len(label))
@@ -685,7 +701,7 @@ def create_labels_nanosv_vcf(sampleName, ibam):
         # print(hits)
         # no_hits = sorted(no_hits)
 
-        print('No hits:%d/%d' % (len(sv_list_chr) - len(hits), len(sv_list_chr)))
+        # print('No hits:%d/%d' % (len(sv_list_chr) - len(hits), len(sv_list_chr)))
         # print(no_hits)
 
         # Pick the clipped read position closest to either var.start or var.end
@@ -834,7 +850,7 @@ def write_sv_without_cr(sampleName, ibam):
     print('VCF entries with CR on both sides: %d/%d' % (var_with_cr, len(sv_list)))
 
 
-def get_crpos_win_with_full_ci_overlap(sv_list, cr_pos):
+def get_crpos_win_with_ci_overlap(sv_list, cr_pos):
     '''
 
     :param sv_list: list, list of SVs
@@ -846,28 +862,51 @@ def get_crpos_win_with_full_ci_overlap(sv_list, cr_pos):
     t_cr = IntervalTree()
     for pos in cr_pos:
         t_cr[pos - win_hlen:pos + win_hlen + 1] = pos
+        #t_cr[pos - 100:pos + 100 + 1] = pos
 
-    cipos_1 = [sorted(t_cr[p]) for p in [var.start + var.cipos[0] for var in sv_list]]
-    # Unfold list of lists and extract data
-    cipos_1 = [data for elem in cipos_1 for start, end, data in elem]
+    cr_full_overlap_cipos = []
+    cr_partial_overlap_cipos = []
 
-    cipos_2 = [sorted(t_cr[p]) for p in [var.start + var.cipos[1] for var in sv_list]]
-    # Unfold list of lists and extract data
-    cipos_2 = [data for elem in cipos_2 for start, end, data in elem]
-    # Both the start and end of CIPOS must overlap the window
-    set_cipos = set(cipos_1) & set(cipos_2)
+    rg_overlap = [sorted(t_cr[var.start + var.cipos[0] : var.start + var.cipos[1]]) for var in sv_list]
+    #print('Range overlap: %s' % rg_overlap)
 
-    ciend_1 = [sorted(t_cr[p]) for p in [var.end + var.ciend[0] for var in sv_list]]
-    # Unfold list of lists and extract data
-    ciend_1 = [data for elem in ciend_1 for start, end, data in elem]
+    for rg, start, end in zip(rg_overlap,
+                [var.start + var.cipos[0] for var in sv_list],
+                [var.start + var.cipos[1] for var in sv_list]):
+        for elem in rg:
+            elem_start, elem_end, elem_data = elem
+            if start >= elem_start and end <= elem_end:
+                #print('CIPOS->Full: %s\t%d\t%d' % (elem, start, end))
+                cr_full_overlap_cipos.append(elem_data)
+            else:
+                #print('CIPOS->Partial: %s\t%d\t%d' % (elem, start, end))
+                cr_partial_overlap_cipos.append(elem_data)
 
-    ciend_2 = [sorted(t_cr[p]) for p in [var.end + var.ciend[1] for var in sv_list]]
-    # Unfold list of lists and extract data
-    ciend_2 = [data for elem in ciend_2 for start, end, data in elem]
-    # Both the start and end of CIEND must overlap the window
-    set_ciend = set(ciend_1) & set(ciend_2)
+    cr_full_overlap_ciend = []
+    cr_partial_overlap_ciend = []
 
-    return sorted(list(set_cipos | set_ciend))
+    rg_overlap = [sorted(t_cr[var.end + var.ciend[0] : var.end + var.ciend[1]]) for var in sv_list]
+    #print('Range overlap: %s' % rg_overlap)
+
+    for rg, start, end in zip(rg_overlap,
+                [var.end + var.ciend[0] for var in sv_list],
+                [var.end + var.ciend[1] for var in sv_list]):
+        for elem in rg:
+            elem_start, elem_end, elem_data = elem
+            if start >= elem_start and end <= elem_end:
+                #print('CIEND->Full: %s\t%d\t%d' % (elem, start, end))
+                cr_full_overlap_ciend.append(elem_data)
+            else:
+                #print('CIEND->Partial: %s\t%d\t%d' % (elem, start, end))
+                cr_partial_overlap_ciend.append(elem_data)
+
+    #print('Intersection CIPOS: %s' % list(set(cr_full_overlap_cipos) & set(cr_partial_overlap_cipos)))
+    #print('Intersection CIEND: %s' % list(set(cr_full_overlap_ciend) & set(cr_partial_overlap_ciend)))
+
+    cr_full_overlap = sorted(cr_full_overlap_cipos + cr_full_overlap_ciend)
+    cr_partial_overlap = sorted(cr_partial_overlap_cipos + cr_partial_overlap_ciend)
+
+    return sorted(list(set(cr_full_overlap))), sorted(list(set(cr_partial_overlap)-set(cr_full_overlap)))
 
 
 def plot_ci_dist(sv_list, sampleName):
@@ -1196,8 +1235,8 @@ def nanosv_vcf_to_bed(sampleName):
 
     lines = []
     for sv in sv_list:
-        lines.append(bytes(sv.chrom + '\t' + str(sv.start+sv.cipos[0]) + '\t' \
-                           + str(sv.start+sv.cipos[1]+1) + '\n', 'utf-8'))
+        lines.append(bytes(sv.chrom + '\t' + str(sv.start + sv.cipos[0]) + '\t' \
+                           + str(sv.start + sv.cipos[1] + 1) + '\n', 'utf-8'))
         lines.append(bytes(sv.chrom + '\t' + str(sv.end + sv.ciend[0]) + '\t' \
                            + str(sv.end + sv.ciend[1] + 1) + '\n', 'utf-8'))
 
@@ -1578,7 +1617,7 @@ def main():
     # channel_maker(ibam=args.bam, chrName=args.chr, sampleName=args.sample,
     #               trainingMode=args.train, outFile=args.out)
 
-    #create_labels_nanosv_vcf(sampleName=args.sample, ibam=args.bam)
+    create_labels_nanosv_vcf(sampleName=args.sample, ibam=args.bam)
 
     # Generate labels for the datasets of real data (HMF or GiaB)
     # generate_labels()
@@ -1589,11 +1628,12 @@ def main():
     #write_sv_without_cr(sampleName=args.sample, ibam=args.bam)
 
     #clipped_read_positions_to_bed(sampleName=args.sample)
-    nanosv_vcf_to_bed(sampleName=args.sample)
+    #nanosv_vcf_to_bed(sampleName=args.sample)
 
     #get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName=args.sample)
 
-    print('Elapsed time channel_maker_real on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))
+    #print('Elapsed time channel_maker_real on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))
+    print('Elapsed time channel_maker_real = %f' % (time() - t0))
 
 
 if __name__ == '__main__':
