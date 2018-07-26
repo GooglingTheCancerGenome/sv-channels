@@ -18,9 +18,9 @@ __status__ = "alpha"
 # parameters
 
 # Locally:
-work_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/'
-bed_file = work_dir + 'SV/chr17B_T.proper.bed'
-bam_file = work_dir + 'BAM/G1_dedup.bam'
+work_dir = '/Users/tschafers/CNN/scripts/post_processing/Test/'
+bed_file = work_dir + 'genomes/SV/chr17B_T.proper_small.bed'
+bam_file = work_dir + 'samples/G1/BAM/G1/mapping/G1_dedup.bam'
 
 # On HPC:
 #work_dir = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/'
@@ -124,7 +124,6 @@ def read_breakpoints(bed_file):
 
 def breakpoint_to_sv():
     breakpoints = read_breakpoints(bed_file)
-
     # Check if the BAM file in input exists
     assert os.path.isfile(bam_file)
     # open the BAM file
@@ -132,12 +131,11 @@ def breakpoint_to_sv():
 
     chr_tree = defaultdict(IntervalTree)
     for chr in breakpoints.keys():
+        #Create interval windows around candidate breakpoint positions
         for pos in breakpoints[chr]:
             chr_tree[chr][pos - win_hlen: pos + win_hlen + 1] = pos
-
     links = []
     no_cr_pos = []
-
     npos = 1
     scanned_reads = set()
     for chr in breakpoints.keys():
@@ -148,7 +146,6 @@ def breakpoint_to_sv():
             # print('Pos: %d' % pos)
             start = pos - win_hlen
             end = pos + win_hlen + 1
-
             right_clipped_array = np.zeros(win_len)
             left_clipped_array = np.zeros(win_len)
 
@@ -183,6 +180,7 @@ def breakpoint_to_sv():
                                                    read.next_reference_name + '_' + str(int_data)}))
                                     scanned_reads.add(read.query_name)
 
+
             #print('Right clipped:\n%s' % right_clipped_array)
             #print('Left clipped:\n%s' % left_clipped_array)
             if sum (right_clipped_array) + sum(left_clipped_array) == 0:
@@ -201,18 +199,46 @@ def breakpoint_to_sv():
     links_counts = Counter(links)
     print('Set size: %d' % len(links_counts))
     print('No CR pos: %d' % len(no_cr_pos))
-    # print(links_counts)
-
     print('Connections with min 3 read pairs: %d' % len([v for l, v in links_counts.items() if v > 2]))
 
     i = 0
     while len([v for l, v in links_counts.items() if v > i]) > 5000:
         i += 1
     print('%d connections with min %d RP' % (len([v for l, v in links_counts.items() if v > i]), i))
+    #Return link positions, and counts
+    return links_counts
+
+def linksToVcf(links_counts):
+    filename = 'sv_calls2.vcf'
+    cols = '#CHROM\tPOS\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSAMPLE\n'
+    #Write VCF Header
+    with open(filename, 'a') as sv_calls:
+        sv_calls.write('##fileformat=VCFv4.2\n')
+        sv_calls.write('##FILTER=<ID=PASS,Description="All filters passed">\n')
+        sv_calls.write('##fileDate=20180726\n')
+        sv_calls.write('##ALT=<ID=DEL,Description="Deletion">\n')
+        sv_calls.write('##INFO=<ID=END,Number=1,Type=Integer,Description="End position of the structural variant">\n')
+        sv_calls.write('##INFO=<ID=PE,Number=1,Type=Integer,Description="Paired-end support of the structural variant">\n')
+        sv_calls.write('##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">\n')
+        sv_calls.write(cols)
+        for l,v in links_counts.items():
+            interval = list(l)
+            s1 = interval[0].split('_')
+            s2 = interval[1].split('_')
+            chr = s1[0]
+            start = s1[1]
+            stop = s2[1]
+            f_line = 'SVTYPE=%s;PE=%s;END=%s' % ('DEL',v,stop)
+            line = '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % (chr,start,'.','.','<DEL>','q30','PASS',f_line)
+            print(line)
+            sv_calls.write(line+'\n')
+
+
 
 
 def main():
-    breakpoint_to_sv()
+    links_counts = breakpoint_to_sv()
+    linksToVcf(links_counts)
 
 
 if __name__ == '__main__':
