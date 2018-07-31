@@ -80,7 +80,7 @@ def get_clipped_reads(ibam, chrName, outFile):
                 n_r / (now_t - last_t)))
             last_t = time()
 
-        # Both read and mate should be mapped
+        # Both read and mate should be mapped, with mapping quality greater than minMAPQ
         if not read.is_unmapped and not read.mate_is_unmapped and read.mapping_quality >= minMAPQ:
             # Read is left-clipped
             if is_left_clipped(read):
@@ -104,30 +104,40 @@ def get_clipped_reads(ibam, chrName, outFile):
                 #else:
                 clipped_reads['right'][ref_pos] += 1
 
-            #INVersion
+            #INVersion:
+            # Read is clipped, read and mate are on the same chromosome
             if is_clipped(read) and read.reference_name == read.next_reference_name:
 
+                # The following if statement takes care of the duplication channels
+                # Read is left clipped
                 if is_left_clipped(read):
                     ref_pos = read.reference_start
                     # DUPlication, channel 2
+                    # Read is mapped on the Reverse strand and mate is mapped on the Forward strand
                     if read.is_reverse and not read.mate_is_reverse:
+                        # Mate is mapped after read
                         if read.reference_start < read.next_reference_start:
                             clipped_reads_duplication['after'][ref_pos] += 1
-
+                # Read is right clipped
                 elif is_right_clipped(read):
                     ref_pos = read.reference_end + 1
                     # DUPlication, channel 1
+                    # Read is mapped on the Forward strand and mate is mapped on the Reverse strand
                     if not read.is_reverse and read.mate_is_reverse:
+                        # Mate is mapped before read
                         if read.reference_start > read.next_reference_start:
                             clipped_reads_duplication['before'][ref_pos] += 1
 
+                # The following if statement takes care of the inversion channels
+                # Read and mate are mapped on the same strand: either Forward-Forward or Reverse-Reverse
                 if read.is_reverse == read.mate_is_reverse:
+                    # Mate is mapped before read
                     if read.reference_start > read.next_reference_start:
                         #if ref_pos not in clipped_reads_inversion['before'].keys():
                         #    clipped_reads_inversion['before'][ref_pos] = 1
                         #else:
                         clipped_reads_inversion['before'][ref_pos] += 1
-
+                    # Mate is mapped after read
                     else:
                         #if ref_pos not in clipped_reads_inversion['after'].keys():
                         #    clipped_reads_inversion['after'][ref_pos] = 1
