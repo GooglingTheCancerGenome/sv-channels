@@ -7,6 +7,26 @@ from time import time
 import logging
 import numpy as np
 
+minMAPQ = 30
+
+
+def check_read(read):
+    '''
+
+    :param read: AlignedSegment
+    :return: True if all these conditions are valid:
+        - read and mate are mapped on the same chromosome,
+        - read mapping quality is greater than minMAPQ,
+        - read and mate are mapped on opposite strands
+    '''
+
+    if read.reference_name == read.next_reference_name and read.mapping_quality >= minMAPQ \
+            and read.is_reverse != read.mate_is_reverse:
+        return True
+
+    return False
+    #return True
+
 def get_coverage(ibam, chrName, outFile):
     '''
     This function fills the coverage array for the chromosome
@@ -34,21 +54,38 @@ def get_coverage(ibam, chrName, outFile):
     last_t = time()
     # print(type(last_t))
 
-    # Iterate over the chromosome positions
-    for i, pile in enumerate(bamfile.pileup(chrName, start_pos, stop_pos, truncate=True), start=1):
+    # # Iterate over the chromosome positions
+    # for i, pile in enumerate(bamfile.pileup(chrName, start_pos, stop_pos, truncate=True), start=1):
+    #
+    #     if not i % n_r:
+    #         now_t = time()
+    #         # print(type(now_t))
+    #         logging.info("%d pileup positions processed (%f positions / s)" % (
+    #             i,
+    #             n_r / (now_t - last_t)))
+    #         last_t = time()
+    #     #print('Pos: %d, Cov: %d' % (pile.pos, pile.n))
+    #     try:
+    #         cov[pile.pos] = pile.n
+    #     except MemoryError:
+    #         logging.info("Out of memory for chr %s and BAM file %s !" % (chrName, ibam))
 
-        if not i % n_r:
-            now_t = time()
-            # print(type(now_t))
-            logging.info("%d pileup positions processed (%f positions / s)" % (
-                i,
-                n_r / (now_t - last_t)))
-            last_t = time()
-        #print('Pos: %d, Cov: %d' % (pile.pos, pile.n))
-        try:
-            cov[pile.pos] = pile.n
-        except MemoryError:
-            logging.info("Out of memory for chr %s and BAM file %s !" % (chrName, ibam))
+    # Replacing pileup with count_coverage
+    cov_A, cov_C, cov_G, cov_T = bamfile.count_coverage(chrName, start_pos, stop_pos, read_callback=check_read)
+    cov = np.asarray(cov_A, dtype=int) + \
+          np.asarray(cov_C, dtype=int) + \
+          np.asarray(cov_G, dtype=int) + \
+          np.asarray(cov_T, dtype=int)
+    # print(cov)
+
+    # cov_A, cov_C, cov_G, cov_T = bamfile.count_coverage(chrName, start_pos, stop_pos)
+    # cov_nofilter = np.asarray(cov_A, dtype=int) + \
+    #       np.asarray(cov_C, dtype=int) + \
+    #       np.asarray(cov_G, dtype=int) + \
+    #       np.asarray(cov_T, dtype=int)
+    # print(cov_nofilter)
+    #
+    # assert np.all(cov == cov_nofilter)
 
     # Save coverage numpy array
     with bz2file.BZ2File(outFile, 'w') as f:
@@ -59,11 +96,10 @@ def get_coverage(ibam, chrName, outFile):
 
 
 def main():
-
     # Default BAM file for testing
     # On the HPC
-    #wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
-    #inputBAM = wd + "T0_dedup.bam"
+    # wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
+    # inputBAM = wd + "T0_dedup.bam"
     # Locally
     wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
     inputBAM = wd + "T1_dedup.bam"

@@ -81,7 +81,9 @@ def get_clipped_reads(ibam, chrName, outFile):
             last_t = time()
 
         # Both read and mate should be mapped, with mapping quality greater than minMAPQ
-        if not read.is_unmapped and not read.mate_is_unmapped and read.mapping_quality >= minMAPQ:
+        if not read.is_unmapped and not read.mate_is_unmapped and read.mapping_quality >= minMAPQ \
+            and read.reference_name == read.next_reference_name and read.is_reverse != read.mate_is_reverse:
+
             # Read is left-clipped
             if is_left_clipped(read):
                 # print(str(read))

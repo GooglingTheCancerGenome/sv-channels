@@ -637,8 +637,8 @@ def create_labels_nanosv_vcf(sampleName, ibam):
             # id_end = '_'.join((var.chrom, str(var.end + var.ciend[0]), str(var.end+var.ciend[1])))
             assert var.start < var.end
 
-            print('var start -> %s:%d CIPOS: (%d, %d)' % (chrName, var.start, var.cipos[0], var.cipos[1]))
-            print('var end -> %s:%d CIEND: (%d, %d)' % (chrName, var.end, var.ciend[0], var.ciend[1]))
+            #print('var start -> %s:%d CIPOS: (%d, %d)' % (chrName, var.start, var.cipos[0], var.cipos[1]))
+            #print('var end -> %s:%d CIEND: (%d, %d)' % (chrName, var.end, var.ciend[0], var.ciend[1]))
 
             t[var.start + var.cipos[0]:var.start + var.cipos[1] + 1] = id_start
             t[var.end + var.ciend[0]:var.end + var.ciend[1] + 1] = id_end
@@ -896,7 +896,7 @@ def get_crpos_win_with_ci_overlap(sv_list, cr_pos):
         for elem in rg:
             elem_start, elem_end, elem_data = elem
             if start >= elem_start and end <= elem_end:
-                print('CIPOS->Full: %s\t%d\t%d' % (elem, start, end))
+                #print('CIPOS->Full: %s\t%d\t%d' % (elem, start, end))
                 cr_full_overlap_cipos.append(elem_data)
             else:
                 #print('CIPOS->Partial: %s\t%d\t%d' % (elem, start, end))
@@ -914,7 +914,7 @@ def get_crpos_win_with_ci_overlap(sv_list, cr_pos):
         for elem in rg:
             elem_start, elem_end, elem_data = elem
             if start >= elem_start and end <= elem_end:
-                print('CIEND->Full: %s\t%d\t%d' % (elem, start, end))
+                #print('CIEND->Full: %s\t%d\t%d' % (elem, start, end))
                 cr_full_overlap_ciend.append(elem_data)
             else:
                 #print('CIEND->Partial: %s\t%d\t%d' % (elem, start, end))
@@ -989,9 +989,13 @@ def get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName):
 
 # START: BED specific functions
 
-def read_bed_sv():
+def read_bed_sv(sampleName):
 
-    inbed = '/Users/lsantuari/Documents/IGV/Screenshots/NA12878/overlaps/lumpy-Mills2011_manta_nanosv.bed'
+    # lumpy-Mills2011_manta_nanosv
+    #inbed = '/Users/lsantuari/Documents/IGV/Screenshots/NA12878/overlaps/lumpy-Mills2011_manta_nanosv.bed'
+
+    # manta_nanosv
+    inbed = '/Users/lsantuari/Documents/IGV/Screenshots/'+sampleName+'/'+sampleName+'_manta_nanosv_vcf_ci.bed'
 
     assert os.path.isfile(inbed)
     sv_dict = defaultdict(list)
@@ -1012,7 +1016,7 @@ def create_labels_bed(sampleName, ibam):
     print('window = %d' % win_len)
 
 
-    sv_list = read_bed_sv()
+    sv_list = read_bed_sv(sampleName)
     chr_list = sv_list.keys()
 
     for chrName in chr_list:
@@ -1391,9 +1395,9 @@ def clipped_read_positions_to_bed(sampleName):
 def nanosv_vcf_to_bed(sampleName):
 
     # Load SV list
-    sv_list = read_nanosv_vcf(sampleName)
+    #sv_list = read_nanosv_vcf(sampleName)
     # nanoSV & Manta SVs
-    #sv_list = get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName)
+    sv_list = get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName)
 
     # Select deletions
     sv_list = [sv for sv in sv_list if sv.svtype == 'DEL' if sv.chrom == sv.chrom2 if sv.start < sv.end]
@@ -1405,8 +1409,8 @@ def nanosv_vcf_to_bed(sampleName):
         lines.append(bytes(sv.chrom + '\t' + str(sv.end + sv.ciend[0]) + '\t' \
                            + str(sv.end + sv.ciend[1] + 1) + '\t' + 'DEL_end' + '\n', 'utf-8'))
 
-    outfile = sampleName + '_nanosv_vcf_ci.bed.gz'
-    #outfile = sampleName + '_manta_nanosv_vcf_ci.bed.gz'
+    #outfile = sampleName + '_nanosv_vcf_ci.bed.gz'
+    outfile = sampleName + '_manta_nanosv_vcf_ci.bed.gz'
     f = gzip.open(outfile, 'wb')
     try:
         for l in lines:
@@ -1758,7 +1762,7 @@ def main():
                         help="Specify chromosome")
     parser.add_argument('-o', '--out', type=str, default='channel_maker.npy.gz',
                         help="Specify output")
-    parser.add_argument('-s', '--sample', type=str, default='NA12878',
+    parser.add_argument('-s', '--sample', type=str, default='Patient1',
                         help="Specify sample")
     parser.add_argument('-t', '--train', type=bool, default=True,
                         help="Specify if training mode is active")
@@ -1782,9 +1786,9 @@ def main():
     # channel_maker(ibam=args.bam, chrName=args.chr, sampleName=args.sample,
     #               trainingMode=args.train, outFile=args.out)
 
-    create_labels_nanosv_vcf(sampleName=args.sample, ibam=args.bam)
+    #create_labels_nanosv_vcf(sampleName=args.sample, ibam=args.bam)
 
-    #create_labels_bed(sampleName=args.sample, ibam=args.bam)
+    create_labels_bed(sampleName=args.sample, ibam=args.bam)
 
     # Generate labels for the datasets of real data (HMF or GiaB)
     # generate_labels()
