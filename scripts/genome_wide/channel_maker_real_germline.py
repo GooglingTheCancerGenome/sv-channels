@@ -28,7 +28,7 @@ HPC_MODE = False
 # Only clipped read positions supported by at least min_cr_support clipped reads are considered
 min_cr_support = 3
 # Window half length
-win_hlen = 100
+win_hlen = 35
 # Window size
 win_len = win_hlen * 2
 
@@ -1762,7 +1762,7 @@ def main():
                         help="Specify chromosome")
     parser.add_argument('-o', '--out', type=str, default='channel_maker.npy.gz',
                         help="Specify output")
-    parser.add_argument('-s', '--sample', type=str, default='Patient1',
+    parser.add_argument('-s', '--sample', type=str, default='NA12878',
                         help="Specify sample")
     parser.add_argument('-t', '--train', type=bool, default=True,
                         help="Specify if training mode is active")
@@ -1786,9 +1786,10 @@ def main():
     # channel_maker(ibam=args.bam, chrName=args.chr, sampleName=args.sample,
     #               trainingMode=args.train, outFile=args.out)
 
-    #create_labels_nanosv_vcf(sampleName=args.sample, ibam=args.bam)
+    for sampleName in ['NA12878', 'Patient1', 'Patient2']:
+        create_labels_nanosv_vcf(sampleName=sampleName, ibam=args.bam)
 
-    create_labels_bed(sampleName=args.sample, ibam=args.bam)
+    #create_labels_bed(sampleName=args.sample, ibam=args.bam)
 
     # Generate labels for the datasets of real data (HMF or GiaB)
     # generate_labels()

@@ -172,13 +172,13 @@ class SVRecord_nanosv:
         return (ct, chr2, pos2, indellen)
 
 
-class Label:
-
-    def __init__(self, chr, position, label_dict, distance):
-        self.chr = chr
-        self.position = position
-        self.label_dict = label_dict
-        self.distance_from_bpj = distance
+# class Label:
+#
+#     def __init__(self, chr, position, id, label_dict):
+#         self.chr = chr
+#         self.position = position
+#         self.id = chr + '_' + position
+#         self.label_dict = label_dict
 
 
 def setupREs():
@@ -251,6 +251,7 @@ def load_clipped_read_positions(sampleName, chrName):
     cr_pos = [elem for elem, cnt in cpos.items() if cnt >= min_cr_support]
 
     # Remove positions with windows falling off chromosome boundaries
+    #print(f'win_hlen = {win_hlen}, chrom_lengths[{chrName}] = {chrom_lengths[chrName]}')
     cr_pos = [pos for pos in cr_pos if win_hlen <= pos <= (chrom_lengths[chrName] - win_hlen)]
 
     return cr_pos
@@ -258,10 +259,11 @@ def load_clipped_read_positions(sampleName, chrName):
 
 def load_all_clipped_read_positions(sampleName):
 
-    cr_pos = {}
+    cr_pos_dict = {}
     for chrName in chrom_lengths.keys():
-        cr_pos[chrName] = load_clipped_read_positions(sampleName, chrName)
-    return cr_pos
+    #for chrName in ['22']:
+        cr_pos_dict[chrName] = load_clipped_read_positions(sampleName, chrName)
+    return cr_pos_dict
 
 
 def initialize_nanosv_vcf_paths(sampleName):
@@ -989,6 +991,9 @@ def get_labels(sampleName):
 
     print(f'running {sampleName}')
 
+    def get_win_id(chr, position):
+        return {'chromosome': chr, 'position': position}
+
     def make_tree_from_bed(sv_list):
 
         # Using IntervalTree for interval search
@@ -1016,7 +1021,7 @@ def get_labels(sampleName):
             t[var.start + var.cipos[0]:var.start + var.cipos[1] + 1] = id_start
             t[var.end + var.ciend[0]:var.end + var.ciend[1] + 1] = id_end
 
-            return t
+        return t
 
     cr_pos_dict = load_all_clipped_read_positions(sampleName)
 
@@ -1027,12 +1032,34 @@ def get_labels(sampleName):
     sv_dict['nanosv_manta'] = get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName)
 
     if sampleName == 'NA12878':
+
+        # Mills2011
+        inbed = '/Users/lsantuari/Documents/Processed/'+sampleName+'/Long_read_validation/' + \
+            'lumpy-Mills2011-DEL.pacbio_moleculo.bed'
+        sv_dict['Mills2011'] = read_bed_sv(inbed)
+
         inbed = '/Users/lsantuari/Documents/IGV/Screenshots/' + sampleName + \
                 '/overlaps/lumpy-Mills2011_manta_nanosv.bed'
-        sv_dict['nanosv_manta_Mills2011'] = read_bed_sv(inbed)
+        sv_dict['Mills2011_nanosv_manta'] = read_bed_sv(inbed)
+
+        inbed = '/Users/lsantuari/Documents/Processed/'+sampleName+'/Long_read_validation/' + \
+            'lumpy-Mills2011-DEL.pacbio_moleculo.bed'
+        sv_dict['Mills2011_PacBio_Moleculo'] = read_bed_sv(inbed)
+
+        inbed = '/Users/lsantuari/Documents/Processed/' + sampleName + '/Long_read_validation/' + \
+            'lumpy-Mills2011_pacbio_moleculo_manta_nanosv.bed'
+        sv_dict['Mills2011_PacBio_Moleculo_nanosv_manta'] = read_bed_sv(inbed)
+
+        inbed = '/Users/lsantuari/Documents/Processed/NA12878/Long_read_validation/Data_sources/Lumpy_paper_2014/' + \
+            'lumpy-GASVPro-DELLY-Pindel-Mills2011_PacBio_Moleculo.bed'
+        sv_dict['Mills2011_PacBio_Moleculo_Lumpy_GASVPro_DELLY_Pindel'] = read_bed_sv(inbed)
+
+    # for sv_dict_key in sv_dict.keys():
+    #    print(sv_dict_key)
+    #    print(sv_dict[sv_dict_key])
 
     for sv_dict_key in sv_dict.keys():
-    #for sv_dict_key in ['nanosv_manta_Mills2011']:
+    #for sv_dict_key in ['Mills2011_PacBio_Moleculo_Lumpy_GASVPro_DELLY_Pindel']:
 
         print(f'running {sv_dict_key}')
 
@@ -1041,14 +1068,18 @@ def get_labels(sampleName):
         sv_list = sv_dict[sv_dict_key]
 
         if type(sv_list) is list:
+            print('VCF mode')
             # Select deletions (DELs)
             sv_list = [sv for sv in sv_list if sv.svtype == 'DEL']
             # list of chromosomes
             chr_list = set([var.chrom for var in sv_list])
         else:
+            print('BED mode')
             chr_list = sv_list.keys()
 
         for chrName in chr_list:
+        #DEBUG
+        #for chrName in ['22']:
 
             print(f'running Chr{chrName}')
 
@@ -1056,6 +1087,9 @@ def get_labels(sampleName):
 
             # Load CR positions, once
             cr_pos = cr_pos_dict[chrName]
+
+            #print('CRPOS:')
+            #print(cr_pos)
 
             # print(type(sv_list))
 
@@ -1075,12 +1109,19 @@ def get_labels(sampleName):
 
                 crpos_full, crpos_partial = get_crpos_win_with_bed_overlap(sv_list_chr, cr_pos)
 
+            # print(f'crpos_full = {crpos_full}')
+            # print(f'crpos_partial = {crpos_partial}')
+
             label_search = [sorted(tree[p - win_hlen: p + win_hlen + 1]) for p in cr_pos]
+
+            # print(tree)
+            # print(label_search)
 
             count_zero_hits = 0
             count_multiple_hits = 0
 
             for elem, pos in zip(label_search, cr_pos):
+
                 if len(elem) == 1:
                     # print(elem)
                     if pos in crpos_full:
@@ -1098,6 +1139,17 @@ def get_labels(sampleName):
 
             assert len(labels[sv_dict_key][chrName]) == len(cr_pos)
 
+            print(Counter(labels[sv_dict_key][chrName]))
+
+    # Add window ID
+    labels['id'] = {}
+    for chrName in chr_list:
+        labels['id'][chrName] = []
+        for pos in cr_pos_dict[chrName]:
+            labels['id'][chrName].append(get_win_id(chrName, pos))
+        assert len(labels['id'][chrName]) == len(cr_pos_dict[chrName])
+
+
     # pp = pprint.PrettyPrinter(depth=6)
     # for key in sv_dict:
     #     pp.pprint(sv_dict[key])
@@ -1111,10 +1163,24 @@ def get_labels(sampleName):
     create_dir(output_dir)
 
     # print(output_dir)
+    pickle.dump(labels, open('/'.join((output_dir, 'labels.pickle')), "wb"))
 
-    with gzip.GzipFile('/'.join((output_dir, 'labels.npy.gz')), "w") as f:
-        np.save(file=f, arr=labels)
+
+def load_labels(sampleName):
+
+    if not HPC_MODE:
+        channel_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth'
+    else:
+        channel_dir = ''
+
+    output_dir = '/'.join((channel_dir, sampleName, 'label_npy'))
+
+    pickle_file = '/'.join((output_dir, 'labels.pickle.gz'))
+    with gzip.GzipFile(pickle_file, "rb") as f:
+        labels = pickle.load(f)
     f.close()
+
+    print(labels['id'])
 
 
 def main():
@@ -1162,8 +1228,10 @@ def main():
 
     # get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName=args.sample)
 
-    for sampleName in ['NA12878', 'Patient1', 'Patient2']:
+    #for sampleName in ['NA12878', 'Patient1', 'Patient2']:
+    for sampleName in ['NA12878']:
         get_labels(sampleName=sampleName)
+        #load_labels(sampleName=sampleName)
 
     print('Elapsed time making labels = %f' % (time() - t0))
 
