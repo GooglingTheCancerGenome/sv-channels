@@ -17,15 +17,30 @@ __status__ = "alpha"
 
 # parameters
 
-# Locally:
-work_dir = '/Users/tschafers/CNN/scripts/post_processing/Test/'
-bed_file = work_dir + 'genomes/SV/chr17B_T.proper_small.bed'
-bam_file = work_dir + 'samples/G1/BAM/G1/mapping/G1_dedup.bam'
+HPC_MODE = True
 
-# On HPC:
-#work_dir = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/'
-#bed_file = 'genomes/SV/chr17B_T.proper.bed'
-#bam_file = 'samples/G1/BAM/G1/mapping/G1_dedup.bam'
+if not HPC_MODE:
+
+    # Locally:
+    #work_dir = '/Users/tschafers/CNN/scripts/post_processing/Test/'
+    #bed_file = work_dir + 'genomes/SV/chr17B_T.proper_small.bed'
+    #bam_file = work_dir + 'samples/G1/BAM/G1/mapping/G1_dedup.bam'
+
+    work_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL'
+    bed_file = os.path.join(work_dir, 'SV/chr17B_T.proper.bed')
+    bam_file = os.path.join(work_dir, 'BAM/G1_dedup.bam')
+    vcf_output = os.path.join(work_dir, 'VCF/chr17B_T.vcf')
+
+else:
+
+    # On HPC:
+    patient_number = str(1)
+    bed_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/060818/TestData_060818/PATIENT' + \
+               patient_number + '_DEL.sorted.bed'
+    bam_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CretuStancu2017/Patient' + patient_number + '/Patient' + \
+               patient_number + '.bam'
+    vcf_output = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/060818/TestData_060818/PATIENT' + \
+                 patient_number + '_DEL.vcf'
 
 # Window half length
 win_hlen = 250
@@ -107,6 +122,7 @@ def is_clipped(read):
 
 
 def read_breakpoints(bed_file):
+    print('Reading BED file for breakpoints')
     assert os.path.isfile(bed_file)
     breakpoints = defaultdict(list)
     with(open(bed_file, 'r')) as bed:
@@ -129,11 +145,14 @@ def breakpoint_to_sv():
     # open the BAM file
     aln = pysam.AlignmentFile(bam_file, "rb")
 
+    print('Create IntervalTree...')
     chr_tree = defaultdict(IntervalTree)
     for chr in breakpoints.keys():
-        #Create interval windows around candidate breakpoint positions
+        # Create interval windows around candidate breakpoint positions
         for pos in breakpoints[chr]:
-            chr_tree[chr][pos - win_hlen: pos + win_hlen + 1] = pos
+            chr_tree[chr][pos - win_hlen: pos + win_hlen + 1] = int(pos)
+    print('IntervalTree created.')
+
     links = []
     no_cr_pos = []
     npos = 1
@@ -146,53 +165,58 @@ def breakpoint_to_sv():
             # print('Pos: %d' % pos)
             start = pos - win_hlen
             end = pos + win_hlen + 1
+
             right_clipped_array = np.zeros(win_len)
             left_clipped_array = np.zeros(win_len)
 
+            count_reads = aln.count(chr, start, end)
             # Fetch the reads mapped on the chromosome
-            for read in aln.fetch(chr, start, end):
-                # Both read and mate should be mapped
-                if not read.is_unmapped and not read.mate_is_unmapped and \
-                        read.mapping_quality >= min_mapq:
 
-                    # Filled vectors with counts of clipped reads at clipped read positions
-                    if is_right_clipped(read):
-                        cpos = read.reference_end + 1
-                        if start <= cpos <= end:
-                            right_clipped_array[cpos-start-2] += 1
-                    if is_left_clipped(read):
-                        cpos = read.reference_start
-                        if start <= cpos <= end:
-                            left_clipped_array[cpos-start-1] += 1
+            if count_reads <= 50000:
+                # print('Fetching %d reads in region %s:%d-%d' % (count_reads, chr, start, end))
+                for read in aln.fetch(chr, start, end):
+                    # Both read and mate should be mapped
+                    if not read.is_unmapped and not read.mate_is_unmapped and \
+                            read.mapping_quality >= min_mapq and \
+                            read.reference_name == read.next_reference_name:
 
-                    if read.query_name not in scanned_reads:
-                        match = chr_tree[read.next_reference_name][read.next_reference_start]
-                        if chr != read.next_reference_name or start > read.next_reference_start or \
-                                end < read.next_reference_start:
-                            if match:
-                                for m in match:
-                                    int_start, int_end, int_data = m
-                                    # print('%s -> %s' % (pos, int_data))
-                                    # Pay attention of double insertions. The same read pair will be added
-                                    # from both intervals, leading to double count.
-                                    links.append(
-                                        frozenset({chr + '_' + str(pos),
-                                                   read.next_reference_name + '_' + str(int_data)}))
-                                    scanned_reads.add(read.query_name)
+                        # Filled vectors with counts of clipped reads at clipped read positions
+                        if is_right_clipped(read):
+                            cpos = read.reference_end + 1
+                            if start <= cpos <= end:
+                                right_clipped_array[cpos - start - 2] += 1
+                        if is_left_clipped(read):
+                            cpos = read.reference_start
+                            if start <= cpos <= end:
+                                left_clipped_array[cpos - start - 1] += 1
 
+                        if read.query_name not in scanned_reads:
+                            match = chr_tree[read.next_reference_name][read.next_reference_start]
+                            if chr != read.next_reference_name or start > read.next_reference_start or \
+                                    end < read.next_reference_start:
+                                if match:
+                                    for m in match:
+                                        int_start, int_end, int_data = m
+                                        # print('%s -> %s' % (pos, int_data))
+                                        # Pay attention of double insertions. The same read pair will be added
+                                        # from both intervals, leading to double count.
+                                        links.append(
+                                            frozenset({chr + '_' + str(pos),
+                                                       read.next_reference_name + '_' + str(int_data)}))
+                                        scanned_reads.add(read.query_name)
 
-            #print('Right clipped:\n%s' % right_clipped_array)
-            #print('Left clipped:\n%s' % left_clipped_array)
-            if sum (right_clipped_array) + sum(left_clipped_array) == 0:
+            # print('Right clipped:\n%s' % right_clipped_array)
+            # print('Left clipped:\n%s' % left_clipped_array)
+            if sum(right_clipped_array) + sum(left_clipped_array) == 0:
                 # print('Pos %d has no CR pos' % pos)
                 no_cr_pos.append(chr + '_' + str(pos))
             else:
                 if max(right_clipped_array) > max(left_clipped_array):
                     max_i = np.where(right_clipped_array == max(right_clipped_array))
-                    #print('Right: %d -> %s' % (pos, max_i[0]))
+                    # print('Right: %d -> %s' % (pos, max_i[0]))
                 else:
                     max_i = np.where(left_clipped_array == max(left_clipped_array))
-                    #print('Left: %d -> %s' % (pos, max_i[0]))
+                    # print('Left: %d -> %s' % (pos, max_i[0]))
 
             npos += 1
 
@@ -205,35 +229,48 @@ def breakpoint_to_sv():
     while len([v for l, v in links_counts.items() if v > i]) > 5000:
         i += 1
     print('%d connections with min %d RP' % (len([v for l, v in links_counts.items() if v > i]), i))
-    #Return link positions, and counts
+    # Return link positions, and counts
     return links_counts
 
+
 def linksToVcf(links_counts):
-    filename = 'sv_calls2.vcf'
+
+    filename = vcf_output
+
     cols = '#CHROM\tPOS\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSAMPLE\n'
-    #Write VCF Header
-    with open(filename, 'a') as sv_calls:
+    # Write VCF Header
+    with open(filename, 'w') as sv_calls:
         sv_calls.write('##fileformat=VCFv4.2\n')
         sv_calls.write('##FILTER=<ID=PASS,Description="All filters passed">\n')
         sv_calls.write('##fileDate=20180726\n')
         sv_calls.write('##ALT=<ID=DEL,Description="Deletion">\n')
         sv_calls.write('##INFO=<ID=END,Number=1,Type=Integer,Description="End position of the structural variant">\n')
-        sv_calls.write('##INFO=<ID=PE,Number=1,Type=Integer,Description="Paired-end support of the structural variant">\n')
+        sv_calls.write(
+            '##INFO=<ID=PE,Number=1,Type=Integer,Description="Paired-end support of the structural variant">\n')
         sv_calls.write('##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">\n')
         sv_calls.write(cols)
-        for l,v in links_counts.items():
+        for l, v in links_counts.items():
             interval = list(l)
             s1 = interval[0].split('_')
             s2 = interval[1].split('_')
             chr = s1[0]
-            start = s1[1]
-            stop = s2[1]
-            f_line = 'SVTYPE=%s;PE=%s;END=%s' % ('DEL',v,stop)
-            line = '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % (chr,start,'.','.','<DEL>','q30','PASS',f_line)
-            print(line)
-            sv_calls.write(line+'\n')
 
+            s1[1] = int(s1[1])
+            s2[1] = int(s2[1])
 
+            if s1[1] < s2[1]:
+                # print('%d < %d' % (s1[1], s2[1]))
+                start = s1[1]
+                stop = s2[1]
+            else:
+                # print('%d > %d' % (s1[1], s2[1]))
+                start = s2[1]
+                stop = s1[1]
+
+            f_line = 'SVTYPE=%s;PE=%s;END=%s' % ('DEL', v, stop)
+            line = '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % (chr, start, '.', '.', '<DEL>', 'q30', 'PASS', f_line)
+            # print(line)
+            sv_calls.write(line + '\n')
 
 
 def main():
