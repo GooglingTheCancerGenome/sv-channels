@@ -42,24 +42,29 @@ elif [ $RUNALL == 1 ]; then
 # Output should be in the Tumor folder
 i=0
 
-
 # This BAM is only used to extract header information
-BAM=${INPATH}"$SAMPLE""/BAM/"$SAMPLE"/mapping/"$SAMPLE"_dedup.bam"
+# BAM=${INPATH}"$SAMPLE""/BAM/"$SAMPLE"/mapping/"$SAMPLE"_dedup.bam"
 
 # ChannelMaker script to generate channel data for Training data
 PRG='channel_maker_train_germline'
-for SAMPLE in ${SAMPLE_ARRAY[@]}; do
+# for SAMPLE in ${SAMPLE_ARRAY[@]}; do
+
+for SAMPLE in G1 N1; do
 
     if [ $SAMPLE == 'N1' ] || [ $SAMPLE == 'N2' ]; then
         PRG='channel_maker_real_germline'
+    fi
 
-	for CHROMOSOME in ${CHRARRAY[@]}; do
-        for CHROMOSOME in ${CHRARRAY[@]}; do
-		    OUTDIR="Training/"$SAMPLE
-		    echo qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},SVMODEARG=${SVMODE},\
-		    OUTARG=${OUTDIR} channel_script_by_name.sge
-        done
-    done
+    for CHROMOSOME in ${CHRARRAY[@]}; do
+        #for CHROMOSOME in 1; do
+            BAM=${INPATH}"$SAMPLE""/BAM/"$SAMPLE"/mapping/"$SAMPLE"_dedup.bam"
+            OUTDIR="Training/"$SAMPLE
+            JOB_NAME=$SAMPLE"_"$CHROMOSOME"_"${PRG}
+
+		    qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},SVMODEARG=${SVMODE},OUTARG=${OUTDIR} \
+		    -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_channel.sge
+
+	done
 done
 
 fi
