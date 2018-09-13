@@ -38,10 +38,10 @@ def get_clipped_read_distance(ibam, chrName, outFile):
     for direction in ['forward', 'reverse']:
         clipped_read_distance[direction] = dict()
         # For left- and right-clipped reads
-        for clipped_arrangement in ['left', 'right']:
+        for clipped_arrangement in ['left', 'right', 'unclipped']:
             clipped_read_distance[direction][clipped_arrangement] = defaultdict(list)
 
-    def get_distance(direction, read, dist):
+    def set_distance(direction, read, dist):
         '''
 
         :param direction: forward/reverse read direction
@@ -49,6 +49,10 @@ def get_clipped_read_distance(ibam, chrName, outFile):
         :param dist: read to mate distance
         :return: None. Adds dist to the list of distances at a clipped read position for a certain read direction
         '''
+
+        pos = read.reference_start
+        clipped_read_distance[direction]['unclipped'][pos].append(dist)
+
         if fun.is_left_clipped(read):
             pos = read.reference_start
             #if pos not in clipped_read_distance[direction]['left'].keys():
@@ -91,10 +95,10 @@ def get_clipped_read_distance(ibam, chrName, outFile):
                 dist = abs(read.reference_start - read.next_reference_start)
                 # Read is mapped in forward orientation, mate is in reverse orientation, read is mapped before mate
                 if not read.is_reverse and read.mate_is_reverse and read.reference_start <= read.next_reference_start:
-                    get_distance('forward', read, dist)
+                    set_distance('forward', read, dist)
                 # Read is mapped in reverse orientation, mate is in forward orientation, read is mapped after mate
                 elif read.is_reverse and not read.mate_is_reverse and read.reference_start >= read.next_reference_start:
-                    get_distance('reverse', read, dist)
+                    set_distance('reverse', read, dist)
 
     # Save clipped read distance dictionary
     with bz2file.BZ2File(outFile, 'w') as f:
