@@ -9,8 +9,14 @@ from time import time
 import logging
 import statistics
 from collections import Counter
+import pyBigWig
 
 HPC_MODE = True
+
+win_hlen = 100
+win_len = win_hlen * 2
+# Minimum clipped read support to consider
+min_cr_support = 3
 
 
 def create_dir(directory):
@@ -24,6 +30,18 @@ def create_dir(directory):
     except OSError as e:
         if e.errno != errno.EEXIST:
             raise
+
+
+def get_gc_bigwig():
+
+    bw = pyBigWig.open("/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/UCSC/hg19/hg19.gc5Base.bw")
+    return bw
+
+
+def get_mappability_bigwig():
+
+    bw = pyBigWig.open("/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/Mappability/GRCh37.151mer.bw")
+    return bw
 
 
 def count_clipped_read_positions(cpos_cnt):
@@ -129,13 +147,6 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, SVmode, outFile):
     # Extract chromosome length from the BAM header
     header_dict = bamfile.header
     chrLen = [i['LN'] for i in header_dict['SQ'] if i['SN'] == chrName][0]
-
-    # Use a 50 bp window length
-    # TODO: the window length should be an input parameter
-    win_hlen = 25
-    win_len = win_hlen * 2
-    # Minimum clipped read support to consider
-    min_cr_support = 3
 
     # Consider a single sample
     sample_list = [sampleName]
@@ -252,6 +263,9 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, SVmode, outFile):
 
     split_reads_array = dict()
 
+    gc_array = dict()
+    mappability_array = dict()
+
     # Log info every n_r times
     n_r = 10 ** 3
     # print(n_r)
@@ -299,7 +313,7 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, SVmode, outFile):
 
                     for direction in ['forward', 'reverse']:
                         # for clipped_arrangement in ['c2c', 'nc2c', 'c2nc', 'nc2nc']:
-                        for clipped_arrangement in ['left', 'right']:
+                        for clipped_arrangement in ['left', 'right', 'unclipped']:
                             clipped_read_distance_array[sample][direction][clipped_arrangement] = np.zeros(win_len,
                                                                                                            dtype=int)
                             clipped_read_distance_num[sample][direction][clipped_arrangement] = np.zeros(win_len,
@@ -378,6 +392,11 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, SVmode, outFile):
                                 split_reads_array[sample][split_direction][pos - start_win] = \
                                     split_reads[sample][split_direction][pos]
 
+                    gc_array[sample] = bw_gc.values('chr' + chrName, start_win, end_win)
+                    assert len(gc_array[sample]) == win_len
+                    mappability_array[sample] = bw_map.values(chrName, start_win, end_win)
+                    assert len(mappability_array[sample]) == win_len
+
                 # Fill the numpy vstack
 
                 vstack_list = []
@@ -395,7 +414,7 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, SVmode, outFile):
                         vstack_list.append(clipped_reads_duplication_array[sample][mate_position])
 
                     for direction in ['forward', 'reverse']:
-                        for clipped_arrangement in ['left', 'right']:
+                        for clipped_arrangement in ['left', 'right', 'unclipped']:
                             vstack_list.append(clipped_read_distance_array[sample][direction][clipped_arrangement])
                             vstack_list.append(clipped_read_distance_num[sample][direction][clipped_arrangement])
                             vstack_list.append(clipped_read_distance_median[sample][direction][clipped_arrangement])
@@ -405,6 +424,9 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, SVmode, outFile):
                         vstack_list.append(split_read_distance_array[sample][direction])
                         vstack_list.append(split_read_distance_num[sample][direction])
                         vstack_list.append(split_read_distance_median[sample][direction])
+
+                    vstack_list.append(gc_array[sample])
+                    vstack_list.append(mappability_array[sample])
 
                 # logging.info("Shape of channel matrix: %s" % str(ch_vstack.shape))
                 ch_vstack = np.vstack(vstack_list)

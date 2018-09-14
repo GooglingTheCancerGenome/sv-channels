@@ -24,12 +24,12 @@ import pyBigWig
 #import matplotlib.pyplot as plt
 
 # Flag used to set either paths on the local machine or on the HPC
-HPC_MODE = False
+HPC_MODE = True
 
 # Only clipped read positions supported by at least min_cr_support clipped reads are considered
 min_cr_support = 3
 # Window half length
-win_hlen = 35
+win_hlen = 100
 # Window size
 win_len = win_hlen * 2
 
@@ -1461,11 +1461,6 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
     # Get Mappability BigWig
     bw_map = get_mappability_bigwig()
 
-    # Use a 50 bp window length
-    # TODO: the window length should be an input parameter
-    win_hlen = 25
-    win_len = win_hlen * 2
-
     # Set the correct prefix for the path
     if trainingMode and (sampleName == 'N1' or sampleName == 'N2'):
         prefix_train = 'Training/'
@@ -1586,6 +1581,7 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
     split_read_distance_median = dict()
 
     split_reads_array = dict()
+
     gc_array = dict()
     mappability_array = dict()
 
@@ -1811,11 +1807,11 @@ def main():
     # Get chromosome length
     # chrlen = get_chr_len(args.bam, args.chr)
 
-    # channel_maker(ibam=args.bam, chrName=args.chr, sampleName=args.sample,
-    #               trainingMode=args.train, outFile=args.out)
+    channel_maker(ibam=args.bam, chrName=args.chr, sampleName=args.sample,
+                  trainingMode=args.train, outFile=args.out)
 
-    for sampleName in ['NA12878', 'Patient1', 'Patient2']:
-        create_labels_nanosv_vcf(sampleName=sampleName, ibam=args.bam)
+    # for sampleName in ['NA12878', 'Patient1', 'Patient2']:
+    #     create_labels_nanosv_vcf(sampleName=sampleName, ibam=args.bam)
 
     #create_labels_bed(sampleName=args.sample, ibam=args.bam)
 
