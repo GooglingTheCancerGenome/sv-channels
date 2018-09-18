@@ -17,7 +17,7 @@ __status__ = "alpha"
 
 # parameters
 
-HPC_MODE = True
+HPC_MODE = False
 
 if not HPC_MODE:
 
@@ -26,10 +26,15 @@ if not HPC_MODE:
     #bed_file = work_dir + 'genomes/SV/chr17B_T.proper_small.bed'
     #bam_file = work_dir + 'samples/G1/BAM/G1/mapping/G1_dedup.bam'
 
-    work_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL'
+    #work_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL'
+    #bed_file = os.path.join(work_dir, 'SV/chr17B_T.proper.bed')
+    #bam_file = os.path.join(work_dir, 'BAM/G1_dedup.bam')
+    #vcf_output = os.path.join(work_dir, 'VCF/chr17B_T.vcf')
+    work_dir = '/Users/tschafers/Test_data/CNN/'
     bed_file = os.path.join(work_dir, 'SV/chr17B_T.proper.bed')
     bam_file = os.path.join(work_dir, 'BAM/G1_dedup.bam')
     vcf_output = os.path.join(work_dir, 'VCF/chr17B_T.vcf')
+
 
 else:
 
@@ -234,20 +239,18 @@ def breakpoint_to_sv():
 
 
 def linksToVcf(links_counts):
-
     filename = vcf_output
-
-    cols = '#CHROM\tPOS\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSAMPLE\n'
+    cols = '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSAMPLE\n'
     # Write VCF Header
     with open(filename, 'w') as sv_calls:
         sv_calls.write('##fileformat=VCFv4.2\n')
         sv_calls.write('##FILTER=<ID=PASS,Description="All filters passed">\n')
         sv_calls.write('##fileDate=20180726\n')
+        sv_calls.write('##reference=GATK-GRCh-hg19')
         sv_calls.write('##ALT=<ID=DEL,Description="Deletion">\n')
-        sv_calls.write('##INFO=<ID=END,Number=1,Type=Integer,Description="End position of the structural variant">\n')
-        sv_calls.write(
-            '##INFO=<ID=PE,Number=1,Type=Integer,Description="Paired-end support of the structural variant">\n')
-        sv_calls.write('##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">\n')
+        sv_calls.write('##FORMAT=<ID=END,Number=1,Type=Integer,Description="End position of the structural variant">\n')
+        sv_calls.write('##FORMAT=<ID=PE,Number=1,Type=Integer,Description="Paired-end support of the structural variant">\n')
+        sv_calls.write('##FORMAT=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">\n')
         sv_calls.write(cols)
         for l, v in links_counts.items():
             interval = list(l)
@@ -266,11 +269,13 @@ def linksToVcf(links_counts):
                 # print('%d > %d' % (s1[1], s2[1]))
                 start = s2[1]
                 stop = s1[1]
-
-            f_line = 'SVTYPE=%s;PE=%s;END=%s' % ('DEL', v, stop)
-            line = '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % (chr, start, '.', '.', '<DEL>', 'q30', 'PASS', f_line)
+            f_line = "SVTYPE:PE:END"
+            s_line = 'SVTYPE=%s;PE=%s;END=%s' % ('DEL', v, stop)
+            line = '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % (chr, start, '.', 'N','<DEL>', '.', 'PASS', '.', f_line, s_line)
             # print(line)
             sv_calls.write(line + '\n')
+        print("VCF file written!")
+
 
 
 def main():
