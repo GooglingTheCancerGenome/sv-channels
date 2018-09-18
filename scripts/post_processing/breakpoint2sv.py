@@ -17,7 +17,7 @@ __status__ = "alpha"
 
 # parameters
 
-HPC_MODE = True
+HPC_MODE = False
 
 if not HPC_MODE:
 
@@ -246,6 +246,7 @@ def linksToVcf(links_counts):
         sv_calls.write('##fileformat=VCFv4.2\n')
         sv_calls.write('##FILTER=<ID=PASS,Description="All filters passed">\n')
         sv_calls.write('##fileDate=20180726\n')
+        sv_calls.write('##reference=GATK-GRCh-hg19')
         sv_calls.write('##ALT=<ID=DEL,Description="Deletion">\n')
         sv_calls.write('##FORMAT=<ID=END,Number=1,Type=Integer,Description="End position of the structural variant">\n')
         sv_calls.write('##FORMAT=<ID=PE,Number=1,Type=Integer,Description="Paired-end support of the structural variant">\n')
