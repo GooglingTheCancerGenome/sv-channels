@@ -143,87 +143,80 @@ def read_breakpoints(bed_file):
     return breakpoints
 
 
-def breakpoint_to_sv():
+def breakpoint_to_sv(bed_file, aln, chr):
     breakpoints = read_breakpoints(bed_file)
     # Check if the BAM file in input exists
-    assert os.path.isfile(bam_file)
-    # open the BAM file
-    aln = pysam.AlignmentFile(bam_file, "rb")
-
     print('Create IntervalTree...')
     chr_tree = defaultdict(IntervalTree)
-    for chr in breakpoints.keys():
-        # Create interval windows around candidate breakpoint positions
-        for pos in breakpoints[chr]:
-            chr_tree[chr][pos - win_hlen: pos + win_hlen + 1] = int(pos)
+    # Create interval windows around candidate breakpoint positions
+    for pos in breakpoints[chr]:
+        chr_tree[chr][pos - win_hlen: pos + win_hlen + 1] = int(pos)
     print('IntervalTree created.')
-
     links = []
     no_cr_pos = []
     npos = 1
     scanned_reads = set()
-    for chr in breakpoints.keys():
-        print('Chr %s' % str(chr))
-        for pos in breakpoints[chr]:
-            if not npos % 1000:
-                print('Processed %d positions...' % npos)
-            # print('Pos: %d' % pos)
-            start = pos - win_hlen
-            end = pos + win_hlen + 1
+    print('Chr %s' % str(chr))
+    for pos in breakpoints[chr]:
+        if not npos % 1000:
+            print('Processed %d positions...' % npos)
+        # print('Pos: %d' % pos)
+        start = pos - win_hlen
+        end = pos + win_hlen + 1
 
-            right_clipped_array = np.zeros(win_len)
-            left_clipped_array = np.zeros(win_len)
+        right_clipped_array = np.zeros(win_len)
+        left_clipped_array = np.zeros(win_len)
 
-            count_reads = aln.count(chr, start, end)
-            # Fetch the reads mapped on the chromosome
+        count_reads = aln.count(chr, start, end)
+        # Fetch the reads mapped on the chromosome
 
-            if count_reads <= 50000:
-                # print('Fetching %d reads in region %s:%d-%d' % (count_reads, chr, start, end))
-                for read in aln.fetch(chr, start, end):
-                    # Both read and mate should be mapped
-                    if not read.is_unmapped and not read.mate_is_unmapped and \
-                            read.mapping_quality >= min_mapq and \
-                            read.reference_name == read.next_reference_name:
+        if count_reads <= 50000:
+            # print('Fetching %d reads in region %s:%d-%d' % (count_reads, chr, start, end))
+            for read in aln.fetch(chr, start, end):
+                # Both read and mate should be mapped
+                if not read.is_unmapped and not read.mate_is_unmapped and \
+                        read.mapping_quality >= min_mapq and \
+                        read.reference_name == read.next_reference_name:
 
-                        # Filled vectors with counts of clipped reads at clipped read positions
-                        if is_right_clipped(read):
-                            cpos = read.reference_end + 1
-                            if start <= cpos <= end:
-                                right_clipped_array[cpos - start - 2] += 1
-                        if is_left_clipped(read):
-                            cpos = read.reference_start
-                            if start <= cpos <= end:
-                                left_clipped_array[cpos - start - 1] += 1
+                    # Filled vectors with counts of clipped reads at clipped read positions
+                    if is_right_clipped(read):
+                        cpos = read.reference_end + 1
+                        if start <= cpos <= end:
+                            right_clipped_array[cpos - start - 2] += 1
+                    if is_left_clipped(read):
+                        cpos = read.reference_start
+                        if start <= cpos <= end:
+                            left_clipped_array[cpos - start - 1] += 1
 
-                        if read.query_name not in scanned_reads:
-                            match = chr_tree[read.next_reference_name][read.next_reference_start]
-                            if chr != read.next_reference_name or start > read.next_reference_start or \
-                                    end < read.next_reference_start:
-                                if match:
-                                    for m in match:
-                                        int_start, int_end, int_data = m
-                                        # print('%s -> %s' % (pos, int_data))
-                                        # Pay attention of double insertions. The same read pair will be added
-                                        # from both intervals, leading to double count.
-                                        links.append(
-                                            frozenset({chr + '_' + str(pos),
-                                                       read.next_reference_name + '_' + str(int_data)}))
-                                        scanned_reads.add(read.query_name)
+                    if read.query_name not in scanned_reads:
+                        match = chr_tree[read.next_reference_name][read.next_reference_start]
+                        if chr != read.next_reference_name or start > read.next_reference_start or \
+                                end < read.next_reference_start:
+                            if match:
+                                for m in match:
+                                    int_start, int_end, int_data = m
+                                    # print('%s -> %s' % (pos, int_data))
+                                    # Pay attention of double insertions. The same read pair will be added
+                                    # from both intervals, leading to double count.
+                                    links.append(
+                                        frozenset({chr + '_' + str(pos),
+                                                    read.next_reference_name + '_' + str(int_data)}))
+                                    scanned_reads.add(read.query_name)
 
-            # print('Right clipped:\n%s' % right_clipped_array)
-            # print('Left clipped:\n%s' % left_clipped_array)
-            if sum(right_clipped_array) + sum(left_clipped_array) == 0:
-                # print('Pos %d has no CR pos' % pos)
-                no_cr_pos.append(chr + '_' + str(pos))
+        # print('Right clipped:\n%s' % right_clipped_array)
+        # print('Left clipped:\n%s' % left_clipped_array)
+        if sum(right_clipped_array) + sum(left_clipped_array) == 0:
+            # print('Pos %d has no CR pos' % pos)
+            no_cr_pos.append(chr + '_' + str(pos))
+        else:
+            if max(right_clipped_array) > max(left_clipped_array):
+                max_i = np.where(right_clipped_array == max(right_clipped_array))
+                # print('Right: %d -> %s' % (pos, max_i[0]))
             else:
-                if max(right_clipped_array) > max(left_clipped_array):
-                    max_i = np.where(right_clipped_array == max(right_clipped_array))
-                    # print('Right: %d -> %s' % (pos, max_i[0]))
-                else:
-                    max_i = np.where(left_clipped_array == max(left_clipped_array))
-                    # print('Left: %d -> %s' % (pos, max_i[0]))
+                max_i = np.where(left_clipped_array == max(left_clipped_array))
+                # print('Left: %d -> %s' % (pos, max_i[0]))
 
-            npos += 1
+        npos += 1
 
     links_counts = Counter(links)
     print('Set size: %d' % len(links_counts))
@@ -279,7 +272,12 @@ def linksToVcf(links_counts):
 
 
 def main():
-    links_counts = breakpoint_to_sv()
+
+    assert os.path.isfile(bam_file)
+    # open the BAM file
+    aln = pysam.AlignmentFile(bam_file, "rb")
+    ##TEST
+    links_counts = breakpoint_to_sv(bed_file, aln, '17')
     linksToVcf(links_counts)
 
 
