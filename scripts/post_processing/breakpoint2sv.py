@@ -144,7 +144,10 @@ def read_breakpoints(bed_file):
     return breakpoints
 
 
-def breakpoint_to_sv(breakpoints, aln, chr):
+def breakpoint_to_sv(breakpoints, chr):
+    assert os.path.isfile(bam_file)
+    # open the BAM file
+    aln = pysam.AlignmentFile(bam_file, "rb")
     # Check if the BAM file in input exists
     print('Create IntervalTree...')
     chr_tree = defaultdict(IntervalTree)
@@ -272,15 +275,21 @@ def linksToVcf(links_counts):
 
 
 def main():
-    assert os.path.isfile(bam_file)
-    # open the BAM file
-    aln = pysam.AlignmentFile(bam_file, "rb")
     breakpoints = read_breakpoints(bed_file)
     ##Iterate over chromosomes
+    jobs = []
     for chr in breakpoints.keys():
-        job = Process(target=breakpoint_to_sv, args=(breakpoints,aln,chr))
+        job = Process(target=breakpoint_to_sv, args=(breakpoints,chr))
         job.start()
-        job.join()
+        jobs.append(job)
+    for j in jobs: j.join()
+
+
+
+
+       
+    
+
 
 
 
