@@ -9,6 +9,7 @@ import os
 from collections import defaultdict, Counter
 from intervaltree import Interval, IntervalTree
 import numpy as np
+from multiprocessing import Process
 
 __authors__ = ["Luca Santuari"]
 __license__ = "Apache License, Version 2.0"
@@ -143,8 +144,7 @@ def read_breakpoints(bed_file):
     return breakpoints
 
 
-def breakpoint_to_sv(bed_file, aln, chr):
-    breakpoints = read_breakpoints(bed_file)
+def breakpoint_to_sv(breakpoints, aln, chr):
     # Check if the BAM file in input exists
     print('Create IntervalTree...')
     chr_tree = defaultdict(IntervalTree)
@@ -228,7 +228,7 @@ def breakpoint_to_sv(bed_file, aln, chr):
         i += 1
     print('%d connections with min %d RP' % (len([v for l, v in links_counts.items() if v > i]), i))
     # Return link positions, and counts
-    return links_counts
+    linksToVcf(links_counts)
 
 
 def linksToVcf(links_counts):
@@ -272,13 +272,16 @@ def linksToVcf(links_counts):
 
 
 def main():
-
     assert os.path.isfile(bam_file)
     # open the BAM file
     aln = pysam.AlignmentFile(bam_file, "rb")
-    ##TEST
-    links_counts = breakpoint_to_sv(bed_file, aln, '17')
-    linksToVcf(links_counts)
+    breakpoints = read_breakpoints(bed_file)
+    ##Iterate over chromosomes
+    for chr in breakpoints.keys():
+        job = Process(target=breakpoint_to_sv, args=(breakpoints,aln,chr))
+        job.start()
+        job.join()
+
 
 
 if __name__ == '__main__':
