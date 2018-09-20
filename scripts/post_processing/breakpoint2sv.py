@@ -151,17 +151,17 @@ def breakpoint_to_sv(args):
     # open the BAM file
     aln = pysam.AlignmentFile(bam_file, "rb")
     # Check if the BAM file in input exists
-    print('Create IntervalTree...')
+    #print('Create IntervalTree...')
     chr_tree = defaultdict(IntervalTree)
     # Create interval windows around candidate breakpoint positions
     for pos in breakpoints[chr]:
         chr_tree[chr][pos - win_hlen: pos + win_hlen + 1] = int(pos)
-    print('IntervalTree created.')
+    #print('IntervalTree created.')
     links = []
     no_cr_pos = []
     npos = 1
     scanned_reads = set()
-    print('Chr %s' % str(chr))
+    print('Processing Chr %s' % str(chr))
     for pos in breakpoints[chr]:
         if not npos % 1000:
             print('Processed %d positions...' % npos)
@@ -272,8 +272,6 @@ def linksToVcf(links_counts):
             # print(line)
             sv_calls.write(line + '\n')
         print("VCF file written!")
-def test(num): return num*2
-
 
 def main():
     breakpoints = read_breakpoints(bed_file)
