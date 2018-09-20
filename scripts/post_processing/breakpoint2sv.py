@@ -3,15 +3,15 @@ This script takes in input a BED file with candidate breakpoint positions and
 returns a VCF file of SVs where the breakpoints are connected using paired end information
 and information on clipped read positions.
 '''
-
+import itertools
 import pysam
 import os
 from collections import defaultdict, Counter
 from intervaltree import Interval, IntervalTree
 import numpy as np
-from multiprocessing import Process
+from multiprocessing import Process, Pool
 
-__authors__ = ["Luca Santuari"]
+__authors__ = ["Luca Santuari", "Tilman Schäfers"]
 __license__ = "Apache License, Version 2.0"
 __version__ = "0.0.1"
 __status__ = "alpha"
@@ -34,7 +34,7 @@ if not HPC_MODE:
     work_dir = '/Users/tschafers/Test_data/CNN/'
     bed_file = os.path.join(work_dir, 'SV/chr17B_T.proper.bed')
     bam_file = os.path.join(work_dir, 'BAM/G1_dedup.bam')
-    vcf_output = os.path.join(work_dir, 'VCF/chr17B_T.vcf')
+    vcf_output = os.path.join(work_dir, 'VCF/chr17B_T_merge.vcf')
 
 
 else:
@@ -143,8 +143,10 @@ def read_breakpoints(bed_file):
     # print(breakpoints)
     return breakpoints
 
-
-def breakpoint_to_sv(breakpoints, chr):
+##Accepts a list of arguments(breakpoints,chr)##
+def breakpoint_to_sv(args):
+    breakpoints = args[1]
+    chr = args[0]
     assert os.path.isfile(bam_file)
     # open the BAM file
     aln = pysam.AlignmentFile(bam_file, "rb")
@@ -231,8 +233,7 @@ def breakpoint_to_sv(breakpoints, chr):
         i += 1
     print('%d connections with min %d RP' % (len([v for l, v in links_counts.items() if v > i]), i))
     # Return link positions, and counts
-    linksToVcf(links_counts)
-
+    return links_counts
 
 def linksToVcf(links_counts):
     filename = vcf_output
@@ -271,19 +272,17 @@ def linksToVcf(links_counts):
             # print(line)
             sv_calls.write(line + '\n')
         print("VCF file written!")
-
+def test(num): return num*2
 
 
 def main():
     breakpoints = read_breakpoints(bed_file)
-    ##Iterate over chromosomes
-    jobs = []
-    for chr in breakpoints.keys():
-        job = Process(target=breakpoint_to_sv, args=(breakpoints,chr))
-        job.start()
-        jobs.append(job)
-    for j in jobs: j.join()
-
+    ##Spawn processes for each chromosome
+    P = Pool(processes=len(breakpoints.keys()))
+    args = zip(breakpoints.keys(), itertools.repeat(breakpoints))
+    res = sum(P.map(breakpoint_to_sv, args),Counter())
+    linksToVcf(res)
+   
 
 
 
