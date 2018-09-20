@@ -279,6 +279,8 @@ def main():
     P = Pool(processes=len(breakpoints.keys()))
     args = zip(breakpoints.keys(), itertools.repeat(breakpoints))
     res = sum(P.map(breakpoint_to_sv, args),Counter())
+    P.close()
+    P.join()
     linksToVcf(res)
    
 
