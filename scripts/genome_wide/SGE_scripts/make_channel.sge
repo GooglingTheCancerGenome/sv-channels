@@ -46,6 +46,7 @@ elif [ ${PRGARG} == 'channel_maker_real_germline' ]; then
                 --chr ${CHRARG} \
 		        --sample ${SAMPLEARG} \
 		        --train True \
+		        --svmode ${SVMODEARG}
                 --out ${OUTARG}"/"${PRGARG}"/"${CHRARG}"_${PRGARG}.npy.gz" \
                 --logfile ${OUTARG}"/"${PRGARG}"/"${CHRARG}"_${PRGARG}.log"
 

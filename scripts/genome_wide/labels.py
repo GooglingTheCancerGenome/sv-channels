@@ -269,9 +269,9 @@ def initialize_nanosv_vcf_paths(sampleName):
 
     if HPC_MODE:
 
-        if sampleName == 'NA12878':
+        if sampleName[:7] == 'NA12878':
 
-            vcf_dir = '/hpc/cog_bioinf/kloosterman/shared/nanosv_comparison/' + sampleName
+            vcf_dir = '/hpc/cog_bioinf/kloosterman/shared/nanosv_comparison/' + sampleName[:7]
 
             for mapper in ['bwa', 'minimap2', 'ngmlr', 'last']:
 
@@ -294,9 +294,9 @@ def initialize_nanosv_vcf_paths(sampleName):
 
     else:
 
-        if sampleName == 'NA12878':
+        if sampleName[:7] == 'NA12878':
 
-            vcf_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth/' + sampleName + '/SV'
+            vcf_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth/' + sampleName[:7] + '/SV'
             vcf_files = dict()
 
             for mapper in ['bwa', 'last']:
@@ -338,7 +338,7 @@ def read_nanosv_vcf(sampleName):
     # Setup locations of VCF files
     vcf_files = initialize_nanosv_vcf_paths(sampleName)
 
-    if sampleName == 'NA12878' or sampleName == 'Patient1' or sampleName == 'Patient2':
+    if sampleName[:7] == 'NA12878' or sampleName == 'Patient1' or sampleName == 'Patient2':
 
         # Reading the Last-mapped NanoSV VCF file
         filename = vcf_files['last']['nanosv']
@@ -376,7 +376,7 @@ def read_nanosv_vcf(sampleName):
         return sv
 
 
-def get_labels_from_nanosv_vcf(sampleName, ibam):
+def get_labels_from_nanosv_vcf(sampleName):
     '''
     This function writes the label files based on the nanosv VCF file information
 
@@ -893,13 +893,14 @@ def read_SURVIVOR_merge_VCF(sampleName):
         # To fill with HPC path
         survivor_vcf = ''
     else:
-        if sampleName == 'NA12878':
+        if sampleName[:7] == 'NA12878':
             context = 'trio'
+            survivor_vcf = '/Users/lsantuari/Documents/Data/germline/' + context + \
+                           '/' + sampleName[:7] + '/SV/Filtered/survivor_merge.vcf'
         elif sampleName == 'Patient1' or sampleName == 'Patient2':
             context = 'patients'
-
-        survivor_vcf = '/Users/lsantuari/Documents/Data/germline/' + context + \
-                       '/' + sampleName + '/SV/Filtered/survivor_merge.vcf'
+            survivor_vcf = '/Users/lsantuari/Documents/Data/germline/' + context + \
+                           '/' + sampleName + '/SV/Filtered/survivor_merge.vcf'
 
     vcf_in = VariantFile(survivor_vcf)
     samples_list = list((vcf_in.header.samples))
@@ -959,9 +960,9 @@ def clipped_read_positions_to_bed(sampleName, ibam):
 
 def nanosv_vcf_to_bed(sampleName):
     # Load SV list
-    # sv_list = read_nanosv_vcf(sampleName)
+    sv_list = read_nanosv_vcf(sampleName)
     # nanoSV & Manta SVs
-    sv_list = get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName)
+    # sv_list = get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName)
 
     # Select deletions
     sv_list = [sv for sv in sv_list if sv.svtype == 'DEL' if sv.chrom == sv.chrom2 if sv.start < sv.end]
@@ -973,8 +974,8 @@ def nanosv_vcf_to_bed(sampleName):
         lines.append(bytes(sv.chrom + '\t' + str(sv.end + sv.ciend[0]) + '\t' \
                            + str(sv.end + sv.ciend[1] + 1) + '\t' + 'DEL_end' + '\n', 'utf-8'))
 
-    # outfile = sampleName + '_nanosv_vcf_ci.bed.gz'
-    outfile = sampleName + '_manta_nanosv_vcf_ci.bed.gz'
+    outfile = sampleName + '_nanosv_vcf_ci.bed.gz'
+    #outfile = sampleName + '_manta_nanosv_vcf_ci.bed.gz'
     f = gzip.open(outfile, 'wb')
     try:
         for l in lines:
@@ -1027,7 +1028,7 @@ def get_labels(sampleName):
     sv_dict['nanosv'] = read_nanosv_vcf(sampleName)
     sv_dict['nanosv_manta'] = get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName)
 
-    if sampleName == 'NA12878':
+    if sampleName[:7] == 'NA12878':
         # Mills2011
         inbed = '/Users/lsantuari/Documents/External_GitHub/sv_benchmark/' + \
                 'input.na12878/lumpy-Mills2011-call-set.bed'
@@ -1041,11 +1042,11 @@ def get_labels(sampleName):
                 'NA12878_nanosv_Mills2011.bed'
         sv_dict['nanosv_Mills2011'] = read_bed_sv(inbed)
 
-        inbed = '/Users/lsantuari/Documents/IGV/Screenshots/' + sampleName + \
+        inbed = '/Users/lsantuari/Documents/IGV/Screenshots/' + sampleName[:7] + \
                 '/overlaps/lumpy-Mills2011_manta_nanosv.bed'
         sv_dict['Mills2011_nanosv_manta'] = read_bed_sv(inbed)
 
-        inbed = '/Users/lsantuari/Documents/Processed/' + sampleName + '/Long_read_validation/' + \
+        inbed = '/Users/lsantuari/Documents/Processed/' + sampleName[:7] + '/Long_read_validation/' + \
                 'lumpy-Mills2011-DEL.pacbio_moleculo.bed'
         sv_dict['Mills2011_PacBio_Moleculo'] = read_bed_sv(inbed)
 
@@ -1057,7 +1058,7 @@ def get_labels(sampleName):
                 'NA12878_nanosv_Mills2011-DEL.pacbio_moleculo.bed'
         sv_dict['nanosv_Mills2011_PacBio_Moleculo'] = read_bed_sv(inbed)
 
-        inbed = '/Users/lsantuari/Documents/Processed/' + sampleName + '/Long_read_validation/' + \
+        inbed = '/Users/lsantuari/Documents/Processed/' + sampleName[:7] + '/Long_read_validation/' + \
                 'lumpy-Mills2011_pacbio_moleculo_manta_nanosv.bed'
         sv_dict['Mills2011_PacBio_Moleculo_nanosv_manta'] = read_bed_sv(inbed)
 
@@ -1240,10 +1241,21 @@ def main():
 
     # get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName=args.sample)
 
-    # for sampleName in ['NA12878', 'Patient1', 'Patient2']:
-    for sampleName in ['NA12878']:
-        get_labels(sampleName=sampleName)
+    for sampleName in ['Patient1', 'Patient2']:
+        nanosv_vcf_to_bed(sampleName)
+    #for sampleName in ['NA12878']:
+        # get_labels_from_nanosv_vcf(sampleName=sampleName)
         # load_labels(sampleName=sampleName)
+
+    # crpos_giab = load_all_clipped_read_positions('NA12878')
+    # crpos_ena = load_all_clipped_read_positions('NA12878_ENA')
+    #
+    # print(Counter(crpos_giab))
+    # print(Counter(crpos_ena))
+
+    #for chr in crpos_ena.keys():
+        #print(chr)
+        #print(set(crpos_giab[chr])-set(crpos_ena[chr]))
 
     print('Elapsed time making labels = %f' % (time() - t0))
 

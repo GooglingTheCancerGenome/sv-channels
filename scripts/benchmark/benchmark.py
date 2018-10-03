@@ -24,29 +24,39 @@ import tensorflow as tf
 # Pandas import
 import pandas as pd
 
+# Flags
+
 # Flag used to set either paths on the local machine or on the HPC
 HPC_MODE = True
+
+# Artificial mode?
+ART_MODE = False
 
 # Model creation mode?
 CREATE_MODELS = True
 
 # Already differentiated?
-DIFFERENTIATED = True
+DIFFERENTIATED = False
 
-channel_selection = '5Channels'
+channel_selection = 'AllChannel'
 
 # sample_name = 'G1'
 # context_dict = {'G1': 'train', 'N1': 'real'}
 
 # sample_name = 'PATIENT1'
-context_dict = {'NA12878': 'real', 'PATIENT1': 'real', 'PATIENT2': 'real'}
+context_dict = {'NA12878': 'real', 'PATIENT1': 'real', 'PATIENT2': 'real', 'G1': 'train', 'N1': 'real'}
 
-date = '060818'  # '010618'
+date = '130918'  # '060818'
 mode = 'Test'
 
 if HPC_MODE:
+
     base_dir = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/' + mode + 'Data_' + date
+
+    base_dir_art = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TrainingData_' + date
+
 else:
+
     base_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/' + date + '/' + mode + 'Data_' + date
 
 
@@ -108,8 +118,9 @@ def get_chr_list():
     # Leaving out chromosome Y and MT for the moment
     chr_list = list(map(str, np.arange(1, 23)))
     chr_list.append('X')
+    #chr_list = list(map(str, np.arange(1, 11)))
     # DEBUG:
-    # chr_list = ['22']
+    # chr_list = ['12']
     return chr_list
 
 
@@ -139,8 +150,10 @@ def load_windows(sample_list, base_dir):
             with gzip.GzipFile(data_file, "rb") as f:
                 data_mat = np.load(f)
                 # Only loading 5 top channels
-                data_mat = data_mat[:, [0, 1, 2, 19, 20], :]
-
+                # 90:110
+                data_mat = data_mat[:, [0, 1, 2, 19, 20], ]
+                # data_mat = data_mat[:, [0, 1, 2, 19, 20, 15, 24, 34], :]
+                # 15 median PE track
             f.close()
 
             # if mode == 'Training':
@@ -174,36 +187,39 @@ def load_windows(sample_list, base_dir):
 def save_windows(data, sample_name):
     print('Saving windows for sample %s' % sample_name)
 
-    if not DIFFERENTIATED:
-        print('Start processing windows...')
-        print('Start normalize', data.shape)
-        data = normalize_single(data)
-        print('Start differentiate', data.shape)
-        data = differentiate_single(data)
-        print('Start transpose', data.shape)
-        data = transpose_single(data)
-        print('Finished', data.shape)
+    # if not DIFFERENTIATED:
+    print('Start processing windows...')
+        # print('Start normalize', data.shape)
+        # data = normalize_single(data)
+        # print('Start differentiate', data.shape)
+        # data = differentiate_single(data)
+
+    print('Start transpose', data.shape)
+    data = transpose_single(data)
+    print('Finished', data.shape)
 
     dirname = base_dir + '/' + sample_name + '/ZipData'
     create_dir(dirname)
 
-    if not DIFFERENTIATED:
-        data_file = dirname + '/' + sample_name + '_' + channel_selection + '_windows_diff'
-    else:
-         data_file = dirname + '/' + sample_name + '_' + channel_selection + '_windows'
+    #if not DIFFERENTIATED:
+    data_file = dirname + '/' + sample_name + '_' + channel_selection + '_windows_diff'
+    # else:
+    #      data_file = dirname + '/' + sample_name + '_' + channel_selection + '_windows'
 
     np.save(data_file, data)
     os.system('gzip ' + data_file + '.npy')
 
+    return data
+
 
 def load_windows_from_zip(sample_name):
 
-    if DIFFERENTIATED:
-        data_file = base_dir + '/' + sample_name + '/ZipData/' + sample_name + '_' + channel_selection + \
+    #if DIFFERENTIATED:
+    data_file = base_dir + '/' + sample_name + '/ZipData/' + sample_name + '_' + channel_selection + \
                     '_windows_diff.npy.gz'
-    else:
-        data_file = base_dir + '/' + sample_name + '/ZipData/' + sample_name + '_' + channel_selection + \
-                    '_windows.npy.gz'
+    # else:
+    #    data_file = base_dir + '/' + sample_name + '/ZipData/' + sample_name + '_' + channel_selection + \
+    #                '_windows.npy.gz'
 
     with gzip.GzipFile(data_file, "rb") as f:
         data = np.load(f)
@@ -227,6 +243,32 @@ def load_labels(sampleName):
     with gzip.GzipFile(pickle_file, "rb") as f:
         labels = pickle.load(f)
     f.close()
+
+    return labels
+
+
+def load_artificial_labels(sample_list, base_dir):
+
+    chr_list = get_chr_list()
+    labels = []
+
+    for sampleName in sample_list:
+        print(f'Loading labels for {sampleName}')
+        for i in chr_list:
+
+            print('Loading windows for Chr%s' % i)
+
+            label_file = base_dir + '/' + sampleName + '/LabelData/' + sampleName + '_' + str(i) + '_label.npy.gz'
+
+            with gzip.GzipFile(label_file, "rb") as f:
+                data_lab = np.load(f)
+            f.close()
+
+            labels.extend(data_lab)
+
+    labels = np.array(labels)
+
+    print(labels.shape)
 
     return labels
 
@@ -300,9 +342,12 @@ def balance_data(data, labels):
 
 
 def split_data(data, labels):
+
     # Split into training, validation and test set 60/20/20
     cnt_lab = Counter(labels)
     print(cnt_lab)
+
+    #Take the minimum number of labels
     n_lab = [v for v in cnt_lab.values()][0]
     # print(n_lab)
 
@@ -531,7 +576,7 @@ def run_model(X, y_binary, label_name, sample_name, iteration, classlabels, mode
 
     # model_reloaded = load_model(model_path)
 
-    probs = best_model.predict_proba(X['test'], batch_size=1000)
+    probs = best_model.predict_proba(X['test'], batch_size=1)
 
     df = get_confusion_matrix(iteration, sample_name, label_name, probs, y_binary['test'], classlabels)
 
@@ -643,10 +688,10 @@ def predict_windows_with_model():
 
         X = load_windows_from_zip(sample_name)
 
-        if not DIFFERENTIATED:
-            X = normalize_single(X)
-            X = differentiate_single(X)
-            X = transpose_single(X)
+        # if not DIFFERENTIATED:
+        #     X = normalize_single(X)
+        #     X = differentiate_single(X)
+        #     X = transpose_single(X)
 
         label_id = labels_pickle['id']
 
@@ -702,7 +747,8 @@ def predict_windows_with_model():
                     os.system('sortBed -i ' + outfile + ' > ' + bedfile)
 
 
-def main():
+def create_models_with_real_data():
+
     if CREATE_MODELS:
 
         # for sample_name in ['NA12878', 'PATIENT1', 'PATIENT2']:
@@ -713,12 +759,12 @@ def main():
 
             res_df = pd.DataFrame()
 
-            # data, chr_list = load_windows(sample_list=[sample_name],
-            #                               base_dir=base_dir)
-            #
-            # save_windows(data, sample_name)
+            data, chr_list = load_windows(sample_list=[sample_name],
+                                          base_dir=base_dir)
 
-            data = load_windows_from_zip(sample_name)
+            data = save_windows(data, sample_name)
+
+            # data = load_windows_from_zip(sample_name)
 
             chr_list = get_chr_list()
 
@@ -778,14 +824,13 @@ def main():
                                                       num_classes,
                                                       number_of_models=1,
                                                       model_type='CNN',
-                                                      cnn_min_layers=1,
-                                                      cnn_max_layers=1,
-                                                      cnn_min_filters=6,
-                                                      cnn_max_filters=6,
-                                                      cnn_min_fc_nodes=3,
-                                                      cnn_max_fc_nodes=3,
-                                                      low_lr=2, high_lr=2
-                                                      )
+                                                      cnn_min_layers=2,
+                                                      cnn_max_layers=2,
+                                                      cnn_min_filters=4,
+                                                      cnn_max_filters=4,
+                                                      cnn_min_fc_nodes=6,
+                                                      cnn_max_fc_nodes=6,
+                                                      low_lr=2, high_lr=2)
 
                     for i in range(1, 11, 1):
                         model_path, results = run_model(X, y_binary, label_name=key,
@@ -805,6 +850,75 @@ def main():
     else:
 
         predict_windows_with_model()
+
+
+def create_models_with_artificial_data():
+
+    res_df = pd.DataFrame()
+    sample_list = ['G1', 'N1']
+    data, chr_list = load_windows(sample_list=sample_list,
+                                  base_dir=base_dir_art)
+
+    data = transpose_single(data)
+
+    # data = save_windows(data, sample_name)
+    # data = load_windows_from_zip(sample_name)
+
+    chr_list = get_chr_list()
+
+    print('Loaded data. Shape:')
+    print(data.shape)
+
+    labels = load_artificial_labels(sample_list, base_dir_art)
+
+    data, labels = remove_label_from_data(data, labels, 'INS_pos')
+
+    np.random.seed = 321
+
+    data, labels = balance_data(data, labels)
+
+    X, y = split_data(data, labels)
+
+    print('Shape split:')
+    print(X['train'].shape)
+
+    y_binary, classlabels = get_categorical_labels(y)
+    num_classes = y_binary['train'].shape[1]
+
+    models = modelgen.generate_models(X['train'].shape,
+                                      num_classes,
+                                      number_of_models=1,
+                                      model_type='CNN',
+                                      cnn_min_layers=2,
+                                      cnn_max_layers=2,
+                                      cnn_min_filters=4,
+                                      cnn_max_filters=4,
+                                      cnn_min_fc_nodes=6,
+                                      cnn_max_fc_nodes=6,
+                                      low_lr=2, high_lr=2)
+
+    for i in range(1, 11, 1):
+        model_path, results = run_model(X, y_binary, label_name='label',
+                                        sample_name='_'.join(sample_list),
+                                        iteration=i,
+                                        classlabels=classlabels,
+                                        models=models)
+        # print(results)
+        res_df = res_df.append(results)
+        # print(model_path)
+
+    print(res_df)
+    res_df.to_csv('/'.join((base_dir_art, 'artData_performance_results.csv')))
+
+    test_model(X, y_binary, model_path)
+
+
+def main():
+
+    if ART_MODE:
+        create_models_with_artificial_data()
+    else:
+        create_models_with_real_data()
 
 
 if __name__ == '__main__':

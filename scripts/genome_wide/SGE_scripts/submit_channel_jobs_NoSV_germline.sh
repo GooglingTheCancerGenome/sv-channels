@@ -3,9 +3,11 @@
 # This script generate the channel data for the NoSV category of the Training data
 
 # Path to the BAM files for the artificial data with the INDELs
-SVMODE='INDEL'
+SVMODE='INV'
 
-INPATH='/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/WG/run_'$SVMODE'_500K/samples/'
+# INPATH='/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/WG/run_'$SVMODE'_500K/samples/'
+INPATH='/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_'$SVMODE'/samples/'
+
 INARRAY=(${INPATH}'N1/BAM/N1/mapping/N1_dedup.bam' ${INPATH}'N2/BAM/N2/mapping/N2_dedup.bam')
 
 # The NoSV category
@@ -41,11 +43,11 @@ BAM=${INARRAY[$i]}
 CAT=${CATEGORIES[$i]}
 
 # ChannelMaker script to generate channel data for real data, in this case used for the NoSV category of the Training data
-PRG='channel_maker_real'
+PRG='channel_maker_real_germline'
 
 for CHROMOSOME in 17; do
 
-	qsub -v CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=$CAT'/'${OUTARRAY[$i]} channel_script_by_name.sge
+	qsub -v CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=$CAT'/'${OUTARRAY[$i]} make_channel.sge
 
 done
 

@@ -84,7 +84,7 @@ def read_BED(SVmode):
 
         return start_SV_DEL, end_SV_DEL, start_SV_INS
 
-    elif SVmode == 'INV' or SVmode == 'DUP':
+    elif SVmode == 'INV' or SVmode == 'DUP' or SVmode == 'TRA':
 
         # Path on the HPC
         if HPC_MODE:
@@ -99,7 +99,7 @@ def read_BED(SVmode):
             for line in i:
                 line = line.rstrip()
                 columns = line.split("\t")
-                if columns[4] == "INV" or columns[4] == "DUP":
+                if columns[4] == "INV" or columns[4] == "DUP" or columns[4] == "TRA":
                     start_SV.append(int(columns[1]))
                     end_SV.append(int(columns[3]))
                     chr_list.append(int(columns[0]))
@@ -127,7 +127,7 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, SVmode, outFile):
 
     # Use a 50 bp window length
     # TODO: the window length should be an input parameter
-    win_hlen = 25
+    win_hlen = 100
     win_len = win_hlen * 2
     # Minimum clipped read support to consider
     min_cr_support = 3

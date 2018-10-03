@@ -1,5 +1,6 @@
 # Imports
-import pysam
+import numpy as np
+import twobitreader as twobit
 
 '''
 Generic functions used in the channel scripts
@@ -70,3 +71,18 @@ def get_read_mate(read, bamfile):
                 # print('Mate is: ' + str(mate))
                 return mate
     return None
+
+
+#Return a one-hot encoding for the chromosome region chr:start-stop
+# with Ns encoded as 1 and other chromosomes encoded as 0
+def get_one_hot_sequence(chrname, start, stop, HPC_MODE):
+
+    if HPC_MODE:
+        # Path on the HPC of the 2bit version of the human reference genome (hg19)
+        genome = twobit.TwoBitFile('/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/genomes/hg19.2bit')
+    else:
+        # Path on the local machine of the 2bit version of the human reference genome (hg19)
+        genome = twobit.TwoBitFile('/Users/lsantuari/Documents/Data/GiaB/reference/hg19.2bit')
+
+    ltrdict = {'a': 0, 'c': 0, 'g': 0, 't': 0, 'n': 1}
+    return np.array([ltrdict[x.lower()] for x in genome['chr'+chrname]][start:stop])

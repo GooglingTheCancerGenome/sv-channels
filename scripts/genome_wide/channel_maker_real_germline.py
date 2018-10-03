@@ -20,6 +20,7 @@ import csv
 import pandas as pd
 from plotnine import *
 import pyBigWig
+from functions import get_one_hot_sequence
 
 #import matplotlib.pyplot as plt
 
@@ -1432,7 +1433,7 @@ def get_mappability_bigwig():
     return bw
 
 
-def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
+def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
     '''
     This function loads the channels and for each clipped read position with at least min_cr_support clipped reads, it
     creates a vstack with 22 channel vectors (11 for the Tumor and 11 for the Normal sample) of width equal to
@@ -1454,7 +1455,10 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
 
     # Extract chromosome length from the BAM header
     header_dict = bamfile.header
-    chrLen = [i['LN'] for i in header_dict['SQ'] if i['SN'] == chrName][0]
+
+    chrLen = dict()
+    for chrName in chrList:
+        chrLen[chrName] = [i['LN'] for i in header_dict['SQ'] if i['SN'] == chrName][0]
 
     # Get GC BigWig
     bw_gc = get_gc_bigwig()
@@ -1463,7 +1467,7 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
 
     # Set the correct prefix for the path
     if trainingMode and (sampleName == 'N1' or sampleName == 'N2'):
-        prefix_train = 'Training/'
+        prefix_train = 'Training_' + SVmode + '/'
     else:
         prefix_train = ''
 
@@ -1491,37 +1495,46 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
         # Consider a single sample
         sample_list = [sampleName]
 
-        # File with clipped read positions, output of the clipped_read_pos script
-        clipped_read_pos_file = prefix_train + sampleName + \
-                                '/clipped_read_pos/' + chrName + '_clipped_read_pos.pbz2'
-        # File with the clipped read distances, output of the clipped_read_distance script
-        clipped_read_distance_file = 'clipped_read_distance/' + chrName + '_clipped_read_distance.pbz2'
-        # File with the clipped reads, output of the clipped_reads script
-        clipped_reads_file = 'clipped_reads/' + chrName + '_clipped_reads.pbz2'
-        # File with the coverage array, output of the coverage script
-        coverage_file = 'coverage/' + chrName + '_coverage.npy.bz2'
-        # File with the split reads and split read distance, output of the split_read_distance script
-        split_read_distance_file = 'split_read_distance/' + chrName + '_split_read_distance.pbz2'
+        clipped_read_pos_file = dict()
+        clipped_read_distance_file = dict()
+        clipped_reads_file = dict()
+        coverage_file = dict()
+        split_read_distance_file = dict()
+        clipped_pos_cnt = dict()
 
-        # Check file existence
-        print('Checking file: %s' % clipped_read_pos_file)
-        assert os.path.isfile(clipped_read_pos_file)
+        for chrName in chrList:
 
-        for sample in sample_list:
-            assert os.path.isfile(prefix_train + sample + '/' + clipped_read_distance_file)
-            assert os.path.isfile(prefix_train + sample + '/' + clipped_reads_file)
-            assert os.path.isfile(prefix_train + sample + '/' + coverage_file)
-            assert os.path.isfile(prefix_train + sample + '/' + split_read_distance_file)
+            # File with clipped read positions, output of the clipped_read_pos script
+            clipped_read_pos_file[chrName] = prefix_train + sampleName + \
+                                    '/clipped_read_pos/' + chrName + '_clipped_read_pos.pbz2'
+            # File with the clipped read distances, output of the clipped_read_distance script
+            clipped_read_distance_file[chrName] = 'clipped_read_distance/' + chrName + '_clipped_read_distance.pbz2'
+            # File with the clipped reads, output of the clipped_reads script
+            clipped_reads_file[chrName] = 'clipped_reads/' + chrName + '_clipped_reads.pbz2'
+            # File with the coverage array, output of the coverage script
+            coverage_file[chrName] = 'coverage/' + chrName + '_coverage.npy.bz2'
+            # File with the split reads and split read distance, output of the split_read_distance script
+            split_read_distance_file[chrName] = 'split_read_distance/' + chrName + '_split_read_distance.pbz2'
 
-    logging.info('Chromosome %s' % chrName)
+            # Check file existence
+            print('Checking file: %s' % clipped_read_pos_file[chrName])
+            assert os.path.isfile(clipped_read_pos_file[chrName])
 
-    logging.info('Reading clipped read positions')
-    with bz2file.BZ2File(clipped_read_pos_file, 'rb') as f:
-        clipped_pos_cnt = pickle.load(f)
-    logging.info('End of reading')
+            for sample in sample_list:
+                assert os.path.isfile(prefix_train + sample + '/' + clipped_read_distance_file[chrName])
+                assert os.path.isfile(prefix_train + sample + '/' + clipped_reads_file[chrName])
+                assert os.path.isfile(prefix_train + sample + '/' + coverage_file[chrName])
+                assert os.path.isfile(prefix_train + sample + '/' + split_read_distance_file[chrName])
 
-    # Count the number of clipped read positions with a certain minimum number of clipped reads
-    count_clipped_read_positions(clipped_pos_cnt)
+            logging.info('Chromosome %s' % chrName)
+
+            logging.info('Reading clipped read positions')
+            with bz2file.BZ2File(clipped_read_pos_file[chrName], 'rb') as f:
+                clipped_pos_cnt[chrName] = pickle.load(f)
+            logging.info('End of reading')
+
+            # Count the number of clipped read positions with a certain minimum number of clipped reads
+            count_clipped_read_positions(clipped_pos_cnt[chrName])
 
     # Load channel data
     # Dictionaries where to load the channel data
@@ -1529,39 +1542,51 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
     clipped_reads = dict()
     clipped_reads_inversion = dict()
     clipped_reads_duplication = dict()
+    clipped_reads_translocation = dict()
     coverage = dict()
     split_reads = dict()
     split_read_distance = dict()
 
     for sample in sample_list:
+
         prefix = prefix_train + sample + '/' if HPC_MODE else ''
 
+        clipped_pos = dict()
+
         logging.info('Considering %s' % sample)
-        logging.info('Reading clipped read distances')
-        with bz2file.BZ2File(prefix + clipped_read_distance_file, 'rb') as f:
-            clipped_read_distance[sample] = pickle.load(f)
-        logging.info('End of reading')
 
-        logging.info('Reading clipped reads')
-        with bz2file.BZ2File(prefix + clipped_reads_file, 'rb') as f:
-            clipped_reads[sample], clipped_reads_inversion[sample], clipped_reads_duplication[sample] = pickle.load(f)
-        logging.info('End of reading')
+        for chrName in chrList:
 
-        logging.info('Reading coverage')
-        with bz2file.BZ2File(prefix + coverage_file, 'rb') as f:
-            coverage[sample] = np.load(file=f)
-        logging.info('End of reading, coverage length: %d out of %d' % (len(coverage[sample]), chrLen))
+            logging.info('Considering %s' % chrName)
 
-        logging.info('Reading split read distances')
-        with bz2file.BZ2File(prefix + split_read_distance_file, 'rb') as f:
-            split_read_distance[sample], split_reads[sample] = pickle.load(f)
-        logging.info('End of reading')
+            logging.info('Reading clipped read distances')
+            with bz2file.BZ2File(prefix + clipped_read_distance_file[chrName], 'rb') as f:
+                clipped_read_distance[sample][chrName] = pickle.load(f)
+            logging.info('End of reading')
 
-    # If in 'NoSV' mode, consider all the clipped read positions (minimum clipped read support equal to 0)
-    if trainingMode and (sampleName == 'N1' or sampleName == 'N2'):
-        clipped_pos = [k for k, v in clipped_pos_cnt.items()]
-    else:
-        clipped_pos = [k for k, v in clipped_pos_cnt.items() if v >= min_cr_support]
+            logging.info('Reading clipped reads')
+            with bz2file.BZ2File(prefix + clipped_reads_file[chrName], 'rb') as f:
+                clipped_reads[sample][chrName], clipped_reads_inversion[sample][chrName], \
+                clipped_reads_duplication[sample][chrName], clipped_reads_translocation[sample][chrName] = pickle.load(f)
+            logging.info('End of reading')
+
+            logging.info('Reading coverage')
+            with bz2file.BZ2File(prefix + coverage_file[chrName], 'rb') as f:
+                coverage[sample][chrName] = np.load(file=f)
+            logging.info('End of reading, coverage length: %d out of %d' % (len(coverage[sample][chrName]), chrLen[chrName]))
+
+            logging.info('Reading split read distances')
+            with bz2file.BZ2File(prefix + split_read_distance_file, 'rb') as f:
+                split_read_distance[sample][chrName], split_reads[sample][chrName] = pickle.load(f)
+            logging.info('End of reading')
+
+    for chrName in chrList:
+
+        # If in 'NoSV' mode, consider all the clipped read positions (minimum clipped read support equal to 0)
+        if trainingMode and (sampleName == 'N1' or sampleName == 'N2'):
+            clipped_pos[chrName] = [k for k, v in clipped_pos_cnt[chrName].items()]
+        else:
+            clipped_pos[chrName] = [k for k, v in clipped_pos_cnt[chrName].items() if v >= min_cr_support]
 
     # print(clipped_pos)
 
@@ -1573,6 +1598,7 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
     clipped_reads_array = dict()
     clipped_reads_inversion_array = dict()
     clipped_reads_duplication_array = dict()
+    clipped_reads_translocation_array = dict()
 
     coverage_array = dict()
 
@@ -1590,7 +1616,19 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
     # print(n_r)
     last_t = time()
 
-    for i, center_pos in enumerate(clipped_pos, start=1):
+    # See how to proceed from here
+
+    total_clipped_pos = []
+    total_chr_for_clipped_pos = []
+
+    for chrName in chrList:
+        total_clipped_pos.extend(clipped_pos[chrName])
+        total_chr_for_clipped_pos.extend(chrName*len(clipped_pos[chrName]))
+
+    for i, outzipped in enumerate(zip(total_chr_for_clipped_pos, total_clipped_pos), start=1):
+
+        chrName = outzipped[0]
+        center_pos = outzipped[1]
 
         if not i % n_r:
             now_t = time()
@@ -1601,7 +1639,7 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
             last_t = time()
 
         # Check if center_pos is within the chromosome boundaries
-        if win_hlen <= center_pos <= (chrLen - win_hlen):
+        if win_hlen <= center_pos <= (chrLen[chrName] - win_hlen):
 
             start_win = center_pos - win_hlen
             end_win = center_pos + win_hlen
@@ -1629,14 +1667,14 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
                         clipped_read_distance_median[sample][direction][clipped_arrangement] = np.zeros(win_len,
                                                                                                         dtype=int)
                         for pos in range(start_win, end_win):
-                            if pos in clipped_read_distance[sample][direction][clipped_arrangement].keys():
+                            if pos in clipped_read_distance[sample][chrName][direction][clipped_arrangement].keys():
                                 clipped_read_distance_array[sample][direction][clipped_arrangement][pos - start_win] = \
-                                    sum(clipped_read_distance[sample][direction][clipped_arrangement][pos])
+                                    sum(clipped_read_distance[sample][chrName][direction][clipped_arrangement][pos])
                                 clipped_read_distance_num[sample][direction][clipped_arrangement][pos - start_win] = \
-                                    len(clipped_read_distance[sample][direction][clipped_arrangement][pos])
+                                    len(clipped_read_distance[sample][chrName][direction][clipped_arrangement][pos])
                                 clipped_read_distance_median[sample][direction][clipped_arrangement][pos - start_win] = \
                                     statistics.median(
-                                        clipped_read_distance[sample][direction][clipped_arrangement][pos])
+                                        clipped_read_distance[sample][chrName][direction][clipped_arrangement][pos])
 
                         # print(clipped_read_distance_array[direction][clipped_arrangement])
 
@@ -1645,31 +1683,40 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
                 for split_direction in ['left', 'right']:
                     clipped_reads_array[sample][split_direction] = np.zeros(win_len, dtype=int)
                     for pos in range(start_win, end_win):
-                        if pos in clipped_reads[sample][split_direction].keys():
+                        if pos in clipped_reads[sample][chrName][split_direction].keys():
                             clipped_reads_array[sample][split_direction][pos - start_win] = \
-                                clipped_reads[sample][split_direction][pos]
+                                clipped_reads[sample][chrName][split_direction][pos]
 
                 # clipped reads inversions
                 clipped_reads_inversion_array[sample] = dict()
                 for mate_position in ['before', 'after']:
                     clipped_reads_inversion_array[sample][mate_position] = np.zeros(win_len, dtype=int)
                     for pos in range(start_win, end_win):
-                        if pos in clipped_reads_inversion[sample][mate_position].keys():
+                        if pos in clipped_reads_inversion[sample][chrName][mate_position].keys():
                             clipped_reads_inversion_array[sample][mate_position][pos - start_win] = \
-                                clipped_reads_inversion[sample][mate_position][pos]
+                                clipped_reads_inversion[sample][chrName][mate_position][pos]
 
                 # clipped reads duplication
                 clipped_reads_duplication_array[sample] = dict()
                 for mate_position in ['before', 'after']:
                     clipped_reads_duplication_array[sample][mate_position] = np.zeros(win_len, dtype=int)
                     for pos in range(start_win, end_win):
-                        if pos in clipped_reads_duplication[sample][mate_position].keys():
+                        if pos in clipped_reads_duplication[sample][chrName][mate_position].keys():
                             clipped_reads_duplication_array[sample][mate_position][pos - start_win] = \
-                                clipped_reads_duplication[sample][mate_position][pos]
+                                clipped_reads_duplication[sample][chrName][mate_position][pos]
+
+                # clipped reads traslocation
+                clipped_reads_translocation_array[sample] = dict()
+                for orientation in ['opposite', 'same']:
+                    clipped_reads_translocation_array[sample][mate_position] = np.zeros(win_len, dtype=int)
+                    for pos in range(start_win, end_win):
+                        if pos in clipped_reads_translocation[sample][chrName][mate_position].keys():
+                            clipped_reads_translocation_array[sample][mate_position][pos - start_win] = \
+                                clipped_reads_translocation[sample][chrName][mate_position][pos]
 
                 # coverage
-                coverage_array[sample] = coverage[sample][start_win:end_win]
-                assert len(coverage_array[sample]) == win_len
+                coverage_array[sample][chrName] = coverage[sample][chrName][start_win:end_win]
+                assert len(coverage_array[sample][chrName]) == win_len
 
                 # split read distance
                 split_read_distance_array[sample] = dict()
@@ -1681,27 +1728,27 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
                     split_read_distance_num[sample][split_direction] = np.zeros(win_len, dtype=int)
                     split_read_distance_median[sample][split_direction] = np.zeros(win_len, dtype=int)
 
-                    if pos in split_read_distance[sample][split_direction].keys():
+                    if pos in split_read_distance[sample][chrName][split_direction].keys():
                         split_read_distance_array[sample][split_direction][pos - start_win] = \
-                            sum(split_read_distance[sample][split_direction][pos])
+                            sum(split_read_distance[sample][chrName][split_direction][pos])
                         split_read_distance_num[sample][split_direction][pos - start_win] = \
-                            len(split_read_distance[sample][split_direction][pos])
+                            len(split_read_distance[sample][chrName][split_direction][pos])
                         split_read_distance_median[sample][split_direction][pos - start_win] = \
-                            sum(split_read_distance[sample][split_direction][pos])
+                            sum(split_read_distance[sample][chrName][split_direction][pos])
 
                 # split reads
                 split_reads_array[sample] = dict()
                 for split_direction in ['left', 'right']:
                     split_reads_array[sample][split_direction] = np.zeros(win_len, dtype=int)
                     for pos in range(start_win, end_win):
-                        if pos in split_reads[sample][split_direction].keys():
+                        if pos in split_reads[sample][chrName][split_direction].keys():
                             split_reads_array[sample][split_direction][pos - start_win] = \
-                                split_reads[sample][split_direction][pos]
+                                split_reads[sample][chrName][split_direction][pos]
 
-                gc_array[sample] = bw_gc.values('chr'+chrName, start_win, end_win)
-                assert len(gc_array[sample]) == win_len
-                mappability_array[sample] = bw_map.values(chrName, start_win, end_win)
-                assert len(mappability_array[sample]) == win_len
+            gc_array = bw_gc.values('chr'+chrName, start_win, end_win)
+            assert len(gc_array) == win_len
+            mappability_array = bw_map.values(chrName, start_win, end_win)
+            assert len(mappability_array) == win_len
 
             # Fill the numpy vstack
             vstack_list = []
@@ -1717,6 +1764,8 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
                     vstack_list.append(clipped_reads_inversion_array[sample][mate_position])
                 for mate_position in ['before', 'after']:
                     vstack_list.append(clipped_reads_duplication_array[sample][mate_position])
+                for orientation in ['opposite', 'same']:
+                    vstack_list.append(clipped_reads_translocation_array[sample][orientation])
 
                 for direction in ['forward', 'reverse']:
                     for clipped_arrangement in ['left', 'right', 'unclipped']:
@@ -1733,8 +1782,13 @@ def channel_maker(ibam, chrName, sampleName, trainingMode, outFile):
                     vstack_list.append(split_read_distance_num[sample][direction])
                     vstack_list.append(split_read_distance_median[sample][direction])
 
-                vstack_list.append(gc_array[sample])
-                vstack_list.append(mappability_array[sample])
+            vstack_list.append(gc_array)
+            vstack_list.append(mappability_array)
+
+            # append one hot encoded sequence for the genomic region
+            one_hot_n = get_one_hot_sequence(chrName, start_win, end_win, HPC_MODE)
+            assert len(one_hot_n) == win_len
+            # vstack_list.append(one_hot_n)
 
             # logging.info("Shape of channel matrix: %s" % str(ch_vstack.shape))
             ch_vstack = np.vstack(vstack_list)
@@ -1788,6 +1842,8 @@ def main():
                         help="Specify output")
     parser.add_argument('-s', '--sample', type=str, default='NA12878',
                         help="Specify sample")
+    parser.add_argument('-m', '--svmode', type=str, default='INDEL',
+                        help="Specify SV type")
     parser.add_argument('-t', '--train', type=bool, default=True,
                         help="Specify if training mode is active")
     parser.add_argument('-l', '--logfile', default='channel_maker.log',
@@ -1807,7 +1863,12 @@ def main():
     # Get chromosome length
     # chrlen = get_chr_len(args.bam, args.chr)
 
-    channel_maker(ibam=args.bam, chrName=args.chr, sampleName=args.sample,
+    if args.svmode == 'TRA':
+        chrList = args.chr.split(',')
+    else:
+        chrList = [args.chr]
+
+    channel_maker(ibam=args.bam, chrList=chrList, sampleName=args.sample, SVmode=args.svmode,
                   trainingMode=args.train, outFile=args.out)
 
     # for sampleName in ['NA12878', 'Patient1', 'Patient2']:

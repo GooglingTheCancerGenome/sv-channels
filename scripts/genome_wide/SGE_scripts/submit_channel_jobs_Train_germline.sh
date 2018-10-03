@@ -3,9 +3,10 @@
 # This script generate the channel data for the germline SVs of the Training data.
 # The NoSV category is also added here, but for the moment it is generated using the channel_maker_real_somatic.py script
 
-SVMODE='INDEL'
+SVMODE='INV'
 
-INPATH='/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/WG/run_'$SVMODE'_500K/samples/'
+# INPATH='/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/WG/run_'$SVMODE'_500K/samples/'
+INPATH='/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_'$SVMODE'/samples/'
 
 # The germline category
 GERMLINE1='G1'
@@ -28,7 +29,7 @@ for SAMPLE in ${SAMPLE_ARRAY[@]}; do
         for PRG in clipped_read_pos coverage clipped_read_distance clipped_reads split_read_distance; do
 
             BAM=${INPATH}"$SAMPLE""/BAM/"$SAMPLE"/mapping/"$SAMPLE"_dedup.bam"
-            OUTDIR="Training/"$SAMPLE
+            OUTDIR="Training_"$SVMODE"/"$SAMPLE
             JOB_NAME=$SAMPLE"_"$CHROMOSOME"_"${PRG}
             echo qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=$OUTDIR \
             -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_channel.sge
@@ -58,7 +59,7 @@ for SAMPLE in G1 N1; do
     for CHROMOSOME in ${CHRARRAY[@]}; do
         #for CHROMOSOME in 1; do
             BAM=${INPATH}"$SAMPLE""/BAM/"$SAMPLE"/mapping/"$SAMPLE"_dedup.bam"
-            OUTDIR="Training/"$SAMPLE
+            OUTDIR="Training_"$SVMODE"/"$SAMPLE
             JOB_NAME=$SAMPLE"_"$CHROMOSOME"_"${PRG}
 
 		    qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},SVMODEARG=${SVMODE},OUTARG=${OUTDIR} \

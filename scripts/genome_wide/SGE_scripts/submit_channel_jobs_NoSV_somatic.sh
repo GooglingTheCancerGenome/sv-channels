@@ -33,7 +33,7 @@ BAM=${INARRAY[$i]}
 CAT=${CATEGORIES[$i]}
 
 # ChannelMaker script to generate channel data for real data, in this case used for the NoSV category of the Training data
-PRG='channel_maker_real'
+PRG='channel_maker_real_somatic'
 
 for CHROMOSOME in 17; do
 
