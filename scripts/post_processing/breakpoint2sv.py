@@ -32,78 +32,11 @@ parser.add_argument('--WIN_H_LEN', type=int, nargs='?', dest='win_h_len', defaul
 
 ##################################
 args = parser.parse_args()
-bam_file = args.bam_file
-bed_file = args.bed_file
-out_dir = args.out_dir
-max_read_count = args.max_read_count
 # Window half length
 win_hlen = args.win_h_len
 # Window size
 win_len = win_hlen * 2
 # Minimum read mapping quality
-min_mapq = args.min_mapq
-################################
-
-
-
-# parameters
-
-""" HPC_MODE = False
-
-if not HPC_MODE:
-
-    # Locally:
-    #work_dir = '/Users/tschafers/CNN/scripts/post_processing/Test/'
-    #bed_file = work_dir + 'genomes/SV/chr17B_T.proper_small.bed'
-    #bam_file = work_dir + 'samples/G1/BAM/G1/mapping/G1_dedup.bam'
-
-    #work_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL'
-    #bed_file = os.path.join(work_dir, 'SV/chr17B_T.proper.bed')
-    #bam_file = os.path.join(work_dir, 'BAM/G1_dedup.bam')
-    #vcf_output = os.path.join(work_dir, 'VCF/chr17B_T.vcf')
-    work_dir = '/Users/tschafers/Test_data/CNN/'
-    bed_file = os.path.join(work_dir, 'SV/chr17B_T.proper.bed')
-    bam_file = os.path.join(work_dir, 'BAM/G1_dedup.bam')
-    vcf_output = os.path.join(work_dir, 'VCF/chr17B_T_m.vcf')
-
-
-else:
-
-    # On HPC:
-    patient_number = str(1)
-    bed_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/060818/TestData_060818/PATIENT' + \
-               patient_number + '_DEL.sorted.bed'
-    bam_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CretuStancu2017/Patient' + patient_number + '/Patient' + \
-               patient_number + '.bam'
-    vcf_output = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/060818/TestData_060818/PATIENT' + \
-                 patient_number + '_DEL.vcf'
- """
-
-class Location:
-
-    def __init__(self, chrA, posA_start, posA_end,
-                 chrB, posB_start, posB_end):
-
-        if chrA == chrB and posA_start <= posB_start or chrA < chrB:
-
-            self.chr1 = chrA
-            self.pos1_start = posA_start
-            self.pos1_end = posA_end
-
-            self.chr2 = chrB
-            self.pos2_start = posB_start
-            self.pos2_end = posB_end
-
-        elif chrA > chrB:
-
-            self.chr1 = chrB
-            self.pos1_start = posB_start
-            self.pos1_end = posB_end
-
-            self.chr2 = chrA
-            self.pos2_start = posA_start
-            self.pos2_end = posA_end
-
 
 '''
 Generic functions used in the channel scripts
@@ -171,7 +104,6 @@ def breakpoint_to_sv(pargs):
     breakpoints = pargs[1]
     chr = pargs[0]
     ##Logging
-    print(args.bed_file)
     basename = os.path.splitext(os.path.basename(args.bed_file))[0]
     logging.basicConfig(filename=args.out_dir+basename+'_'+chr+'.log',level=logging.DEBUG, 
                         format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
@@ -301,12 +233,10 @@ def linksToVcf(links_counts, filename):
         print("VCF file written!")
 
 def main():
-    print(args.bed_file)
     breakpoints = read_breakpoints(args.bed_file)
     ##Spawn processes for each chromosome
     P = Pool(processes=len(breakpoints.keys()))
     pargs = zip(breakpoints.keys(), itertools.repeat(breakpoints))
-    print(pargs)
     P.map(breakpoint_to_sv, pargs)
     P.close()
     P.join()
