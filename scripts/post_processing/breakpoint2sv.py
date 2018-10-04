@@ -5,6 +5,7 @@ and information on clipped read positions.
 '''
 import itertools
 import pysam
+import logging
 import os
 from collections import defaultdict, Counter
 from intervaltree import Interval, IntervalTree
@@ -52,7 +53,6 @@ else:
 win_hlen = 250
 # Window size
 win_len = win_hlen * 2
-
 # Minimum read mapping quality
 min_mapq = 20
 
@@ -145,42 +145,48 @@ def read_breakpoints(bed_file):
 
 ##Accepts a list of arguments(breakpoints,chr)##
 def breakpoint_to_sv(args):
-    print("Starting")
+    ###Extract arguments
     breakpoints = args[1]
     chr = args[0]
+    ##Logging
+    logging.basicConfig(filename=chr + '.log',level=logging.DEBUG, 
+                        format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+    
+
+    #open BAM file
+    logging.debug('Reading bam file: '+ bam_file)
     assert os.path.isfile(bam_file)
-    # open the BAM file
     aln = pysam.AlignmentFile(bam_file, "rb")
     # Check if the BAM file in input exists
-    #print('Create IntervalTree...')
+    logging.debug('Createing IntervalTree...')
     chr_tree = defaultdict(IntervalTree)
     # Create interval windows around candidate breakpoint positions
     for pos in breakpoints[chr]:
         chr_tree[chr][pos - win_hlen: pos + win_hlen + 1] = int(pos)
-    #print('IntervalTree created.')
+    logging.debug('IntervalTree created.')
     links = []
     no_cr_pos = []
     npos = 1
     scanned_reads = set()
-    print('Processing Chr %s' % str(chr))
+    logging.debug('Processing Chr %s' % str(chr))
     for pos in breakpoints[chr]:
         if not npos % 1000:
-            print('Processed %d positions...' % npos)
+            logging.debug('Processed %d positions...' % npos)
         # print('Pos: %d' % pos)
         start = pos - win_hlen
         end = pos + win_hlen + 1
         right_clipped_array = np.zeros(win_len)
         left_clipped_array = np.zeros(win_len)
         count_reads = aln.count(chr, start, end)
+        #logging.debug('Read count for interval chr:%s %d %d = %d' % (chr,start,end,count_reads))
         # Fetch the reads mapped on the chromosome
         if count_reads <= 10000:
-            # print('Fetching %d reads in region %s:%d-%d' % (count_reads, chr, start, end))
+            logging.debug('Fetching %d reads in region %s:%d-%d' % (count_reads, chr, start, end))
             for read in aln.fetch(chr, start, end, multiple_iterators=True):
                 # Both read and mate should be mapped
                 if not read.is_unmapped and not read.mate_is_unmapped and \
                         read.mapping_quality >= min_mapq and \
                         read.reference_name == read.next_reference_name:
-
                     # Filled vectors with counts of clipped reads at clipped read positions
                     if is_right_clipped(read):
                         cpos = read.reference_end + 1
@@ -190,7 +196,6 @@ def breakpoint_to_sv(args):
                         cpos = read.reference_start
                         if start <= cpos <= end:
                             left_clipped_array[cpos - start - 1] += 1
-
                     if read.query_name not in scanned_reads:
                         match = chr_tree[read.next_reference_name][read.next_reference_start]
                         if chr != read.next_reference_name or start > read.next_reference_start or \
@@ -222,16 +227,17 @@ def breakpoint_to_sv(args):
         npos += 1
 
     links_counts = Counter(links)
-    print('Set size: %d' % len(links_counts))
-    print('No CR pos: %d' % len(no_cr_pos))
-    print('Connections with min 3 read pairs: %d' % len([v for l, v in links_counts.items() if v > 2]))
+    logging.info('Set size: %d' % len(links_counts))
+    logging.info('No CR pos: %d' % len(no_cr_pos))
+    logging.info('Connections with min 3 read pairs: %d' % len([v for l, v in links_counts.items() if v > 2]))
 
     i = 0
     while len([v for l, v in links_counts.items() if v > i]) > 5000:
         i += 1
-    print('%d connections with min %d RP' % (len([v for l, v in links_counts.items() if v > i]), i))
+    logging.info('%d connections with min %d RP' % (len([v for l, v in links_counts.items() if v > i]), i))
     # Return link positions, and counts
     linksToVcf(links_counts)
+    logging.info('Finished breakoint assembly for chr%s ' % (chr))
 
 def linksToVcf(links_counts):
     filename = vcf_output
