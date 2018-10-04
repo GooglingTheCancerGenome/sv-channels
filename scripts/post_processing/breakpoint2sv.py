@@ -7,15 +7,35 @@ import itertools
 import pysam
 import logging
 import os
+from pathlib import Path
+import argparse as ap
 from collections import defaultdict, Counter
 from intervaltree import Interval, IntervalTree
 import numpy as np
 from multiprocessing import Process, Pool
 
+
+
 __authors__ = ["Luca Santuari", "Tilman Schäfers"]
 __license__ = "Apache License, Version 2.0"
 __version__ = "0.0.1"
 __status__ = "alpha"
+
+###########
+parser = ap.ArgumentParser(description='Provide breakpoint2sv arguments.')
+parser.add_argument('--BAM', type=str, nargs='?', dest='bam_file')
+parser.add_argument('--BED', type=str, nargs='?', dest='bed_file')
+parser.add_argument('--OUT_DIR', type=str, nargs='?', dest='out_dir')
+
+###########
+args = parser.parse_args()
+bam_file = args.bam_file
+bed_file = args.bed_file
+out_dir = args.out_dir
+################################
+
+
+
 
 # parameters
 
@@ -149,7 +169,8 @@ def breakpoint_to_sv(args):
     breakpoints = args[1]
     chr = args[0]
     ##Logging
-    logging.basicConfig(filename=chr + '.log',level=logging.DEBUG, 
+    basename = os.path.splitext(os.path.basename(vcf_output))[0]
+    logging.basicConfig(filename=basename+'_'+chr+'.log',level=logging.DEBUG, 
                         format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
     
 
