@@ -34,7 +34,7 @@ if not HPC_MODE:
     work_dir = '/Users/tschafers/Test_data/CNN/'
     bed_file = os.path.join(work_dir, 'SV/chr17B_T.proper.bed')
     bam_file = os.path.join(work_dir, 'BAM/G1_dedup.bam')
-    vcf_output = os.path.join(work_dir, 'VCF/chr17B_T_merge.vcf')
+    vcf_output = os.path.join(work_dir, 'VCF/chr17B_T_m.vcf')
 
 
 else:
@@ -145,6 +145,7 @@ def read_breakpoints(bed_file):
 
 ##Accepts a list of arguments(breakpoints,chr)##
 def breakpoint_to_sv(args):
+    print("Starting")
     breakpoints = args[1]
     chr = args[0]
     assert os.path.isfile(bam_file)
@@ -168,16 +169,13 @@ def breakpoint_to_sv(args):
         # print('Pos: %d' % pos)
         start = pos - win_hlen
         end = pos + win_hlen + 1
-
         right_clipped_array = np.zeros(win_len)
         left_clipped_array = np.zeros(win_len)
-
         count_reads = aln.count(chr, start, end)
         # Fetch the reads mapped on the chromosome
-
-        if count_reads <= 50000:
+        if count_reads <= 10000:
             # print('Fetching %d reads in region %s:%d-%d' % (count_reads, chr, start, end))
-            for read in aln.fetch(chr, start, end):
+            for read in aln.fetch(chr, start, end, multiple_iterators=True):
                 # Both read and mate should be mapped
                 if not read.is_unmapped and not read.mate_is_unmapped and \
                         read.mapping_quality >= min_mapq and \
@@ -233,7 +231,7 @@ def breakpoint_to_sv(args):
         i += 1
     print('%d connections with min %d RP' % (len([v for l, v in links_counts.items() if v > i]), i))
     # Return link positions, and counts
-    return links_counts
+    linksToVcf(links_counts)
 
 def linksToVcf(links_counts):
     filename = vcf_output
@@ -278,11 +276,12 @@ def main():
     ##Spawn processes for each chromosome
     P = Pool(processes=len(breakpoints.keys()))
     args = zip(breakpoints.keys(), itertools.repeat(breakpoints))
-    res = sum(P.map(breakpoint_to_sv, args),Counter())
+    P.map(breakpoint_to_sv, args)
     P.close()
     P.join()
-    linksToVcf(res)
+
    
+
 
 
 
