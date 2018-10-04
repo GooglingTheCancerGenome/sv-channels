@@ -238,7 +238,7 @@ def main():
     print('Starting assembly')
     P = Pool(processes=len(breakpoints.keys()))
     pargs = zip(breakpoints.keys(), itertools.repeat(breakpoints))
-    P.map(breakpoint_to_sv, pargs)
+    P.map_async(breakpoint_to_sv, pargs)
     P.close()
     P.join()
     print('Finished breakpoint assembly')
