@@ -235,11 +235,15 @@ def linksToVcf(links_counts, filename):
 def main():
     breakpoints = read_breakpoints(args.bed_file)
     ##Spawn processes for each chromosome
+    print('Found chromosomes:')
+    for k in breakpoints.keys(): print (k)
+    print('Starting assembly')
     P = Pool(processes=len(breakpoints.keys()))
     pargs = zip(breakpoints.keys(), itertools.repeat(breakpoints))
     P.map(breakpoint_to_sv, pargs)
     P.close()
     P.join()
+    print('Finished assembly')
 
    
 
