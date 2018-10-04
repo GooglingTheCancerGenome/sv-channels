@@ -36,7 +36,11 @@ args = parser.parse_args()
 win_hlen = args.win_h_len
 # Window size
 win_len = win_hlen * 2
-# Minimum read mapping quality
+# Read BAM file
+assert os.path.isfile(args.bam_file)
+aln = pysam.AlignmentFile(args.bam_file, "rb")
+
+
 
 '''
 Generic functions used in the channel scripts
@@ -101,18 +105,14 @@ def read_breakpoints(bed_file):
 ##Accepts a list of arguments(breakpoints,chr)##
 def breakpoint_to_sv(pargs):
     ###Extract arguments
-    breakpoints = pargs[1]
     chr = pargs[0]
+    breakpoints = pargs[1]
     ##Logging
     basename = os.path.splitext(os.path.basename(args.bed_file))[0]
     logging.basicConfig(filename=args.out_dir+basename+'_'+chr+'.log',level=logging.DEBUG, 
                         format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
-    
-
     #open BAM file
     logging.info('Reading bam file: '+ args.bam_file)
-    assert os.path.isfile(args.bam_file)
-    aln = pysam.AlignmentFile(args.bam_file, "rb")
     # Check if the BAM file in input exists
     logging.info('Createing IntervalTree...')
     chr_tree = defaultdict(IntervalTree)
@@ -243,7 +243,7 @@ def main():
     P.map(breakpoint_to_sv, pargs)
     P.close()
     P.join()
-    print('Finished assembly')
+    print('Finished breakpoint assembly')
 
    
 
