@@ -34,13 +34,21 @@ def create_dir(directory):
 
 
 def get_gc_bigwig():
+    '''
+    returns a BigWig file for the GC track of the hg19 genome release using 5 bp sliding window
+    :return: bigWigFile
+    '''
 
     bw = pyBigWig.open("/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/UCSC/hg19/hg19.gc5Base.bw")
     return bw
 
 
 def get_mappability_bigwig():
-
+    '''
+    returns a BigWig file for the mappability track of the GRCh37 genome release generated using GEM mappability
+    for 151 bp reads and maximum 6 mismatches
+    :return: bigWigFile
+    '''
     bw = pyBigWig.open("/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/Mappability/GRCh37.151mer.bw")
     return bw
 
@@ -69,6 +77,12 @@ def read_BED(SVmode, chrName):
              For INV and DUP:
              start_SV: list of start positions for inversion/duplication.
              end_SV: list of end positions for inversion/duplication.
+             
+             For TRA:
+             start_chr_list: list of chromosomes for start positions for translocations.
+             start_SV: list of start positions for translocations.
+             end_chr_list: list of chromosomes for end positions for translocations.
+             end_SV: list of end positions for translocations.
              
     '''''
 
@@ -627,6 +641,7 @@ def main():
 
     t0 = time()
 
+    # If the SV type is translocations (TRA), it expects in input a list of chromosomes separated by a comma
     if args.svmode == 'TRA':
         chrList = args.chr.split(',')
     else:

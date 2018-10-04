@@ -8,7 +8,6 @@ from collections import Counter
 from intervaltree import Interval, IntervalTree
 from collections import defaultdict
 import numpy as np
-from scipy.spatial import distance
 import argparse
 import bz2file
 import gzip
