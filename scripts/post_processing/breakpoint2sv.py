@@ -36,11 +36,6 @@ args = parser.parse_args()
 win_hlen = args.win_h_len
 # Window size
 win_len = win_hlen * 2
-# Read BAM file
-assert os.path.isfile(args.bam_file)
-aln = pysam.AlignmentFile(args.bam_file, "rb")
-
-
 
 '''
 Generic functions used in the channel scripts
@@ -107,6 +102,9 @@ def breakpoint_to_sv(pargs):
     ###Extract arguments
     chr = pargs[0]
     breakpoints = pargs[1]
+    # Read BAM file
+    assert os.path.isfile(args.bam_file)
+    aln = pysam.AlignmentFile(args.bam_file, "rb")
     ##Logging
     basename = os.path.splitext(os.path.basename(args.bed_file))[0]
     logging.basicConfig(filename=args.out_dir+basename+'_'+chr+'.log',level=logging.DEBUG, 
