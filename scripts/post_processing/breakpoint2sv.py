@@ -23,23 +23,32 @@ __status__ = "alpha"
 
 ###########
 parser = ap.ArgumentParser(description='Provide breakpoint2sv arguments.')
-parser.add_argument('--BAM', type=str, nargs='?', dest='bam_file')
-parser.add_argument('--BED', type=str, nargs='?', dest='bed_file')
-parser.add_argument('--OUT_DIR', type=str, nargs='?', dest='out_dir')
+parser.add_argument('--BAM', type=str, nargs='?', dest='bam_file', default='/Users/tschafers/Test_data/CNN/BAM/G1_dedup.bam')
+parser.add_argument('--BED', type=str, nargs='?', dest='bed_file', default='/Users/tschafers/Test_data/CNN/SV/chr17B_T.proper.bed')
+parser.add_argument('--OUT_DIR', type=str, nargs='?', dest='out_dir', default='/Users/tschafers/Test_data/CNN/Results/')
+parser.add_argument('--MAX_READ_COUNT', type=int, nargs='?', dest='max_read_count', default=5000)
+parser.add_argument('--MIN_MAPQ', type=int, nargs='?', dest='min_mapq', default=20)
+parser.add_argument('--WIN_H_LEN', type=int, nargs='?', dest='win_h_len', default=250)
 
-###########
+##################################
 args = parser.parse_args()
 bam_file = args.bam_file
 bed_file = args.bed_file
 out_dir = args.out_dir
+max_read_count = args.max_read_count
+# Window half length
+win_hlen = args.win_h_len
+# Window size
+win_len = win_hlen * 2
+# Minimum read mapping quality
+min_mapq = args.min_mapq
 ################################
-
 
 
 
 # parameters
 
-HPC_MODE = False
+""" HPC_MODE = False
 
 if not HPC_MODE:
 
@@ -68,14 +77,7 @@ else:
                patient_number + '.bam'
     vcf_output = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/060818/TestData_060818/PATIENT' + \
                  patient_number + '_DEL.vcf'
-
-# Window half length
-win_hlen = 250
-# Window size
-win_len = win_hlen * 2
-# Minimum read mapping quality
-min_mapq = 20
-
+ """
 
 class Location:
 
@@ -164,49 +166,49 @@ def read_breakpoints(bed_file):
     return breakpoints
 
 ##Accepts a list of arguments(breakpoints,chr)##
-def breakpoint_to_sv(args):
+def breakpoint_to_sv(pargs):
     ###Extract arguments
-    breakpoints = args[1]
-    chr = args[0]
+    breakpoints = pargs[1]
+    chr = pargs[0]
     ##Logging
-    basename = os.path.splitext(os.path.basename(vcf_output))[0]
-    logging.basicConfig(filename=basename+'_'+chr+'.log',level=logging.DEBUG, 
+    print(args.bed_file)
+    basename = os.path.splitext(os.path.basename(args.bed_file))[0]
+    logging.basicConfig(filename=args.out_dir+basename+'_'+chr+'.log',level=logging.DEBUG, 
                         format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
     
 
     #open BAM file
-    logging.debug('Reading bam file: '+ bam_file)
-    assert os.path.isfile(bam_file)
-    aln = pysam.AlignmentFile(bam_file, "rb")
+    logging.info('Reading bam file: '+ args.bam_file)
+    assert os.path.isfile(args.bam_file)
+    aln = pysam.AlignmentFile(args.bam_file, "rb")
     # Check if the BAM file in input exists
-    logging.debug('Createing IntervalTree...')
+    logging.info('Createing IntervalTree...')
     chr_tree = defaultdict(IntervalTree)
     # Create interval windows around candidate breakpoint positions
     for pos in breakpoints[chr]:
         chr_tree[chr][pos - win_hlen: pos + win_hlen + 1] = int(pos)
-    logging.debug('IntervalTree created.')
+    logging.info('IntervalTree created.')
     links = []
     no_cr_pos = []
     npos = 1
     scanned_reads = set()
-    logging.debug('Processing Chr %s' % str(chr))
+    logging.info('Processing Chr %s' % str(chr))
     for pos in breakpoints[chr]:
         if not npos % 1000:
-            logging.debug('Processed %d positions...' % npos)
+            logging.info('Processed %d positions...' % npos)
         # print('Pos: %d' % pos)
         start = pos - win_hlen
         end = pos + win_hlen + 1
         right_clipped_array = np.zeros(win_len)
         left_clipped_array = np.zeros(win_len)
         count_reads = aln.count(chr, start, end)
-        #logging.debug('Read count for interval chr:%s %d %d = %d' % (chr,start,end,count_reads))
         # Fetch the reads mapped on the chromosome
-        if count_reads <= 10000:
-            logging.debug('Fetching %d reads in region %s:%d-%d' % (count_reads, chr, start, end))
+        if count_reads <= args.max_read_count:
+            logging.info('Fetching %d reads in region %s:%d-%d' % (count_reads, chr, start, end))
             for read in aln.fetch(chr, start, end, multiple_iterators=True):
                 # Both read and mate should be mapped
                 if not read.is_unmapped and not read.mate_is_unmapped and \
-                        read.mapping_quality >= min_mapq and \
+                        read.mapping_quality >= args.min_mapq and \
                         read.reference_name == read.next_reference_name:
                     # Filled vectors with counts of clipped reads at clipped read positions
                     if is_right_clipped(read):
@@ -257,11 +259,11 @@ def breakpoint_to_sv(args):
         i += 1
     logging.info('%d connections with min %d RP' % (len([v for l, v in links_counts.items() if v > i]), i))
     # Return link positions, and counts
-    linksToVcf(links_counts)
+    vcf_out = args.out_dir+basename+'_'+chr+'.vcf'
+    linksToVcf(links_counts, vcf_out)
     logging.info('Finished breakoint assembly for chr%s ' % (chr))
 
-def linksToVcf(links_counts):
-    filename = vcf_output
+def linksToVcf(links_counts, filename):
     cols = '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSAMPLE\n'
     # Write VCF Header
     with open(filename, 'w') as sv_calls:
@@ -299,11 +301,13 @@ def linksToVcf(links_counts):
         print("VCF file written!")
 
 def main():
-    breakpoints = read_breakpoints(bed_file)
+    print(args.bed_file)
+    breakpoints = read_breakpoints(args.bed_file)
     ##Spawn processes for each chromosome
     P = Pool(processes=len(breakpoints.keys()))
-    args = zip(breakpoints.keys(), itertools.repeat(breakpoints))
-    P.map(breakpoint_to_sv, args)
+    pargs = zip(breakpoints.keys(), itertools.repeat(breakpoints))
+    print(pargs)
+    P.map(breakpoint_to_sv, pargs)
     P.close()
     P.join()
 
