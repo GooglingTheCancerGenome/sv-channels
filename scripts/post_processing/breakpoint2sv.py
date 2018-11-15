@@ -3,84 +3,39 @@ This script takes in input a BED file with candidate breakpoint positions and
 returns a VCF file of SVs where the breakpoints are connected using paired end information
 and information on clipped read positions.
 '''
-
+import itertools
 import pysam
+import logging
 import os
+from pathlib import Path
+import argparse as ap
 from collections import defaultdict, Counter
 from intervaltree import Interval, IntervalTree
 import numpy as np
+from multiprocessing import Process, Pool
 
-__authors__ = ["Luca Santuari"]
+
+
+__authors__ = ["Luca Santuari", "Tilman Schäfers"]
 __license__ = "Apache License, Version 2.0"
 __version__ = "0.0.1"
 __status__ = "alpha"
 
-# parameters
+###########
+parser = ap.ArgumentParser(description='Provide breakpoint2sv arguments.')
+parser.add_argument('--BAM', type=str, nargs='?', dest='bam_file', default='/Users/tschafers/Test_data/CNN/BAM/G1_dedup.bam')
+parser.add_argument('--BED', type=str, nargs='?', dest='bed_file', default='/Users/tschafers/Test_data/CNN/SV/chr17B_T.proper.bed')
+parser.add_argument('--OUT_DIR', type=str, nargs='?', dest='out_dir', default='/Users/tschafers/Test_data/CNN/Results/')
+parser.add_argument('--MAX_READ_COUNT', type=int, nargs='?', dest='max_read_count', default=5000)
+parser.add_argument('--MIN_MAPQ', type=int, nargs='?', dest='min_mapq', default=20)
+parser.add_argument('--WIN_H_LEN', type=int, nargs='?', dest='win_h_len', default=250)
 
-HPC_MODE = False
-
-if not HPC_MODE:
-
-    # Locally:
-    #work_dir = '/Users/tschafers/CNN/scripts/post_processing/Test/'
-    #bed_file = work_dir + 'genomes/SV/chr17B_T.proper_small.bed'
-    #bam_file = work_dir + 'samples/G1/BAM/G1/mapping/G1_dedup.bam'
-
-    #work_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL'
-    #bed_file = os.path.join(work_dir, 'SV/chr17B_T.proper.bed')
-    #bam_file = os.path.join(work_dir, 'BAM/G1_dedup.bam')
-    #vcf_output = os.path.join(work_dir, 'VCF/chr17B_T.vcf')
-    work_dir = '/Users/tschafers/Test_data/CNN/'
-    bed_file = os.path.join(work_dir, 'SV/chr17B_T.proper.bed')
-    bam_file = os.path.join(work_dir, 'BAM/G1_dedup.bam')
-    vcf_output = os.path.join(work_dir, 'VCF/chr17B_T.vcf')
-
-
-else:
-
-    # On HPC:
-    patient_number = str(1)
-    bed_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/060818/TestData_060818/PATIENT' + \
-               patient_number + '_DEL.sorted.bed'
-    bam_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CretuStancu2017/Patient' + patient_number + '/Patient' + \
-               patient_number + '.bam'
-    vcf_output = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/060818/TestData_060818/PATIENT' + \
-                 patient_number + '_DEL.vcf'
-
+##################################
+args = parser.parse_args()
 # Window half length
-win_hlen = 250
+win_hlen = args.win_h_len
 # Window size
 win_len = win_hlen * 2
-
-# Minimum read mapping quality
-min_mapq = 20
-
-
-class Location:
-
-    def __init__(self, chrA, posA_start, posA_end,
-                 chrB, posB_start, posB_end):
-
-        if chrA == chrB and posA_start <= posB_start or chrA < chrB:
-
-            self.chr1 = chrA
-            self.pos1_start = posA_start
-            self.pos1_end = posA_end
-
-            self.chr2 = chrB
-            self.pos2_start = posB_start
-            self.pos2_end = posB_end
-
-        elif chrA > chrB:
-
-            self.chr1 = chrB
-            self.pos1_start = posB_start
-            self.pos1_end = posB_end
-
-            self.chr2 = chrA
-            self.pos2_start = posA_start
-            self.pos2_end = posA_end
-
 
 '''
 Generic functions used in the channel scripts
@@ -142,104 +97,103 @@ def read_breakpoints(bed_file):
     # print(breakpoints)
     return breakpoints
 
-
-def breakpoint_to_sv():
-    breakpoints = read_breakpoints(bed_file)
+##Accepts a list of arguments(breakpoints,chr)##
+def breakpoint_to_sv(pargs):
+    ###Extract arguments
+    chr = pargs[0]
+    breakpoints = pargs[1]
+    # Read BAM file
+    assert os.path.isfile(args.bam_file)
+    aln = pysam.AlignmentFile(args.bam_file, "rb")
+    ##Logging
+    basename = os.path.splitext(os.path.basename(args.bed_file))[0]
+    logging.basicConfig(filename=args.out_dir+basename+'_'+chr+'.log',level=logging.DEBUG, 
+                        format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+    #open BAM file
+    logging.info('Reading bam file: '+ args.bam_file)
     # Check if the BAM file in input exists
-    assert os.path.isfile(bam_file)
-    # open the BAM file
-    aln = pysam.AlignmentFile(bam_file, "rb")
-
-    print('Create IntervalTree...')
+    logging.info('Createing IntervalTree...')
     chr_tree = defaultdict(IntervalTree)
-    for chr in breakpoints.keys():
-        # Create interval windows around candidate breakpoint positions
-        for pos in breakpoints[chr]:
-            chr_tree[chr][pos - win_hlen: pos + win_hlen + 1] = int(pos)
-    print('IntervalTree created.')
-
+    # Create interval windows around candidate breakpoint positions
+    for pos in breakpoints[chr]:
+        chr_tree[chr][pos - win_hlen: pos + win_hlen + 1] = int(pos)
+    logging.info('IntervalTree created.')
     links = []
     no_cr_pos = []
     npos = 1
     scanned_reads = set()
-    for chr in breakpoints.keys():
-        print('Chr %s' % str(chr))
-        for pos in breakpoints[chr]:
-            if not npos % 1000:
-                print('Processed %d positions...' % npos)
-            # print('Pos: %d' % pos)
-            start = pos - win_hlen
-            end = pos + win_hlen + 1
+    logging.info('Processing Chr %s' % str(chr))
+    for pos in breakpoints[chr]:
+        if not npos % 1000:
+            logging.info('Processed %d positions...' % npos)
+        # print('Pos: %d' % pos)
+        start = pos - win_hlen
+        end = pos + win_hlen + 1
+        right_clipped_array = np.zeros(win_len)
+        left_clipped_array = np.zeros(win_len)
+        count_reads = aln.count(chr, start, end)
+        # Fetch the reads mapped on the chromosome
+        if count_reads <= args.max_read_count:
+            logging.info('Fetching %d reads in region %s:%d-%d' % (count_reads, chr, start, end))
+            for read in aln.fetch(chr, start, end, multiple_iterators=True):
+                # Both read and mate should be mapped
+                if not read.is_unmapped and not read.mate_is_unmapped and \
+                        read.mapping_quality >= args.min_mapq and \
+                        read.reference_name == read.next_reference_name:
+                    # Filled vectors with counts of clipped reads at clipped read positions
+                    if is_right_clipped(read):
+                        cpos = read.reference_end + 1
+                        if start <= cpos <= end:
+                            right_clipped_array[cpos - start - 2] += 1
+                    if is_left_clipped(read):
+                        cpos = read.reference_start
+                        if start <= cpos <= end:
+                            left_clipped_array[cpos - start - 1] += 1
+                    if read.query_name not in scanned_reads:
+                        match = chr_tree[read.next_reference_name][read.next_reference_start]
+                        if chr != read.next_reference_name or start > read.next_reference_start or \
+                                end < read.next_reference_start:
+                            if match:
+                                for m in match:
+                                    int_start, int_end, int_data = m
+                                    # print('%s -> %s' % (pos, int_data))
+                                    # Pay attention of double insertions. The same read pair will be added
+                                    # from both intervals, leading to double count.
+                                    links.append(
+                                        frozenset({chr + '_' + str(pos),
+                                                    read.next_reference_name + '_' + str(int_data)}))
+                                    scanned_reads.add(read.query_name)
 
-            right_clipped_array = np.zeros(win_len)
-            left_clipped_array = np.zeros(win_len)
-
-            count_reads = aln.count(chr, start, end)
-            # Fetch the reads mapped on the chromosome
-
-            if count_reads <= 50000:
-                # print('Fetching %d reads in region %s:%d-%d' % (count_reads, chr, start, end))
-                for read in aln.fetch(chr, start, end):
-                    # Both read and mate should be mapped
-                    if not read.is_unmapped and not read.mate_is_unmapped and \
-                            read.mapping_quality >= min_mapq and \
-                            read.reference_name == read.next_reference_name:
-
-                        # Filled vectors with counts of clipped reads at clipped read positions
-                        if is_right_clipped(read):
-                            cpos = read.reference_end + 1
-                            if start <= cpos <= end:
-                                right_clipped_array[cpos - start - 2] += 1
-                        if is_left_clipped(read):
-                            cpos = read.reference_start
-                            if start <= cpos <= end:
-                                left_clipped_array[cpos - start - 1] += 1
-
-                        if read.query_name not in scanned_reads:
-                            match = chr_tree[read.next_reference_name][read.next_reference_start]
-                            if chr != read.next_reference_name or start > read.next_reference_start or \
-                                    end < read.next_reference_start:
-                                if match:
-                                    for m in match:
-                                        int_start, int_end, int_data = m
-                                        # print('%s -> %s' % (pos, int_data))
-                                        # Pay attention of double insertions. The same read pair will be added
-                                        # from both intervals, leading to double count.
-                                        links.append(
-                                            frozenset({chr + '_' + str(pos),
-                                                       read.next_reference_name + '_' + str(int_data)}))
-                                        scanned_reads.add(read.query_name)
-
-            # print('Right clipped:\n%s' % right_clipped_array)
-            # print('Left clipped:\n%s' % left_clipped_array)
-            if sum(right_clipped_array) + sum(left_clipped_array) == 0:
-                # print('Pos %d has no CR pos' % pos)
-                no_cr_pos.append(chr + '_' + str(pos))
+        # print('Right clipped:\n%s' % right_clipped_array)
+        # print('Left clipped:\n%s' % left_clipped_array)
+        if sum(right_clipped_array) + sum(left_clipped_array) == 0:
+            # print('Pos %d has no CR pos' % pos)
+            no_cr_pos.append(chr + '_' + str(pos))
+        else:
+            if max(right_clipped_array) > max(left_clipped_array):
+                max_i = np.where(right_clipped_array == max(right_clipped_array))
+                # print('Right: %d -> %s' % (pos, max_i[0]))
             else:
-                if max(right_clipped_array) > max(left_clipped_array):
-                    max_i = np.where(right_clipped_array == max(right_clipped_array))
-                    # print('Right: %d -> %s' % (pos, max_i[0]))
-                else:
-                    max_i = np.where(left_clipped_array == max(left_clipped_array))
-                    # print('Left: %d -> %s' % (pos, max_i[0]))
+                max_i = np.where(left_clipped_array == max(left_clipped_array))
+                # print('Left: %d -> %s' % (pos, max_i[0]))
 
-            npos += 1
+        npos += 1
 
     links_counts = Counter(links)
-    print('Set size: %d' % len(links_counts))
-    print('No CR pos: %d' % len(no_cr_pos))
-    print('Connections with min 3 read pairs: %d' % len([v for l, v in links_counts.items() if v > 2]))
+    logging.info('Set size: %d' % len(links_counts))
+    logging.info('No CR pos: %d' % len(no_cr_pos))
+    logging.info('Connections with min 3 read pairs: %d' % len([v for l, v in links_counts.items() if v > 2]))
 
     i = 0
     while len([v for l, v in links_counts.items() if v > i]) > 5000:
         i += 1
-    print('%d connections with min %d RP' % (len([v for l, v in links_counts.items() if v > i]), i))
+    logging.info('%d connections with min %d RP' % (len([v for l, v in links_counts.items() if v > i]), i))
     # Return link positions, and counts
-    return links_counts
+    vcf_out = args.out_dir+basename+'_'+chr+'.vcf'
+    linksToVcf(links_counts, vcf_out)
+    logging.info('Finished breakoint assembly for chr%s ' % (chr))
 
-
-def linksToVcf(links_counts):
-    filename = vcf_output
+def linksToVcf(links_counts, filename):
     cols = '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSAMPLE\n'
     # Write VCF Header
     with open(filename, 'w') as sv_calls:
@@ -276,12 +230,20 @@ def linksToVcf(links_counts):
             sv_calls.write(line + '\n')
         print("VCF file written!")
 
-
-
 def main():
-    links_counts = breakpoint_to_sv()
-    linksToVcf(links_counts)
+    breakpoints = read_breakpoints(args.bed_file)
+    ##Spawn processes for each chromosome
+    print('Found chromosomes:')
+    for k in breakpoints.keys(): print (k)
+    print('Starting assembly')
+    P = Pool(processes=len(breakpoints.keys()))
+    pargs = zip(breakpoints.keys(), itertools.repeat(breakpoints))
+    P.map_async(breakpoint_to_sv, pargs)
+    P.close()
+    P.join()
+    print('Finished breakpoint assembly')
 
+   
 
 if __name__ == '__main__':
     main()
