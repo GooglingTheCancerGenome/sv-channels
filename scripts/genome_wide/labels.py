@@ -53,6 +53,140 @@ __symbolicRE__ = None
 
 # Classes
 
+class SVRecord_generic:
+
+    def __init__(self, record, sv_caller):
+
+        if type(record) != pysam.VariantRecord:
+            raise TypeError('VCF record is not of type pysam.VariantRecord')
+        # print(record)
+
+        if record.info['SVTYPE'] == 'BND':
+            ct, chr2, pos2, indellen = self.get_bnd_info(record)
+        else:
+            # print(record.info['SVTYPE'])
+            ct = None
+            chr2 = record.chrom
+            pos2 = record.stop
+            if 'SVLEN' in record.info.keys():
+                indellen = record.info['SVLEN']
+            else:
+                indellen = abs(record.stop-record.pos)
+
+        # print(record.info.keys())
+
+        self.id = record.id
+        self.chrom = record.chrom
+        self.start = record.pos
+        self.chrom2 = chr2
+        self.end = pos2
+        self.alt = record.alts[0]
+
+        # CIPOS
+        if 'CIPOS' in record.info.keys():
+            if 'CIPOS95' in record.info.keys():
+                self.cipos = record.info['CIPOS95']
+            else:
+                self.cipos = record.info['CIPOS']
+        else:
+            self.cipos = (0,0)
+
+        # CIEND
+        if 'CIEND' in record.info.keys():
+            if 'CIEND95' in record.info.keys():
+                self.ciend = record.info['CIEND95']
+            else:
+                self.ciend = record.info['CIEND']
+        elif 'CIRPOS' in record.info.keys():
+            self.ciend = record.info['CIRPOS']
+        else:
+            self.ciend = (0,0)
+
+        self.filter = record.filter
+
+        # Deletions are defined by 3to5 connection, same chromosome for start and end, start before end
+        if ct == '3to5' and self.chrom == self.chrom2 and self.start <= self.end:
+            self.svtype = 'DEL'
+        else:
+            self.svtype = record.info['SVTYPE']
+
+
+    @staticmethod
+    def stdchrom(chrom):
+
+        if chrom[0] == 'c':
+            return chrom[3:]
+        else:
+            return chrom
+
+        # Modified from the function ctAndLocFromBkpt in mergevcf
+
+    def locFromBkpt(self, ref, pre, delim1, pair, delim2, post):
+        '''
+        Function of the mergevcf tool by Jonathan Dursi (Simpson Lab)
+        URL: https://github.com/ljdursi/mergevcf
+        :param record: pysam.VariantRecord
+        :return: tuple with connection (3' to 5', 3' to 3', 5' to 5' or 5' to 3'), chromosome and position of the
+        second SV endpoint, length of the indel
+        '''
+
+        chpos = pair.split(':')
+        # print(chpos[0])
+        chr2 = self.stdchrom(chpos[0])
+        pos2 = int(chpos[1])
+        assert delim1 == delim2  # '['..'[' or ']'...']'
+        joinedAfter = True
+        extendRight = True
+        connectSeq = ""
+
+        if len(pre) > 0:
+            connectSeq = pre
+            joinedAfter = True
+            assert len(post) == 0
+        elif len(post) > 0:
+            connectSeq = post
+            joinedAfter = False
+
+        if delim1 == "]":
+            extendRight = False
+        else:
+            extendRight = True
+
+        indellen = len(connectSeq) - len(ref)
+
+        if joinedAfter:
+            if extendRight:
+                ct = '3to5'
+            else:
+                ct = '3to3'
+        else:
+            if extendRight:
+                ct = '5to5'
+            else:
+                ct = '5to3'
+
+        return ct, chr2, pos2, indellen
+
+    def get_bnd_info(self, record):
+        '''
+        Function of the mergevcf tool by Jonathan Dursi (Simpson Lab)
+        URL: https://github.com/ljdursi/mergevcf
+        :param record: pysam.VariantRecord
+        :return: tuple with connection (3' to 5', 3' to 3', 5' to 5' or 5' to 3'), chromosome and position of the
+        second SV endpoint, length of the indel
+        '''
+        setupREs()
+
+        altstr = str(record.alts[0])
+        resultBP = re.match(__bpRE__, altstr)
+
+        if resultBP:
+            ct, chr2, pos2, indellen = self.locFromBkpt(str(record.ref), resultBP.group(1),
+                                                        resultBP.group(2), resultBP.group(3), resultBP.group(4),
+                                                        resultBP.group(5))
+        return (ct, chr2, pos2, indellen)
+
+
 class SVRecord_SUR:
 
     def __init__(self, record):
@@ -70,7 +204,7 @@ class SVRecord_SUR:
 
 class SVRecord_nanosv:
 
-    def __init__(self, record):
+    def __init__(self, record, sv_caller):
 
         if type(record) != pysam.VariantRecord:
             raise TypeError('VCF record is not of type pysam.VariantRecord')
@@ -259,7 +393,7 @@ def load_clipped_read_positions(sampleName, chrName):
 def load_all_clipped_read_positions(sampleName):
     cr_pos_dict = {}
     for chrName in chrom_lengths.keys():
-        # for chrName in ['22']:
+    #for chrName in ['22']:
         cr_pos_dict[chrName] = load_clipped_read_positions(sampleName, chrName)
     return cr_pos_dict
 
@@ -350,13 +484,18 @@ def read_nanosv_vcf(sampleName):
         for rec in vcf_in.fetch():
             resultBP = re.match(__bpRE__, rec.alts[0])
             if resultBP:
-                svrec = SVRecord_nanosv(rec)
+                svrec = SVRecord_nanosv(rec, 'nanosv')
                 sv.append(svrec)
 
         # Select good quality (no LowQual, only 'PASS') deletions (DEL)
         sv = [svrec for svrec in sv if svrec.svtype == 'DEL'
               # if 'LowQual' not in list(svrec.filter)]
-              if 'PASS' in list(svrec.filter)]
+              #if 'PASS' in list(svrec.filter)]
+              if 'PASS' in list(svrec.filter) or \
+              'CIPOS' in list(svrec.filter) or \
+              'CIEND' in list(svrec.filter)]
+
+        # othersv = [svrec for svrec in sv if svrec.svtype != 'DEL']
 
         # How many distinct FILTERs?
         # filter_set = set([f for svrec in sv for f in svrec.filter])
@@ -374,6 +513,48 @@ def read_nanosv_vcf(sampleName):
         # print(s)
 
         return sv
+
+
+def read_vcf(sampleName, sv_caller):
+    '''
+    This function parses the entries of the nanosv VCF file into SVRecord_nanosv objects and
+    returns them in a list
+    :param sampleName: str, name of the sample to consider
+    :return: list, list of SVRecord_nanosv objects with the SV entries from the nanosv VCF file
+    '''
+
+    # Initialize regular expressions
+    setupREs()
+
+    # Setup locations of VCF files
+
+    if sampleName[:7] == 'NA12878':
+        filename = '/Users/lsantuari/Documents/Data/germline/trio/' + \
+                   sampleName[:7] + '/SV/Filtered/' + sv_caller + '.sym.vcf'
+    elif sampleName == 'Patient1' or sampleName == 'Patient2':
+        filename = '/Users/lsantuari/Documents/Data/germline/patients/' + \
+                   sampleName + '/SV/Filtered/' + sv_caller + '.sym.vcf'
+
+    print('Reading VCF file %s\nfor SV caller %s' % (filename, sv_caller))
+    vcf_in = VariantFile(filename, 'r')
+
+    sv = []
+
+    # create sv list with SVRecord objects
+    for rec in vcf_in.fetch():
+        svrec = SVRecord_generic(rec, sv_caller)
+        sv.append(svrec)
+
+    print('SVs read: %d' % len(sv))
+    print(Counter([svrec.svtype for svrec in sv]))
+
+    # Select good quality (no LowQual, only 'PASS') deletions (DEL)
+    sv = [svrec for svrec in sv if svrec.svtype == 'DEL'
+          # if 'LowQual' not in list(svrec.filter)]
+          # if 'PASS' in list(svrec.filter)
+          ]
+
+    return sv
 
 
 def get_labels_from_nanosv_vcf(sampleName):
@@ -448,7 +629,7 @@ def get_labels_from_nanosv_vcf(sampleName):
 
             # id_start = '_'.join((var.chrom, str(var.start+var.cipos[0]),  str(var.start+var.cipos[1])))
             # id_end = '_'.join((var.chrom, str(var.end + var.ciend[0]), str(var.end+var.ciend[1])))
-            assert var.start < var.end
+            assert var.start <= var.end, "Start: "+str(var.start)+" End: "+str(var.end)
 
             # print('var start -> %s:%d CIPOS: (%d, %d)' % (chrName, var.start, var.cipos[0], var.cipos[1]))
             # print('var end -> %s:%d CIEND: (%d, %d)' % (chrName, var.end, var.ciend[0], var.ciend[1]))
@@ -970,12 +1151,14 @@ def nanosv_vcf_to_bed(sampleName):
     lines = []
     for sv in sv_list:
         lines.append(bytes(sv.chrom + '\t' + str(sv.start + sv.cipos[0]) + '\t' \
-                           + str(sv.start + sv.cipos[1] + 1) + '\t' + 'DEL_start' + '\n', 'utf-8'))
+                           + str(sv.start + sv.cipos[1] + 1) + '\t' + 'DEL_start:' + sv.chrom + '_' + str(sv.start) \
+                           + '\n', 'utf-8'))
         lines.append(bytes(sv.chrom + '\t' + str(sv.end + sv.ciend[0]) + '\t' \
-                           + str(sv.end + sv.ciend[1] + 1) + '\t' + 'DEL_end' + '\n', 'utf-8'))
+                           + str(sv.end + sv.ciend[1] + 1) + '\t' + 'DEL_end:' + sv.chrom + '_' + str(sv.end) \
+                           + '\n', 'utf-8'))
 
     outfile = sampleName + '_nanosv_vcf_ci.bed.gz'
-    #outfile = sampleName + '_manta_nanosv_vcf_ci.bed.gz'
+    # outfile = sampleName + '_manta_nanosv_vcf_ci.bed.gz'
     f = gzip.open(outfile, 'wb')
     try:
         for l in lines:
@@ -986,6 +1169,7 @@ def nanosv_vcf_to_bed(sampleName):
 
 # Get labels
 def get_labels(sampleName):
+
     print(f'running {sampleName}')
 
     def get_win_id(chr, position):
@@ -1010,7 +1194,7 @@ def get_labels(sampleName):
             id_start = var.svtype + '_start'
             id_end = var.svtype + '_end'
 
-            assert var.start < var.end
+            assert var.start <= var.end, "Start: "+str(var.start)+" End: "+str(var.end)
 
             # print('var start -> %s:%d CIPOS: (%d, %d)' % (chrName, var.start, var.cipos[0], var.cipos[1]))
             # print('var end -> %s:%d CIEND: (%d, %d)' % (chrName, var.end, var.ciend[0], var.ciend[1]))
@@ -1020,57 +1204,106 @@ def get_labels(sampleName):
 
         return t
 
+    def get_sv_dict():
+
+        sv_dict = dict()
+
+        sv_dict['nanosv'] = read_nanosv_vcf(sampleName)
+        sv_dict['nanosv_manta'] = get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName)
+
+        for sv_caller in ['manta', 'delly', 'lumpy', 'gridss']:
+            # for sv_caller in ['gridss']:
+            sv_dict[sv_caller] = read_vcf(sampleName, sv_caller)
+
+        if sampleName[:7] == 'NA12878':
+            # Mills2011
+            inbed = '/Users/lsantuari/Documents/External_GitHub/sv_benchmark/' + \
+                    'input.na12878/lumpy-Mills2011-call-set.bed'
+            sv_dict['Mills2011'] = read_bed_sv(inbed)
+
+            inbed = '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/' + \
+                    'Mills2011_nanosv_full_inclusion.bed'
+            sv_dict['Mills2011_nanosv'] = read_bed_sv(inbed)
+
+            inbed = '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/' + \
+                    'NA12878_nanosv_Mills2011.bed'
+            sv_dict['nanosv_Mills2011'] = read_bed_sv(inbed)
+
+            inbed = '/Users/lsantuari/Documents/IGV/Screenshots/' + sampleName[:7] + \
+                    '/overlaps/lumpy-Mills2011_manta_nanosv.bed'
+            sv_dict['Mills2011_nanosv_manta'] = read_bed_sv(inbed)
+
+            inbed = '/Users/lsantuari/Documents/Processed/' + sampleName[:7] + '/Long_read_validation/' + \
+                    'lumpy-Mills2011-DEL.pacbio_moleculo.bed'
+            sv_dict['Mills2011_PacBio_Moleculo'] = read_bed_sv(inbed)
+
+            inbed = '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/' + \
+                    'Mills2011_pacbio_moleculo_nanosv_full_inclusion.bed'
+            sv_dict['Mills2011_PacBio_Moleculo_nanosv'] = read_bed_sv(inbed)
+
+            inbed = '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/' + \
+                    'NA12878_nanosv_Mills2011-DEL.pacbio_moleculo.bed'
+            sv_dict['nanosv_Mills2011_PacBio_Moleculo'] = read_bed_sv(inbed)
+
+            inbed = '/Users/lsantuari/Documents/Processed/' + sampleName[:7] + '/Long_read_validation/' + \
+                    'lumpy-Mills2011_pacbio_moleculo_manta_nanosv.bed'
+            sv_dict['Mills2011_PacBio_Moleculo_nanosv_manta'] = read_bed_sv(inbed)
+
+            inbed = '/Users/lsantuari/Documents/Processed/NA12878/Long_read_validation/Data_sources/Lumpy_paper_2014/' + \
+                    'lumpy-GASVPro-DELLY-Pindel-Mills2011_PacBio_Moleculo.bed'
+            sv_dict['Mills2011_PacBio_Moleculo_Lumpy_GASVPro_DELLY_Pindel'] = read_bed_sv(inbed)
+
+        return sv_dict
+
+    def get_crpos_overlap_with_sv_callsets(sv_dict, cr_pos_dict):
+
+        print(f'Creating crpos_overlap_with_sv_callsets')
+        crpos_all_sv = dict()
+
+        for chrName in chrom_lengths.keys():
+
+            print(f'Considering Chr{chrName}')
+
+            # Build two sets: crpos_full_all_sv and crpos_partial_all_sv with clipped read positions that
+            # fully/partially overlap at least one SV callset of the caller_list_all_sv
+            sv_list_all_sv = dict()
+            crpos_full_all_sv_per_caller = dict()
+            crpos_partial_all_sv_per_caller = dict()
+            caller_list_all_sv = ['manta', 'gridss', 'lumpy', 'delly', 'nanosv']
+
+            for caller in caller_list_all_sv:
+                print(caller)
+                sv_list_all_sv[caller] = [var for var in sv_dict[caller] if var.chrom == chrName]
+                crpos_full_all_sv_per_caller[caller], crpos_partial_all_sv_per_caller[caller] = \
+                    get_crpos_win_with_ci_overlap(sv_list_all_sv[caller], cr_pos_dict[chrName])
+
+            crpos_full_all_sv = set()
+            crpos_partial_all_sv = set()
+
+            for caller in caller_list_all_sv:
+                crpos_full_all_sv = crpos_full_all_sv.union(set(crpos_full_all_sv_per_caller[caller]))
+                crpos_partial_all_sv = crpos_partial_all_sv.union(set(crpos_partial_all_sv_per_caller[caller]))
+
+            crpos_all_sv[chrName] = crpos_full_all_sv | crpos_partial_all_sv
+
+        print(f'Finished crpos_overlap_with_sv_callsets')
+
+        return crpos_all_sv
+
     cr_pos_dict = load_all_clipped_read_positions(sampleName)
 
-    sv_dict = dict()
+    sv_dict = get_sv_dict()
+
+    crpos_all_sv = get_crpos_overlap_with_sv_callsets(sv_dict, cr_pos_dict)
+
     labels = dict()
-
-    sv_dict['nanosv'] = read_nanosv_vcf(sampleName)
-    sv_dict['nanosv_manta'] = get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName)
-
-    if sampleName[:7] == 'NA12878':
-        # Mills2011
-        inbed = '/Users/lsantuari/Documents/External_GitHub/sv_benchmark/' + \
-                'input.na12878/lumpy-Mills2011-call-set.bed'
-        sv_dict['Mills2011'] = read_bed_sv(inbed)
-
-        inbed = '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/' + \
-                'Mills2011_nanosv_full_inclusion.bed'
-        sv_dict['Mills2011_nanosv'] = read_bed_sv(inbed)
-
-        inbed = '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/' + \
-                'NA12878_nanosv_Mills2011.bed'
-        sv_dict['nanosv_Mills2011'] = read_bed_sv(inbed)
-
-        inbed = '/Users/lsantuari/Documents/IGV/Screenshots/' + sampleName[:7] + \
-                '/overlaps/lumpy-Mills2011_manta_nanosv.bed'
-        sv_dict['Mills2011_nanosv_manta'] = read_bed_sv(inbed)
-
-        inbed = '/Users/lsantuari/Documents/Processed/' + sampleName[:7] + '/Long_read_validation/' + \
-                'lumpy-Mills2011-DEL.pacbio_moleculo.bed'
-        sv_dict['Mills2011_PacBio_Moleculo'] = read_bed_sv(inbed)
-
-        inbed = '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/' + \
-                'Mills2011_pacbio_moleculo_nanosv_full_inclusion.bed'
-        sv_dict['Mills2011_PacBio_Moleculo_nanosv'] = read_bed_sv(inbed)
-
-        inbed = '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/' + \
-                'NA12878_nanosv_Mills2011-DEL.pacbio_moleculo.bed'
-        sv_dict['nanosv_Mills2011_PacBio_Moleculo'] = read_bed_sv(inbed)
-
-        inbed = '/Users/lsantuari/Documents/Processed/' + sampleName[:7] + '/Long_read_validation/' + \
-                'lumpy-Mills2011_pacbio_moleculo_manta_nanosv.bed'
-        sv_dict['Mills2011_PacBio_Moleculo_nanosv_manta'] = read_bed_sv(inbed)
-
-        inbed = '/Users/lsantuari/Documents/Processed/NA12878/Long_read_validation/Data_sources/Lumpy_paper_2014/' + \
-                'lumpy-GASVPro-DELLY-Pindel-Mills2011_PacBio_Moleculo.bed'
-        sv_dict['Mills2011_PacBio_Moleculo_Lumpy_GASVPro_DELLY_Pindel'] = read_bed_sv(inbed)
 
     # for sv_dict_key in sv_dict.keys():
     #    print(sv_dict_key)
     #    print(sv_dict[sv_dict_key])
 
     for sv_dict_key in sv_dict.keys():
+    #for sv_dict_key in ['Mills2011_nanosv']:
         # for sv_dict_key in ['Mills2011_PacBio_Moleculo_Lumpy_GASVPro_DELLY_Pindel']:
 
         print(f'running {sv_dict_key}')
@@ -1082,9 +1315,14 @@ def get_labels(sampleName):
         if type(sv_list) is list:
             print('VCF mode')
             # Select deletions (DELs)
+            print('%d SVs (all)' % len(sv_list))
+
             sv_list = [sv for sv in sv_list if sv.svtype == 'DEL']
+            print('%d SVs' % len(sv_list))
+
             # list of chromosomes
             chr_list = set([var.chrom for var in sv_list])
+
         else:
             print('BED mode')
             chr_list = sv_list.keys()
@@ -1138,7 +1376,8 @@ def get_labels(sampleName):
                     # print(elem)
                     if pos in crpos_full:
                         labels[sv_dict_key][chrName].append(elem[0].data)
-                    elif pos in crpos_partial:
+                    elif pos in crpos_partial or \
+                            pos in crpos_all_sv[chrName] / crpos_full:
                         labels[sv_dict_key][chrName].append('UK')
                     else:
                         labels[sv_dict_key][chrName].append('noSV')
@@ -1240,12 +1479,17 @@ def main():
     # nanosv_vcf_to_bed(sampleName=args.sample)
 
     # get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName=args.sample)
+    #
+    # for sampleName in ['NA12878']:
+    #     nanosv_vcf_to_bed(sampleName)
 
-    for sampleName in ['Patient1', 'Patient2']:
-        nanosv_vcf_to_bed(sampleName)
+    # for sampleName in ['NA12878']:
+    # get_labels_from_nanosv_vcf(sampleName=sampleName)
+    # load_labels(sampleName=sampleName)
+
+    for sampleName in ['NA12878', 'Patient1', 'Patient2']:
     #for sampleName in ['NA12878']:
-        # get_labels_from_nanosv_vcf(sampleName=sampleName)
-        # load_labels(sampleName=sampleName)
+       get_labels(sampleName)
 
     # crpos_giab = load_all_clipped_read_positions('NA12878')
     # crpos_ena = load_all_clipped_read_positions('NA12878_ENA')
@@ -1253,9 +1497,9 @@ def main():
     # print(Counter(crpos_giab))
     # print(Counter(crpos_ena))
 
-    #for chr in crpos_ena.keys():
-        #print(chr)
-        #print(set(crpos_giab[chr])-set(crpos_ena[chr]))
+    # for chr in crpos_ena.keys():
+    # print(chr)
+    # print(set(crpos_giab[chr])-set(crpos_ena[chr]))
 
     print('Elapsed time making labels = %f' % (time() - t0))
 

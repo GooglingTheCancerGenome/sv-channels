@@ -93,6 +93,11 @@ def read_BED(SVmode, chrName):
             wd = "/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/WG/run_"+ SVmode \
                  + "_500K/genomes/"
             truth_file = wd + "SV/GRCh37_"+SVmode+".bed"
+
+            #wd = "/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_" + SVmode \
+            #         + "/genomes/"
+            #truth_file = wd + "SV/chr17_"+SVmode+".bed"
+
         else:
             wd = "/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/"
             truth_file = wd + "SV/chr17_"+SVmode+".bed"
@@ -167,7 +172,7 @@ def read_BED(SVmode, chrName):
                 chrom = str(columns[0])
                 chrom2 = str(columns[2])
 
-                if columns[5] == "TRA" and chrom != chrom2:
+                if columns[4] == "TRA" and chrom != chrom2:
 
                     if n%2 == 0:
                         start_chr_list.append(chrom)
@@ -200,6 +205,7 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
     bamfile = pysam.AlignmentFile(ibam, "rb")
 
     # Extract chromosome length from the BAM header
+    # print('Running channel maker with Chr list: %s' % chrList)
     header_dict = bamfile.header
     chrLen = dict()
     for chrName in chrList:
@@ -222,6 +228,8 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
 
     for chrName in chrList:
 
+        logging.info('Checking files for Chr%s' % chrName)
+
         # File with clipped read positions, output of the clipped_read_pos script
         clipped_read_pos_file[chrName] = workdir + sampleName + \
             '/clipped_read_pos/' + chrName + '_clipped_read_pos.pbz2'
@@ -238,10 +246,22 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
         assert os.path.isfile(clipped_read_pos_file[chrName])
 
         for sample in sample_list:
-            assert os.path.isfile(workdir + sample + '/' + clipped_read_distance_file[chrName])
-            assert os.path.isfile(workdir + sample + '/' + clipped_reads_file[chrName])
-            assert os.path.isfile(workdir + sample + '/' + coverage_file[chrName])
-            assert os.path.isfile(workdir + sample + '/' + split_read_distance_file[chrName])
+
+            file = workdir + sample + '/' + clipped_read_distance_file[chrName]
+            logging.info('Checking clipped_read_distance_file: %s' % file)
+            assert os.path.isfile(file)
+
+            file = workdir + sample + '/' + clipped_reads_file[chrName]
+            logging.info('Checking clipped_reads_file: %s' % file)
+            assert os.path.isfile(file)
+
+            file = workdir + sample + '/' + coverage_file[chrName]
+            logging.info('Checking coverage_file: %s' % file)
+            assert os.path.isfile(file)
+
+            file = workdir + sample + '/' + split_read_distance_file[chrName]
+            logging.info('Checking split_read_distance_file: %s' % file)
+            assert os.path.isfile(file)
 
         logging.info('Chromosome %s' % chrName)
 
@@ -275,6 +295,7 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
         clipped_reads_duplication[sample] = dict()
         clipped_reads_translocation[sample] = dict()
         coverage[sample] = dict()
+        split_reads[sample] = dict()
         split_read_distance[sample] = dict()
 
         clipped_pos = dict()
@@ -323,7 +344,10 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                      ['DEL_end'] * len(end_SV_DEL) + \
                      ['INS_pos'] * len(start_SV_INS)
 
-        chr_list_for_pos = chrList[0]*len(pos_list)
+        chr_list_for_pos = [chrName] * len(pos_list)
+
+        assert len(pos_list) == len(chr_list_for_pos)
+        assert len(label_list) == len(chr_list_for_pos)
 
     elif SVmode == 'INV' or SVmode == 'DUP':
 
@@ -336,7 +360,7 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
         label_list = [SVmode + '_start'] * len(start_SV) + \
                      [SVmode + '_end'] * len(end_SV)
 
-        chr_list_for_pos = chrList[0] * len(pos_list)
+        chr_list_for_pos = [chrName] * len(pos_list)
 
     elif SVmode == 'TRA':
 
@@ -377,6 +401,8 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
     # print(n_r)
     last_t = time()
 
+    # print('chr_list_for_pos: ' % Counter(chr_list_for_pos))
+
     # Iterate over the SV positions
     for i, outzipped in enumerate(zip(chr_list_for_pos, pos_list, label_list), start=1):
 
@@ -388,6 +414,7 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                 n_r / (now_t - last_t)))
             last_t = time()
 
+        # Loading chromosome, center position and label
         chrName = outzipped[0]
         center_pos = outzipped[1]
         lab = outzipped[2]
@@ -468,14 +495,14 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                                 clipped_reads_duplication_array[sample][mate_position][pos - start_win] = \
                                     clipped_reads_duplication[sample][chrName][mate_position][pos]
 
-                    # clipped reads traslocation
+                    # clipped reads translocation
                     clipped_reads_translocation_array[sample] = dict()
                     for orientation in ['opposite', 'same']:
-                        clipped_reads_translocation_array[sample][mate_position] = np.zeros(win_len, dtype=int)
+                        clipped_reads_translocation_array[sample][orientation] = np.zeros(win_len, dtype=int)
                         for pos in range(start_win, end_win):
-                            if pos in clipped_reads_translocation[sample][chrName][mate_position].keys():
-                                clipped_reads_translocation_array[sample][mate_position][pos - start_win] = \
-                                    clipped_reads_translocation[sample][chrName][mate_position][pos]
+                            if pos in clipped_reads_translocation[sample][chrName][orientation].keys():
+                                clipped_reads_translocation_array[sample][orientation][pos - start_win] = \
+                                    clipped_reads_translocation[sample][chrName][orientation][pos]
 
                     # coverage
                     coverage_array[sample] = coverage[sample][chrName][start_win:end_win]
@@ -511,9 +538,9 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                                     split_reads[sample][chrName][split_direction][pos]
 
                 gc_array = bw_gc.values('chr' + chrName, start_win, end_win)
-                assert len(gc_array[sample]) == win_len
+                assert len(gc_array) == win_len
                 mappability_array = bw_map.values(chrName, start_win, end_win)
-                assert len(mappability_array[sample]) == win_len
+                assert len(mappability_array) == win_len
 
                 # Fill the numpy vstack
 
@@ -551,7 +578,7 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                 # append one hot encoded sequence for the genomic region
                 one_hot_n = get_one_hot_sequence(chrName, start_win, end_win, HPC_MODE)
                 assert len(one_hot_n) == win_len
-                # vstack_list.append(one_hot_n)
+                vstack_list.append(one_hot_n)
 
                 # logging.info("Shape of channel matrix: %s" % str(ch_vstack.shape))
                 ch_vstack = np.vstack(vstack_list)
@@ -643,9 +670,11 @@ def main():
 
     # If the SV type is translocations (TRA), it expects in input a list of chromosomes separated by a comma
     if args.svmode == 'TRA':
-        chrList = args.chr.split(',')
+        chrList = args.chr.split('_')
     else:
         chrList = [args.chr]
+
+    print('Chr list = ', chrList)
 
     channel_maker(ibam=args.bam, chrList=chrList, sampleName=args.sample, SVmode=args.svmode,
                   trainingMode=args.train, outFile=args.out)

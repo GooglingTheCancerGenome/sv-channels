@@ -85,4 +85,4 @@ def get_one_hot_sequence(chrname, start, stop, HPC_MODE):
         genome = twobit.TwoBitFile('/Users/lsantuari/Documents/Data/GiaB/reference/hg19.2bit')
 
     ltrdict = {'a': 0, 'c': 0, 'g': 0, 't': 0, 'n': 1}
-    return np.array([ltrdict[x.lower()] for x in genome['chr'+chrname]][start:stop])
+    return np.array([ltrdict[x.lower()] for x in genome['chr'+chrname][start:stop]])
