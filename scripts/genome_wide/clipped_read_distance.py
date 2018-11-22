@@ -50,7 +50,10 @@ def get_clipped_read_distance(ibam, chrName, outFile):
         :return: None. Adds dist to the list of distances at a clipped read position for a certain read direction
         '''
 
-        pos = read.reference_start
+        if direction == 'forward':
+            pos = read.reference_end + 1
+        elif direction == 'reverse':
+            pos = read.reference_start
         clipped_read_distance[direction]['unclipped'][pos].append(dist)
 
         if fun.is_left_clipped(read):

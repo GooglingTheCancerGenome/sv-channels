@@ -19,9 +19,10 @@ import csv
 import pandas as pd
 from plotnine import *
 import pyBigWig
-from functions import get_one_hot_sequence
+from functions import get_one_hot_sequence, is_outlier
+from itertools import chain
 
-#import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 # Flag used to set either paths on the local machine or on the HPC
 HPC_MODE = True
@@ -549,7 +550,7 @@ def read_nanosv_vcf(sampleName):
 
         # Select good quality (no LowQual) deletions (DEL)
         sv = [svrec for svrec in sv if svrec.svtype == 'DEL'
-              #if 'LowQual' not in list(svrec.filter)]
+              # if 'LowQual' not in list(svrec.filter)]
               if 'PASS' in list(svrec.filter)]
 
         # How many distinct FILTERs?
@@ -638,8 +639,8 @@ def create_labels_nanosv_vcf(sampleName, ibam):
             # id_end = '_'.join((var.chrom, str(var.end + var.ciend[0]), str(var.end+var.ciend[1])))
             assert var.start < var.end
 
-            #print('var start -> %s:%d CIPOS: (%d, %d)' % (chrName, var.start, var.cipos[0], var.cipos[1]))
-            #print('var end -> %s:%d CIEND: (%d, %d)' % (chrName, var.end, var.ciend[0], var.ciend[1]))
+            # print('var start -> %s:%d CIPOS: (%d, %d)' % (chrName, var.start, var.cipos[0], var.cipos[1]))
+            # print('var end -> %s:%d CIEND: (%d, %d)' % (chrName, var.end, var.ciend[0], var.ciend[1]))
 
             t[var.start + var.cipos[0]:var.start + var.cipos[1] + 1] = id_start
             t[var.end + var.ciend[0]:var.end + var.ciend[1] + 1] = id_end
@@ -797,7 +798,6 @@ def create_labels_nanosv_vcf(sampleName, ibam):
 
 
 def write_sv_without_cr(sampleName, ibam):
-
     '''
 
     :param sampleName:
@@ -814,7 +814,7 @@ def write_sv_without_cr(sampleName, ibam):
 
     var_with_cr = 0
 
-    bedout = open(sampleName+'_nanosv_no_cr.bed', 'w')
+    bedout = open(sampleName + '_nanosv_no_cr.bed', 'w')
 
     for chrName in sorted(chr_list):
 
@@ -854,7 +854,7 @@ def write_sv_without_cr(sampleName, ibam):
         for var in sv_list_chr:
 
             if var.start + var.cipos[0] in start_var_list and \
-                var.end + var.ciend[0] in end_var_list:
+                    var.end + var.ciend[0] in end_var_list:
                 var_with_cr += 1
 
             if var.start + var.cipos[0] not in start_var_list:
@@ -883,51 +883,51 @@ def get_crpos_win_with_ci_overlap(sv_list, cr_pos):
     t_cr = IntervalTree()
     for pos in cr_pos:
         t_cr[pos - win_hlen:pos + win_hlen + 1] = pos
-        #t_cr[pos - 100:pos + 100 + 1] = pos
+        # t_cr[pos - 100:pos + 100 + 1] = pos
 
     cr_full_overlap_cipos = []
     cr_partial_overlap_cipos = []
 
-    rg_overlap = [sorted(t_cr[var.start + var.cipos[0] : var.start + var.cipos[1] + 1]) for var in sv_list]
-    #print('Range overlap: %s' % rg_overlap)
+    rg_overlap = [sorted(t_cr[var.start + var.cipos[0]: var.start + var.cipos[1] + 1]) for var in sv_list]
+    # print('Range overlap: %s' % rg_overlap)
 
     for rg, start, end in zip(rg_overlap,
-                [var.start + var.cipos[0] for var in sv_list],
-                [var.start + var.cipos[1] for var in sv_list]):
+                              [var.start + var.cipos[0] for var in sv_list],
+                              [var.start + var.cipos[1] for var in sv_list]):
         for elem in rg:
             elem_start, elem_end, elem_data = elem
             if start >= elem_start and end <= elem_end:
-                #print('CIPOS->Full: %s\t%d\t%d' % (elem, start, end))
+                # print('CIPOS->Full: %s\t%d\t%d' % (elem, start, end))
                 cr_full_overlap_cipos.append(elem_data)
             else:
-                #print('CIPOS->Partial: %s\t%d\t%d' % (elem, start, end))
+                # print('CIPOS->Partial: %s\t%d\t%d' % (elem, start, end))
                 cr_partial_overlap_cipos.append(elem_data)
 
     cr_full_overlap_ciend = []
     cr_partial_overlap_ciend = []
 
-    rg_overlap = [sorted(t_cr[var.end + var.ciend[0] : var.end + var.ciend[1] + 1]) for var in sv_list]
-    #print('Range overlap: %s' % rg_overlap)
+    rg_overlap = [sorted(t_cr[var.end + var.ciend[0]: var.end + var.ciend[1] + 1]) for var in sv_list]
+    # print('Range overlap: %s' % rg_overlap)
 
     for rg, start, end in zip(rg_overlap,
-                [var.end + var.ciend[0] for var in sv_list],
-                [var.end + var.ciend[1] for var in sv_list]):
+                              [var.end + var.ciend[0] for var in sv_list],
+                              [var.end + var.ciend[1] for var in sv_list]):
         for elem in rg:
             elem_start, elem_end, elem_data = elem
             if start >= elem_start and end <= elem_end:
-                #print('CIEND->Full: %s\t%d\t%d' % (elem, start, end))
+                # print('CIEND->Full: %s\t%d\t%d' % (elem, start, end))
                 cr_full_overlap_ciend.append(elem_data)
             else:
-                #print('CIEND->Partial: %s\t%d\t%d' % (elem, start, end))
+                # print('CIEND->Partial: %s\t%d\t%d' % (elem, start, end))
                 cr_partial_overlap_ciend.append(elem_data)
 
-    #print('Intersection CIPOS: %s' % list(set(cr_full_overlap_cipos) & set(cr_partial_overlap_cipos)))
-    #print('Intersection CIEND: %s' % list(set(cr_full_overlap_ciend) & set(cr_partial_overlap_ciend)))
+    # print('Intersection CIPOS: %s' % list(set(cr_full_overlap_cipos) & set(cr_partial_overlap_cipos)))
+    # print('Intersection CIEND: %s' % list(set(cr_full_overlap_ciend) & set(cr_partial_overlap_ciend)))
 
     cr_full_overlap = sorted(cr_full_overlap_cipos + cr_full_overlap_ciend)
     cr_partial_overlap = sorted(cr_partial_overlap_cipos + cr_partial_overlap_ciend)
 
-    return sorted(list(set(cr_full_overlap))), sorted(list(set(cr_partial_overlap)-set(cr_full_overlap)))
+    return sorted(list(set(cr_full_overlap))), sorted(list(set(cr_partial_overlap) - set(cr_full_overlap)))
 
 
 def plot_ci_dist(sv_list, sampleName):
@@ -968,21 +968,21 @@ def get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName):
 
     common_sv = defaultdict(list)
     for sv in sv_sur:
-        #print(sv.supp_vec)
-        #0:Delly, 1:GRIDSS, 2:nanosv, 3:Lumpy, 4:Manta
+        # print(sv.supp_vec)
+        # 0:Delly, 1:GRIDSS, 2:nanosv, 3:Lumpy, 4:Manta
         if sv.supp_vec[2] == '1' and sv.supp_vec[4] == '1':
-            #print(sv.samples.keys())
+            # print(sv.samples.keys())
             svtype = sv.samples.get('NanoSV').get('TY')
             coord = sv.samples.get('NanoSV').get('CO')
             if svtype == 'DEL' and coord != 'NaN':
                 coord_list = re.split('-|_', coord)
                 assert len(coord_list) == 4
                 common_sv[coord_list[0]].append(int(coord_list[1]))
-    #print(common_sv.keys())
+    # print(common_sv.keys())
     sv_nanosv_manta = [sv for sv in sv_nanosv
                        if sv.chrom in common_sv.keys() if sv.start in common_sv[sv.chrom]]
-    #print(common_sv['1'])
-    #print(len(sv_nanosv_manta))
+    # print(common_sv['1'])
+    # print(len(sv_nanosv_manta))
     return sv_nanosv_manta
 
 
@@ -991,12 +991,11 @@ def get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName):
 # START: BED specific functions
 
 def read_bed_sv(sampleName):
-
     # lumpy-Mills2011_manta_nanosv
-    #inbed = '/Users/lsantuari/Documents/IGV/Screenshots/NA12878/overlaps/lumpy-Mills2011_manta_nanosv.bed'
+    # inbed = '/Users/lsantuari/Documents/IGV/Screenshots/NA12878/overlaps/lumpy-Mills2011_manta_nanosv.bed'
 
     # manta_nanosv
-    inbed = '/Users/lsantuari/Documents/IGV/Screenshots/'+sampleName+'/'+sampleName+'_manta_nanosv_vcf_ci.bed'
+    inbed = '/Users/lsantuari/Documents/IGV/Screenshots/' + sampleName + '/' + sampleName + '_manta_nanosv_vcf_ci.bed'
 
     assert os.path.isfile(inbed)
     sv_dict = defaultdict(list)
@@ -1005,17 +1004,15 @@ def read_bed_sv(sampleName):
             columns = line.rstrip().split("\t")
             chrom = str(columns[0])
             if columns[3][:3] == "DEL":
-                sv_dict[chrom].append((int(columns[1]), int(columns[2]), columns[3] ))
+                sv_dict[chrom].append((int(columns[1]), int(columns[2]), columns[3]))
 
-    #print(sv_dict)
+    # print(sv_dict)
     return sv_dict
 
 
 def create_labels_bed(sampleName, ibam):
-
     print('sample = %s' % sampleName)
     print('window = %d' % win_len)
-
 
     sv_list = read_bed_sv(sampleName)
     chr_list = sv_list.keys()
@@ -1112,17 +1109,17 @@ def get_crpos_win_with_bed_overlap(sv_list, cr_pos):
 
     for pos in cr_pos:
         t_cr[pos - win_hlen:pos + win_hlen + 1] = pos
-        #t_cr[pos - 100:pos + 100 + 1] = pos
+        # t_cr[pos - 100:pos + 100 + 1] = pos
 
     cr_full_overlap = []
     cr_partial_overlap = []
 
-    rg_overlap = [sorted(t_cr[start : end + 1]) for start, end, lab in sv_list]
-    #print('Range overlap: %s' % rg_overlap)
+    rg_overlap = [sorted(t_cr[start: end + 1]) for start, end, lab in sv_list]
+    # print('Range overlap: %s' % rg_overlap)
 
     for rg, start, end in zip(rg_overlap,
-                [start for start, end, lab in sv_list],
-                [end for start, end, lab in sv_list]):
+                              [start for start, end, lab in sv_list],
+                              [end for start, end, lab in sv_list]):
         for elem in rg:
             elem_start, elem_end, elem_data = elem
             if start >= elem_start and end <= elem_end:
@@ -1133,12 +1130,12 @@ def get_crpos_win_with_bed_overlap(sv_list, cr_pos):
     cr_full_overlap = sorted(cr_full_overlap)
     cr_partial_overlap = sorted(cr_partial_overlap)
 
-    return sorted(list(set(cr_full_overlap))), sorted(list(set(cr_partial_overlap)-set(cr_full_overlap)))
+    return sorted(list(set(cr_full_overlap))), sorted(list(set(cr_partial_overlap) - set(cr_full_overlap)))
+
 
 # END: BED specific functions
 
 def read_SURVIVOR_merge_VCF(sampleName):
-
     if HPC_MODE:
         # To fill
         survivor_vcf = ''
@@ -1154,8 +1151,8 @@ def read_SURVIVOR_merge_VCF(sampleName):
     vcf_in = VariantFile(survivor_vcf)
     samples_list = list((vcf_in.header.samples))
     samples = samples_list
-    #samples = [w.split('_')[0].split('/')[1] for w in samples_list]
-    #print(samples)
+    # samples = [w.split('_')[0].split('/')[1] for w in samples_list]
+    # print(samples)
 
     sv = []
 
@@ -1164,7 +1161,7 @@ def read_SURVIVOR_merge_VCF(sampleName):
         # avoid SVs on chromosomes Y and MT
         if rec.chrom not in ['Y', 'MT'] and rec.info['CHR2'] not in ['Y', 'MT']:
             # print(rec)
-            #print(dir(rec))
+            # print(dir(rec))
             sv.append(SVRecord_SUR(rec))
 
     return sv
@@ -1375,15 +1372,15 @@ def load_NoCR_positions():
 
 
 def clipped_read_positions_to_bed(sampleName):
-
-    chrlist = list(map(str, range(1,23)))
+    chrlist = list(map(str, range(1, 23)))
     chrlist.extend(['X', 'Y'])
-    #print(chrlist)
+    # print(chrlist)
 
     lines = []
     for chrName in chrlist:
         crpos_list = load_clipped_read_positions(sampleName, chrName)
-        lines.extend([bytes(chrName+'\t'+str(crpos)+'\t'+str(crpos+1)+'\n', 'utf-8') for crpos in crpos_list])
+        lines.extend(
+            [bytes(chrName + '\t' + str(crpos) + '\t' + str(crpos + 1) + '\n', 'utf-8') for crpos in crpos_list])
 
     crout = sampleName + '_clipped_read_pos.bed.gz'
     f = gzip.open(crout, 'wb')
@@ -1393,10 +1390,10 @@ def clipped_read_positions_to_bed(sampleName):
     finally:
         f.close()
 
-def nanosv_vcf_to_bed(sampleName):
 
+def nanosv_vcf_to_bed(sampleName):
     # Load SV list
-    #sv_list = read_nanosv_vcf(sampleName)
+    # sv_list = read_nanosv_vcf(sampleName)
     # nanoSV & Manta SVs
     sv_list = get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName)
 
@@ -1410,7 +1407,7 @@ def nanosv_vcf_to_bed(sampleName):
         lines.append(bytes(sv.chrom + '\t' + str(sv.end + sv.ciend[0]) + '\t' \
                            + str(sv.end + sv.ciend[1] + 1) + '\t' + 'DEL_end' + '\n', 'utf-8'))
 
-    #outfile = sampleName + '_nanosv_vcf_ci.bed.gz'
+    # outfile = sampleName + '_nanosv_vcf_ci.bed.gz'
     outfile = sampleName + '_manta_nanosv_vcf_ci.bed.gz'
     f = gzip.open(outfile, 'wb')
     try:
@@ -1421,13 +1418,11 @@ def nanosv_vcf_to_bed(sampleName):
 
 
 def get_gc_bigwig():
-
     bw = pyBigWig.open("/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/UCSC/hg19/hg19.gc5Base.bw")
     return bw
 
 
 def get_mappability_bigwig():
-
     bw = pyBigWig.open("/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/Mappability/GRCh37.151mer.bw")
     return bw
 
@@ -1468,7 +1463,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
     if trainingMode and (sampleName == 'N1' or sampleName == 'N2'):
         prefix_train = 'Training_' + SVmode + '/'
     else:
-        prefix_train = 'OC/'
+        prefix_train = ''
 
     # Check for file existence
     if not HPC_MODE:
@@ -1505,7 +1500,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
             # File with clipped read positions, output of the clipped_read_pos script
             clipped_read_pos_file[chrName] = prefix_train + sample_list[0] + \
-                                    '/clipped_read_pos/' + chrName + '_clipped_read_pos.pbz2'
+                                             '/clipped_read_pos/' + chrName + '_clipped_read_pos.pbz2'
             # File with the clipped read distances, output of the clipped_read_distance script
             clipped_read_distance_file[chrName] = 'clipped_read_distance/' + chrName + '_clipped_read_distance.pbz2'
             # File with the clipped reads, output of the clipped_reads script
@@ -1546,6 +1541,8 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
     split_reads = dict()
     split_read_distance = dict()
 
+    outliers = dict()
+
     for sample in sample_list:
 
         prefix = prefix_train + sample + '/' if HPC_MODE else ''
@@ -1561,10 +1558,11 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
         split_reads[sample] = dict()
         split_read_distance[sample] = dict()
 
+        outliers[sample] = dict()
+
         logging.info('Considering %s' % sample)
 
         for chrName in chrList:
-
             logging.info('Considering %s' % chrName)
 
             logging.info('Reading clipped read distances')
@@ -1575,18 +1573,34 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
             logging.info('Reading clipped reads')
             with bz2file.BZ2File(prefix + clipped_reads_file[chrName], 'rb') as f:
                 clipped_reads[sample][chrName], clipped_reads_inversion[sample][chrName], \
-                clipped_reads_duplication[sample][chrName], clipped_reads_translocation[sample][chrName] = pickle.load(f)
+                clipped_reads_duplication[sample][chrName], clipped_reads_translocation[sample][chrName] = pickle.load(
+                    f)
             logging.info('End of reading')
 
             logging.info('Reading coverage')
             with bz2file.BZ2File(prefix + coverage_file[chrName], 'rb') as f:
                 coverage[sample][chrName] = np.load(file=f)
-            logging.info('End of reading, coverage length: %d out of %d' % (len(coverage[sample][chrName]), chrLen[chrName]))
+            logging.info(
+                'End of reading, coverage length: %d out of %d' % (len(coverage[sample][chrName]), chrLen[chrName]))
 
             logging.info('Reading split read distances')
             with bz2file.BZ2File(prefix + split_read_distance_file[chrName], 'rb') as f:
                 split_read_distance[sample][chrName], split_reads[sample][chrName] = pickle.load(f)
             logging.info('End of reading')
+
+            logging.info('Finding outliers')
+            outliers[sample][chrName] = dict()
+            for direction in ['forward', 'reverse']:
+                outliers[sample][chrName][direction] = dict()
+                for clipped_arrangement in ['left', 'right', 'unclipped']:
+                    points = np.array(list(chain.from_iterable(
+                        clipped_read_distance[sample][chrName][direction][clipped_arrangement].values()
+                    )))
+                    outlier_vec = is_outlier(points)
+                    outliers[sample][chrName][direction][clipped_arrangement] = \
+                        set(points[np.where(outlier_vec)].flatten())
+                    # print(outliers)
+            logging.info('Outliers found')
 
     for chrName in chrList:
 
@@ -1602,6 +1616,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
     clipped_read_distance_array = dict()
     clipped_read_distance_num = dict()
     clipped_read_distance_median = dict()
+    clipped_read_distance_outlier = dict()
 
     clipped_reads_array = dict()
     clipped_reads_inversion_array = dict()
@@ -1631,7 +1646,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
     for chrName in chrList:
         total_clipped_pos.extend(clipped_pos[chrName])
-        total_chr_for_clipped_pos.extend([chrName]*len(clipped_pos[chrName]))
+        total_chr_for_clipped_pos.extend([chrName] * len(clipped_pos[chrName]))
     print('Count of total_chr_for_clipped_pos: %s' % Counter(total_chr_for_clipped_pos))
 
     for i, outzipped in enumerate(zip(total_chr_for_clipped_pos, total_clipped_pos), start=1):
@@ -1660,11 +1675,13 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                 clipped_read_distance_array[sample] = dict()
                 clipped_read_distance_num[sample] = dict()
                 clipped_read_distance_median[sample] = dict()
+                clipped_read_distance_outlier[sample] = dict()
 
                 for direction in ['forward', 'reverse']:
                     clipped_read_distance_array[sample][direction] = dict()
                     clipped_read_distance_num[sample][direction] = dict()
                     clipped_read_distance_median[sample][direction] = dict()
+                    clipped_read_distance_outlier[sample][direction] = dict()
 
                 for direction in ['forward', 'reverse']:
                     # for clipped_arrangement in ['c2c', 'nc2c', 'c2nc', 'nc2nc']:
@@ -1675,6 +1692,9 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                                                                                                      dtype=int)
                         clipped_read_distance_median[sample][direction][clipped_arrangement] = np.zeros(win_len,
                                                                                                         dtype=int)
+                        clipped_read_distance_outlier[sample][direction][clipped_arrangement] = np.zeros(win_len,
+                                                                                                         dtype=int)
+
                         for pos in range(start_win, end_win):
                             if pos in clipped_read_distance[sample][chrName][direction][clipped_arrangement].keys():
                                 clipped_read_distance_array[sample][direction][clipped_arrangement][pos - start_win] = \
@@ -1684,6 +1704,9 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                                 clipped_read_distance_median[sample][direction][clipped_arrangement][pos - start_win] = \
                                     statistics.median(
                                         clipped_read_distance[sample][chrName][direction][clipped_arrangement][pos])
+                                clipped_read_distance_outlier[sample][direction][clipped_arrangement][pos - start_win] = \
+                                    len(set(clipped_read_distance[sample][chrName][direction][clipped_arrangement][pos])
+                                         & outliers[sample][chrName][direction][clipped_arrangement])
 
                         # print(clipped_read_distance_array[direction][clipped_arrangement])
 
@@ -1754,7 +1777,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                             split_reads_array[sample][split_direction][pos - start_win] = \
                                 split_reads[sample][chrName][split_direction][pos]
 
-            gc_array = bw_gc.values('chr'+chrName, start_win, end_win)
+            gc_array = bw_gc.values('chr' + chrName, start_win, end_win)
             assert len(gc_array) == win_len
             mappability_array = bw_map.values(chrName, start_win, end_win)
             assert len(mappability_array) == win_len
@@ -1784,6 +1807,8 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                             clipped_read_distance_num[sample][direction][clipped_arrangement])
                         vstack_list.append(
                             clipped_read_distance_median[sample][direction][clipped_arrangement])
+                        vstack_list.append(
+                            clipped_read_distance_outlier[sample][direction][clipped_arrangement])
                 for direction in ['left', 'right']:
                     vstack_list.append(split_reads_array[sample][direction])
                 for direction in ['left', 'right']:
@@ -1883,7 +1908,7 @@ def main():
     # for sampleName in ['NA12878', 'Patient1', 'Patient2']:
     #     create_labels_nanosv_vcf(sampleName=sampleName, ibam=args.bam)
 
-    #create_labels_bed(sampleName=args.sample, ibam=args.bam)
+    # create_labels_bed(sampleName=args.sample, ibam=args.bam)
 
     # Generate labels for the datasets of real data (HMF or GiaB)
     # generate_labels()
@@ -1891,14 +1916,14 @@ def main():
 
     # print(read_SURVIVOR_merge_VCF(sampleName=args.sample))
 
-    #write_sv_without_cr(sampleName=args.sample, ibam=args.bam)
+    # write_sv_without_cr(sampleName=args.sample, ibam=args.bam)
 
-    #clipped_read_positions_to_bed(sampleName=args.sample)
-    #nanosv_vcf_to_bed(sampleName=args.sample)
+    # clipped_read_positions_to_bed(sampleName=args.sample)
+    # nanosv_vcf_to_bed(sampleName=args.sample)
 
-    #get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName=args.sample)
+    # get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName=args.sample)
 
-    #print('Elapsed time channel_maker_real on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))
+    # print('Elapsed time channel_maker_real on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))
     print('Elapsed time channel_maker_real = %f' % (time() - t0))
 
 
