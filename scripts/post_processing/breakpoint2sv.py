@@ -38,6 +38,7 @@ parser.add_argument('--OUT_DIR', type=str, nargs='?', dest='out_dir',
 parser.add_argument('--MAX_READ_COUNT', type=int, nargs='?', dest='max_read_count', default=5000)
 parser.add_argument('--MIN_MAPQ', type=int, nargs='?', dest='min_mapq', default=20)
 parser.add_argument('--WIN_H_LEN', type=int, nargs='?', dest='win_h_len', default=250)
+parser.add_argument('--VCF_OUT', type=str, nargs='?', dest='vcf_out', default='G1_deepsv_indels.vcf')
 
 ##################################
 args = parser.parse_args()
@@ -247,9 +248,8 @@ def breakpoint_to_sv(pargs):
         i += 1
     logging.info('%d connections with min %d RP' % (len([v for l, v in links_counts.items() if v > i]), i))
     # Return link positions, and counts
-    vcf_out = args.out_dir+basename+'_'+chr+'.vcf'
-    linksToVcf(links_counts, vcf_out, ibam = args.bam_file)
     logging.info('Finished breakpoint assembly for chr%s ' % (chr))
+    return(links_counts)
 
 def linksToVcf(links_counts, filename, ibam):
     cols = '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSAMPLE\n'
@@ -333,32 +333,30 @@ def linksToVcf(links_counts, filename, ibam):
         print("VCF file written!")
 
 def main():
-
     result = []
-
     def on_return(retval):
         result.append(retval)
-
     breakpoints = read_breakpoints(args.bed_file)
     ##Spawn processes for each chromosome
     print('Found chromosomes:')
     for k in breakpoints.keys(): print (k)
-
     print('Starting assembly')
-
     #Parallel execution
     P = Pool(processes=len(breakpoints.keys()))
     pargs = zip(breakpoints.keys(), itertools.repeat(breakpoints))
     x = P.map_async(breakpoint_to_sv, pargs, callback=on_return)
-    x.get()
-    # print(result)
-    P.close()
-    P.join()
+    x.wait()
+    print('Finished breakpoint assembly')
+    temp = sum(x,Counter())
+    linksToVcf(temp, args.vcf_out, ibam = args.bam_file)
+    print("Writing intervals to VCF")
+
+
 
     # mychr = '17'
     # breakpoint_to_sv([mychr, breakpoints])
 
-    print('Finished breakpoint assembly')
+    
 
 
 if __name__ == '__main__':
