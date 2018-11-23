@@ -155,11 +155,7 @@ def read_breakpoints_single_position(bed_file):
     return breakpoints
 
 ##Accepts a list of arguments(breakpoints,chr)##
-def breakpoint_to_sv(pargs):
-    ###Extract arguments
-    chr = pargs[0]
-    breakpoints = pargs[1]
-
+def breakpoint_to_sv(chr,breakpoints):
     # Read BAM file
     assert os.path.isfile(args.bam_file)
     aln = pysam.AlignmentFile(args.bam_file, "rb")
@@ -332,23 +328,29 @@ def linksToVcf(links_counts, filename, ibam):
                     # logging.info('Link %s:%d-%s:%d considered already' % (chrA, posA, chrB, posB))
         print("VCF file written!")
 
+ def on_return(retval):
+        result.extend(retval)
+
 def main():
     result = []
-    def on_return(retval):
-        result.append(retval)
     breakpoints = read_breakpoints(args.bed_file)
     ##Spawn processes for each chromosome
     print('Found chromosomes:')
     for k in breakpoints.keys(): print (k)
     print('Starting assembly')
-    #Parallel execution
-    P = Pool(processes=len(breakpoints.keys()))
-    pargs = zip(breakpoints.keys(), itertools.repeat(breakpoints))
-    x = sum(P.map_async(breakpoint_to_sv, pargs, callback=on_return), Counter())
-    x.wait()
+    ###### Parallel execution ########
+    start_time = time.time()  
+    P = Pool(processes=multiprocessing.cpu.count())
+    for chr in breakpoints.keys(): 
+        P.apply_async(breakpoint_to_sv, args=(chr,breakpoints), callback=collect_results)
+    pool.close()
+    pool.join()
     print('Finished breakpoint assembly')
-    linksToVcf(x, args.vcf_out, ibam = args.bam_file)
     print("Writing intervals to VCF")
+    temp = sum(result,Counter())
+    linksToVcf(temp, args.vcf_out, ibam = args.bam_file)
+    print('Finished breakpoint assembly')
+    print("--- %s seconds ---" % (time.time() - start_time))
     # mychr = '17'
     # breakpoint_to_sv([mychr, breakpoints])
 
