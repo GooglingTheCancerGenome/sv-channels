@@ -12,8 +12,9 @@ import argparse as ap
 from collections import defaultdict, Counter
 from intervaltree import Interval, IntervalTree
 import numpy as np
-from multiprocessing import Process, Pool
+import multiprocessing
 import datetime
+import time
 
 
 
@@ -50,6 +51,7 @@ win_len = win_hlen * 2
 strand = {False:'+', True:'-'}
 
 bp_pos_dict = defaultdict(dict)
+bp_counter_sum = []
 
 class ExceptionWrapper(object):
 
@@ -328,11 +330,11 @@ def linksToVcf(links_counts, filename, ibam):
                     # logging.info('Link %s:%d-%s:%d considered already' % (chrA, posA, chrB, posB))
         print("VCF file written!")
 
+
 def on_return(retval):
-    result.extend(retval)
+    bp_counter_sum.extend(retval)
 
 def main():
-    result = []
     breakpoints = read_breakpoints(args.bed_file)
     ##Spawn processes for each chromosome
     print('Found chromosomes:')
@@ -340,14 +342,14 @@ def main():
     print('Starting assembly')
     ###### Parallel execution ########
     start_time = time.time()  
-    P = Pool(processes=multiprocessing.cpu.count())
+    P = multiprocessing.Pool(processes=multiprocessing.cpu_count())
     for chr in breakpoints.keys(): 
-        P.apply_async(breakpoint_to_sv, args=(chr,breakpoints), callback=collect_results)
-    pool.close()
-    pool.join()
+        P.apply_async(breakpoint_to_sv, args=(chr,breakpoints), callback=on_return)
+    P.close()
+    P.join()
     print('Finished breakpoint assembly')
     print("Writing intervals to VCF")
-    temp = sum(result,Counter())
+    temp = sum(bp_counter_sum,Counter())
     linksToVcf(temp, args.vcf_out, ibam = args.bam_file)
     print('Finished breakpoint assembly')
     print("--- %s seconds ---" % (time.time() - start_time))
