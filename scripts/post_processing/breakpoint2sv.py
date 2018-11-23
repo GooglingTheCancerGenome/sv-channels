@@ -328,8 +328,8 @@ def linksToVcf(links_counts, filename, ibam):
                     # logging.info('Link %s:%d-%s:%d considered already' % (chrA, posA, chrB, posB))
         print("VCF file written!")
 
- def on_return(retval):
-        result.extend(retval)
+def on_return(retval):
+    result.extend(retval)
 
 def main():
     result = []
