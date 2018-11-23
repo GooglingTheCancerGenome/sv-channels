@@ -163,7 +163,7 @@ def breakpoint_to_sv(chr,breakpoints):
     aln = pysam.AlignmentFile(args.bam_file, "rb")
     ##Logging
     basename = os.path.splitext(os.path.basename(args.bed_file))[0]
-    logging.basicConfig(filename=args.out_dir+basename+'_'+chr+'.log',level=logging.DEBUG, filemode='w',
+    logging.basicConfig(filename=args.out_dir+basename+'_'+str(chr)+'.log',level=logging.DEBUG, filemode='w',
                         format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
     #open BAM file
     logging.info('Reading bam file: '+ args.bam_file)
@@ -344,8 +344,7 @@ def main():
     start_time = time.time()  
     P = multiprocessing.Pool(processes=multiprocessing.cpu_count())
     for chr in breakpoints.keys(): 
-        P.apply(breakpoint_to_sv, args=(chr,breakpoints), callback=on_return)
-    P.get()
+        P.apply_async(breakpoint_to_sv, args=(chr,breakpoints), callback=on_return)
     P.close()
     P.join()
     print('Finished breakpoint assembly')
