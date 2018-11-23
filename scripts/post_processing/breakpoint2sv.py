@@ -345,6 +345,7 @@ def main():
     P = multiprocessing.Pool(processes=multiprocessing.cpu_count())
     for chr in breakpoints.keys(): 
         P.apply_async(breakpoint_to_sv, args=(chr,breakpoints), callback=on_return)
+    P.get()
     P.close()
     P.join()
     print('Finished breakpoint assembly')
