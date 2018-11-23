@@ -344,15 +344,11 @@ def main():
     #Parallel execution
     P = Pool(processes=len(breakpoints.keys()))
     pargs = zip(breakpoints.keys(), itertools.repeat(breakpoints))
-    x = P.map_async(breakpoint_to_sv, pargs, callback=on_return)
+    x = sum(P.map_async(breakpoint_to_sv, pargs, callback=on_return), Counter())
     x.wait()
     print('Finished breakpoint assembly')
-    temp = sum(x,Counter())
-    linksToVcf(temp, args.vcf_out, ibam = args.bam_file)
+    linksToVcf(x, args.vcf_out, ibam = args.bam_file)
     print("Writing intervals to VCF")
-
-
-
     # mychr = '17'
     # breakpoint_to_sv([mychr, breakpoints])
 
