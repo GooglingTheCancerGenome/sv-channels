@@ -9,6 +9,7 @@ import logging
 import os
 from pathlib import Path
 import argparse as ap
+from subprocess import call
 from collections import defaultdict, Counter
 from intervaltree import Interval, IntervalTree
 import numpy as np
@@ -249,7 +250,6 @@ def breakpoint_to_sv(chr,breakpoints):
     logging.info('Finished breakpoint assembly for chr%s ' % (chr))
     ### Create result dict
     res_dict = defaultdict(dict)
-    res_dict['chrom'] = chr
     res_dict['links'] = links_counts
     res_dict['pos'] = bp_pos_dict
     return(res_dict)
@@ -294,8 +294,8 @@ def linksToVcf(links_counts, filename, ibam):
 
                     s1[1] = int(s1[1])
                     s2[1] = int(s2[1])
-                    
-                    if s1[1] in position[chrA] and s2[1] in position[chrB] and v >= 0 :
+                    #Crashes if differnet from v >= 1
+                    if s1[1] in position[chrA] and s2[1] in position[chrB] and v >= 1 :
                          posA = position[chrA][s1[1]]
                          posB = position[chrB][s2[1]]
 
@@ -304,7 +304,6 @@ def linksToVcf(links_counts, filename, ibam):
 
                          fs = frozenset({str(chrA) + '_' + str(posA) + '_' + strandA,
                                      str(chrB) + '_' + str(posB) + '_' + strandB})
-                         print(fs)
 
                          if fs not in sv_evaluated:
                              logging.info('Writing link => %s:%d-%s:%d' % (chrA, posA, chrB, posB))
@@ -356,7 +355,11 @@ def main():
     print("Writing intervals to VCF")
     linksToVcf(bp_counter_sum, args.vcf_out, ibam = args.bam_file)
     print('Finished breakpoint assembly')
+    #print("Sorting VCF file")
+    #sort_command = "bcftools sort %s -o %s" % (args.vcf_out, args.vcf_out+"sorted.vcf")
+    #call(sort_command)
     print("--- %s seconds ---" % (time.time() - start_time))
+    
     # mychr = '17'
     # breakpoint_to_sv([mychr, breakpoints])
 
