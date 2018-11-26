@@ -44,7 +44,8 @@ channel_selection = 'AllChannel'
 # context_dict = {'G1': 'train', 'N1': 'real'}
 
 # sample_name = 'PATIENT1'
-context_dict = {'NA12878': 'real', 'PATIENT1': 'real', 'PATIENT2': 'real', 'G1': 'train', 'N1': 'real'}
+context_dict = {'NA12878': 'real', 'PATIENT1': 'real',
+                'PATIENT2': 'real', 'G1': 'train', 'N1': 'real'}
 
 date = '130918'  # '060818'
 mode = 'Test'
@@ -52,7 +53,6 @@ mode = 'Test'
 if HPC_MODE:
 
     base_dir = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/' + mode + 'Data_' + date
-
     base_dir_art = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TrainingData_' + date
 
 else:

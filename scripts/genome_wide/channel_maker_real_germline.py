@@ -1704,9 +1704,22 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                                 clipped_read_distance_median[sample][direction][clipped_arrangement][pos - start_win] = \
                                     statistics.median(
                                         clipped_read_distance[sample][chrName][direction][clipped_arrangement][pos])
-                                clipped_read_distance_outlier[sample][direction][clipped_arrangement][pos - start_win] = \
-                                    len(set(clipped_read_distance[sample][chrName][direction][clipped_arrangement][pos])
-                                         & outliers[sample][chrName][direction][clipped_arrangement])
+
+                                if direction == 'forward':
+
+                                    clipped_read_distance_outlier[sample][direction][clipped_arrangement][(pos - start_win):] = \
+                                        clipped_read_distance_outlier[sample][direction][clipped_arrangement][
+                                        (pos - start_win):] + \
+                                        len(set(clipped_read_distance[sample][chrName][direction][clipped_arrangement][pos])
+                                             & outliers[sample][chrName][direction][clipped_arrangement])
+
+                                elif direction == 'reverse':
+
+                                    clipped_read_distance_outlier[sample][direction][clipped_arrangement][:(pos - start_win)] = \
+                                        clipped_read_distance_outlier[sample][direction][clipped_arrangement][
+                                        :(pos - start_win)] + \
+                                        len(set(clipped_read_distance[sample][chrName][direction][clipped_arrangement][pos])
+                                             & outliers[sample][chrName][direction][clipped_arrangement])
 
                         # print(clipped_read_distance_array[direction][clipped_arrangement])
 
