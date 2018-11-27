@@ -28,20 +28,22 @@ __status__ = "alpha"
 ###########
 parser = ap.ArgumentParser(description='Provide breakpoint2sv arguments.')
 parser.add_argument('--BAM', type=str, nargs='?', dest='bam_file',
-                    default='/Users/tschafers/Test_data/CNN/BAM/G1_dedup.bam')
-                    #default='/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/'+\
-                    #        'run_test_INDEL/BAM/G1_dedup.bam')
+                    #default='/Users/tschafers/Test_data/CNN/BAM/G1_dedup.bam')
+                    default='/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/'+\
+                            'run_test_INDEL/BAM/G1_dedup.bam')
 parser.add_argument('--BED', type=str, nargs='?', dest='bed_file',
-                    default='/Users/tschafers/Test_data/CNN/SV/bed/Patient1_94.bed')
-                    #default='/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/'+\
-                    #        'run_test_INDEL/SV/chr17B_T.proper.bed')
+                    #default='/Users/tschafers/Test_data/CNN/SV/bed/Patient1_94.bed')
+                    default='/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/'+\
+                            'run_test_INDEL/SV/chr17B_T.proper.bed')
 parser.add_argument('--OUT_DIR', type=str, nargs='?', dest='out_dir',
-                    default='/Users/tschafers/Test_data/CNN/Results/')
-                    #default='/Users/lsantuari/Documents/Processed/Breakpoint2SV/Results/')
+                    #default='/Users/tschafers/Test_data/CNN/Results/')
+                    default='/Users/lsantuari/Documents/Processed/Breakpoint2SV/Results/')
 parser.add_argument('--MAX_READ_COUNT', type=int, nargs='?', dest='max_read_count', default=5000)
 parser.add_argument('--MIN_MAPQ', type=int, nargs='?', dest='min_mapq', default=20)
 parser.add_argument('--WIN_H_LEN', type=int, nargs='?', dest='win_h_len', default=250)
-parser.add_argument('--VCF_OUT', type=str, nargs='?', dest='vcf_out', default='/Users/tschafers/Test_data/CNN/Results/G1_deepsv_indels.vcf')
+parser.add_argument('--VCF_OUT', type=str, nargs='?', dest='vcf_out',
+                    #default='/Users/tschafers/Test_data/CNN/Results/G1_deepsv_indels.vcf')
+                    default='/Users/lsantuari/Documents/Processed/Breakpoint2SV/Results/G1_DELs.vcf')
 
 ##################################
 args = parser.parse_args()
@@ -62,10 +64,14 @@ def get_ref_sequence(chrname, pos):
 
     # Path on the HPC of the 2bit version of the human reference genome (hg19)
     genome = twobit.TwoBitFile('/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/genomes/hg19.2bit')
+    # Local path
+    #genome = twobit.TwoBitFile('/Users/lsantuari/Documents/Data/GiaB/reference/hg19.2bit')
+
+    ref_pos = int(pos)-1
     if chrname[:2] == 'chr' or chrname[:2] == 'Chr':
-        ref_base = genome['chr'+chrname[3:]][pos]
+        ref_base = genome['chr'+chrname[3:]][ref_pos].upper()
     else:
-        ref_base = genome['chr' + chrname][pos]
+        ref_base = genome['chr' + chrname][ref_pos].upper()
     return ref_base
 
 
