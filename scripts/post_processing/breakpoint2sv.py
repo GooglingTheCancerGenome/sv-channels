@@ -16,6 +16,7 @@ import numpy as np
 import multiprocessing
 import datetime
 import time
+import twobitreader as twobit
 
 
 
@@ -56,6 +57,17 @@ bp_counter_sum = []
 '''
 Generic functions used in the channel scripts
 '''
+
+def get_ref_sequence(chrname, pos):
+
+    # Path on the HPC of the 2bit version of the human reference genome (hg19)
+    genome = twobit.TwoBitFile('/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/genomes/hg19.2bit')
+    if chrname[:2] == 'chr' or chrname[:2] == 'Chr':
+        ref_base = genome['chr'+chrname[3:]][pos]
+    else:
+        ref_base = genome['chr' + chrname][pos]
+    return ref_base
+
 
 def get_chr_len_dict(ibam):
 
@@ -313,11 +325,15 @@ def linksToVcf(links_counts, filename, ibam):
                              else:
                                  svtype = 'BND'
 
+                             # Get reference base
+                             ref_base = get_ref_sequence(chrA, start)
+                             sv_id = 'DEEPSV_'+chrA+'_'+str(start)
+
                              f_line = "SVTYPE:PE:END"
                              s_line = 'SVTYPE=%s;PE=%s;END=%s;STRAND=%s' % ('DEL', v, stop, strandA+strandB)
-                             line = '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % (chrA, start, '.', 'N',
+                             line = '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % (chrA, start, sv_id, ref_base,
                                                                              '<'+svtype+'>', '.', 'PASS',
-                                                                             '.', f_line, s_line)
+                                                                             s_line, '.', '.')
                              sv_calls.write(line + '\n')
                     else:
                          logging.info('Link %s:%d-%s:%d considered already' % (chrA, posA, chrB, posB))
