@@ -9,11 +9,13 @@ import logging
 import os
 from pathlib import Path
 import argparse as ap
+from subprocess import call
 from collections import defaultdict, Counter
 from intervaltree import Interval, IntervalTree
 import numpy as np
-from multiprocessing import Process, Pool
+import multiprocessing
 import datetime
+import time
 
 
 
@@ -25,19 +27,20 @@ __status__ = "alpha"
 ###########
 parser = ap.ArgumentParser(description='Provide breakpoint2sv arguments.')
 parser.add_argument('--BAM', type=str, nargs='?', dest='bam_file',
-                    #default='/Users/tschafers/Test_data/CNN/BAM/G1_dedup.bam')
-                    default='/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/'+\
-                            'run_test_INDEL/BAM/G1_dedup.bam')
+                    default='/Users/tschafers/Test_data/CNN/BAM/G1_dedup.bam')
+                    #default='/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/'+\
+                    #        'run_test_INDEL/BAM/G1_dedup.bam')
 parser.add_argument('--BED', type=str, nargs='?', dest='bed_file',
-                    #default='/Users/tschafers/Test_data/CNN/SV/chr17B_T.proper.bed')
-                    default='/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/'+\
-                            'run_test_INDEL/SV/chr17B_T.proper.bed')
+                    default='/Users/tschafers/Test_data/CNN/SV/bed/Patient1_94.bed')
+                    #default='/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/'+\
+                    #        'run_test_INDEL/SV/chr17B_T.proper.bed')
 parser.add_argument('--OUT_DIR', type=str, nargs='?', dest='out_dir',
-                    #default='/Users/tschafers/Test_data/CNN/Results/')
-                    default='/Users/lsantuari/Documents/Processed/Breakpoint2SV/Results/')
+                    default='/Users/tschafers/Test_data/CNN/Results/')
+                    #default='/Users/lsantuari/Documents/Processed/Breakpoint2SV/Results/')
 parser.add_argument('--MAX_READ_COUNT', type=int, nargs='?', dest='max_read_count', default=5000)
 parser.add_argument('--MIN_MAPQ', type=int, nargs='?', dest='min_mapq', default=20)
 parser.add_argument('--WIN_H_LEN', type=int, nargs='?', dest='win_h_len', default=250)
+parser.add_argument('--VCF_OUT', type=str, nargs='?', dest='vcf_out', default='/Users/tschafers/Test_data/CNN/Results/G1_deepsv_indels.vcf')
 
 ##################################
 args = parser.parse_args()
@@ -48,7 +51,7 @@ win_len = win_hlen * 2
 
 strand = {False:'+', True:'-'}
 
-bp_pos_dict = defaultdict(dict)
+bp_counter_sum = []
 
 '''
 Generic functions used in the channel scripts
@@ -143,23 +146,20 @@ def read_breakpoints_single_position(bed_file):
     return breakpoints
 
 ##Accepts a list of arguments(breakpoints,chr)##
-def breakpoint_to_sv(pargs):
-    ###Extract arguments
-    chr = pargs[0]
-    breakpoints = pargs[1]
-
+def breakpoint_to_sv(chr,breakpoints):
     # Read BAM file
     assert os.path.isfile(args.bam_file)
     aln = pysam.AlignmentFile(args.bam_file, "rb")
     ##Logging
     basename = os.path.splitext(os.path.basename(args.bed_file))[0]
-    logging.basicConfig(filename=args.out_dir+basename+'_'+chr+'.log',level=logging.DEBUG, filemode='w',
+    logging.basicConfig(filename=args.out_dir+basename+'_'+str(chr)+'.log',level=logging.DEBUG, filemode='w',
                         format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
     #open BAM file
     logging.info('Reading bam file: '+ args.bam_file)
     # Check if the BAM file in input exists
     logging.info('Createing IntervalTree...')
     chr_tree = defaultdict(IntervalTree)
+    bp_pos_dict = defaultdict(dict)
     # Create interval windows around candidate breakpoint positions
     for pos in breakpoints[chr]:
         chr_tree[chr][pos - win_hlen: pos + win_hlen + 1] = int(pos)
@@ -236,9 +236,12 @@ def breakpoint_to_sv(pargs):
         i += 1
     logging.info('%d connections with min %d RP' % (len([v for l, v in links_counts.items() if v > i]), i))
     # Return link positions, and counts
-    vcf_out = args.out_dir+basename+'_'+chr+'.vcf'
-    linksToVcf(links_counts, vcf_out, ibam = args.bam_file)
     logging.info('Finished breakpoint assembly for chr%s ' % (chr))
+    ### Create result dict
+    res_dict = defaultdict(dict)
+    res_dict['links'] = links_counts
+    res_dict['pos'] = bp_pos_dict
+    return(res_dict)
 
 def linksToVcf(links_counts, filename, ibam):
     cols = '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSAMPLE\n'
@@ -266,88 +269,90 @@ def linksToVcf(links_counts, filename, ibam):
 
         sv_evaluated = []
 
-        for l, v in links_counts.items():
+        for res in links_counts:
+                links = res.get('links')
+                position = res.get('pos')
+                for l,v in Counter(links).items():
+                    logging.info('Candidate link => %s' % (l))
+                    interval = list(l)
+                    s1 = interval[0].split('_')
+                    s2 = interval[1].split('_')
 
-            # logging.info('Candidate link => %s' % (l))
+                    chrA = s1[0]
+                    chrB = s2[0]
 
-            interval = list(l)
-            s1 = interval[0].split('_')
-            s2 = interval[1].split('_')
+                    s1[1] = int(s1[1])
+                    s2[1] = int(s2[1])
+                    #Crashes if differnet from v >= 1
+                    if s1[1] in position[chrA] and s2[1] in position[chrB] and v >= 1 :
+                         posA = position[chrA][s1[1]]
+                         posB = position[chrB][s2[1]]
 
-            chrA = s1[0]
-            chrB = s2[0]
+                         strandA = s1[2]
+                         strandB = s2[2]
 
-            s1[1] = int(s1[1])
-            s2[1] = int(s2[1])
+                         fs = frozenset({str(chrA) + '_' + str(posA) + '_' + strandA,
+                                     str(chrB) + '_' + str(posB) + '_' + strandB})
 
-            if s1[1] in bp_pos_dict[chrA] and s2[1] in bp_pos_dict[chrB] and v > 2:
+                         if fs not in sv_evaluated:
+                             logging.info('Writing link => %s:%d-%s:%d' % (chrA, posA, chrB, posB))
 
-                posA = bp_pos_dict[chrA][s1[1]]
-                posB = bp_pos_dict[chrB][s2[1]]
+                             sv_evaluated.append(fs)
 
-                strandA = s1[2]
-                strandB = s2[2]
+                             if posA <= posB:
+                                 # print('%d < %d' % (s1[1], s2[1]))
+                                 start = posA
+                                 stop = posB
+                             else:
+                                 # print('%d > %d' % (s1[1], s2[1]))
+                                 start = posB
+                                 stop = posA
 
-                fs = frozenset({str(chrA) + '_' + str(posA) + '_' + strandA,
-                               str(chrB) + '_' + str(posB) + '_' + strandB})
+                             if chrA == chrB:
+                                 svtype = 'DEL'
+                             else:
+                                 svtype = 'BND'
 
-                if fs not in sv_evaluated:
-                    # logging.info('Writing link => %s:%d-%s:%d' % (chrA, posA, chrB, posB))
-
-                    sv_evaluated.append(fs)
-
-                    if posA <= posB:
-                        # print('%d < %d' % (s1[1], s2[1]))
-                        start = posA
-                        stop = posB
+                             f_line = "SVTYPE:PE:END"
+                             s_line = 'SVTYPE=%s;PE=%s;END=%s;STRAND=%s' % ('DEL', v, stop, strandA+strandB)
+                             line = '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % (chrA, start, '.', 'N',
+                                                                             '<'+svtype+'>', '.', 'PASS',
+                                                                             '.', f_line, s_line)
+                             sv_calls.write(line + '\n')
                     else:
-                        # print('%d > %d' % (s1[1], s2[1]))
-                        start = posB
-                        stop = posA
-
-                    if chrA == chrB:
-                        svtype = 'DEL'
-                    else:
-                        svtype = 'BND'
-
-                    f_line = "SVTYPE:PE:END"
-                    s_line = 'SVTYPE=%s;PE=%s;END=%s;STRAND=%s' % ('DEL', v, stop, strandA+strandB)
-                    line = '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % (chrA, start, '.', 'N',
-                                                                       '<'+svtype+'>', '.', 'PASS',
-                                                                       '.', f_line, s_line)
-                    # print(line)
-                    sv_calls.write(line + '\n')
-                # else:
-                    # logging.info('Link %s:%d-%s:%d considered already' % (chrA, posA, chrB, posB))
+                         logging.info('Link %s:%d-%s:%d considered already' % (chrA, posA, chrB, posB))
         print("VCF file written!")
 
+
+def on_return(retval):
+    bp_counter_sum.append(retval)
+
 def main():
-
-    result = []
-
-    def on_return(retval):
-        result.append(retval)
-
     breakpoints = read_breakpoints(args.bed_file)
     ##Spawn processes for each chromosome
     print('Found chromosomes:')
     for k in breakpoints.keys(): print (k)
-
     print('Starting assembly')
-
-    #Parallel execution
-    P = Pool(processes=len(breakpoints.keys()))
-    pargs = zip(breakpoints.keys(), itertools.repeat(breakpoints))
-    x = P.map_async(breakpoint_to_sv, pargs, callback=on_return)
-    x.get()
-    # print(result)
+    ###### Parallel execution ########
+    start_time = time.time()  
+    P = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+    for chr in breakpoints.keys(): 
+        P.apply_async(breakpoint_to_sv, args=(chr,breakpoints), callback=on_return)
     P.close()
     P.join()
-
+    print('Finished breakpoint assembly')
+    print("Writing intervals to VCF")
+    linksToVcf(bp_counter_sum, args.vcf_out, ibam = args.bam_file)
+    print('Finished breakpoint assembly')
+    #print("Sorting VCF file")
+    #sort_command = "bcftools sort %s -o %s" % (args.vcf_out, args.vcf_out+"sorted.vcf")
+    #call(sort_command)
+    print("--- %s seconds ---" % (time.time() - start_time))
+    
     # mychr = '17'
     # breakpoint_to_sv([mychr, breakpoints])
 
-    print('Finished breakpoint assembly')
+    
 
 
 if __name__ == '__main__':
