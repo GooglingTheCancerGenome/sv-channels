@@ -43,7 +43,44 @@ datapath_training =  datapath_prefix+'/Processed/Test/'+\
 datapath_test =  datapath_prefix+'/Processed/Test/'+\
            date+'/TestData_'+date+'/'+sample_name+'/TestData/'
 
-def data(datapath):
+
+def get_channel_labels():
+    # Fill labels for legend
+
+    labels = list()
+    labels.append("coverage")
+    labels.append("#left_clipped_reads")
+    labels.append("#right_clipped_reads")
+    labels.append("INV_before")
+    labels.append("INV_after")
+    labels.append("DUP_before")
+    labels.append("DUP_after")
+    labels.append("TRA_opposite")
+    labels.append("TRA_same")
+
+    for direction in ['Forward', 'Reverse']:
+        for clipped in ['Left', 'Right', 'Not']:
+            for value in ['sum', 'num', 'median', 'outliers']:
+                labels.append(direction + '_' + clipped + '_Clipped_' + value)
+
+    labels.append("#left split reads")
+    labels.append("#right split reads")
+
+    for clipped in ['L', 'R']:
+        for value in ['sum', 'num', 'median']:
+            labels.append(clipped + '_SplitRead_' + value)
+
+    labels.append("GC")
+    labels.append("Mappability")
+    labels.append("One_hot_Ncoding")
+
+    # for k, l in enumerate(labels):
+    #     print(str(k) + ':' + l)
+
+    return labels
+
+
+def data(datapath, channels):
 
     data_output_file = datapath + sample_name + '_' + label_type + '_channels.npy.gz'
     with gzip.GzipFile(data_output_file, "rb") as f:
@@ -69,7 +106,12 @@ def data(datapath):
     # print(y.shape)
     # print(win_ids.shape)
 
-    return X, y, y_binary, win_ids
+    # idx = np.arange(0,9)
+    # idx = np.append(idx, np.arange(33,35))
+    # idx = np.append(idx, np.arange(41, 44))
+    # idx = np.append(idx,[12,16,20,24,28,32])
+
+    return X[:, channels, :], y, y_binary, win_ids
 
 
 def create_model(X, y_binary):
@@ -86,7 +128,7 @@ def create_model(X, y_binary):
                                       cnn_max_fc_nodes=6,
                                       low_lr=2, high_lr=2,
                                       low_reg=4, high_reg=4,
-                                      kernel_size = 9)
+                                      kernel_size = 7)
 
     # i = 0
     # for model, params, model_types in models:
@@ -98,9 +140,10 @@ def create_model(X, y_binary):
     return models
 
 
-def cross_validation(X, y, y_binary, X_test, y_test, y_test_binary):
+def cross_validation(X, y, y_binary, X_test, y_test, y_test_binary, channels):
 
-    results = defaultdict(list)
+    results = pd.DataFrame(columns=["channels", "fold", ""])
+
 
     # From https://medium.com/@literallywords/stratified-k-fold-with-keras-e57c487b1416
     kfold_splits = 10
@@ -119,14 +162,16 @@ def cross_validation(X, y, y_binary, X_test, y_test, y_test_binary):
         ytrain_binary, ytest_binary = y_binary[train_indices], y_binary[test_indices]
 
         # split into train/test sets
-        xtrain, xval, ytrain_binary, yval = train_test_split(xtrain, ytrain_binary, test_size=0.2, random_state=2)
+        xtrain, xval, ytrain_binary, yval = train_test_split(xtrain, ytrain_binary,
+                                                             test_size=0.2, random_state=2)
 
         # Clear model, and create it
         model = None
         model = create_model(X, y_binary)
 
         # Debug message I guess
-        # print "Training new iteration on " + str(xtrain.shape[0]) + " training samples, " + str(xval.shape[0]) + " validation samples, this may be a while..."
+        print ("Training new iteration on " + str(xtrain.shape[0]) + " training samples, " +
+         str(xval.shape[0]) + " validation samples, this may take a while...")
 
         history, model = train_model(model, xtrain, ytrain_binary, xval, yval)
 
@@ -138,9 +183,11 @@ def cross_validation(X, y, y_binary, X_test, y_test, y_test_binary):
         score_test = model.evaluate(xtest, ytest_binary, verbose=False)
         print('Test loss and accuracy of best model: ' + str(score_test))
 
-        evaluate_model(model, xtest, ytest_binary, results)
+        #evaluate_model(model, xtest, ytest_binary, results)
+        evaluate_model(model, X_test, y_test_binary, results, index, channels)
 
     print(results)
+
 
 def train_model(model, xtrain, ytrain, xval, yval):
 
@@ -156,9 +203,7 @@ def train_model(model, xtrain, ytrain, xval, yval):
     best_model, best_params, best_model_types = model[best_model_index]
     # print(best_model_index, best_model_types, best_params)
 
-    # We make a copy of the model, to start training from fresh
     nr_epochs = 1
-    datasize = train_set_size  # Change in `X_train.shape[0]` if training complete data set
     history = best_model.fit(xtrain, ytrain,
                              epochs=nr_epochs, validation_data=(xval, yval),
                              verbose=False)
@@ -166,7 +211,7 @@ def train_model(model, xtrain, ytrain, xval, yval):
     return history, best_model
 
 
-def evaluate_model(model, X_test, ytest_binary, results):
+def evaluate_model(model, X_test, ytest_binary, results, cv_iter, channels):
 
     mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
     dict_sorted = sorted(mapclasses.items(), key=lambda x: x[1])
@@ -193,10 +238,16 @@ def evaluate_model(model, X_test, ytest_binary, results):
                                                                     probs.ravel())
     average_precision["micro"] = average_precision_score(ytest_binary, probs,
                                                          average="micro")
+    average_precision["micro"] = average_precision_score(ytest_binary, probs,
+                                                         average="micro")
     print('Average precision score, micro-averaged over all classes: {0:0.2f}'
           .format(average_precision["micro"]))
 
-    results['average_precision'].append(average_precision["micro"])
+    results = results.append({
+        "channels": channels,
+        "fold": cv_iter,
+        "average_precision": average_precision["micro"]
+    }, ignore_index=True)
 
     # plt.figure()
     # plt.step(recall['micro'], precision['micro'], color='b', alpha=0.2,
@@ -288,12 +339,26 @@ def evaluate_model(model, X_test, ytest_binary, results):
 
 def main():
 
-    # Load the data
-    X, y, y_binary, win_ids = data(datapath_training)
+    labels = get_channel_labels()
 
-    X_test, y_test, y_test_binary, win_ids_test = data(datapath_test)
+    channels = []
 
-    cross_validation(X, y, y_binary, X_test, y_test, y_test_binary)
+    for channel_index in np.arange(0,len(labels)):
+
+        channels.append(channel_index)
+
+        print('Running cv with channels:')
+        for i in channels:
+            print(str(i) + ':' + labels[i])
+
+        # Load the data
+        X, y, y_binary, win_ids = data(datapath_training, channels)
+        X_test, y_test, y_test_binary, win_ids_test = data(datapath_test, channels)
+
+        results = cross_validation(X, y, y_binary, X_test, y_test, y_test_binary, channels)
+
+    print(results)
+
 
 if __name__ == '__main__':
 
