@@ -154,11 +154,12 @@ def breakpoint_to_sv_v2(chr, breakpoints):
     logger.warning('This should go in the file.')
 
     logging.info('Processing Chr %s' % str(chr))
+    logging.info('Processing %d candidate breakpoints' % len(breakpoints[chr]))
 
     breakpoint_list = []
 
     pos_counter = 1
-    for pos in breakpoints[chr][:100]:
+    for pos in breakpoints[chr]:
         if not pos_counter % 1000:
             logging.info('Processed %d positions...' % pos_counter)
 
@@ -215,7 +216,7 @@ def breakpoint_to_sv_v2(chr, breakpoints):
                                                                     strand_type(strand[read.is_reverse],
                                                                                 strand[read.mate_is_reverse])
                                                                     ))
-
+                    # Supplementary Alignment (SA) case
                     if current_brkpnt.location.is_clipped_at(read) and has_suppl_aln(read):
                         sa_chrom, sa_pos, sa_strand = get_suppl_aln(read)
 
@@ -233,6 +234,8 @@ def breakpoint_to_sv_v2(chr, breakpoints):
 
     for bp in breakpoint_list:
         bp.print()
+
+    return breakpoint_list
 
 
 ##Accepts a list of arguments(breakpoints,chr)##
@@ -422,7 +425,8 @@ def on_return(retval):
 
 
 def main():
-    breakpoints = read_breakpoints(args.bed_file)
+
+    breakpoints = read_breakpoints_single_position(args.bed_file)
     ##Spawn processes for each chromosome
     print('Found chromosomes:')
     for k in breakpoints.keys(): print(k)
@@ -430,17 +434,18 @@ def main():
     ###### Parallel execution ########
     start_time = time.time()
 
-    # P = multiprocessing.Pool(processes=multiprocessing.cpu_count())
-    # for chr in breakpoints.keys():
-    #     P.apply_async(breakpoint_to_sv_v2, args=(chr,breakpoints), callback=on_return)
-    # P.close()
-    # P.join()
-    # print('Finished breakpoint assembly')
-    # print("Writing intervals to VCF")
-    # linksToVcf(bp_counter_sum, args.vcf_out, ibam = args.bam_file)
-
+    P = multiprocessing.Pool(processes=multiprocessing.cpu_count())
     for chr in breakpoints.keys():
-        breakpoint_to_sv_v2(chr, breakpoints)
+        P.apply_async(breakpoint_to_sv_v2, args=(chr,breakpoints), callback=on_return)
+    P.close()
+    P.join()
+
+    #print("Writing intervals to VCF")
+    #linksToVcf(bp_counter_sum, args.vcf_out, ibam = args.bam_file)
+
+    # for chr in breakpoints.keys():
+    #     breakpoint_to_sv_v2(chr, breakpoints)
+
     print('Finished breakpoint assembly')
     # print("Sorting VCF file")
     # sort_command = "bcftools sort %s -o %s" % (args.vcf_out, args.vcf_out+"sorted.vcf")
