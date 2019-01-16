@@ -70,19 +70,20 @@ def get_indels(read):
 def is_supporting_pe_read(read, breakpoint):
 
     read_len = read.infer_query_length()
-    if read_len == None:
+    if read_len is None:
         read_len = 0
 
     if not read.mate_is_unmapped:
         if read.next_reference_name == breakpoint.location.chrom:
-            if (not (read.is_reverse or not (
-                    read.reference_end <= breakpoint.location.position <= read.next_reference_start))) or \
-                (not (not read.is_reverse or not (
-                        read.next_reference_start + read_len <= breakpoint.location.position <= read.reference_start))):
+            if (not read.is_reverse and
+                    read.reference_end <= breakpoint.location.position <= read.next_reference_start ) or \
+                (read.is_reverse and
+                  read.next_reference_start + read_len <= breakpoint.location.position <= read.reference_start):
                 return True
         else:
-            if not (not (not (read.is_reverse or not (
-                    read.reference_end <= breakpoint.location.position))) and not read.is_reverse) and (
+            if (not read.is_reverse and
+                    read.reference_end <= breakpoint.location.position) or \
+                (read.is_reverse and
                     breakpoint.location.position <= read.reference_start):
                 return True
     return False

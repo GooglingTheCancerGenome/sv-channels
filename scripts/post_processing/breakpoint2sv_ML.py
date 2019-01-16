@@ -159,6 +159,7 @@ def breakpoint_to_sv_v2(chr, breakpoints):
     breakpoint_list = []
 
     pos_counter = 1
+
     for pos in breakpoints[chr]:
         if not pos_counter % 1000:
             logging.info('Processed %d positions...' % pos_counter)
@@ -180,19 +181,17 @@ def breakpoint_to_sv_v2(chr, breakpoints):
                 if not read.is_unmapped and \
                         read.mapping_quality >= args.min_mapq:
 
-                    if current_brkpnt.location.chrom == read.reference_name:
-                        if is_right_clipped(read) and read.reference_end == current_brkpnt.location.position:
-                            current_brkpnt.support['CR_R'].append(Read(Location(read.reference_name,
-                                                                                read.reference_end),
-                                                                       strand[read.is_reverse]))
-                        elif is_left_clipped(read) and read.reference_start == current_brkpnt.location.position:
-                            current_brkpnt.support['CR_L'].append(Read(Location(read.reference_name,
-                                                                                read.reference_start),
-                                                                       strand[read.is_reverse]))
+                    if is_right_clipped(read) and read.reference_end == current_brkpnt.location.position:
+                        current_brkpnt.support['CR_R'].append(Read(Location(read.reference_name,
+                                                                            read.reference_end),
+                                                                   strand[read.is_reverse]))
+                    elif is_left_clipped(read) and read.reference_start == current_brkpnt.location.position:
+                        current_brkpnt.support['CR_L'].append(Read(Location(read.reference_name,
+                                                                            read.reference_start),
+                                                                   strand[read.is_reverse]))
 
                     # INDEL case
-                    if current_brkpnt.location.chrom == read.reference_name and \
-                            read.reference_start <= current_brkpnt.location.position <= read.reference_end:
+                    if read.reference_start <= current_brkpnt.location.position <= read.reference_end:
                         if has_indels(read):
 
                             ins, dels = get_cigar_indels()
@@ -437,17 +436,17 @@ def main():
     ###### Parallel execution ########
     start_time = time.time()
 
-    P = multiprocessing.Pool(processes=multiprocessing.cpu_count())
-    for chr in breakpoints.keys():
-        P.apply_async(breakpoint_to_sv_v2, args=(chr,breakpoints), callback=on_return)
-    P.close()
-    P.join()
+    # P = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+    # for chr in breakpoints.keys():
+    #     P.apply_async(breakpoint_to_sv_v2, args=(chr,breakpoints), callback=on_return)
+    # P.close()
+    # P.join()
 
     #print("Writing intervals to VCF")
     #linksToVcf(bp_counter_sum, args.vcf_out, ibam = args.bam_file)
 
-    # for chr in breakpoints.keys():
-    #     breakpoint_to_sv_v2(chr, breakpoints)
+    for chr in breakpoints.keys():
+        breakpoint_to_sv_v2(chr, breakpoints)
 
     print('Finished breakpoint assembly')
     # print("Sorting VCF file")
