@@ -47,7 +47,8 @@ def main():
     for sample_name in comparisons:
 
         print('Loading sample: %s...' % sample_name)
-        datapath = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData_' + date + '/' + sample_name
+        datapath = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData_' + \
+                   date + '/' + sample_name
 
         partial_data = []
         partial_labels = []
@@ -96,8 +97,10 @@ def main():
         partial_id = np.array(partial_id)
         partial_id = np.append(partial_id[i_sv], partial_id[i_nosv_idx])
 
-        os.mkdir('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/' +
-                 'intermediate_data/')
+        intermediate_data_dir = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/' +\
+                 'intermediate_data/'
+        if not os.path.exists(intermediate_data_dir):
+            os.mkdir(intermediate_data_dir)
 
         # save intermediate data
         data_output_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/' +\
