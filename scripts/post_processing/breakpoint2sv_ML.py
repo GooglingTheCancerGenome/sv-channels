@@ -71,7 +71,7 @@ class Location:
         self.chrom = str(chrom)
         self.position = position
 
-    # Return if a read is clipped on the right or on the left
+    # Return True if a read is clipped on the right or on the left
     def is_clipped_at(self, read):
         '''
 
@@ -192,17 +192,20 @@ def breakpoint_to_sv_v2(chr, breakpoints):
 
                     # INDEL case
                     if current_brkpnt.location.chrom == read.reference_name and \
-                            read.reference_start <= current_brkpnt.location.position < read.reference_end:
+                            read.reference_start <= current_brkpnt.location.position <= read.reference_end:
                         if has_indels(read):
+
                             ins, dels = get_cigar_indels()
+
                             for i in ins:
-                                if i[0] <= current_brkpnt.location.position < i[1]:
+                                if i[0] <= current_brkpnt.location.position <= i[1]:
                                     current_brkpnt.support['I'].append(i)
                                     current_brkpnt.mate_breakpoints.append(Breakpoint(read.reference_name, i[0]))
+
                             for d in dels:
-                                if d[0] <= current_brkpnt.location.position < d[1]:
-                                    current_brkpnt.support['D'].append(i)
-                                    current_brkpnt.mate_breakpoints.append(Breakpoint(read.reference_name, i[1]))
+                                if d[0] <= current_brkpnt.location.position <= d[1]:
+                                    current_brkpnt.support['D'].append(d)
+                                    current_brkpnt.mate_breakpoints.append(Breakpoint(read.reference_name, d[1]))
 
                     # PE case
                     if is_supporting_pe_read(read, current_brkpnt):
