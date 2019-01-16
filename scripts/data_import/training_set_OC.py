@@ -34,11 +34,11 @@ def main():
 
     label_output_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/all_labels.npy'
     np.save(label_output_file, labels)
-    os.system('gzip ' + label_output_file)
+    os.system('gzip -f ' + label_output_file)
 
     id_output_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/all_ids.npy'
     np.save(id_output_file, ids)
-    os.system('gzip ' + id_output_file)
+    os.system('gzip -f ' + id_output_file)
 
     data = []
     labels = []
@@ -91,10 +91,29 @@ def main():
         partial_data = np.append(partial_data[i_sv], partial_data[i_nosv_idx])
 
         partial_labels = np.array(partial_labels)
-        partial_data = np.append(partial_labels[i_sv], partial_labels[i_nosv_idx])
+        partial_labels = np.append(partial_labels[i_sv], partial_labels[i_nosv_idx])
 
         partial_id = np.array(partial_id)
         partial_id = np.append(partial_id[i_sv], partial_id[i_nosv_idx])
+
+        os.mkdir('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/' +
+                 'intermediate_data/')
+
+        # save intermediate data
+        data_output_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/' +\
+                           'intermediate_data/' + sample_name + '_data.npy'
+        np.save(data_output_file, partial_data)
+        os.system('gzip -f ' + data_output_file)
+
+        label_output_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/' +\
+                            'intermediate_data/' + sample_name + '_labels.npy'
+        np.save(label_output_file, partial_labels)
+        os.system('gzip -f ' + label_output_file)
+
+        id_output_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/' + \
+                         'intermediate_data/' + sample_name + '_ids.npy'
+        np.save(id_output_file, partial_id)
+        os.system('gzip -f ' + id_output_file)
 
         data.extend(partial_data)
         labels.extend(partial_labels)
@@ -109,15 +128,15 @@ def main():
 
     data_output_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/data.npy'
     np.save(data_output_file, training_data)
-    os.system('gzip ' + data_output_file)
+    os.system('gzip -f ' + data_output_file)
 
     label_output_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/labels.npy'
     np.save(label_output_file, training_labels)
-    os.system('gzip ' + label_output_file)
+    os.system('gzip -f ' + label_output_file)
 
     id_output_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/ids.npy'
     np.save(id_output_file, training_id)
-    os.system('gzip ' + id_output_file)
+    os.system('gzip -f ' + id_output_file)
 
 
 if __name__ == '__main__':
