@@ -162,7 +162,7 @@ def cross_validation(X, y, y_binary, X_hold_out_test, y_hold_out_test, y_hold_ou
     results = pd.DataFrame()
 
     # From https://medium.com/@literallywords/stratified-k-fold-with-keras-e57c487b1416
-    kfold_splits = 2
+    kfold_splits = 10
 
     # Instantiate the cross validator
     skf = StratifiedKFold(n_splits=kfold_splits, shuffle=True)
@@ -414,13 +414,37 @@ def plot_results():
     plt.xticks(rotation=45,  horizontalalignment='right')
     #plt.yticks(np.arange(0.8, 1))
     #plt.legend((p1[0]), ('Bar'))
-    plt.ylim(bottom=0.8)
+    #plt.ylim(bottom=0.8)
     plt.tight_layout()
 
     #plt.show()
 
-    plt.savefig('Plots/Results.png', bbox_inches='tight')
-    plt.close()
+    #plt.savefig('Plots/Results.png', bbox_inches='tight')
+    #plt.close()
+
+    F = plt.gcf()
+    # Now check everything with the defaults:
+    DPI = F.get_dpi()
+    print(
+    "DPI:", DPI)
+    DefaultSize = F.get_size_inches()
+    print(
+    "Default size in Inches", DefaultSize)
+    print(
+    "Which should result in a %i x %i Image" % (DPI * DefaultSize[0], DPI * DefaultSize[1]))
+    # the default is 100dpi for savefig:
+    # plt.savefig('Plots/Results_1.png', bbox_inches='tight')
+    # this gives me a 797 x 566 pixel image, which is about 100 DPI
+
+    # Now make the image twice as big, while keeping the fonts and all the
+    # same size
+    F.set_figwidth(DefaultSize[0] * 3)
+    F.set_figheight(DefaultSize[1] * 2)
+    Size = F.get_size_inches()
+    print(
+    "Size in Inches", Size)
+    plt.savefig('Plots/Results.png', bbox_inches='tight', dpi = (200))
+    # this results in a 1595x1132 image
 
 def main():
 
