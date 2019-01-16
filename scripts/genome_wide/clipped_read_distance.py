@@ -11,6 +11,7 @@ import logging
 from collections import defaultdict
 import os
 
+
 def get_clipped_read_distance(ibam, chrName, outFile):
 
     '''
@@ -38,7 +39,7 @@ def get_clipped_read_distance(ibam, chrName, outFile):
     for direction in ['forward', 'reverse']:
         clipped_read_distance[direction] = dict()
         # For left- and right-clipped reads
-        for clipped_arrangement in ['left', 'right', 'unclipped']:
+        for clipped_arrangement in ['left', 'right', 'all']:
             clipped_read_distance[direction][clipped_arrangement] = defaultdict(list)
 
     def set_distance(direction, read, dist):
@@ -54,7 +55,7 @@ def get_clipped_read_distance(ibam, chrName, outFile):
             pos = read.reference_end + 1
         elif direction == 'reverse':
             pos = read.reference_start
-        clipped_read_distance[direction]['unclipped'][pos].append(dist)
+        clipped_read_distance[direction]['all'][pos].append(dist)
 
         if fun.is_left_clipped(read):
             pos = read.reference_start
@@ -100,7 +101,7 @@ def get_clipped_read_distance(ibam, chrName, outFile):
                 if not read.is_reverse and read.mate_is_reverse and read.reference_start <= read.next_reference_start:
                     set_distance('forward', read, dist)
                 # Read is mapped in reverse orientation, mate is in forward orientation, read is mapped after mate
-                elif read.is_reverse and not read.mate_is_reverse and read.reference_start >= read.next_reference_start:
+                elif read.is_reverse and not read.mate_is_reverse and read.reference_start > read.next_reference_start:
                     set_distance('reverse', read, dist)
 
     # Save clipped read distance dictionary

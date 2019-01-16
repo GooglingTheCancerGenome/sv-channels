@@ -75,7 +75,7 @@ def get_read_mate(read, bamfile):
 
 #Return a one-hot encoding for the chromosome region chr:start-stop
 # with Ns encoded as 1 and other chromosomes encoded as 0
-def get_one_hot_sequence(chrname, start, stop, HPC_MODE):
+def get_one_hot_sequence(chrname, start, stop, nuc, HPC_MODE):
 
     if HPC_MODE:
         # Path on the HPC of the 2bit version of the human reference genome (hg19)
@@ -84,10 +84,13 @@ def get_one_hot_sequence(chrname, start, stop, HPC_MODE):
         # Path on the local machine of the 2bit version of the human reference genome (hg19)
         genome = twobit.TwoBitFile('/Users/lsantuari/Documents/Data/GiaB/reference/hg19.2bit')
 
-    ltrdict = {'a': 1, 'c': 2, 'g': 3, 't': 4, 'n': 0}
+    #ltrdict = {'a': 1, 'c': 2, 'g': 3, 't': 4, 'n': 0}
+
     # N one-hot
     #ltrdict = {'a': 0, 'c': 0, 'g': 0, 't': 0, 'n': 1}
-    return np.array([ltrdict[x.lower()] for x in genome['chr'+chrname][start:stop]])
+    #return np.array([ltrdict[x.lower()] for x in genome['chr'+chrname][start:stop]])
+
+    return np.array([1 if x.lower() == nuc.lower() else 0 for x in genome['chr' + chrname][start:stop]])
 
 
 # From https://github.com/joferkington/oost_paper_code/blob/master/utilities.py
