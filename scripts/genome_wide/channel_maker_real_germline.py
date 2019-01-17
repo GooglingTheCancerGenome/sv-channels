@@ -1544,12 +1544,13 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                     # Count the number of clipped read positions with a certain minimum number of clipped reads
                     count_clipped_read_positions(clipped_pos_cnt_per_sample[sample])
 
-                    if sample == sample_list[0]:
-                        cr_support = min_cr_support
-                    else:
-                        cr_support = 1
+                    # if sample == sample_list[0]:
+                    #     cr_support = min_cr_support
+                    # else:
+                    #     cr_support = 1
 
-                    clipped_pos[sample] = [k for k, v in clipped_pos_cnt_per_sample[sample].items() if v >= cr_support]
+                    clipped_pos[sample] = [k for k, v in clipped_pos_cnt_per_sample[sample].items()
+                                           if v >= min_cr_support]
 
                 clipped_pos_keep = set(clipped_pos[sample_list[0]]) - set(clipped_pos[sample_list[1]])
 

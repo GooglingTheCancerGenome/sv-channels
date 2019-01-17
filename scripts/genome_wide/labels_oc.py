@@ -418,10 +418,12 @@ def load_clipped_read_positions(sampleName, chrName):
             cpos[sample] = pickle.load(f)
 
         # Filter by minimum support
-        if sample == sample_list[0]:
-            cr_pos[sample] = [elem for elem, cnt in cpos[sample].items() if cnt >= min_cr_support]
-        else:
-            cr_pos[sample] = [elem for elem, cnt in cpos[sample].items() if cnt >= 1]
+        # if sample == sample_list[0]:
+        #     cr_pos[sample] = [elem for elem, cnt in cpos[sample].items() if cnt >= min_cr_support]
+        # else:
+        #     cr_pos[sample] = [elem for elem, cnt in cpos[sample].items() if cnt >= 1]
+
+        cr_pos[sample] = [elem for elem, cnt in cpos[sample].items() if cnt >= min_cr_support]
 
         # Remove positions with windows falling off chromosome boundaries
         # print(f'win_hlen = {win_hlen}, chrom_lengths[{chrName}] = {chrom_lengths[chrName]}')
