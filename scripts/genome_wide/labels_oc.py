@@ -428,8 +428,12 @@ def load_clipped_read_positions(sampleName, chrName):
         cr_pos[sample] = [pos for pos in cr_pos[sample] if win_hlen <= pos <= (chrom_lengths[chrName] - win_hlen)]
 
     cr_pos_keep = set(cr_pos[sample_list[0]]) - set(cr_pos[sample_list[1]])
+    print('Length of cr_pos_keep: %d' % len(cr_pos_keep))
+
     cr_pos_final = [pos for pos in cr_pos[sample_list[0]] if pos in cr_pos_keep]
     print('Length of cr_pos_final: %d' % len(cr_pos_final))
+    print('Length of cr_pos tumor: %d' % len(cr_pos[sample_list[0]]))
+
     return cr_pos_final
 
 
