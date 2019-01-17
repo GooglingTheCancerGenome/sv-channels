@@ -1594,7 +1594,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
             outliers[sample][chrName] = dict()
             for direction in ['forward', 'reverse']:
                 outliers[sample][chrName][direction] = dict()
-                for clipped_arrangement in ['left', 'right', 'all']:
+                for clipped_arrangement in ['left', 'right', 'unclipped']:
                     points = np.array(list(chain.from_iterable(
                         clipped_read_distance[sample][chrName][direction][clipped_arrangement].values()
                     )))
@@ -1687,7 +1687,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
                 for direction in ['forward', 'reverse']:
                     # for clipped_arrangement in ['c2c', 'nc2c', 'c2nc', 'nc2nc']:
-                    for clipped_arrangement in ['left', 'right', 'all']:
+                    for clipped_arrangement in ['left', 'right', 'unclipped']:
                         clipped_read_distance_array[sample][direction][clipped_arrangement] = np.zeros(win_len,
                                                                                                        dtype=int)
                         clipped_read_distance_num[sample][direction][clipped_arrangement] = np.zeros(win_len,
@@ -1815,7 +1815,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                     vstack_list.append(clipped_reads_translocation_array[sample][orientation])
 
                 for direction in ['forward', 'reverse']:
-                    for clipped_arrangement in ['left', 'right', 'all']:
+                    for clipped_arrangement in ['left', 'right', 'unclipped']:
                         # vstack_list.append(
                         #     clipped_read_distance_array[sample][direction][clipped_arrangement])
                         # vstack_list.append(
