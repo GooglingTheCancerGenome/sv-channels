@@ -1504,7 +1504,7 @@ def get_labels(sampleName):
     if not HPC_MODE:
         channel_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth'
     else:
-        channel_dir = '/hpc/cog_bioinf/ridder/users/lsantuari/Git/DeepSV_runs/041018/CNN/scripts/OC_COMPARISONS'
+        channel_dir = 'OC_COMPARISONS'
 
     output_dir = '/'.join((channel_dir, sampleName.replace('--', '_'), 'label'))
     create_dir(output_dir)
@@ -1520,7 +1520,7 @@ def load_labels(sampleName):
     if not HPC_MODE:
         channel_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth'
     else:
-        channel_dir = '/hpc/cog_bioinf/ridder/users/lsantuari/Git/DeepSV_runs/041018/CNN/scripts/OC_COMPARISONS'
+        channel_dir = 'OC_COMPARISONS'
 
     output_dir = '/'.join((channel_dir, sampleName, 'label_npy'))
 
