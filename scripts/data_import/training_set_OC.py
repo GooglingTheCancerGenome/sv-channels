@@ -14,31 +14,34 @@ def main():
     base_dir = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData_' + date + '/'
     comparisons = os.listdir(base_dir)
 
-    ids = []
-    labels = []
-    for sample_name in comparisons:
-        print('Loading %s labels...' % sample_name)
-        dico_file = base_dir + sample_name + '/MultiLabelData/labels.pickle.gz'
-        with gzip.GzipFile(dico_file, "rb") as f:
-            dico = np.load(f)
-        f.close()
-        for chrom_name in chr_list:
-            if chrom_name in dico[label_type].keys():
-                labels.extend(dico[label_type][chrom_name])
-                ids.extend(dico['id'][chrom_name])
-
-    labels = np.array(labels)
-    ids = np.array(ids)
-
-    print(Counter(labels))
-
     label_output_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/all_labels.npy'
-    np.save(label_output_file, labels)
-    os.system('gzip -f ' + label_output_file)
 
-    id_output_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/all_ids.npy'
-    np.save(id_output_file, ids)
-    os.system('gzip -f ' + id_output_file)
+    if not os.path.isfile(label_output_file+'.gz'):
+
+        ids = []
+        labels = []
+        for sample_name in comparisons:
+            print('Loading %s labels...' % sample_name)
+            dico_file = base_dir + sample_name + '/MultiLabelData/labels.pickle.gz'
+            with gzip.GzipFile(dico_file, "rb") as f:
+                dico = np.load(f)
+            f.close()
+            for chrom_name in chr_list:
+                if chrom_name in dico[label_type].keys():
+                    labels.extend(dico[label_type][chrom_name])
+                    ids.extend(dico['id'][chrom_name])
+
+        labels = np.array(labels)
+        ids = np.array(ids)
+
+        print(Counter(labels))
+
+        np.save(label_output_file, labels)
+        os.system('gzip -f ' + label_output_file)
+
+        id_output_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/all_ids.npy'
+        np.save(id_output_file, ids)
+        os.system('gzip -f ' + id_output_file)
 
     data = []
     labels = []
@@ -46,77 +49,90 @@ def main():
 
     for sample_name in comparisons:
 
-        print('Loading sample: %s...' % sample_name)
-        datapath = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData_' + \
-                   date + '/' + sample_name
+        base_dir = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/' + \
+                           'intermediate_data/' + sample_name
+        data_output_file =  base_dir + '_data.npy'
+        label_output_file = base_dir + '_labels.npy'
+        id_output_file = base_dir + '_ids.npy'
 
-        partial_data = []
-        partial_labels = []
-        partial_id = []
+        if not os.path.isfile(data_output_file + '.gz') and \
+                not os.path.isfile(label_output_file + '.gz') and \
+                not os.path.isfile(id_output_file + '.gz'):
 
-        dico_file = datapath + '/MultiLabelData/labels.pickle.gz'
-        with gzip.GzipFile(dico_file, "rb") as f:
-            dico = np.load(f)
-        f.close()
+            print('Loading sample: %s...' % sample_name)
+            datapath = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData_' + \
+                       date + '/' + sample_name
 
-        print(dico[label_type].keys())
-        # print(chr_list)
+            partial_data = []
+            partial_labels = []
+            partial_id = []
 
-        # for i in dico[label_type].keys():
-        for i in chr_list:
-            if i in dico[label_type].keys():
-                if not (sample_name == 'O16_B16' and i == '2'):
-                    print('Loading data for Chr%s' % i)
+            dico_file = datapath + '/MultiLabelData/labels.pickle.gz'
+            with gzip.GzipFile(dico_file, "rb") as f:
+                dico = np.load(f)
+            f.close()
 
-                    partial_labels.extend(dico[label_type][i])
-                    partial_id.extend([d['chromosome'] + '_' + str(d['position']) for d in dico['id'][i]])
+            print(dico[label_type].keys())
+            # print(chr_list)
 
-                    data_file = datapath + '/ChannelData/' + sample_name + '_' + str(i) + '.npy.gz'
-                    with gzip.GzipFile(data_file, "rb") as f:
-                        data_mat = np.load(f)
-                        partial_data.extend(data_mat)
-                    f.close()
+            # for i in dico[label_type].keys():
+            for i in chr_list:
+                if i in dico[label_type].keys():
+                    # if not (sample_name == 'O16_B16' and i == '2'):
+                        print('Loading data for Chr%s' % i)
 
-        partial_labels = np.array(partial_labels)
-        i_nosv = np.where(partial_labels == 'noSV')[0]
+                        partial_labels.extend(dico[label_type][i])
+                        partial_id.extend([d['chromosome'] + '_' + str(d['position']) for d in dico['id'][i]])
 
-        # print(i_nosv)
+                        data_file = datapath + '/ChannelData/' + sample_name + '_' + str(i) + '.npy.gz'
+                        with gzip.GzipFile(data_file, "rb") as f:
+                            data_mat = np.load(f)
+                            partial_data.extend(data_mat)
+                        f.close()
 
-        i_nosv_idx = np.random.choice(a=i_nosv,
-                                      # size=int(np.round(i_nosv.shape[0]/100)),
-                                      size=100,
-                                      replace=False)
-        i_sv = np.where(partial_labels != 'noSV')[0]
+            partial_labels = np.array(partial_labels)
+            i_nosv = np.where(partial_labels == 'noSV')[0]
 
-        partial_data = np.array(partial_data)
-        partial_data = np.append(partial_data[i_sv], partial_data[i_nosv_idx])
+            # print(i_nosv)
 
-        partial_labels = np.array(partial_labels)
-        partial_labels = np.append(partial_labels[i_sv], partial_labels[i_nosv_idx])
+            i_nosv_idx = np.random.choice(a=i_nosv,
+                                          # size=int(np.round(i_nosv.shape[0]/100)),
+                                          size=100,
+                                          replace=False)
+            i_sv = np.where(partial_labels != 'noSV')[0]
 
-        partial_id = np.array(partial_id)
-        partial_id = np.append(partial_id[i_sv], partial_id[i_nosv_idx])
+            partial_data = np.array(partial_data)
+            partial_data = np.append(partial_data[i_sv], partial_data[i_nosv_idx])
 
-        intermediate_data_dir = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/' +\
-                 'intermediate_data/'
-        if not os.path.exists(intermediate_data_dir):
-            os.mkdir(intermediate_data_dir)
+            partial_labels = np.array(partial_labels)
+            partial_labels = np.append(partial_labels[i_sv], partial_labels[i_nosv_idx])
 
-        # save intermediate data
-        data_output_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/' +\
-                           'intermediate_data/' + sample_name + '_data.npy'
-        np.save(data_output_file, partial_data)
-        os.system('gzip -f ' + data_output_file)
+            partial_id = np.array(partial_id)
+            partial_id = np.append(partial_id[i_sv], partial_id[i_nosv_idx])
 
-        label_output_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/' +\
-                            'intermediate_data/' + sample_name + '_labels.npy'
-        np.save(label_output_file, partial_labels)
-        os.system('gzip -f ' + label_output_file)
+            intermediate_data_dir = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/' +\
+                     'intermediate_data/'
+            if not os.path.exists(intermediate_data_dir):
+                os.mkdir(intermediate_data_dir)
 
-        id_output_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/' + \
-                         'intermediate_data/' + sample_name + '_ids.npy'
-        np.save(id_output_file, partial_id)
-        os.system('gzip -f ' + id_output_file)
+            # save intermediate data
+            np.save(data_output_file, partial_data)
+            os.system('gzip -f ' + data_output_file)
+
+            np.save(label_output_file, partial_labels)
+            os.system('gzip -f ' + label_output_file)
+
+            np.save(id_output_file, partial_id)
+            os.system('gzip -f ' + id_output_file)
+
+        else:
+
+            with gzip.GzipFile(data_output_file+'.gz', "rb") as f:
+                partial_data = np.load(f)
+            with gzip.GzipFile(label_output_file+'.gz', "rb") as f:
+                partial_labels = np.load(f)
+            with gzip.GzipFile(id_output_file+'.gz', "rb") as f:
+                partial_id = np.load(f)
 
         data.extend(partial_data)
         labels.extend(partial_labels)
