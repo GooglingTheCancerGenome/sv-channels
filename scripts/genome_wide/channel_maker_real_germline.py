@@ -1536,7 +1536,8 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                 for sample in sample_list:
 
                     logging.info('Reading clipped read positions')
-                    with bz2file.BZ2File(clipped_read_pos_file[chrName], 'rb') as f:
+                    with bz2file.BZ2File(prefix_train + sample + '/' +
+                                         clipped_read_pos_file[chrName], 'rb') as f:
                         clipped_pos_cnt[chrName][sample] = pickle.load(f)
                     logging.info('End of reading')
 
