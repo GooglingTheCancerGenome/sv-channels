@@ -1505,7 +1505,7 @@ def get_labels(sampleName):
     # print(output_dir)
     pickle.dump(labels, open(data_file, "wb"))
 
-    os.system('gzip ' + data_file)
+    os.system('gzip -f ' + data_file)
 
 
 def load_labels(sampleName):
