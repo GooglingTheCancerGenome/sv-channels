@@ -427,7 +427,7 @@ def load_clipped_read_positions(sampleName, chrName):
         cr_pos[sample] = [pos for pos in cr_pos[sample] if win_hlen <= pos <= (chrom_lengths[chrName] - win_hlen)]
 
     cr_pos_final = sorted(list(
-        set(cr_pos[sample_list[0]]) / set(cr_pos[sample_list[1]])
+        set(cr_pos[sample_list[0]]) - set(cr_pos[sample_list[1]])
     )
     )
 
