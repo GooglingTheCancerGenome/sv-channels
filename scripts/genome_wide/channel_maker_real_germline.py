@@ -1463,7 +1463,9 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
     if trainingMode and (sampleName == 'N1' or sampleName == 'N2'):
         prefix_train = 'Training_' + SVmode + '/'
     else:
-        prefix_train = ''
+        # prefix_train = ''
+        # only for ovarian cancer
+        prefix_train = 'OC/'
 
     # Check for file existence
     if not HPC_MODE:
