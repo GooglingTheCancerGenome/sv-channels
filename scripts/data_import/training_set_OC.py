@@ -186,5 +186,6 @@ def main():
 
 
 if __name__ == '__main__':
-    #main()
-    get_channels()
+
+    main()
+    #get_channels()
