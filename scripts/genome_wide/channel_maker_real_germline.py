@@ -1519,7 +1519,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
             for sample in sample_list:
                 # Check file existence
-                print('Checking file: %s' % clipped_read_pos_file[chrName])
+                print('Checking file: %s => %s' % (sample, clipped_read_pos_file[chrName]))
                 assert os.path.isfile(prefix_train + sample + '/' + clipped_read_pos_file[chrName])
                 assert os.path.isfile(prefix_train + sample + '/' + clipped_read_distance_file[chrName])
                 assert os.path.isfile(prefix_train + sample + '/' + clipped_reads_file[chrName])
@@ -1554,7 +1554,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
                 clipped_pos_keep = set(clipped_pos[sample_list[0]]) - set(clipped_pos[sample_list[1]])
 
-                clipped_pos_cnt[chrName] = {k: v for k, v in clipped_pos_cnt_per_sample[sample_list[0]]
+                clipped_pos_cnt[chrName] = {k: v for (k, v) in clipped_pos_cnt_per_sample[sample_list[0]]
                                             if k in clipped_pos_keep}
 
                 # Count the number of clipped read positions with a certain minimum number of clipped reads
