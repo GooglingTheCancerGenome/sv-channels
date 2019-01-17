@@ -1489,7 +1489,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
     else:
 
         # Consider a single sample
-        sample_list = sampleName.split(';')
+        sample_list = sampleName.split('_')
 
         clipped_read_pos_file = dict()
         clipped_read_distance_file = dict()
