@@ -366,7 +366,7 @@ def create_dir(directory):
             raise
 
 
-def load_clipped_read_positions(sampleName, chrName):
+def load_clipped_read_positions_TN_support(sampleName, chrName):
 
     sampleName = sampleName.split('--')[0]
 
@@ -391,6 +391,47 @@ def load_clipped_read_positions(sampleName, chrName):
     cr_pos = [pos for pos in cr_pos if win_hlen <= pos <= (chrom_lengths[chrName] - win_hlen)]
 
     return cr_pos
+
+
+def load_clipped_read_positions(sampleName, chrName):
+
+    sample_list = sampleName.split('--')
+
+    vec_type = 'clipped_read_pos'
+    print('Loading CR positions for Chr%s' % chrName)
+    cr_pos = dict()
+
+    for sample in sample_list:
+
+        print('Loading CR positions for sample %s' % sample)
+
+        # Load files
+        if HPC_MODE:
+            channel_dir = 'OC'
+            fn = os.path.join(channel_dir, sample, vec_type, chrName + '_' + vec_type + '.pbz2')
+        else:
+            channel_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth'
+            fn = '/'.join((channel_dir, sample, vec_type, chrName + '_' + vec_type + '.pbz2'))
+
+        with bz2file.BZ2File(fn, 'rb') as f:
+            cpos = pickle.load(f)
+
+        # Filter by minimum support
+        if sample == sample_list[0]:
+            cr_pos[sample] = [elem for elem, cnt in cpos.items() if cnt >= min_cr_support]
+        else:
+            cr_pos[sample] = [elem for elem, cnt in cpos.items() if cnt >= 1]
+
+        # Remove positions with windows falling off chromosome boundaries
+        # print(f'win_hlen = {win_hlen}, chrom_lengths[{chrName}] = {chrom_lengths[chrName]}')
+        cr_pos[sample] = [pos for pos in cr_pos if win_hlen <= pos <= (chrom_lengths[chrName] - win_hlen)]
+
+    cr_pos_final = sorted(list(
+        set(cr_pos[sample_list[0]]) / set(cr_pos[sample_list[1]])
+    )
+    )
+
+    return cr_pos_final
 
 
 def load_all_clipped_read_positions(sampleName):
