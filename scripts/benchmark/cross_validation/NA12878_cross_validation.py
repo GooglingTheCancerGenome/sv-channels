@@ -86,6 +86,47 @@ def get_channel_labels():
     return labels
 
 
+def get_channel_labels_TN():
+    # Fill labels for legend
+
+    labels = list()
+
+    for type in ['Tumor:', 'Normal:']:
+
+        labels.append(type+"coverage")
+        labels.append(type+"#left_clipped_reads")
+        labels.append(type+"#right_clipped_reads")
+        labels.append(type+"INV_before")
+        labels.append(type+"INV_after")
+        labels.append(type+"DUP_before")
+        labels.append(type+"DUP_after")
+        labels.append(type+"TRA_opposite")
+        labels.append(type+"TRA_same")
+
+        for direction in ['Forward', 'Reverse']:
+            for clipped in ['Left', 'Right', 'Not']:
+                for value in ['sum', 'num', 'median', 'outliers']:
+                    labels.append(type + direction + '_' + clipped + '_Clipped_' + value)
+
+        labels.append(type + "#left split reads")
+        labels.append(type + "#right split reads")
+
+        for clipped in ['L', 'R']:
+            for value in ['sum', 'num', 'median']:
+                labels.append(type + clipped + '_SplitRead_' + value)
+
+    # labels.append("GC")
+    labels.append("Mappability")
+
+    for nuc in ['A', 'T', 'C', 'G', 'N']:
+        labels.append("One_hot_"+nuc+"_encoding")
+
+    for k, l in enumerate(labels):
+         print(str(k) + ':' + l)
+
+    return labels
+
+
 def data(datapath, channels):
 
     data_output_file = datapath + sample_name + '_' + label_type + '_channels.npy.gz'
@@ -420,10 +461,12 @@ def plot_results():
     plt.savefig('Plots/Results.png', bbox_inches='tight')
     plt.close()
 
+
 def main():
 
+    get_channel_labels_TN()
     # run_cv()
-    plot_results()
+    # plot_results()
 
 
 if __name__ == '__main__':

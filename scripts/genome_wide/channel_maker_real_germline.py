@@ -1790,8 +1790,8 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                             split_reads_array[sample][split_direction][pos - start_win] = \
                                 split_reads[sample][chrName][split_direction][pos]
 
-            gc_array = bw_gc.values('chr' + chrName, start_win, end_win)
-            assert len(gc_array) == win_len
+            # gc_array = bw_gc.values('chr' + chrName, start_win, end_win)
+            # assert len(gc_array) == win_len
             mappability_array = bw_map.values(chrName, start_win, end_win)
             assert len(mappability_array) == win_len
 
@@ -1814,12 +1814,12 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
                 for direction in ['forward', 'reverse']:
                     for clipped_arrangement in ['left', 'right', 'all']:
-                        vstack_list.append(
-                            clipped_read_distance_array[sample][direction][clipped_arrangement])
-                        vstack_list.append(
-                            clipped_read_distance_num[sample][direction][clipped_arrangement])
-                        vstack_list.append(
-                            clipped_read_distance_median[sample][direction][clipped_arrangement])
+                        # vstack_list.append(
+                        #     clipped_read_distance_array[sample][direction][clipped_arrangement])
+                        # vstack_list.append(
+                        #     clipped_read_distance_num[sample][direction][clipped_arrangement])
+                        # vstack_list.append(
+                        #     clipped_read_distance_median[sample][direction][clipped_arrangement])
                         vstack_list.append(
                             clipped_read_distance_outlier[sample][direction][clipped_arrangement])
                 for direction in ['left', 'right']:
@@ -1829,7 +1829,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                     vstack_list.append(split_read_distance_num[sample][direction])
                     vstack_list.append(split_read_distance_median[sample][direction])
 
-            vstack_list.append(gc_array)
+            # vstack_list.append(gc_array)
             vstack_list.append(mappability_array)
 
             # append one hot encoded sequence for the genomic region
