@@ -1551,10 +1551,9 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
                     clipped_pos[sample] = [k for k, v in clipped_pos_cnt[chrName][sample].items() if v >= cr_support]
 
-                clipped_pos_cnt[chrName] = sorted(list(
-                    set(clipped_pos[sample_list[0]]) - set(clipped_pos[sample_list[1]])
-                                                       )
-                                                  )
+                clipped_pos_keep = set(clipped_pos[sample_list[0]]) - set(clipped_pos[sample_list[1]])
+                clipped_pos_cnt[chrName] = {k: v for k, v in clipped_pos_cnt[chrName][sample_list[0]]
+                                            if k in clipped_pos_keep}
 
                 # Count the number of clipped read positions with a certain minimum number of clipped reads
                 logging.info('Clipped read positions with support only in the Tumor:')
