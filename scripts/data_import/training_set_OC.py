@@ -4,7 +4,31 @@ import gzip
 from collections import Counter
 
 
+def get_channels():
+
+    channel_list = np.append(np.arange(0, 9),
+                             [33, 34])
+    channel_list = np.append(channel_list,
+                             [12, 16, 20, 24, 28, 32])
+
+    channel_list = np.append(channel_list,
+                             np.arange(41, 50))
+    channel_list = np.append(channel_list,
+                             [74, 75])
+    channel_list = np.append(channel_list,
+                             [53, 57, 61, 65, 69, 73])
+
+    channel_list = np.append(channel_list,
+                             np.arange(82, 85))
+
+    # print(len(channel_list))
+
+    return channel_list
+
+
 def main():
+
+    channel_list = get_channels()
 
     chr_list = list(map(str, np.arange(1, 23)))
     chr_list.extend(['X', 'Y'])
@@ -87,7 +111,11 @@ def main():
                         data_file = datapath + '/ChannelData/' + sample_name + '_' + str(i) + '.npy.gz'
                         with gzip.GzipFile(data_file, "rb") as f:
                             data_mat = np.load(f)
+                            print(data_mat.shape)
+                            data_mat = data_mat[:,channel_list,:]
+                            print(data_mat.shape)
                             partial_data.extend(data_mat)
+                            del data_mat
                         f.close()
 
             partial_labels = np.array(partial_labels)
@@ -104,7 +132,6 @@ def main():
             partial_data = np.array(partial_data)
             partial_data = np.append(partial_data[i_sv], partial_data[i_nosv_idx])
 
-            partial_labels = np.array(partial_labels)
             partial_labels = np.append(partial_labels[i_sv], partial_labels[i_nosv_idx])
 
             partial_id = np.array(partial_id)
@@ -159,4 +186,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    #main()
+    get_channels()
