@@ -1530,7 +1530,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
             if len(sample_list) == 2:
 
-                clipped_pos_cnt[chrName] = dict()
+                clipped_pos_cnt_per_sample = dict()
                 clipped_pos = dict()
 
                 for sample in sample_list:
@@ -1538,21 +1538,22 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                     logging.info('Reading clipped read positions for sample %s' % sample)
                     with bz2file.BZ2File(prefix_train + sample + '/' +
                                          clipped_read_pos_file[chrName], 'rb') as f:
-                        clipped_pos_cnt[chrName][sample] = pickle.load(f)
+                        clipped_pos_cnt_per_sample[sample] = pickle.load(f)
                     logging.info('End of reading')
 
                     # Count the number of clipped read positions with a certain minimum number of clipped reads
-                    count_clipped_read_positions(clipped_pos_cnt[chrName][sample])
+                    count_clipped_read_positions(clipped_pos_cnt_per_sample[sample])
 
                     if sample == sample_list[0]:
                         cr_support = min_cr_support
                     else:
                         cr_support = 1
 
-                    clipped_pos[sample] = [k for k, v in clipped_pos_cnt[chrName][sample].items() if v >= cr_support]
+                    clipped_pos[sample] = [k for k, v in clipped_pos_cnt_per_sample[sample].items() if v >= cr_support]
 
                 clipped_pos_keep = set(clipped_pos[sample_list[0]]) - set(clipped_pos[sample_list[1]])
-                clipped_pos_cnt[chrName] = {k: v for k, v in clipped_pos_cnt[chrName][sample_list[0]]
+
+                clipped_pos_cnt[chrName] = {k: v for k, v in clipped_pos_cnt_per_sample[sample_list[0]]
                                             if k in clipped_pos_keep}
 
                 # Count the number of clipped read positions with a certain minimum number of clipped reads
