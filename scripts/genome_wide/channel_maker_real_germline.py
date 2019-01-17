@@ -1554,14 +1554,16 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
                 clipped_pos_keep = set(clipped_pos[sample_list[0]]) - set(clipped_pos[sample_list[1]])
 
+                sample = sample_list[0]
                 # clipped_pos_cnt[chrName] = {k: v for (k, v) in clipped_pos_cnt_per_sample[sample_list[0]]
                 #                             if k in clipped_pos_keep}
                 print('Length of clipped_pos_cnt keys: %d, intersection size: %d' %
-                      (len(clipped_pos_cnt[chrName].keys()), len(set(clipped_pos_cnt[chrName].keys()) &
-                                                                 clipped_pos_keep)))
+                      (len(clipped_pos_cnt_per_sample[sample].keys()),
+                       len(set(clipped_pos_cnt_per_sample[sample].keys()) & clipped_pos_keep)))
 
-                clipped_pos_cnt[chrName] = {k: clipped_pos_cnt[chrName][k]
-                                            for k in clipped_pos_cnt[chrName].keys() if k in clipped_pos_keep}
+                clipped_pos_cnt[chrName] = {k: clipped_pos_cnt_per_sample[sample][k]
+                                            for k in clipped_pos_cnt_per_sample[sample].keys()
+                                            if k in clipped_pos_keep}
 
                 # Count the number of clipped read positions with a certain minimum number of clipped reads
                 logging.info('Clipped read positions with support only in the Tumor:')
