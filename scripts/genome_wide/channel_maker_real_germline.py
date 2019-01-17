@@ -1501,8 +1501,9 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
         for chrName in chrList:
 
             # File with clipped read positions, output of the clipped_read_pos script
-            clipped_read_pos_file[chrName] = prefix_train + sample_list[0] + \
-                                             '/clipped_read_pos/' + chrName + '_clipped_read_pos.pbz2'
+            # clipped_read_pos_file[chrName] = prefix_train + sample_list[0] + \
+            #                                  '/clipped_read_pos/' + chrName + '_clipped_read_pos.pbz2'
+            clipped_read_pos_file[chrName] = 'clipped_read_pos/' + chrName + '_clipped_read_pos.pbz2'
             # File with the clipped read distances, output of the clipped_read_distance script
             clipped_read_distance_file[chrName] = 'clipped_read_distance/' + chrName + '_clipped_read_distance.pbz2'
             # File with the clipped reads, output of the clipped_reads script
@@ -1513,10 +1514,13 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
             split_read_distance_file[chrName] = 'split_read_distance/' + chrName + '_split_read_distance.pbz2'
 
             # Check file existence
-            print('Checking file: %s' % clipped_read_pos_file[chrName])
-            assert os.path.isfile(clipped_read_pos_file[chrName])
+            # print('Checking file: %s' % clipped_read_pos_file[chrName])
+            # assert os.path.isfile(clipped_read_pos_file[chrName])
 
             for sample in sample_list:
+                # Check file existence
+                print('Checking file: %s' % clipped_read_pos_file[chrName])
+                assert os.path.isfile(prefix_train + sample + '/' + clipped_read_pos_file[chrName])
                 assert os.path.isfile(prefix_train + sample + '/' + clipped_read_distance_file[chrName])
                 assert os.path.isfile(prefix_train + sample + '/' + clipped_reads_file[chrName])
                 assert os.path.isfile(prefix_train + sample + '/' + coverage_file[chrName])
@@ -1524,13 +1528,46 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
             logging.info('Chromosome %s' % chrName)
 
-            logging.info('Reading clipped read positions')
-            with bz2file.BZ2File(clipped_read_pos_file[chrName], 'rb') as f:
-                clipped_pos_cnt[chrName] = pickle.load(f)
-            logging.info('End of reading')
+            if len(sample_list) == 2:
 
-            # Count the number of clipped read positions with a certain minimum number of clipped reads
-            count_clipped_read_positions(clipped_pos_cnt[chrName])
+                clipped_pos_cnt[chrName] = dict()
+                clipped_pos = dict()
+
+                for sample in sample_list:
+
+                    logging.info('Reading clipped read positions')
+                    with bz2file.BZ2File(clipped_read_pos_file[chrName], 'rb') as f:
+                        clipped_pos_cnt[chrName][sample] = pickle.load(f)
+                    logging.info('End of reading')
+
+                    # Count the number of clipped read positions with a certain minimum number of clipped reads
+                    count_clipped_read_positions(clipped_pos_cnt[chrName][sample])
+
+                    if sample == sample_list[0]:
+                        cr_support = min_cr_support
+                    else:
+                        cr_support = 1
+
+                    clipped_pos[sample] = [k for k, v in clipped_pos_cnt[chrName][sample].items() if v >= cr_support]
+
+                clipped_pos_cnt[chrName] = sorted(list(
+                    set(clipped_pos[sample_list[0]]) / set(clipped_pos[sample_list[1]])
+                                                       )
+                                                  )
+
+                # Count the number of clipped read positions with a certain minimum number of clipped reads
+                logging.info('Clipped read positions with support only in the Tumor:')
+                count_clipped_read_positions(clipped_pos_cnt[chrName])
+
+            else:
+
+                logging.info('Reading clipped read positions')
+                with bz2file.BZ2File(clipped_read_pos_file[chrName], 'rb') as f:
+                    clipped_pos_cnt[chrName] = pickle.load(f)
+                logging.info('End of reading')
+
+                # Count the number of clipped read positions with a certain minimum number of clipped reads
+                count_clipped_read_positions(clipped_pos_cnt[chrName])
 
     # Load channel data
     # Dictionaries where to load the channel data
@@ -1709,19 +1746,23 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
                                 if direction == 'forward':
 
-                                    clipped_read_distance_outlier[sample][direction][clipped_arrangement][(pos - start_win):] = \
+                                    clipped_read_distance_outlier[sample][direction][clipped_arrangement][
+                                    (pos - start_win):] = \
                                         clipped_read_distance_outlier[sample][direction][clipped_arrangement][
                                         (pos - start_win):] + \
-                                        len(set(clipped_read_distance[sample][chrName][direction][clipped_arrangement][pos])
-                                             & outliers[sample][chrName][direction][clipped_arrangement])
+                                        len(set(
+                                            clipped_read_distance[sample][chrName][direction][clipped_arrangement][pos])
+                                            & outliers[sample][chrName][direction][clipped_arrangement])
 
                                 elif direction == 'reverse':
 
-                                    clipped_read_distance_outlier[sample][direction][clipped_arrangement][:(pos - start_win)] = \
+                                    clipped_read_distance_outlier[sample][direction][clipped_arrangement][
+                                    :(pos - start_win)] = \
                                         clipped_read_distance_outlier[sample][direction][clipped_arrangement][
                                         :(pos - start_win)] + \
-                                        len(set(clipped_read_distance[sample][chrName][direction][clipped_arrangement][pos])
-                                             & outliers[sample][chrName][direction][clipped_arrangement])
+                                        len(set(
+                                            clipped_read_distance[sample][chrName][direction][clipped_arrangement][pos])
+                                            & outliers[sample][chrName][direction][clipped_arrangement])
 
                         # print(clipped_read_distance_array[direction][clipped_arrangement])
 
@@ -1836,7 +1877,6 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
             # append one hot encoded sequence for the genomic region
             for nuc in ['A', 'T', 'C', 'G', 'N']:
-
                 one_hot_n = get_one_hot_sequence(chrName, start_win, end_win, nuc, HPC_MODE)
                 assert len(one_hot_n) == win_len
                 vstack_list.append(one_hot_n)
