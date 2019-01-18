@@ -423,7 +423,7 @@ def load_clipped_read_positions(sampleName, chrName):
         # else:
         #     cr_pos[sample] = [elem for elem, cnt in cpos[sample].items() if cnt >= 1]
 
-        print('Length of cr_pos for sample %s: %d' % (sample, len(cr_pos[sample])))
+        print('Length of cr_pos for sample %s: %d' % (sample, len(cpos[sample])))
         cr_pos[sample] = [elem for elem, cnt in cpos[sample].items() if cnt >= min_cr_support]
         print('Length of cr_pos for sample %s after min support = %%d: %d' % (sample, min_cr_support,
                                                                               len(cr_pos[sample])))
