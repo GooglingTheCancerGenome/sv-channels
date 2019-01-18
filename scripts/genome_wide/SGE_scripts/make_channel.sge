@@ -47,8 +47,8 @@ elif [ ${PRGARG} == 'channel_maker_real_germline' ]; then
 		        --sample ${SAMPLEARG} \
 		        --train True \
 		        --svmode ${SVMODEARG} \
-                --out ${OUTARG}"/"${PRGARG}"/"${CHRARG}"_${PRGARG}.npy.gz" \
-                --logfile ${OUTARG}"/"${PRGARG}"/"${CHRARG}"_${PRGARG}.log"
+                --out ${OUTARG}"/"${PRGARG}"/"${SAMPLEARG}"_"${CHRARG}".npy.gz" \
+                --logfile ${OUTARG}"/"${PRGARG}"/"${SAMPLEARG}"_"${CHRARG}".log"
 
 # ChannelMaker for training data
 elif [ ${PRGARG} == 'channel_maker_train_germline' ]; then
