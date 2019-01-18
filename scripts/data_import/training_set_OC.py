@@ -119,7 +119,7 @@ def main():
                         f.close()
 
             partial_labels = np.array(partial_labels)
-            i_nosv = np.where(partial_labels != 'noSV')[0]
+            i_nosv = np.where(partial_labels == 'noSV')[0]
 
             # print(i_nosv)
 
@@ -127,7 +127,7 @@ def main():
                                           # size=int(np.round(i_nosv.shape[0]/100)),
                                           size=100,
                                           replace=False)
-            i_sv = np.where(partial_labels == 'noSV')[0]
+            i_sv = np.where(partial_labels != 'noSV')[0]
 
             partial_data = np.array(partial_data)
             partial_data = np.append(partial_data[i_sv], partial_data[i_nosv_idx])
