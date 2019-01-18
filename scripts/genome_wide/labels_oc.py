@@ -425,13 +425,12 @@ def load_clipped_read_positions(sampleName, chrName):
 
         print('Length of cr_pos for sample %s: %d' % (sample, len(cpos[sample])))
         cr_pos[sample] = [elem for elem, cnt in cpos[sample].items() if cnt >= min_cr_support]
-        print('Length of cr_pos for sample %s after min support = %d: %d' % (sample, min_cr_support,
-                                                                              len(cr_pos[sample])))
+        print('Length of cr_pos for sample %s after min support = %d: %d' %
+              (sample, min_cr_support, len(cr_pos[sample])))
         # Remove positions with windows falling off chromosome boundaries
         # print(f'win_hlen = {win_hlen}, chrom_lengths[{chrName}] = {chrom_lengths[chrName]}')
         cr_pos[sample] = [pos for pos in cr_pos[sample] if win_hlen <= pos <= (chrom_lengths[chrName] - win_hlen)]
-        print('Length of cr_pos for sample %s after extremes removed: %d' % (sample,
-                                                                              len(cr_pos[sample])))
+        print('Length of cr_pos for sample %s after extremes removed: %d' % (sample, len(cr_pos[sample])))
     assert set(cr_pos[sample_list[0]]) != set(cr_pos[sample_list[1]])
 
     cr_pos_keep = set(cr_pos[sample_list[0]]) - set(cr_pos[sample_list[1]])
