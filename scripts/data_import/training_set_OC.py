@@ -118,7 +118,7 @@ def main():
                         with gzip.GzipFile(data_file, "rb") as f:
                             data_mat = np.load(f)
                             print(data_mat.shape)
-                            assert len(data_mat.shape[0]) == len(labels_chr)
+                            assert data_mat.shape[0] == len(labels_chr)
                             partial_data.extend(data_mat)
                             del data_mat
                         f.close()
