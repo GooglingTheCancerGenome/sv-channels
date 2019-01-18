@@ -124,11 +124,11 @@ def main():
                         f.close()
 
             partial_data = np.array(partial_data)
-            print('partial data shape: %s' % partial_data.shape)
+            print('partial data shape: %s' % str(partial_data.shape))
             partial_labels = np.array(partial_labels)
-            print('partial labels shape: %s' % partial_labels.shape)
+            print('partial labels shape: %s' % str(partial_labels.shape))
             partial_id = np.array(partial_id)
-            print('partial ids shape: %s' % partial_id.shape)
+            print('partial ids shape: %s' % str(partial_id.shape))
 
             i_nosv = np.where(partial_labels == 'noSV')[0]
             print('Number of noSV labels: %d' % len(i_nosv))
@@ -144,11 +144,11 @@ def main():
             print('Number of !noSV labels: %d' % len(i_nosv))
 
             partial_data = np.append(partial_data[i_sv,:,:], partial_data[i_nosv_idx,:,:], axis = 0)
-            print('partial data shape after append: %s' % partial_data.shape)
+            print('partial data shape after append: %s' % str(partial_data.shape))
             partial_labels = np.append(partial_labels[i_sv], partial_labels[i_nosv_idx], axis = 0)
-            print('partial labels shape after append: %s' % partial_labels.shape)
+            print('partial labels shape after append: %s' % str(partial_labels.shape))
             partial_id = np.append(partial_id[i_sv], partial_id[i_nosv_idx], axis = 0)
-            print('partial ids shape after append: %s' % partial_id.shape)
+            print('partial ids shape after append: %s' % str(partial_id.shape))
 
             intermediate_data_dir = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/' +\
                      'intermediate_data/'
