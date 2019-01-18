@@ -124,32 +124,31 @@ def main():
                         f.close()
 
             partial_data = np.array(partial_data)
-            print(partial_data.shape)
+            print('partial data shape: %s' % partial_data.shape)
             partial_labels = np.array(partial_labels)
-            print(partial_labels.shape)
+            print('partial labels shape: %s' % partial_labels.shape)
             partial_id = np.array(partial_id)
-            print(partial_id.shape)
+            print('partial ids shape: %s' % partial_id.shape)
 
             i_nosv = np.where(partial_labels == 'noSV')[0]
-            print(i_nosv)
+            print('Number of noSV labels: %d' % len(i_nosv))
             # print(i_nosv)
 
             i_nosv_idx = np.random.choice(a=i_nosv,
                                           # size=int(np.round(i_nosv.shape[0]/100)),
                                           size=100,
                                           replace=False)
-            print(i_nosv_idx)
+            print('Sampled noSV labels: %d' % len(i_nosv_idx))
 
             i_sv = np.where(partial_labels != 'noSV')[0]
-            print(i_sv)
+            print('Number of !noSV labels: %d' % len(i_nosv))
 
-            partial_data = np.append(partial_data[i_sv,:,:], partial_data[i_nosv_idx,:,:])
-            print(partial_data.shape)
-            partial_labels = np.append(partial_labels[i_sv], partial_labels[i_nosv_idx])
-            print(partial_labels.shape)
-
-            partial_id = np.append(partial_id[i_sv], partial_id[i_nosv_idx])
-            print(partial_id.shape)
+            partial_data = np.append(partial_data[i_sv,:,:], partial_data[i_nosv_idx,:,:], axis = 0)
+            print('partial data shape after append: %s' % partial_data.shape)
+            partial_labels = np.append(partial_labels[i_sv], partial_labels[i_nosv_idx], axis = 0)
+            print('partial labels shape after append: %s' % partial_labels.shape)
+            partial_id = np.append(partial_id[i_sv], partial_id[i_nosv_idx], axis = 0)
+            print('partial ids shape after append: %s' % partial_id.shape)
 
             intermediate_data_dir = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/' +\
                      'intermediate_data/'
