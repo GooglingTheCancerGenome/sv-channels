@@ -1540,6 +1540,9 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                                          clipped_read_pos_file[chrName], 'rb') as f:
                         clipped_pos_cnt_per_sample[sample] = pickle.load(f)
                     logging.info('End of reading')
+                    print('Length of clipped_pos_cnt_per_sample for sample %s: %d' % (sample,
+                                                                                      len(clipped_pos_cnt_per_sample[
+                                                                                              sample])))
 
                     # Count the number of clipped read positions with a certain minimum number of clipped reads
                     count_clipped_read_positions(clipped_pos_cnt_per_sample[sample])
@@ -1551,8 +1554,12 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
                     clipped_pos[sample] = [k for k, v in clipped_pos_cnt_per_sample[sample].items()
                                            if v >= min_cr_support]
+                    print('Length of clipped_pos_cnt_per_sample ' +
+                          ' for sample %s after min support = %%d: %d' % (sample, min_cr_support,
+                                                                              len(clipped_pos[sample])))
 
                 clipped_pos_keep = set(clipped_pos[sample_list[0]]) - set(clipped_pos[sample_list[1]])
+                print('Length of cr_pos_keep: %d' % len(clipped_pos_keep))
 
                 sample = sample_list[0]
                 # clipped_pos_cnt[chrName] = {k: v for (k, v) in clipped_pos_cnt_per_sample[sample_list[0]]
@@ -1568,6 +1575,11 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                 # Count the number of clipped read positions with a certain minimum number of clipped reads
                 logging.info('Clipped read positions with support only in the Tumor:')
                 count_clipped_read_positions(clipped_pos_cnt[chrName])
+
+                clipped_pos[sample] = [pos for pos in clipped_pos[sample]
+                                       if win_hlen <= pos <= (chrLen[chrName] - win_hlen)]
+                print('Length of cr_pos for sample %s after extremes removed: %d' % (sample,
+                                                                                     len(clipped_pos[sample])))
 
             else:
 
