@@ -135,12 +135,13 @@ def main():
             i_sv = np.where(partial_labels != 'noSV')[0]
 
             partial_data = np.array(partial_data)
-            partial_data = np.append(partial_data[i_sv], partial_data[i_nosv_idx])
-
+            partial_data = np.append(partial_data[i_sv,:,:], partial_data[i_nosv_idx,:,:])
+            print(partial_data.shape)
             partial_labels = np.append(partial_labels[i_sv], partial_labels[i_nosv_idx])
-
+            print(partial_labels.shape)
             partial_id = np.array(partial_id)
             partial_id = np.append(partial_id[i_sv], partial_id[i_nosv_idx])
+            print(partial_id.shape)
 
             intermediate_data_dir = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/' +\
                      'intermediate_data/'
