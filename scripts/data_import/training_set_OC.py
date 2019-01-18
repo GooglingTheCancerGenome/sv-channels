@@ -107,13 +107,18 @@ def main():
                     # if not (sample_name == 'O16_B16' and i == '2'):
                         print('Loading data for Chr%s' % i)
 
-                        partial_labels.extend(dico[label_type][i])
-                        partial_id.extend([d['chromosome'] + '_' + str(d['position']) for d in dico['id'][i]])
+                        labels_chr = dico[label_type][i]
+                        partial_labels.extend(labels_chr)
+                        id_chr = [d['chromosome'] + '_' + str(d['position']) for d in dico['id'][i]]
+                        partial_id.extend(id_chr)
+
+                        assert len(id_chr) == len(labels_chr)
 
                         data_file = datapath + '/ChannelData/' + str(i) + '_channel_maker_real_germline.npy.gz'
                         with gzip.GzipFile(data_file, "rb") as f:
                             data_mat = np.load(f)
                             print(data_mat.shape)
+                            assert len(data_mat.shape[0]) == len(labels_chr)
                             partial_data.extend(data_mat)
                             del data_mat
                         f.close()
