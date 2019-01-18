@@ -1555,8 +1555,8 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                     clipped_pos[sample] = [k for k, v in clipped_pos_cnt_per_sample[sample].items()
                                            if v >= min_cr_support]
                     print('Length of clipped_pos_cnt_per_sample ' +
-                          ' for sample %s after min support = %%d: %d' % (sample, min_cr_support,
-                                                                              len(clipped_pos[sample])))
+                          ' for sample %s after min support = %d: %d' %
+                          (sample, min_cr_support, len(clipped_pos[sample])))
 
                 clipped_pos_keep = set(clipped_pos[sample_list[0]]) - set(clipped_pos[sample_list[1]])
                 print('Length of cr_pos_keep: %d' % len(clipped_pos_keep))
