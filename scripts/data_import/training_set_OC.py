@@ -123,22 +123,26 @@ def main():
                             del data_mat
                         f.close()
 
+            partial_data = np.array(partial_data)
+            print(partial_data.shape)
             partial_labels = np.array(partial_labels)
             print(partial_labels.shape)
             partial_id = np.array(partial_id)
             print(partial_id.shape)
 
             i_nosv = np.where(partial_labels == 'noSV')[0]
-
+            print(i_nosv)
             # print(i_nosv)
 
             i_nosv_idx = np.random.choice(a=i_nosv,
                                           # size=int(np.round(i_nosv.shape[0]/100)),
                                           size=100,
                                           replace=False)
-            i_sv = np.where(partial_labels != 'noSV')[0]
+            print(i_nosv_idx)
 
-            partial_data = np.array(partial_data)
+            i_sv = np.where(partial_labels != 'noSV')[0]
+            print(i_sv)
+
             partial_data = np.append(partial_data[i_sv,:,:], partial_data[i_nosv_idx,:,:])
             print(partial_data.shape)
             partial_labels = np.append(partial_labels[i_sv], partial_labels[i_nosv_idx])
