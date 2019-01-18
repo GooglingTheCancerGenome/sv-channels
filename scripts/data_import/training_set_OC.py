@@ -141,7 +141,7 @@ def main():
             print('Sampled noSV labels: %d' % len(i_nosv_idx))
 
             i_sv = np.where(partial_labels != 'noSV')[0]
-            print('Number of !noSV labels: %d' % len(i_nosv))
+            print('Number of !noSV labels: %d' % len(i_sv))
 
             partial_data = np.append(partial_data[i_sv,:,:], partial_data[i_nosv_idx,:,:], axis = 0)
             print('partial data shape after append: %s' % str(partial_data.shape))
