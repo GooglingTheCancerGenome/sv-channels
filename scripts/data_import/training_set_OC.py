@@ -168,6 +168,10 @@ def main():
             with gzip.GzipFile(id_output_file+'.gz', "rb") as f:
                 partial_id = np.load(f)
 
+            print(partial_data.shape)
+            print(partial_labels.shape)
+            print(partial_id.shape)
+
             assert partial_data.shape[0] == len(partial_labels)
             assert len(partial_labels) == len(partial_id)
 
