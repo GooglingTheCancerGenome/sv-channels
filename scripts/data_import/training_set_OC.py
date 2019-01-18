@@ -4,31 +4,31 @@ import gzip
 from collections import Counter
 
 
-def get_channels():
-
-    channel_list = np.append(np.arange(0, 9),
-                             [33, 34])
-    channel_list = np.append(channel_list,
-                             [12, 16, 20, 24, 28, 32])
-
-    channel_list = np.append(channel_list,
-                             np.arange(41, 50))
-    channel_list = np.append(channel_list,
-                             [74, 75])
-    channel_list = np.append(channel_list,
-                             [53, 57, 61, 65, 69, 73])
-
-    channel_list = np.append(channel_list,
-                             np.arange(82, 85))
-
-    # print(len(channel_list))
-
-    return channel_list
+# def get_channels():
+#
+#     channel_list = np.append(np.arange(0, 9),
+#                              [33, 34])
+#     channel_list = np.append(channel_list,
+#                              [12, 16, 20, 24, 28, 32])
+#
+#     channel_list = np.append(channel_list,
+#                              np.arange(41, 50))
+#     channel_list = np.append(channel_list,
+#                              [74, 75])
+#     channel_list = np.append(channel_list,
+#                              [53, 57, 61, 65, 69, 73])
+#
+#     channel_list = np.append(channel_list,
+#                              np.arange(82, 85))
+#
+#     print(len(channel_list))
+#
+#     return channel_list
 
 
 def main():
 
-    channel_list = get_channels()
+    # channel_list = get_channels()
 
     chr_list = list(map(str, np.arange(1, 23)))
     chr_list.extend(['X', 'Y'])
@@ -108,11 +108,11 @@ def main():
                         partial_labels.extend(dico[label_type][i])
                         partial_id.extend([d['chromosome'] + '_' + str(d['position']) for d in dico['id'][i]])
 
-                        data_file = datapath + '/ChannelData/' + sample_name + '_' + str(i) + '.npy.gz'
+                        data_file = datapath + '/ChannelData/' + str(i) + '_channel_maker_real_germline.npy.gz'
                         with gzip.GzipFile(data_file, "rb") as f:
                             data_mat = np.load(f)
                             print(data_mat.shape)
-                            data_mat = data_mat[:,channel_list,:]
+                            data_mat = data_mat
                             print(data_mat.shape)
                             partial_data.extend(data_mat)
                             del data_mat
@@ -187,5 +187,5 @@ def main():
 
 if __name__ == '__main__':
 
-    main()
-    #get_channels()
+    #main()
+    get_channels()
