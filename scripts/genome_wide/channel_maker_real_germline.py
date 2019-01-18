@@ -1519,7 +1519,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
             for sample in sample_list:
                 # Check file existence
-                print('Checking file: %s => %s' % (sample, clipped_read_pos_file[chrName]))
+                logging.info('Checking file: %s => %s' % (sample, clipped_read_pos_file[chrName]))
                 assert os.path.isfile(prefix_train + sample + '/' + clipped_read_pos_file[chrName])
                 assert os.path.isfile(prefix_train + sample + '/' + clipped_read_distance_file[chrName])
                 assert os.path.isfile(prefix_train + sample + '/' + clipped_reads_file[chrName])
@@ -1528,7 +1528,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
             logging.info('Chromosome %s' % chrName)
 
-            if len(sample_list) == 2:
+            if len(sample_list) > 1:
 
                 clipped_pos_cnt_per_sample = dict()
                 clipped_pos = dict()
@@ -1540,7 +1540,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                                          clipped_read_pos_file[chrName], 'rb') as f:
                         clipped_pos_cnt_per_sample[sample] = pickle.load(f)
                     logging.info('End of reading')
-                    print('Length of clipped_pos_cnt_per_sample for sample %s: %d' % (sample,
+                    logging.info('Length of clipped_pos_cnt_per_sample for sample %s: %d' % (sample,
                                                                                       len(clipped_pos_cnt_per_sample[
                                                                                               sample])))
 
@@ -1554,17 +1554,17 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
                     clipped_pos[sample] = [k for k, v in clipped_pos_cnt_per_sample[sample].items()
                                            if v >= min_cr_support]
-                    print('Length of clipped_pos_cnt_per_sample ' +
+                    logging.info('Length of clipped_pos_cnt_per_sample ' +
                           ' for sample %s after min support = %d: %d' %
                           (sample, min_cr_support, len(clipped_pos[sample])))
 
                 clipped_pos_keep = set(clipped_pos[sample_list[0]]) - set(clipped_pos[sample_list[1]])
-                print('Length of cr_pos_keep: %d' % len(clipped_pos_keep))
+                logging.info('Length of cr_pos_keep: %d' % len(clipped_pos_keep))
 
                 sample = sample_list[0]
                 # clipped_pos_cnt[chrName] = {k: v for (k, v) in clipped_pos_cnt_per_sample[sample_list[0]]
                 #                             if k in clipped_pos_keep}
-                print('Length of clipped_pos_cnt keys: %d, intersection size: %d' %
+                logging.info('Length of clipped_pos_cnt keys: %d, intersection size: %d' %
                       (len(clipped_pos_cnt_per_sample[sample].keys()),
                        len(set(clipped_pos_cnt_per_sample[sample].keys()) & clipped_pos_keep)))
 
@@ -1578,7 +1578,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
                 clipped_pos[sample] = [pos for pos in clipped_pos[sample]
                                        if win_hlen <= pos <= (chrLen[chrName] - win_hlen)]
-                print('Length of cr_pos for sample %s after extremes removed: %d' % (sample,
+                logging.info('Length of cr_pos for sample %s after extremes removed: %d' % (sample,
                                                                                      len(clipped_pos[sample])))
 
             else:
