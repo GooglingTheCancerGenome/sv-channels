@@ -112,8 +112,6 @@ def main():
                         with gzip.GzipFile(data_file, "rb") as f:
                             data_mat = np.load(f)
                             print(data_mat.shape)
-                            data_mat = data_mat
-                            print(data_mat.shape)
                             partial_data.extend(data_mat)
                             del data_mat
                         f.close()
