@@ -159,12 +159,17 @@ def main():
 
         else:
 
+            print('Loading sample: %s...' % sample_name)
+
             with gzip.GzipFile(data_output_file+'.gz', "rb") as f:
                 partial_data = np.load(f)
             with gzip.GzipFile(label_output_file+'.gz', "rb") as f:
                 partial_labels = np.load(f)
             with gzip.GzipFile(id_output_file+'.gz', "rb") as f:
                 partial_id = np.load(f)
+
+            assert partial_data.shape[0] == len(partial_labels)
+            assert len(partial_labels) == len(partial_id)
 
         data.extend(partial_data)
         labels.extend(partial_labels)
