@@ -2,6 +2,7 @@ import os
 import numpy as np
 import gzip
 from collections import Counter
+import logging
 
 
 # def get_channels():
@@ -28,6 +29,13 @@ from collections import Counter
 
 def main():
 
+    logfilename = 'training_set_OC.log'
+    FORMAT = '%(asctime)s %(message)s'
+    logging.basicConfig(
+        format=FORMAT,
+        filename=logfilename,
+        level=logging.INFO)
+
     # channel_list = get_channels()
 
     chr_list = list(map(str, np.arange(1, 23)))
@@ -45,7 +53,7 @@ def main():
         ids = []
         labels = []
         for sample_name in comparisons:
-            print('Loading %s labels...' % sample_name)
+            logging.info('Loading %s labels...' % sample_name)
             dico_file = base_dir + sample_name + '/MultiLabelData/labels.pickle.gz'
             with gzip.GzipFile(dico_file, "rb") as f:
                 dico = np.load(f)
@@ -53,14 +61,14 @@ def main():
             for chrom_name in chr_list:
                 if chrom_name in dico[label_type].keys():
                     assert len(dico[label_type][chrom_name]) == len(dico['id'][chrom_name])
-                    print('Chr%s:%d labels' % (chrom_name, len(dico[label_type][chrom_name])))
+                    logging.info('Chr%s:%d labels' % (chrom_name, len(dico[label_type][chrom_name])))
                     labels.extend(dico[label_type][chrom_name])
                     ids.extend(dico['id'][chrom_name])
 
         labels = np.array(labels)
         ids = np.array(ids)
 
-        print(Counter(labels))
+        logging.info(Counter(labels))
 
         np.save(label_output_file, labels)
         os.system('gzip -f ' + label_output_file)
@@ -85,7 +93,7 @@ def main():
                 not os.path.isfile(label_output_file + '.gz') and \
                 not os.path.isfile(id_output_file + '.gz'):
 
-            print('Loading sample: %s...' % sample_name)
+            logging.info('Loading sample: %s...' % sample_name)
             datapath = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData_' + \
                        date + '/' + sample_name
 
@@ -98,14 +106,14 @@ def main():
                 dico = np.load(f)
             f.close()
 
-            print(dico[label_type].keys())
-            # print(chr_list)
+            logging.info(dico[label_type].keys())
+            # logging.info(chr_list)
 
             # for i in dico[label_type].keys():
             for i in chr_list:
                 if i in dico[label_type].keys():
                     # if not (sample_name == 'O16_B16' and i == '2'):
-                        print('Loading data for Chr%s' % i)
+                        logging.info('Loading data for Chr%s' % i)
 
                         labels_chr = dico[label_type][i]
                         partial_labels.extend(labels_chr)
@@ -117,38 +125,38 @@ def main():
                         data_file = datapath + '/ChannelData/' + str(i) + '_channel_maker_real_germline.npy.gz'
                         with gzip.GzipFile(data_file, "rb") as f:
                             data_mat = np.load(f)
-                            print(data_mat.shape)
+                            logging.info(data_mat.shape)
                             assert data_mat.shape[0] == len(labels_chr)
                             partial_data.extend(data_mat)
                             del data_mat
                         f.close()
 
             partial_data = np.array(partial_data)
-            print('partial data shape: %s' % str(partial_data.shape))
+            logging.info('partial data shape: %s' % str(partial_data.shape))
             partial_labels = np.array(partial_labels)
-            print('partial labels shape: %s' % str(partial_labels.shape))
+            logging.info('partial labels shape: %s' % str(partial_labels.shape))
             partial_id = np.array(partial_id)
-            print('partial ids shape: %s' % str(partial_id.shape))
+            logging.info('partial ids shape: %s' % str(partial_id.shape))
 
             i_nosv = np.where(partial_labels == 'noSV')[0]
-            print('Number of noSV labels: %d' % len(i_nosv))
-            # print(i_nosv)
+            logging.info('Number of noSV labels: %d' % len(i_nosv))
+            # logging.info(i_nosv)
 
             i_nosv_idx = np.random.choice(a=i_nosv,
                                           # size=int(np.round(i_nosv.shape[0]/100)),
                                           size=100,
                                           replace=False)
-            print('Sampled noSV labels: %d' % len(i_nosv_idx))
+            logging.info('Sampled noSV labels: %d' % len(i_nosv_idx))
 
             i_sv = np.where(partial_labels != 'noSV')[0]
-            print('Number of !noSV labels: %d' % len(i_sv))
+            logging.info('Number of !noSV labels: %d' % len(i_sv))
 
             partial_data = np.append(partial_data[i_sv,:,:], partial_data[i_nosv_idx,:,:], axis = 0)
-            print('partial data shape after append: %s' % str(partial_data.shape))
+            logging.info('partial data shape after append: %s' % str(partial_data.shape))
             partial_labels = np.append(partial_labels[i_sv], partial_labels[i_nosv_idx], axis = 0)
-            print('partial labels shape after append: %s' % str(partial_labels.shape))
+            logging.info('partial labels shape after append: %s' % str(partial_labels.shape))
             partial_id = np.append(partial_id[i_sv], partial_id[i_nosv_idx], axis = 0)
-            print('partial ids shape after append: %s' % str(partial_id.shape))
+            logging.info('partial ids shape after append: %s' % str(partial_id.shape))
 
             intermediate_data_dir = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/' +\
                      'intermediate_data/'
@@ -167,7 +175,7 @@ def main():
 
         else:
 
-            print('Loading sample: %s...' % sample_name)
+            logging.info('Loading sample: %s...' % sample_name)
 
             with gzip.GzipFile(data_output_file+'.gz', "rb") as f:
                 partial_data = np.load(f)
@@ -176,9 +184,9 @@ def main():
             with gzip.GzipFile(id_output_file+'.gz', "rb") as f:
                 partial_id = np.load(f)
 
-            print(partial_data.shape)
-            print(partial_labels.shape)
-            print(partial_id.shape)
+            logging.info(partial_data.shape)
+            logging.info(partial_labels.shape)
+            logging.info(partial_id.shape)
 
             assert partial_data.shape[0] == len(partial_labels)
             assert len(partial_labels) == len(partial_id)
@@ -187,7 +195,7 @@ def main():
         labels.extend(partial_labels)
         ids.extend(partial_id)
 
-    print(Counter(labels))
+    logging.info(Counter(labels))
     assert len(data) == len(labels)
 
     training_data = np.array(data)
