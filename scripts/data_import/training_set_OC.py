@@ -52,6 +52,8 @@ def main():
             f.close()
             for chrom_name in chr_list:
                 if chrom_name in dico[label_type].keys():
+                    assert len(dico[label_type][chrom_name]) == len(dico['id'][chrom_name])
+                    print('Chr%s:%d labels' % (chrom_name, len(dico[label_type][chrom_name])))
                     labels.extend(dico[label_type][chrom_name])
                     ids.extend(dico['id'][chrom_name])
 
@@ -117,7 +119,7 @@ def main():
                         f.close()
 
             partial_labels = np.array(partial_labels)
-            i_nosv = np.where(partial_labels == 'noSV')[0]
+            i_nosv = np.where(partial_labels != 'noSV')[0]
 
             # print(i_nosv)
 
@@ -125,7 +127,7 @@ def main():
                                           # size=int(np.round(i_nosv.shape[0]/100)),
                                           size=100,
                                           replace=False)
-            i_sv = np.where(partial_labels != 'noSV')[0]
+            i_sv = np.where(partial_labels == 'noSV')[0]
 
             partial_data = np.array(partial_data)
             partial_data = np.append(partial_data[i_sv], partial_data[i_nosv_idx])
