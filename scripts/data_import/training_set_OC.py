@@ -124,6 +124,10 @@ def main():
                         f.close()
 
             partial_labels = np.array(partial_labels)
+            print(partial_labels.shape)
+            partial_id = np.array(partial_id)
+            print(partial_id.shape)
+
             i_nosv = np.where(partial_labels == 'noSV')[0]
 
             # print(i_nosv)
@@ -139,7 +143,7 @@ def main():
             print(partial_data.shape)
             partial_labels = np.append(partial_labels[i_sv], partial_labels[i_nosv_idx])
             print(partial_labels.shape)
-            partial_id = np.array(partial_id)
+
             partial_id = np.append(partial_id[i_sv], partial_id[i_nosv_idx])
             print(partial_id.shape)
 
