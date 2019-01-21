@@ -1748,13 +1748,13 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                     # for clipped_arrangement in ['c2c', 'nc2c', 'c2nc', 'nc2nc']:
                     for clipped_arrangement in ['left', 'right', 'unclipped']:
                         clipped_read_distance_array[sample][direction][clipped_arrangement] = np.zeros(win_len,
-                                                                                                       dtype=int)
+                                                                                                       dtype=np.uint32)
                         clipped_read_distance_num[sample][direction][clipped_arrangement] = np.zeros(win_len,
-                                                                                                     dtype=int)
+                                                                                                     dtype=np.uint32)
                         clipped_read_distance_median[sample][direction][clipped_arrangement] = np.zeros(win_len,
-                                                                                                        dtype=int)
-                        clipped_read_distance_outlier[sample][direction][clipped_arrangement] = np.zeros(win_len,
-                                                                                                         dtype=int)
+                                                                                                        dtype=np.uint32)
+                        clipped_read_distance_outlier[sample][direction][clipped_arrangement] = np.zeros(
+                            win_len, dtype=np.uint32)
 
                         for pos in range(start_win, end_win):
                             if pos in clipped_read_distance[sample][chrName][direction][clipped_arrangement].keys():
@@ -1791,7 +1791,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                 # clipped reads
                 clipped_reads_array[sample] = dict()
                 for split_direction in ['left', 'right']:
-                    clipped_reads_array[sample][split_direction] = np.zeros(win_len, dtype=int)
+                    clipped_reads_array[sample][split_direction] = np.zeros(win_len, dtype=np.uint32)
                     for pos in range(start_win, end_win):
                         if pos in clipped_reads[sample][chrName][split_direction].keys():
                             clipped_reads_array[sample][split_direction][pos - start_win] = \
@@ -1800,7 +1800,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                 # clipped reads inversions
                 clipped_reads_inversion_array[sample] = dict()
                 for mate_position in ['before', 'after']:
-                    clipped_reads_inversion_array[sample][mate_position] = np.zeros(win_len, dtype=int)
+                    clipped_reads_inversion_array[sample][mate_position] = np.zeros(win_len, dtype=np.uint32)
                     for pos in range(start_win, end_win):
                         if pos in clipped_reads_inversion[sample][chrName][mate_position].keys():
                             clipped_reads_inversion_array[sample][mate_position][pos - start_win] = \
@@ -1809,7 +1809,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                 # clipped reads duplication
                 clipped_reads_duplication_array[sample] = dict()
                 for mate_position in ['before', 'after']:
-                    clipped_reads_duplication_array[sample][mate_position] = np.zeros(win_len, dtype=int)
+                    clipped_reads_duplication_array[sample][mate_position] = np.zeros(win_len, dtype=np.uint32)
                     for pos in range(start_win, end_win):
                         if pos in clipped_reads_duplication[sample][chrName][mate_position].keys():
                             clipped_reads_duplication_array[sample][mate_position][pos - start_win] = \
@@ -1818,7 +1818,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                 # clipped reads traslocation
                 clipped_reads_translocation_array[sample] = dict()
                 for orientation in ['opposite', 'same']:
-                    clipped_reads_translocation_array[sample][orientation] = np.zeros(win_len, dtype=int)
+                    clipped_reads_translocation_array[sample][orientation] = np.zeros(win_len, dtype=np.uint32)
                     for pos in range(start_win, end_win):
                         if pos in clipped_reads_translocation[sample][chrName][orientation].keys():
                             clipped_reads_translocation_array[sample][orientation][pos - start_win] = \
@@ -1834,9 +1834,9 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                 split_read_distance_median[sample] = dict()
 
                 for split_direction in ['left', 'right']:
-                    split_read_distance_array[sample][split_direction] = np.zeros(win_len, dtype=int)
-                    split_read_distance_num[sample][split_direction] = np.zeros(win_len, dtype=int)
-                    split_read_distance_median[sample][split_direction] = np.zeros(win_len, dtype=int)
+                    split_read_distance_array[sample][split_direction] = np.zeros(win_len, dtype=np.uint32)
+                    split_read_distance_num[sample][split_direction] = np.zeros(win_len, dtype=np.uint32)
+                    split_read_distance_median[sample][split_direction] = np.zeros(win_len, dtype=np.uint32)
 
                     if pos in split_read_distance[sample][chrName][split_direction].keys():
                         split_read_distance_array[sample][split_direction][pos - start_win] = \
@@ -1849,7 +1849,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                 # split reads
                 split_reads_array[sample] = dict()
                 for split_direction in ['left', 'right']:
-                    split_reads_array[sample][split_direction] = np.zeros(win_len, dtype=int)
+                    split_reads_array[sample][split_direction] = np.zeros(win_len, dtype=np.uint32)
                     for pos in range(start_win, end_win):
                         if pos in split_reads[sample][chrName][split_direction].keys():
                             split_reads_array[sample][split_direction][pos - start_win] = \
