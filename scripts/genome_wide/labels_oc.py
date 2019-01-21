@@ -1,6 +1,7 @@
 # Imports
 import argparse
 import re
+import glob
 
 import pysam
 from pysam import VariantFile
@@ -588,6 +589,9 @@ def read_vcf(sampleName, sv_caller):
     elif sampleName == 'Patient1' or sampleName == 'Patient2':
         filename = '/Users/lsantuari/Documents/Data/germline/patients/' + \
                    sampleName + '/SV/Filtered/' + sv_caller + '.sym.vcf'
+    else:
+        filename = glob.glob(os.path.join('/hpc/cog_bioinf/ridder/users/akuzniar/HMF_data/bam','*',
+                   sampleName,sv_caller+'_out',sv_caller+'.vcf'))[0]
 
     print('Reading VCF file %s\nfor SV caller %s' % (filename, sv_caller))
     vcf_in = VariantFile(filename, 'r')
@@ -1348,6 +1352,9 @@ def get_labels(sampleName):
 
         else:
 
+            for sv_caller in ['manta', 'delly', 'lumpy', 'gridss']:
+                sv_dict[sv_caller] = read_vcf(sampleName, sv_caller)
+
             sv_dict['bpi'] = read_bpi(sampleName, 'bpi')
 
         return sv_dict
@@ -1368,7 +1375,7 @@ def get_labels(sampleName):
             crpos_partial_all_sv_per_caller = dict()
 
             #caller_list_all_sv = ['manta', 'gridss', 'lumpy', 'delly', 'nanosv']
-            caller_list_all_sv = ['bpi']
+            caller_list_all_sv = ['manta', 'gridss', 'lumpy', 'delly', 'bpi']
 
             for caller in caller_list_all_sv:
                 print(caller)
