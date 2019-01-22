@@ -37,7 +37,7 @@ for (( i=0; i<${#COMPARISONS_ARRAY[@]}; i++)); do
     LOGFILE=$SAMPLE"_"$LABEL_TYPE".log"
 
     qsub -v SAMPLEARG=$SAMPLE,LABELARG=$LABEL_TYPE,LOGARG=$LOGFILE \
-           -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_label.sge
+           -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_training_data.sge
 
 done
 
@@ -48,6 +48,6 @@ JOB_NAME=$SAMPLE"_"$LABEL_TYPE
 LOGFILE=$SAMPLE"_"$LABEL_TYPE".log"
 
     qsub -v SAMPLEARG="COMBINE",LABELARG=$LABEL_TYPE,LOGARG=$LOGFILE \
-            -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_label.sge
+            -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_training_data.sge
 
 fi
