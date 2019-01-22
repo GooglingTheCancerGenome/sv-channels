@@ -59,7 +59,7 @@ def remove_nan(X, y, z):
     print(idx)
     # print(X[np.where(np.isnan(X))])
     print(z[idx])
-    idx = numpy.unique(np.where(np.isnan(X))[0])
+    idx = np.unique(np.where(np.isnan(X))[0])
     X = np.delete(X, idx, 0)
     y = np.delete(y, idx, 0)
     z = np.delete(z, idx, 0)
@@ -69,11 +69,15 @@ def remove_nan(X, y, z):
 
 def data(sample_name, label_type):
 
-    base_dir = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/' + \
-               'intermediate_data/' + sample_name
-    data_output_file = base_dir + '_data.npy'
-    label_output_file = base_dir + '_labels.npy'
-    id_output_file = base_dir + '_ids.npy'
+    base_dir = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/' + \
+               'intermediate_data', label_type, sample_name)
+
+    if not os.path.isdir(base_dir):
+        os.makedirs(base_dir, exist_ok=True)
+
+    data_output_file = os.path.join(base_dir, 'data.npy')
+    label_output_file = os.path.join(base_dir, 'labels.npy')
+    id_output_file = os.path.join(base_dir, 'ids.npy')
 
     if not os.path.isfile(data_output_file + '.gz') and \
             not os.path.isfile(label_output_file + '.gz') and \
@@ -185,11 +189,12 @@ def combine_data(label_type):
 
     for sample_name in comparisons:
 
-        base_dir = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/' + \
-                   'intermediate_data/' + sample_name
-        data_output_file = base_dir + '_data.npy'
-        label_output_file = base_dir + '_labels.npy'
-        id_output_file = base_dir + '_ids.npy'
+        base_dir = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/' + \
+                                'intermediate_data', label_type, sample_name)
+
+        data_output_file = os.path.join(base_dir, 'data.npy')
+        label_output_file = os.path.join(base_dir, 'labels.npy')
+        id_output_file = os.path.join(base_dir, 'ids.npy')
 
         logging.info('Loading sample: %s...' % sample_name)
 
@@ -216,15 +221,19 @@ def combine_data(label_type):
         training_labels = np.array(labels)
         training_id = np.array(ids)
 
-        data_output_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/data.npy'
+        out_dir = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test', date, 'TestData', label_type)
+        if not os.path.isdir(out_dir):
+            os.makedirs(out_dir, exist_ok=True)
+
+        data_output_file = os.path.join(out_dir, 'data.npy')
         np.save(data_output_file, training_data)
         os.system('gzip -f ' + data_output_file)
 
-        label_output_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/labels.npy'
+        label_output_file = os.path.join(out_dir, 'labels.npy')
         np.save(label_output_file, training_labels)
         os.system('gzip -f ' + label_output_file)
 
-        id_output_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/ids.npy'
+        id_output_file = os.path.join(out_dir, 'ids.npy')
         np.save(id_output_file, training_id)
         os.system('gzip -f ' + id_output_file)
 
@@ -255,17 +264,11 @@ def combine_data(label_type):
         logging.info('y shape: %s' % y.shape)
         logging.info('y_binary shape: %s' % y_binary.shape)
 
-        import errno
+        datapath_training = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test',
+                                         date, 'TrainingData', label_type)
 
-        datapath = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date
-        datapath_training = os.path.join(datapath, 'TrainingData/')
-
-        try:
-            os.mkdir(datapath_training)
-        except OSError as exc:
-            if exc.errno != errno.EEXIST:
-                raise
-            pass
+        if not os.path.isdir(datapath_training):
+            os.makedirs(base_dir, datapath_training=True)
 
         data_output_file = datapath_training + 'OC' + '_' + label_type + '.npz'
         np.savez(data_output_file, X=X, y=y, y_binary=y_binary, ids=z)
@@ -295,7 +298,7 @@ def main():
     # channel_list = get_channels()
     sample_name = args.sample
     if sample_name == 'COMBINE':
-        data(sample_name = sample_name, label_type = args.label_type)
+        data(sample_name=sample_name, label_type=args.label_type)
     else:
         combine_data(label_type = args.label_type)
 

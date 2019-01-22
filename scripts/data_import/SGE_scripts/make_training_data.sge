@@ -13,7 +13,9 @@ echo "Load python"
 source activate channel-maker
 
 # which sample is considered
-echo ${SAMPLEARG}
+echo ${SAMPLEARG} ${LABELARG}
 
 python "data_import/training_set_OC_by_sample.py" \
-	--sample ${SAMPLEARG}
+	--sample ${SAMPLEARG} \
+	--label_type ${LABELARG} \
+	--logfile ${LOGARG}

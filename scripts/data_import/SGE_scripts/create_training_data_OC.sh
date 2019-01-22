@@ -9,13 +9,13 @@ BAM_ARRAY=()
 SAMPLE_ARRAY=()
 
 for FILE in $FILES; do
-	BAM_ARRAY+=($FILE)
-	SAMPLE=`basename $FILE .bam`
-	SAMPLE_ARRAY+=($SAMPLE) 
+        BAM_ARRAY+=($FILE)
+        SAMPLE=`basename $FILE .bam`
+        SAMPLE_ARRAY+=($SAMPLE)
 done
 
 #Create comparisons array
-filename="OC_comparisons.txt"
+filename="genome_wide/SGE_scripts/OC_comparisons.txt"
 COMPARISONS_ARRAY=()
 while IFS=' ' read -r line; do
     arrIN=(${line// /})
@@ -26,13 +26,28 @@ done < "$filename"
 
 CHRARRAY=(`seq 1 22` 'X' 'Y' 'MT')
 
+COMBINE=0
+
+if [ $COMBINE == 0 ]; then
+
 for (( i=0; i<${#COMPARISONS_ARRAY[@]}; i++)); do
 
     SAMPLE=${COMPARISONS_ARRAY[$i]}
-    JOB_NAME=$SAMPLE"_lab"
+    JOB_NAME=$SAMPLE"_"$LABEL_TYPE
+    LOGFILE=$SAMPLE"_"$LABEL_TYPE".log"
 
-    qsub -v SAMPLEARG=$SAMPLE \
+    qsub -v SAMPLEARG=$SAMPLE,LABELARG=$LABEL_TYPE,LOGARG=$LOGFILE \
            -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_label.sge
-    
+
 done
 
+elif [ $COMBINE == 1 ]; then
+
+SAMPLE="COMBINE"
+JOB_NAME=$SAMPLE"_"$LABEL_TYPE
+LOGFILE=$SAMPLE"_"$LABEL_TYPE".log"
+
+    qsub -v SAMPLEARG="COMBINE",LABELARG=$LABEL_TYPE,LOGARG=$LOGFILE \
+            -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_label.sge
+
+fi
