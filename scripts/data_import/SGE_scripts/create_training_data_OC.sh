@@ -28,26 +28,30 @@ CHRARRAY=(`seq 1 22` 'X' 'Y' 'MT')
 
 COMBINE=0
 
-if [ $COMBINE == 0 ]; then
+for LABEL_TYPE in bpi manta gridss delly lumpy; do
 
-for (( i=0; i<${#COMPARISONS_ARRAY[@]}; i++)); do
+    if [ $COMBINE == 0 ]; then
 
-    SAMPLE=${COMPARISONS_ARRAY[$i]}
+    for (( i=0; i<${#COMPARISONS_ARRAY[@]}; i++)); do
+
+        SAMPLE=${COMPARISONS_ARRAY[$i]}
+        JOB_NAME=$SAMPLE"_"$LABEL_TYPE
+        LOGFILE=$SAMPLE"_"$LABEL_TYPE".log"
+
+        qsub -v SAMPLEARG=$SAMPLE,LABELARG=$LABEL_TYPE,LOGARG=$LOGFILE \
+               -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_training_data.sge
+
+    done
+
+    elif [ $COMBINE == 1 ]; then
+
+    SAMPLE="COMBINE"
     JOB_NAME=$SAMPLE"_"$LABEL_TYPE
     LOGFILE=$SAMPLE"_"$LABEL_TYPE".log"
 
-    qsub -v SAMPLEARG=$SAMPLE,LABELARG=$LABEL_TYPE,LOGARG=$LOGFILE \
-           -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_training_data.sge
+        qsub -v SAMPLEARG="COMBINE",LABELARG=$LABEL_TYPE,LOGARG=$LOGFILE \
+                -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_training_data.sge
+
+    fi
 
 done
-
-elif [ $COMBINE == 1 ]; then
-
-SAMPLE="COMBINE"
-JOB_NAME=$SAMPLE"_"$LABEL_TYPE
-LOGFILE=$SAMPLE"_"$LABEL_TYPE".log"
-
-    qsub -v SAMPLEARG="COMBINE",LABELARG=$LABEL_TYPE,LOGARG=$LOGFILE \
-            -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_training_data.sge
-
-fi
