@@ -15,7 +15,7 @@ for FILE in $FILES; do
 done
 
 #Create comparisons array
-filename="genome_wide/SGE_scripts/OC_comparisons.txt"
+filename="../../genome_wide/SGE_scripts/OC_comparisons.txt"
 COMPARISONS_ARRAY=()
 while IFS=' ' read -r line; do
     arrIN=(${line// /})
