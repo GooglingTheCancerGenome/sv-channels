@@ -38,16 +38,15 @@ import altair as alt
 from bokeh.io import show, output_file
 from bokeh.plotting import figure
 
-
 HPC_MODE = False
 sample_name = 'NA12878'
 date = '231118'
 label_type = 'Mills2011_nanosv'
 datapath_prefix = '/hpc/cog_bioinf/ridder/users/lsantuari' if HPC_MODE else '/Users/lsantuari/Documents'
-datapath_training =  datapath_prefix+'/Processed/Test/'+\
-           date+'/TestData_'+date+'/'+sample_name+'/TrainingData/'
-datapath_test =  datapath_prefix+'/Processed/Test/'+\
-           date+'/TestData_'+date+'/'+sample_name+'/TestData/'
+datapath_training = datapath_prefix + '/Processed/Test/' + \
+                    date + '/TestData_' + date + '/' + sample_name + '/TrainingData/'
+datapath_test = datapath_prefix + '/Processed/Test/' + \
+                date + '/TestData_' + date + '/' + sample_name + '/TestData/'
 
 
 def get_channel_labels():
@@ -81,13 +80,12 @@ def get_channel_labels():
     labels.append("One_hot_Ncoding")
 
     for k, l in enumerate(labels):
-         print(str(k) + ':' + l)
+        print(str(k) + ':' + l)
 
     return labels
 
 
 def data(datapath):
-
     data_output_file = datapath + sample_name + '_' + label_type + '_channels.npy.gz'
     with gzip.GzipFile(data_output_file, "rb") as f:
         X = np.load(f)
@@ -121,31 +119,36 @@ def data(datapath):
 
 
 def permute_channel(X, permuted_channel):
-
     # print(X.shape)
     # print(X[:,:,permuted_channel].shape)
     # print(X[0,:,permuted_channel])
-    X[:, :, permuted_channel] = np.apply_along_axis(np.random.permutation, 1, X[:,:,permuted_channel])
+
+    orig_shape = X[:, :, permuted_channel].shape
+
+    # X[:, :, permuted_channel] = np.apply_along_axis(np.random.permutation, 1, X[:,:,permuted_channel])
+    X[:, :, permuted_channel] = np.random.permutation(
+        np.ndarray.flatten(X[:, :, permuted_channel])
+    ).reshape(orig_shape)
+
     # print(X[0,:,permuted_channel])
     # X[:,:,permuted_channel] = np.random.permutation(X[:,:,permuted_channel])
     return X
 
 
 def create_model(X, y_binary):
-
     models = modelgen.generate_models(X.shape,
                                       y_binary.shape[1],
-                                      number_of_models = 1,
-                                      model_type = 'CNN',
+                                      number_of_models=1,
+                                      model_type='CNN',
                                       cnn_min_layers=2,
                                       cnn_max_layers=2,
-                                      cnn_min_filters = 4,
-                                      cnn_max_filters = 4,
+                                      cnn_min_filters=4,
+                                      cnn_max_filters=4,
                                       cnn_min_fc_nodes=6,
                                       cnn_max_fc_nodes=6,
                                       low_lr=2, high_lr=2,
                                       low_reg=1, high_reg=1,
-                                      kernel_size = 7)
+                                      kernel_size=7)
 
     # i = 0
     # for model, params, model_types in models:
@@ -158,7 +161,6 @@ def create_model(X, y_binary):
 
 
 def cross_validation(X, y, y_binary, X_hold_out_test, y_hold_out_test, y_hold_out_test_binary, channels):
-
     results = pd.DataFrame()
 
     # From https://medium.com/@literallywords/stratified-k-fold-with-keras-e57c487b1416
@@ -169,8 +171,7 @@ def cross_validation(X, y, y_binary, X_hold_out_test, y_hold_out_test, y_hold_ou
 
     # Loop through the indices the split() method returns
     for index, (train_indices, test_indices) in enumerate(skf.split(X, y)):
-
-        print("Training on fold " + str(index + 1) + "/"+str(kfold_splits)+"...")
+        print("Training on fold " + str(index + 1) + "/" + str(kfold_splits) + "...")
 
         # Generate batches from indices
         xtrain, xtest = X[train_indices], X[test_indices]
@@ -186,8 +187,8 @@ def cross_validation(X, y, y_binary, X_hold_out_test, y_hold_out_test, y_hold_ou
         model = create_model(X, y_binary)
 
         # Debug message I guess
-        print ("Training new iteration on " + str(xtrain.shape[0]) + " training samples, " +
-         str(xval.shape[0]) + " validation samples, this may take a while...")
+        print("Training new iteration on " + str(xtrain.shape[0]) + " training samples, " +
+              str(xval.shape[0]) + " validation samples, this may take a while...")
 
         history, model = train_model(model, xtrain, ytrain_binary, xval, yval)
 
@@ -201,15 +202,14 @@ def cross_validation(X, y, y_binary, X_hold_out_test, y_hold_out_test, y_hold_ou
 
         results = evaluate_model(model, xtest, ytest, ytest_binary, results, index, channels,
                                  train_set_size=xtrain.shape[0],
-                                 validation_set_size = xval.shape[0]
-        )
-        #evaluate_model(model, X_test, y_test_binary, results, index, channels)
+                                 validation_set_size=xval.shape[0]
+                                 )
+        # evaluate_model(model, X_test, y_test_binary, results, index, channels)
 
     return results
 
 
 def train_model(model, xtrain, ytrain, xval, yval):
-
     train_set_size = xtrain.shape[0]
 
     histories, val_accuracies, val_losses = find_architecture.train_models_on_samples(xtrain, ytrain,
@@ -232,7 +232,6 @@ def train_model(model, xtrain, ytrain, xval, yval):
 
 def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channels,
                    train_set_size, validation_set_size):
-
     mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
     dict_sorted = sorted(mapclasses.items(), key=lambda x: x[1])
     # print(dict_sorted)
@@ -265,7 +264,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
 
     results = results.append({
         "channels": channels,
-        "fold": str(int(cv_iter+1)),
+        "fold": str(int(cv_iter + 1)),
         "training_set_size": train_set_size,
         "validation_set_size": validation_set_size,
         "test_set_size": X_test.shape[0],
@@ -363,7 +362,6 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
 
 
 def run_cv():
-
     labels = get_channel_labels()
 
     results = pd.DataFrame()
@@ -375,7 +373,6 @@ def run_cv():
     results = results.append(cross_validation(X, y, y_binary, X_test, y_test, y_test_binary, 'original'))
 
     for channel_index in np.arange(0, len(labels)):
-
         print('Running cv with permuted channel ' + labels[channel_index] + ':')
 
         # Load the data
@@ -386,7 +383,7 @@ def run_cv():
         X_test = permute_channel(X_test, channel_index)
 
         results = results.append(cross_validation(X, y, y_binary, X_test, y_test, y_test_binary,
-                                                      labels[channel_index]))
+                                                  labels[channel_index]))
 
     print(results)
     results.to_csv("CV_results.csv", sep='\t')
@@ -411,47 +408,46 @@ def plot_results():
     plt.ylabel('average_precision_score')
     plt.title('average_precision_score per channel set')
     plt.xticks(ind, list(means.index))
-    plt.xticks(rotation=45,  horizontalalignment='right')
-    #plt.yticks(np.arange(0.8, 1))
-    #plt.legend((p1[0]), ('Bar'))
-    #plt.ylim(bottom=0.8)
+    plt.xticks(rotation=45, horizontalalignment='right')
+    # plt.yticks(np.arange(0.8, 1))
+    # plt.legend((p1[0]), ('Bar'))
+    # plt.ylim(bottom=0.8)
     plt.tight_layout()
 
-    #plt.show()
+    # plt.show()
 
-    #plt.savefig('Plots/Results.png', bbox_inches='tight')
-    #plt.close()
+    # plt.savefig('Plots/Results.png', bbox_inches='tight')
+    # plt.close()
 
     F = plt.gcf()
     # Now check everything with the defaults:
     DPI = F.get_dpi()
     print(
-    "DPI:", DPI)
+        "DPI:", DPI)
     DefaultSize = F.get_size_inches()
     print(
-    "Default size in Inches", DefaultSize)
+        "Default size in Inches", DefaultSize)
     print(
-    "Which should result in a %i x %i Image" % (DPI * DefaultSize[0], DPI * DefaultSize[1]))
+        "Which should result in a %i x %i Image" % (DPI * DefaultSize[0], DPI * DefaultSize[1]))
     # the default is 100dpi for savefig:
     # plt.savefig('Plots/Results_1.png', bbox_inches='tight')
     # this gives me a 797 x 566 pixel image, which is about 100 DPI
 
     # Now make the image twice as big, while keeping the fonts and all the
     # same size
-    F.set_figwidth(DefaultSize[0] * 3)
+    F.set_figwidth(DefaultSize[0] * 2)
     F.set_figheight(DefaultSize[1] * 2)
     Size = F.get_size_inches()
     print(
-    "Size in Inches", Size)
-    plt.savefig('Plots/Results.png', bbox_inches='tight', dpi = (200))
+        "Size in Inches", Size)
+    plt.savefig('Plots/Results.png', bbox_inches='tight', dpi=(200))
     # this results in a 1595x1132 image
 
-def main():
 
+def main():
     run_cv()
     plot_results()
 
 
 if __name__ == '__main__':
-
     main()

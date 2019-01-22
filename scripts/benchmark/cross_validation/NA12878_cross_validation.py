@@ -315,7 +315,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
         'Average precision score, micro-averaged over all classes: AP={0:0.2f}'
             .format(average_precision["micro"]))
 
-    plt.savefig('Plots/Precision_Recall_avg_prec_score_Iter_'+str(cv_iter)+'_'+channels+'.png', bbox_inches='tight')
+    plt.savefig('NA12878/Plots/Precision_Recall_avg_prec_score_Iter_'+str(cv_iter)+'_'+channels+'.png', bbox_inches='tight')
     plt.close()
 
     from itertools import cycle
@@ -354,7 +354,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
     plt.title('Extension of Precision-Recall curve to multi-class')
     plt.legend(lines, labels, loc=(0, -.38), prop=dict(size=14))
 
-    plt.savefig('Plots/Precision_Recall_avg_prec_score_per_class_Iter_' +
+    plt.savefig('NA12878/Plots/Precision_Recall_avg_prec_score_per_class_Iter_' +
                 str(cv_iter) +'_'+channels+'.png', bbox_inches='tight')
     plt.close()
 
@@ -396,54 +396,57 @@ def run_cv():
 
     labels = get_channel_labels()
 
-    basic_channels = np.append(np.arange(0, 9), [33, 34])
-    channel_list = {"base": basic_channels,
-                    "base_PE_allReads": np.append(basic_channels, [19, 31]),
-                    "base_PE_outliers": np.append(basic_channels, [12, 16, 20, 24, 28, 32]),
-                    "base_PE_allReads_outliers": np.append(basic_channels, [19, 31, 12, 16, 20, 24, 28, 32]),
-                    "base_PE_allReads_outliers_splitReads":
-                        np.append(basic_channels, [19, 31, 12, 16, 20, 24, 28, 32, 37, 40]),
-                    "base_PE_allReads_outliers_splitReads_GC":
-                        np.append(basic_channels, [19, 31, 12, 16, 20, 24, 28, 32, 37, 40, 41]),
-                    "base_PE_allReads_outliers_splitReads_Mappability":
-                        np.append(basic_channels, [19, 31, 12, 16, 20, 24, 28, 32, 37, 40, 42]),
-                    "base_PE_allReads_outliers_splitReads_OneHot":
-                        np.append(basic_channels, [19, 31, 12, 16, 20, 24, 28, 32, 37, 40, 43]),
-                    }
+    # basic_channels = np.append(np.arange(0, 9), [33, 34])
+    # channel_list = {"base": basic_channels,
+    #                 "base_PE_allReads": np.append(basic_channels, [19, 31]),
+    #                 "base_PE_outliers": np.append(basic_channels, [12, 16, 20, 24, 28, 32]),
+    #                 "base_PE_allReads_outliers": np.append(basic_channels, [19, 31, 12, 16, 20, 24, 28, 32]),
+    #                 "base_PE_allReads_outliers_splitReads":
+    #                     np.append(basic_channels, [19, 31, 12, 16, 20, 24, 28, 32, 37, 40]),
+    #                 "base_PE_allReads_outliers_splitReads_GC":
+    #                     np.append(basic_channels, [19, 31, 12, 16, 20, 24, 28, 32, 37, 40, 41]),
+    #                 "base_PE_allReads_outliers_splitReads_Mappability":
+    #                     np.append(basic_channels, [19, 31, 12, 16, 20, 24, 28, 32, 37, 40, 42]),
+    #                 "base_PE_allReads_outliers_splitReads_OneHot":
+    #                     np.append(basic_channels, [19, 31, 12, 16, 20, 24, 28, 32, 37, 40, 43]),
+    #                 }
     # print(channel_list)
 
     results = pd.DataFrame()
 
-    # for channel_index in np.arange(0,len(labels)):
-    for channel_set, channels in channel_list.items():
+    # # for channel_index in np.arange(0,len(labels)):
+    # for channel_set, channels in channel_list.items():
 
         # channels.append(channel_index)
 
-        print('Running cv with channels '+channel_set+':')
-        for i in channels:
-            print(str(i) + ':' + labels[i])
+    channels = np.arange(len(labels))
+    channel_set = 'all'
 
-        # Load the data
-        X, y, y_binary, win_ids = data(datapath_training, channels)
-        X_test, y_test, y_test_binary, win_ids_test = data(datapath_test, channels)
+    print('Running cv with channels '+channel_set+':')
+    # for i in channels:
+    #     print(str(i) + ':' + labels[i])
 
-        results = results.append(cross_validation(X, y, y_binary, X_test, y_test, y_test_binary, channel_set))
+    # Load the data
+    X, y, y_binary, win_ids = data(datapath_training, channels)
+    X_test, y_test, y_test_binary, win_ids_test = data(datapath_test, channels)
+
+    results = results.append(cross_validation(X, y, y_binary, X_test, y_test, y_test_binary, channel_set))
 
     print(results)
-    results.to_csv("CV_results.csv", sep='\t')
+    results.to_csv("NA12878/CV_results.csv", sep='\t')
 
 
 def plot_results():
 
-    source = pd.read_csv(filepath_or_buffer='CV_results.csv', delimiter='\t')
+    source = pd.read_csv(filepath_or_buffer='NA12878/CV_results.csv', delimiter='\t')
 
     import numpy as np
     import matplotlib.pyplot as plt
 
     means = source.groupby('channels')['average_precision_score'].agg(np.mean).sort_values()
-    print(means)
+    print('average_precision_score mean: %d' % means)
     std = source.groupby('channels')['average_precision_score'].agg(np.std)
-    print(std)
+    print('average_precision_score mean: %d' % std)
     ind = np.arange(len(list(means.index)))  # the x locations for the groups
     width = 0.50  # the width of the bars: can also be len(x) sequence
 
@@ -458,15 +461,15 @@ def plot_results():
     plt.ylim(bottom=0.8)
     plt.tight_layout()
 
-    plt.savefig('Plots/Results.png', bbox_inches='tight')
+    plt.savefig('NA12878/Plots/Results.png', bbox_inches='tight')
     plt.close()
 
 
 def main():
 
-    get_channel_labels_TN()
-    # run_cv()
-    # plot_results()
+    get_channel_labels()
+    run_cv()
+    plot_results()
 
 
 if __name__ == '__main__':

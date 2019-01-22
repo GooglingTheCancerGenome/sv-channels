@@ -5,6 +5,7 @@ import os
 import numpy as np
 
 from matplotlib import pyplot as plt
+import math
 
 from collections import Counter, defaultdict
 
@@ -38,6 +39,8 @@ import altair as alt
 from bokeh.io import show, output_file
 from bokeh.plotting import figure
 
+import logging
+
 
 HPC_MODE = False
 sample_name = 'OC'
@@ -48,6 +51,10 @@ datapath_training =  datapath_prefix+'/Processed/Test/'+\
            date+'/TestData_'+date+'/'+sample_name+'/TrainingData/'
 datapath_test =  datapath_prefix+'/Processed/Test/'+\
            date+'/TestData_'+date+'/'+sample_name+'/TestData/'
+
+
+def get_classes(labels):
+    return sorted(list(set(labels)))
 
 
 def get_channel_labels():
@@ -81,7 +88,7 @@ def get_channel_labels():
     labels.append("One_hot_Ncoding")
 
     for k, l in enumerate(labels):
-         print(str(k) + ':' + l)
+         logging.info(str(k) + ':' + l)
 
     return labels
 
@@ -121,10 +128,82 @@ def get_channel_labels_TN():
     for nuc in ['A', 'T', 'C', 'G', 'N']:
         labels.append("One_hot_"+nuc+"_encoding")
 
-    # for k, l in enumerate(labels):
-    #      print(str(k) + ':' + l)
+    for k, l in enumerate(labels):
+         logging.info(str(k) + ':' + l)
 
     return labels
+
+
+def set_figure_size(plt):
+
+    # plt.tight_layout()
+
+    F = plt.gcf()
+    # Now check everything with the defaults:
+    DPI = F.get_dpi()
+    logging.info(
+        "DPI:", DPI)
+    DefaultSize = F.get_size_inches()
+    logging.info(
+        "Default size in Inches", DefaultSize)
+    logging.info(
+        "Which should result in a %i x %i Image" % (DPI * DefaultSize[0], DPI * DefaultSize[1]))
+
+    F.set_figwidth(DefaultSize[0] * 5)
+    F.set_figheight(DefaultSize[1] * 4)
+    Size = F.get_size_inches()
+    logging.info(
+        "Size in Inches", Size)
+
+
+def plot_channels(X, y, ids):
+
+    output_dir = 'OC/channel_plots'
+    if not os.path.isdir(output_dir):
+        os.mkdir(output_dir)
+
+    labels = get_channel_labels_TN()
+    number_channels = len(labels)
+
+    classes = get_classes(y)
+
+    for c in classes:
+
+        output_dir_class = os.path.join(output_dir, c)
+        if not os.path.isdir(output_dir_class):
+            os.mkdir(output_dir_class)
+
+        c_idx = np.where(y == c)[0]
+        c_idx_random = np.random.choice(c_idx, size=10, replace=False)
+
+        for i in c_idx_random:
+
+            fig_name = y[i] + '_' + 'Chr' + ids[i].replace(':', '-')
+
+            logging.info(y[i], 'id:', 'Chr' + ids[i])
+            plt.title('Class: ' + y[i] + ' ' + 'Position: Chr' + ids[i], fontsize=30)
+            plt.ylim([0, number_channels])
+            plt.yticks(np.arange(number_channels), labels, fontsize=15)
+            plt.xticks(fontsize=30)
+
+            plt.vlines(x=0, ymin=0, ymax=number_channels, color='black')
+
+            for j in range(number_channels - 1, -1, -1):
+
+                if sum(X[i,:,j]) != 0:
+                    X_win = ((X[i,:,j] - min(X[i,:,j])) / max(X[i,:,j]))
+                else:
+                    X_win = X[i,:,j]
+
+                Z = [x + j for x in X_win]
+
+                plt.plot(np.arange(-100, 100), Z, label=y[j], linewidth=2)
+                plt.fill_between(np.arange(-100, 100), Z, j, alpha=.5, interpolate=True)
+
+            set_figure_size(plt)
+            plt.savefig(os.path.join(output_dir_class, fig_name + '.png'))
+            plt.clf()
+            plt.close()
 
 
 def data(datapath):
@@ -138,10 +217,10 @@ def data(datapath):
         y_binary = npzfiles['y_binary']
         win_ids = npzfiles['ids']
 
-    # print(X.shape)
-    # print(y.shape)
-    # print(y.shape)
-    # print(win_ids.shape)
+    # logging.info(X.shape)
+    # logging.info(y.shape)
+    # logging.info(y.shape)
+    # logging.info(win_ids.shape)
 
     # idx = np.arange(0,9)
     # idx = np.append(idx, np.arange(33,35))
@@ -169,9 +248,9 @@ def create_model(X, y_binary):
 
     # i = 0
     # for model, params, model_types in models:
-    #     print('model ' + str(i))
+    #     logging.info('model ' + str(i))
     #     i = i + 1
-    #     print(params)
+    #     logging.info(params)
     #     model.summary()
 
     return models
@@ -190,7 +269,7 @@ def cross_validation(X, y, y_binary, channels):
     # Loop through the indices the split() method returns
     for index, (train_indices, test_indices) in enumerate(skf.split(X, y)):
 
-        print("Training on fold " + str(index + 1) + "/10...")
+        logging.info("Training on fold " + str(index + 1) + "/10...")
 
         # Generate batches from indices
         xtrain, xtest = X[train_indices], X[test_indices]
@@ -206,18 +285,18 @@ def cross_validation(X, y, y_binary, channels):
         model = create_model(X, y_binary)
 
         # Debug message I guess
-        print ("Training new iteration on " + str(xtrain.shape[0]) + " training samples, " +
+        logging.info ("Training new iteration on " + str(xtrain.shape[0]) + " training samples, " +
          str(xval.shape[0]) + " validation samples, this may take a while...")
 
         history, model = train_model(model, xtrain, ytrain_binary, xval, yval)
 
         accuracy_history = history.history['acc']
         val_accuracy_history = history.history['val_acc']
-        print("Last training accuracy: " + str(accuracy_history[-1]) + ", last validation accuracy: " + str(
+        logging.info("Last training accuracy: " + str(accuracy_history[-1]) + ", last validation accuracy: " + str(
             val_accuracy_history[-1]))
 
         score_test = model.evaluate(xtest, ytest_binary, verbose=False)
-        print('Test loss and accuracy of best model: ' + str(score_test))
+        logging.info('Test loss and accuracy of best model: ' + str(score_test))
 
         results = evaluate_model(model, xtest, ytest, ytest_binary, results, index, channels,
                                  train_set_size=xtrain.shape[0],
@@ -240,12 +319,12 @@ def train_model(model, xtrain, ytrain, xval, yval):
 
     best_model_index = np.argmax(val_accuracies)
     best_model, best_params, best_model_types = model[best_model_index]
-    # print(best_model_index, best_model_types, best_params)
+    # logging.info(best_model_index, best_model_types, best_params)
 
     nr_epochs = 10
     history = best_model.fit(xtrain, ytrain,
                              epochs=nr_epochs, validation_data=(xval, yval),
-                             verbose=True)
+                             verbose=False)
 
     return history, best_model
 
@@ -260,12 +339,12 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
         mapclasses[c] = i
 
     dict_sorted = sorted(mapclasses.items(), key=lambda x: x[1])
-    # print(dict_sorted)
+    # logging.info(dict_sorted)
     class_labels = [i[0] for i in dict_sorted]
 
     n_classes = ytest_binary.shape[1]
-    # print(ytest_binary)
-    # print(n_classes)
+    # logging.info(ytest_binary)
+    # logging.info(n_classes)
 
     probs = model.predict_proba(X_test, batch_size=1, verbose=False)
 
@@ -277,8 +356,14 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
     confusion_matrix.index = [labels[i] for i in confusion_matrix.index]
     confusion_matrix.columns = [labels[i] for i in confusion_matrix.columns]
     confusion_matrix.reindex(columns=[l for l in labels], fill_value=0)
+    logging.info(confusion_matrix)
+    confusion_matrix.to_csv(path_or_buf='OC/OC_confusion_matrix_cv_iter_' + str(cv_iter + 1) + '.csv')
+
+    print(np.diag(confusion_matrix))
+    print(confusion_matrix.sum(axis=1))
     print(confusion_matrix)
-    confusion_matrix.to_csv(path_or_buf='OC_confusion_matrix_cv_iter_' + str(cv_iter + 1) + '.csv')
+    # logging.info('Precision: %d' % int(np.diag(confusion_matrix) / confusion_matrix.sum(axis=1) * 100))
+    # logging.info('Recall: %d' % int(np.diag(confusion_matrix)/confusion_matrix.sum(axis=0)*100))
 
     # For each class
     precision = dict()
@@ -296,7 +381,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
                                                          average="micro")
     average_precision["micro"] = average_precision_score(ytest_binary, probs,
                                                          average="micro")
-    print('Average precision score, micro-averaged over all classes: {0:0.2f}'
+    logging.info('Average precision score, micro-averaged over all classes: {0:0.2f}'
           .format(average_precision["micro"]))
 
     results = results.append({
@@ -321,7 +406,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
         'Average precision score, micro-averaged over all classes: AP={0:0.2f}'
             .format(average_precision["micro"]))
 
-    plt.savefig('Plots/Precision_Recall_avg_prec_score_Iter_'+str(cv_iter)+'_'+channels+'.png', bbox_inches='tight')
+    plt.savefig('OC/Precision_Recall_avg_prec_score_Iter_'+str(cv_iter)+'_'+channels+'.png', bbox_inches='tight')
     plt.close()
 
     from itertools import cycle
@@ -360,22 +445,22 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
     plt.title('Extension of Precision-Recall curve to multi-class')
     plt.legend(lines, labels, loc=(0, -.38), prop=dict(size=14))
 
-    plt.savefig('Plots/Precision_Recall_avg_prec_score_per_class_Iter_' +
+    plt.savefig('OC/Precision_Recall_avg_prec_score_per_class_Iter_' +
                 str(cv_iter) +'_'+channels+'.png', bbox_inches='tight')
     plt.close()
 
     # for iter_class in mapclasses.values():
     #
     #     predicted = probs.argmax(axis=1)
-    #     #print(predicted)
+    #     #logging.info(predicted)
     #     y_pred_class = np.array([1 if i == iter_class else 0 for i in predicted])
-    #     #print(y_pred_class)
+    #     #logging.info(y_pred_class)
     #
     #     # keep probabilities for the positive outcome only
     #     probs_class = probs[:, iter_class]
-    #     #print(probs_class)
+    #     #logging.info(probs_class)
     #
-    #     #print(y_test)
+    #     #logging.info(y_test)
     #
     #     y_test_class = np.array([1 if i[iter_class] == 1 else 0 for i in ytest_binary])
     #
@@ -387,7 +472,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
     #     auc_value = auc(recall, precision)
     #     # calculate average precision score
     #     ap = average_precision_score(y_test_class, probs_class)
-    #     print('f1=%.3f auc=%.3f average_precision_score=%.3f' % (f1, auc_value , ap))
+    #     logging.info('f1=%.3f auc=%.3f average_precision_score=%.3f' % (f1, auc_value , ap))
     #     # plot no skill
     #     plt.plot([0, 1], [0.5, 0.5], linestyle='--')
     #     # plot the roc curve for the model
@@ -405,9 +490,9 @@ def run_cv():
     results = pd.DataFrame()
 
     channels = 'all'
-    print('Running cv with '+channels+' channels:')
+    logging.info('Running cv with '+channels+' channels:')
     for i, l in enumerate(labels):
-        print(str(i) + ':' + l)
+        logging.info(str(i) + ':' + l)
 
     # Load the data
     X, y, y_binary, win_ids = data(datapath_training)
@@ -415,21 +500,21 @@ def run_cv():
 
     results = results.append(cross_validation(X, y, y_binary, channels))
 
-    print(results)
-    results.to_csv("CV_results.csv", sep='\t')
+    logging.info(results)
+    results.to_csv("OC/CV_results.csv", sep='\t')
 
 
 def plot_results():
 
-    source = pd.read_csv(filepath_or_buffer='CV_results.csv', delimiter='\t')
+    source = pd.read_csv(filepath_or_buffer='OC/CV_results.csv', delimiter='\t')
 
     import numpy as np
     import matplotlib.pyplot as plt
 
     means = source.groupby('channels')['average_precision_score'].agg(np.mean).sort_values()
-    print(means)
+    logging.info(means)
     std = source.groupby('channels')['average_precision_score'].agg(np.std)
-    print(std)
+    logging.info(std)
     ind = np.arange(len(list(means.index)))  # the x locations for the groups
     width = 0.50  # the width of the bars: can also be len(x) sequence
 
@@ -444,15 +529,28 @@ def plot_results():
     plt.ylim(bottom=0.8)
     plt.tight_layout()
 
-    plt.savefig('Plots/Results.png', bbox_inches='tight')
+    plt.savefig('OC/Results.png', bbox_inches='tight')
     plt.close()
 
 
 def main():
 
-    get_channel_labels_TN()
+
+    FORMAT = '%(asctime)s %(message)s'
+    logging.basicConfig(
+        format=FORMAT,
+        filename='OC/logfile.log',
+        level=logging.INFO)
+
+    # get_channel_labels_TN()
     run_cv()
     # plot_results()
+
+    # logging.info('Loading data...')
+    # X, y, y_binary, win_ids = data(datapath_training)
+    # logging.info(X.shape)
+    # logging.info('Plotting channels...')
+    # plot_channels(X, y, win_ids)
 
 
 if __name__ == '__main__':

@@ -10,7 +10,7 @@ from keras.utils.np_utils import to_categorical
 chr_list = list(map(str, np.arange(1, 23)))
 chr_list.extend(['X', 'Y'])
 
-date = '070119'
+date = '160119'
 # label_type = 'bpi'
 
 
@@ -247,6 +247,9 @@ def combine_data(label_type):
         X = np.array(training_data)
         y = np.array(training_labels)
         z = np.array(training_id)
+
+        # balance dataset
+        X, y, z = balance_data(X, y, z)
 
         X = transposeDataset(X)
 
