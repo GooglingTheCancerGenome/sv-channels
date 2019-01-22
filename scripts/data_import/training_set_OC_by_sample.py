@@ -4,15 +4,70 @@ import gzip
 from collections import Counter
 import logging
 import argparse
+from keras.utils.np_utils import to_categorical
+
 
 chr_list = list(map(str, np.arange(1, 23)))
 chr_list.extend(['X', 'Y'])
 
 date = '070119'
-label_type = 'bpi'
+# label_type = 'bpi'
 
 
-def data(sample_name):
+def transposeDataset(X):
+
+    image = []
+    for i in range (0, len(X -1)):
+        tr = X[i].transpose()
+        image.append(tr)
+    return np.array(image)
+
+
+def balance_data(training_data, training_labels, training_id):
+
+    cnt_lab = Counter(training_labels)
+    min_v = min([v for k, v in cnt_lab.items()])
+    print(cnt_lab)
+    print('Minimum number of labels = ' + str(min_v))
+
+    data_balanced = []
+    labels_balanced = []
+    id_balanced = []
+
+    for l in cnt_lab.keys():
+        #print(l)
+        iw = np.where(training_labels==l)
+        ii = iw[0][:min_v]
+        data_balanced.extend(training_data[ii])
+        labels_balanced.extend(training_labels[ii])
+        id_balanced.extend(training_id[ii])
+
+    print(Counter(labels_balanced))
+
+    X = np.array(data_balanced)
+    y = np.array(labels_balanced)
+    z = np.array(id_balanced)
+
+    return X, y, z
+
+
+def remove_nan(X, y, z):
+
+    # Remove windows with nan if present
+    # print(np.where(np.isnan(X)))
+    idx = np.unique(np.where(np.isnan(X))[0])
+    print(idx)
+    # print(X[np.where(np.isnan(X))])
+    print(z[idx])
+    idx = numpy.unique(np.where(np.isnan(X))[0])
+    X = np.delete(X, idx, 0)
+    y = np.delete(y, idx, 0)
+    z = np.delete(z, idx, 0)
+
+    return X, y, z
+
+
+def data(sample_name, label_type):
 
     base_dir = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/' + \
                'intermediate_data/' + sample_name
@@ -115,36 +170,11 @@ def data(sample_name):
         with gzip.GzipFile(id_output_file + '.gz', "rb") as f:
             partial_id = np.load(f)
 
-
-
     assert partial_data.shape[0] == len(partial_labels)
     assert len(partial_labels) == len(partial_id)
 
-    data.extend(partial_data)
-    labels.extend(partial_labels)
-    ids.extend(partial_id)
 
-    logging.info(Counter(labels))
-    assert len(data) == len(labels)
-
-    training_data = np.array(data)
-    training_labels = np.array(labels)
-    training_id = np.array(ids)
-
-    data_output_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/data.npy'
-    np.save(data_output_file, training_data)
-    os.system('gzip -f ' + data_output_file)
-
-    label_output_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/labels.npy'
-    np.save(label_output_file, training_labels)
-    os.system('gzip -f ' + label_output_file)
-
-    id_output_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/ids.npy'
-    np.save(id_output_file, training_id)
-    os.system('gzip -f ' + id_output_file)
-
-
-def combine_data():
+def combine_data(label_type):
 
     data = []
     labels = []
@@ -198,13 +228,58 @@ def combine_data():
         np.save(id_output_file, training_id)
         os.system('gzip -f ' + id_output_file)
 
+        for l in ['UK', 'INS_start']:
+            # Remove windows labelled as unknown ('UK') or INS_start (too few labels)
+            keep = np.where(np.array(training_labels) != l)
+            training_data = training_data[keep]
+            training_labels = training_labels[keep]
+            training_id = training_id[keep]
+
+        X = np.array(training_data)
+        y = np.array(training_labels)
+        z = np.array(training_id)
+
+        X = transposeDataset(X)
+
+        # Derive mapclasses
+        classes = sorted(list(set(y)))
+        mapclasses = dict()
+        for i, c in enumerate(classes):
+            mapclasses[c] = i
+
+        logging.info('Mapclasses: %s' % mapclasses)
+        y_num = np.array([mapclasses[c] for c in y], dtype='int')
+        y_binary = to_categorical(y_num)
+
+        logging.info('X shape: %s' % X.shape)
+        logging.info('y shape: %s' % y.shape)
+        logging.info('y_binary shape: %s' % y_binary.shape)
+
+        import errno
+
+        datapath = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date
+        datapath_training = os.path.join(datapath, 'TrainingData/')
+
+        try:
+            os.mkdir(datapath_training)
+        except OSError as exc:
+            if exc.errno != errno.EEXIST:
+                raise
+            pass
+
+        data_output_file = datapath_training + 'OC' + '_' + label_type + '.npz'
+        np.savez(data_output_file, X=X, y=y, y_binary=y_binary, ids=z)
+        os.system('gzip -f ' + data_output_file)
+
 
 def main():
 
     parser = argparse.ArgumentParser(description='Create channels from saved data')
-    parser.add_argument('-s', '--sample', type=str, default='NA12878',
+    parser.add_argument('-s', '--sample', type=str, default='COMBINE',
                         help="Specify sample")
-    parser.add_argument('-l', '--logfile', default='channel_maker.log',
+    parser.add_argument('-t', '--label_type', type=str, default='bpi',
+                        help="Specify sample")
+    parser.add_argument('-l', '--logfile', default='my.log',
                         help='File in which to write logs.')
 
     args = parser.parse_args()
@@ -218,7 +293,11 @@ def main():
         level=logging.INFO)
 
     # channel_list = get_channels()
-    data(sample_name = args.sample)
+    sample_name = args.sample
+    if sample_name == 'COMBINE':
+        data(sample_name = sample_name, label_type = args.label_type)
+    else:
+        combine_data(label_type = args.label_type)
 
 
 if __name__ == '__main__':
