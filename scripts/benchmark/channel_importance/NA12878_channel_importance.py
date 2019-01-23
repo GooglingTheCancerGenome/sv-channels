@@ -86,6 +86,7 @@ def get_channel_labels():
 
 
 def data(datapath):
+
     data_output_file = datapath + sample_name + '_' + label_type + '_channels.npy.gz'
     with gzip.GzipFile(data_output_file, "rb") as f:
         X = np.load(f)
@@ -119,6 +120,7 @@ def data(datapath):
 
 
 def permute_channel(X, permuted_channel):
+
     # print(X.shape)
     # print(X[:,:,permuted_channel].shape)
     # print(X[0,:,permuted_channel])
@@ -232,6 +234,7 @@ def train_model(model, xtrain, ytrain, xval, yval):
 
 def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channels,
                    train_set_size, validation_set_size):
+
     mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
     dict_sorted = sorted(mapclasses.items(), key=lambda x: x[1])
     # print(dict_sorted)
@@ -262,13 +265,33 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
     print('Average precision score, micro-averaged over all classes: {0:0.2f}'
           .format(average_precision["micro"]))
 
+    auc_value_list = []
+
+    for iter_class in mapclasses.values():
+
+        predicted = probs.argmax(axis=1)
+        y_pred_class = np.array([1 if i == iter_class else 0 for i in predicted])
+        # keep probabilities for the positive outcome only
+        probs_class = probs[:, iter_class]
+        y_test_class = np.array([1 if i[iter_class] == 1 else 0 for i in ytest_binary])
+        # calculate precision-recall curve
+        precision, recall, thresholds = precision_recall_curve(y_test_class, probs_class)
+        # calculate F1 score
+        f1 = f1_score(y_test_class, y_pred_class)
+        # calculate precision-recall AUC
+        auc_value_list.append(auc(recall, precision))
+
+    mean_auc = np.mean(auc_value_list)
+    # print('Mean AUC: %5.2f' % mean_auc)
+
     results = results.append({
         "channels": channels,
         "fold": str(int(cv_iter + 1)),
         "training_set_size": train_set_size,
         "validation_set_size": validation_set_size,
         "test_set_size": X_test.shape[0],
-        "average_precision_score": average_precision["micro"]
+        "average_precision_score": average_precision["micro"],
+        "mean_auc_value": mean_auc
     }, ignore_index=True)
 
     # plt.figure()
