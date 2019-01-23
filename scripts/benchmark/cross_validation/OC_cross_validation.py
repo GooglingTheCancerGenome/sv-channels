@@ -5,8 +5,9 @@ import os
 import numpy as np
 
 import matplotlib
-matplotlib.use('Qt4Agg')
+#matplotlib.use('Qt4Agg')
 import matplotlib.pyplot as plt
+plt.switch_backend('agg')
 
 import math
 
