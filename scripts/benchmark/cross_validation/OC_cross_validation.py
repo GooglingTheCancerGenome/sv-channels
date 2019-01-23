@@ -583,11 +583,14 @@ def plot_results():
 
 def main():
 
+    basedir = 'OC'
+    if not os.path.isdir(basedir):
+        os.mkdir(basedir)
 
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(
         format=FORMAT,
-        filename='OC/logfile.log',
+        filename=os.path.join(basedir, 'logfile.log'),
         level=logging.INFO)
 
     # get_channel_labels_TN()
