@@ -270,33 +270,33 @@ def remove_classes(X, y, win_ids, removed_labels):
 
 def create_model(X, y_binary):
 
-    # models = modelgen.generate_models(X.shape,
-    #                                   y_binary.shape[1],
-    #                                   number_of_models = 1,
-    #                                   model_type = 'CNN',
-    #                                   cnn_min_layers=2,
-    #                                   cnn_max_layers=2,
-    #                                   cnn_min_filters = 4,
-    #                                   cnn_max_filters = 4,
-    #                                   cnn_min_fc_nodes=6,
-    #                                   cnn_max_fc_nodes=6,
-    #                                   low_lr=2, high_lr=2,
-    #                                   low_reg=1, high_reg=1,
-    #                                   kernel_size = 7)
-
     models = modelgen.generate_models(X.shape,
                                       y_binary.shape[1],
                                       number_of_models = 1,
                                       model_type = 'CNN',
-                                      cnn_min_layers=4,
-                                      cnn_max_layers=4,
-                                      cnn_min_filters = 6,
-                                      cnn_max_filters = 6,
-                                      cnn_min_fc_nodes=12,
-                                      cnn_max_fc_nodes=12,
+                                      cnn_min_layers=2,
+                                      cnn_max_layers=2,
+                                      cnn_min_filters = 4,
+                                      cnn_max_filters = 4,
+                                      cnn_min_fc_nodes=6,
+                                      cnn_max_fc_nodes=6,
                                       low_lr=2, high_lr=2,
                                       low_reg=1, high_reg=1,
                                       kernel_size = 7)
+
+    # models = modelgen.generate_models(X.shape,
+    #                                   y_binary.shape[1],
+    #                                   number_of_models = 1,
+    #                                   model_type = 'CNN',
+    #                                   cnn_min_layers=4,
+    #                                   cnn_max_layers=4,
+    #                                   cnn_min_filters = 6,
+    #                                   cnn_max_filters = 6,
+    #                                   cnn_min_fc_nodes=12,
+    #                                   cnn_max_fc_nodes=12,
+    #                                   low_lr=2, high_lr=2,
+    #                                   low_reg=1, high_reg=1,
+    #                                   kernel_size = 7)
 
     # i = 0
     # for model, params, model_types in models:
@@ -411,8 +411,8 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
     logging.info(confusion_matrix)
     confusion_matrix.to_csv(path_or_buf='OC/OC_confusion_matrix_cv_iter_' + str(cv_iter + 1) + '.csv')
 
-    print(np.diag(confusion_matrix))
-    print(confusion_matrix.sum(axis=1))
+    # print(np.diag(confusion_matrix))
+    # print(confusion_matrix.sum(axis=1))
     print(confusion_matrix)
     # logging.info('Precision: %d' % int(np.diag(confusion_matrix) / confusion_matrix.sum(axis=1) * 100))
     # logging.info('Recall: %d' % int(np.diag(confusion_matrix)/confusion_matrix.sum(axis=0)*100))
@@ -603,7 +603,7 @@ def main():
 
     # get_channel_labels_TN()
     run_cv()
-    # plot_results()
+    plot_results()
 
     # logging.info('Loading data...')
     # X, y, y_binary, win_ids = data(datapath_training)
