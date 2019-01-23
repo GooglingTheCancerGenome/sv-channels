@@ -4,7 +4,10 @@ import os
 
 import numpy as np
 
-from matplotlib import pyplot as plt
+import matplotlib
+matplotlib.use('Qt4Agg')
+import matplotlib.pyplot as plt
+
 import math
 
 from collections import Counter, defaultdict
@@ -33,11 +36,11 @@ import tensorflow as tf
 # Pandas import
 import pandas as pd
 
-import altair as alt
+#import altair as alt
 
 # Bokeh import
-from bokeh.io import show, output_file
-from bokeh.plotting import figure
+#from bokeh.io import show, output_file
+#from bokeh.plotting import figure
 
 import logging
 
@@ -208,9 +211,10 @@ def plot_channels(X, y, ids):
 
 def data(datapath):
 
-    data_output_file = datapath + sample_name + '_' + label_type + '.npz.gz'
+    dataset_type = '_balanced'
+    data_input_file = datapath + sample_name + '_' + label_type + dataset_type + '.npz.gz'
 
-    with gzip.GzipFile(data_output_file, "rb") as f:
+    with gzip.GzipFile(data_input_file, "rb") as f:
         npzfiles = np.load(f)
         X = npzfiles['X']
         y = npzfiles['y']
@@ -230,18 +234,58 @@ def data(datapath):
     return X, y, y_binary, win_ids
 
 
+def remove_classes(X, y, win_ids, removed_labels):
+
+    for l in removed_labels:
+
+        keep = np.where(np.array(y) != l)
+        X = X[keep]
+        y = y[keep]
+        win_ids = win_ids[keep]
+
+    classes = get_classes(y)
+
+    mapclasses = dict()
+    for i, c in enumerate(classes):
+        mapclasses[c] = i
+
+    y_num = np.array([mapclasses[c] for c in y], dtype='int')
+    y_binary = to_categorical(y_num)
+
+    # print(y_binary)
+    # print(X.shape)
+    # print(y.shape)
+    # print(win_ids.shape)
+
+    return X, y, y_binary, win_ids
+
+
 def create_model(X, y_binary):
+
+    # models = modelgen.generate_models(X.shape,
+    #                                   y_binary.shape[1],
+    #                                   number_of_models = 1,
+    #                                   model_type = 'CNN',
+    #                                   cnn_min_layers=2,
+    #                                   cnn_max_layers=2,
+    #                                   cnn_min_filters = 4,
+    #                                   cnn_max_filters = 4,
+    #                                   cnn_min_fc_nodes=6,
+    #                                   cnn_max_fc_nodes=6,
+    #                                   low_lr=2, high_lr=2,
+    #                                   low_reg=1, high_reg=1,
+    #                                   kernel_size = 7)
 
     models = modelgen.generate_models(X.shape,
                                       y_binary.shape[1],
                                       number_of_models = 1,
                                       model_type = 'CNN',
-                                      cnn_min_layers=2,
-                                      cnn_max_layers=2,
-                                      cnn_min_filters = 4,
-                                      cnn_max_filters = 4,
-                                      cnn_min_fc_nodes=6,
-                                      cnn_max_fc_nodes=6,
+                                      cnn_min_layers=4,
+                                      cnn_max_layers=4,
+                                      cnn_min_filters = 6,
+                                      cnn_max_filters = 6,
+                                      cnn_min_fc_nodes=12,
+                                      cnn_max_fc_nodes=12,
                                       low_lr=2, high_lr=2,
                                       low_reg=1, high_reg=1,
                                       kernel_size = 7)
@@ -496,6 +540,10 @@ def run_cv():
 
     # Load the data
     X, y, y_binary, win_ids = data(datapath_training)
+    # BND
+    # removed_labels = ['INV_start', 'INV_end', 'DEL_start', 'DEL_end', 'DUP_start', 'DUP_end']
+    # X, y, y_binary, win_ids = remove_classes(X, y, win_ids, removed_labels)
+
     # X_test, y_test, y_test_binary, win_ids_test = data(datapath_test)
 
     results = results.append(cross_validation(X, y, y_binary, channels))

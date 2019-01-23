@@ -4,7 +4,9 @@ import os
 
 import numpy as np
 
-from matplotlib import pyplot as plt
+import matplotlib
+matplotlib.use('Qt4Agg')
+import matplotlib.pyplot as plt
 
 from collections import Counter, defaultdict
 
@@ -32,11 +34,11 @@ import tensorflow as tf
 # Pandas import
 import pandas as pd
 
-import altair as alt
+#import altair as alt
 
 # Bokeh import
-from bokeh.io import show, output_file
-from bokeh.plotting import figure
+#from bokeh.io import show, output_file
+#from bokeh.plotting import figure
 
 HPC_MODE = False
 sample_name = 'NA12878'
