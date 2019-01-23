@@ -45,15 +45,22 @@ import pandas as pd
 import logging
 
 
-HPC_MODE = False
+HPC_MODE = True
 sample_name = 'OC'
 date = '070119'
 label_type = 'bpi'
 datapath_prefix = '/hpc/cog_bioinf/ridder/users/lsantuari' if HPC_MODE else '/Users/lsantuari/Documents'
-datapath_training =  datapath_prefix+'/Processed/Test/'+\
-           date+'/TestData_'+date+'/'+sample_name+'/TrainingData/'
-datapath_test =  datapath_prefix+'/Processed/Test/'+\
-           date+'/TestData_'+date+'/'+sample_name+'/TestData/'
+
+if HPC_MODE:
+    datapath_training =  datapath_prefix+'/Processed/Test/'+\
+               date+'/TrainingData/'
+    datapath_test =  datapath_prefix+'/Processed/Test/'+\
+               date+'/TestData/'
+else:
+    datapath_training = datapath_prefix + '/Processed/Test/' + \
+                        date + '/TestData_' + date + '/' + sample_name + '/TrainingData/'
+    datapath_test = datapath_prefix + '/Processed/Test/' + \
+                    date + '/TestData_' + date + '/' + sample_name + '/TestData/'
 
 
 def get_classes(labels):
