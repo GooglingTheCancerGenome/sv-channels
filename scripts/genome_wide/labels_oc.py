@@ -115,10 +115,12 @@ class SVRecord_generic:
                         self.svtype = 'INV'
                 elif ct == '5to3':
                         self.svtype = 'DUP'
-                elif ct is None:
+                else:
                     self.svtype = record.info['SVTYPE']
             elif self.start == self.end:
                 self.svtype = 'INS'
+            else:
+                self.svtype = record.info['SVTYPE']
         else:
             #self.svtype = record.info['SVTYPE']
             self.svtype = 'TRA'
