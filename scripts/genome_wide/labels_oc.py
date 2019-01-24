@@ -107,10 +107,19 @@ class SVRecord_generic:
         self.filter = record.filter
 
         # Deletions are defined by 3to5 connection, same chromosome for start and end, start before end
-        if ct == '3to5' and self.chrom == self.chrom2 and self.start <= self.end:
-            self.svtype = 'DEL'
+        if self.chrom == self.chrom2:
+            if self.start < self.end:
+                if ct == '3to5':
+                    self.svtype = 'DEL'
+                elif ct == '5to5' or ct == '3to3':
+                        self.svtype = 'INV'
+                elif ct == '5to3':
+                        self.svtype = 'DUP'
+            elif self.start == self.end:
+                self.svtype = 'INS'
         else:
-            self.svtype = record.info['SVTYPE']
+            #self.svtype = record.info['SVTYPE']
+            self.svtype = 'TRA'
 
     @staticmethod
     def stdchrom(chrom):
