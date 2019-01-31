@@ -7,7 +7,7 @@ import bz2file
 import pickle
 from time import time
 import logging
-from functions import is_clipped, is_left_clipped, is_right_clipped
+from functions import is_clipped, is_left_clipped, is_right_clipped, has_indels, get_indels
 from collections import defaultdict
 
 
@@ -26,10 +26,12 @@ def get_clipped_reads(ibam, chrName, outFile):
     # Minimum read mapping quality to consider
     minMAPQ = 30
 
+    read_quality = defaultdict(list)
+
     # Dictionary to store number of clipped reads per position
     clipped_reads = dict()
     # For left- and right-clipped reads
-    for split_direction in ['left', 'right']:
+    for split_direction in ['left', 'right', 'D_left', 'D_right', 'I']:
         clipped_reads[split_direction] = defaultdict(int)
 
     # Dictionary to store number of clipped reads per position for
@@ -88,6 +90,19 @@ def get_clipped_reads(ibam, chrName, outFile):
                 i,
                 n_r / (now_t - last_t)))
             last_t = time()
+
+        for ref_pos in range(read.reference_start, read.reference_end+2):
+            read_quality[ref_pos].append(read.mapping_quality)
+
+        if has_indels(read) and not read.is_unmapped and read.mapping_quality >= minMAPQ:
+
+            dels, ins = get_indels(read)
+
+            for d in dels:
+                clipped_reads['D_left'][d[0]] += 1
+                clipped_reads['D_right'][d[1]] += 1
+            for i in ins:
+                clipped_reads['I'][i[0]] += 1
 
         # Both read and mate should be mapped, with mapping quality greater than minMAPQ
         if not read.is_unmapped and not read.mate_is_unmapped and read.mapping_quality >= minMAPQ:
@@ -172,7 +187,8 @@ def get_clipped_reads(ibam, chrName, outFile):
     # save clipped reads dictionary
     with bz2file.BZ2File(outFile, 'wb') as f:
         pickle.dump(
-            (clipped_reads, clipped_reads_inversion, clipped_reads_duplication, clipped_reads_translocation),
+            (read_quality, clipped_reads, clipped_reads_inversion,
+             clipped_reads_duplication, clipped_reads_translocation),
             # clipped_reads,
             f)
 

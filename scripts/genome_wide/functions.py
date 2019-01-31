@@ -45,6 +45,32 @@ def is_clipped(read):
     return False
 
 
+# Return start and end position of deletions and insertions
+def get_indels(read):
+
+    dels = []
+    ins = []
+    pos = read.reference_start
+    if read.cigartuples is not None:
+        for ct in read.cigartuples:
+            if ct[1] == 'D':
+                dels.append((pos, pos+ct[0]))
+            if ct[1] == 'I':
+                ins.append((pos, pos+ct[0]))
+            pos = pos + ct[0]
+
+    return dels, ins
+
+
+def has_indels(read):
+
+    if read.cigartuples is not None:
+        cigar_set = set([ct[1] for ct in read.cigartuples])
+        if 'D' in cigar_set or 'I' in cigar_set:
+            return True
+        else:
+            return False
+
 # Return the mate of a read. Get read mate from BAM file
 def get_read_mate(read, bamfile):
     '''
