@@ -92,6 +92,8 @@ def get_split_read_distance(ibam, chrName, outFile):
                         #    split_reads['left'][pos] = 1
                         #else:
                         split_reads['left'][pos] += 1
+                        split_reads['right'][refpos] += 1
+
                 # The read is right clipped
                 if is_right_clipped(read):
                     chr, pos = get_suppl_aln(read)
@@ -108,6 +110,7 @@ def get_split_read_distance(ibam, chrName, outFile):
                         #    split_reads['right'][pos] = 1
                         #else:
                         split_reads['right'][pos] += 1
+                        split_reads['left'][refpos] += 1
 
 
     # Save two dictionaries: split_read_distance and split_reads
