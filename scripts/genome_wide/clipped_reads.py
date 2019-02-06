@@ -189,7 +189,7 @@ def get_clipped_reads(ibam, chrName, outFile):
     #            for pos in clipped_reads_inversion[mate_position].keys() \
     #                 if clipped_reads_inversion[mate_position][pos] != 0])
 
-    read_quality = read_quality_sum/read_quality_count
+    read_quality = np.divide(read_quality_sum, read_quality_count, where=read_quality_count!=0)
 
     # save clipped reads dictionary
     with bz2file.BZ2File(outFile, 'wb') as f:
@@ -207,7 +207,7 @@ def main():
     #wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
     #inputBAM = wd + "T0_dedup.bam"
     # Locally
-    wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INV/BAM/'
+    wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
     inputBAM = wd + "G1_dedup.bam"
 
     # Default chromosome is 17 for the artificial data
