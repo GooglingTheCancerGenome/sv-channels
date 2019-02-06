@@ -1793,11 +1793,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                         # print(clipped_read_distance_array[direction][clipped_arrangement])
 
                 # read quality
-                read_quality_array = dict()
-                read_quality_array[sample] = np.zeros(win_len, dtype=np.uint32)
-                for pos in range(start_win, end_win):
-                    read_quality_array[sample][pos - start_win] = \
-                        statistics.mean(read_quality_array[sample][chrName][pos])
+                read_quality_array[sample] = read_quality[sample][chrName][start_win:end_win]
 
                 # clipped reads
                 clipped_reads_array[sample] = dict()

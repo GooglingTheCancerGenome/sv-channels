@@ -27,8 +27,6 @@ def get_clipped_reads(ibam, chrName, outFile):
     # Minimum read mapping quality to consider
     minMAPQ = 30
 
-    read_quality = defaultdict(list)
-
     # Dictionary to store number of clipped reads per position
     clipped_reads = dict()
     # For left- and right-clipped reads
@@ -74,6 +72,9 @@ def get_clipped_reads(ibam, chrName, outFile):
     start_pos = 0
     stop_pos = chrLen
 
+    read_quality_sum = np.zeros(chrLen, dtype=np.uint32)
+    read_quality_count = np.zeros(chrLen, dtype=np.uint32)
+
     # Fetch the reads mapped on the chromosome
     iter = bamfile.fetch(chrName, start_pos, stop_pos)
 
@@ -95,8 +96,8 @@ def get_clipped_reads(ibam, chrName, outFile):
         if not read.is_unmapped and read.mapping_quality >= minMAPQ:
 
             # add read mapping quality
-            for ref_pos in np.arange(read.reference_start, read.reference_end+2):
-                read_quality[ref_pos].append(read.mapping_quality)
+            read_quality_sum[read.reference_start:read.reference_end+2] += read.mapping_quality
+            read_quality_count[read.reference_start:read.reference_end + 2] += 1
 
             if has_indels(read):
 
@@ -187,6 +188,8 @@ def get_clipped_reads(ibam, chrName, outFile):
     #     print([(pos, clipped_reads_inversion[mate_position][pos]) \
     #            for pos in clipped_reads_inversion[mate_position].keys() \
     #                 if clipped_reads_inversion[mate_position][pos] != 0])
+
+    read_quality = read_quality_sum/read_quality_count
 
     # save clipped reads dictionary
     with bz2file.BZ2File(outFile, 'wb') as f:
