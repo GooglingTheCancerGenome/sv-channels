@@ -1657,7 +1657,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
             outliers[sample][chrName] = dict()
             for direction in ['forward', 'reverse']:
                 outliers[sample][chrName][direction] = dict()
-                for clipped_arrangement in ['left', 'right', 'unclipped']:
+                for clipped_arrangement in ['left', 'right', 'all']:
                     points = np.array(list(chain.from_iterable(
                         clipped_read_distance[sample][chrName][direction][clipped_arrangement].values()
                     )))
@@ -1750,7 +1750,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                     clipped_read_distance_outlier[sample][direction] = dict()
 
                 for direction in ['forward', 'reverse']:
-                    for clipped_arrangement in ['left', 'right', 'unclipped']:
+                    for clipped_arrangement in ['left', 'right', 'all']:
                         clipped_read_distance_array[sample][direction][clipped_arrangement] = np.zeros(win_len,
                                                                                                        dtype=np.uint32)
                         clipped_read_distance_num[sample][direction][clipped_arrangement] = np.zeros(win_len,
@@ -1891,20 +1891,24 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                     vstack_list.append(clipped_reads_translocation_array[sample][orientation])
 
                 for direction in ['forward', 'reverse']:
-                    for clipped_arrangement in ['left', 'right', 'unclipped']:
+                    for clipped_arrangement in ['left', 'right', 'all']:
+
                         # vstack_list.append(
                         #     clipped_read_distance_array[sample][direction][clipped_arrangement])
                         # vstack_list.append(
                         #     clipped_read_distance_num[sample][direction][clipped_arrangement])
-                        # vstack_list.append(
-                        #     clipped_read_distance_median[sample][direction][clipped_arrangement])
+
                         vstack_list.append(
-                            clipped_read_distance_outlier[sample][direction][clipped_arrangement])
+                            clipped_read_distance_median[sample][direction][clipped_arrangement])
+
+                        # vstack_list.append(
+                        #     clipped_read_distance_outlier[sample][direction][clipped_arrangement])
+
                 for direction in ['left', 'right']:
                     vstack_list.append(split_reads_array[sample][direction])
                 for direction in ['left', 'right']:
-                    vstack_list.append(split_read_distance_array[sample][direction])
-                    vstack_list.append(split_read_distance_num[sample][direction])
+                    # vstack_list.append(split_read_distance_array[sample][direction])
+                    # vstack_list.append(split_read_distance_num[sample][direction])
                     vstack_list.append(split_read_distance_median[sample][direction])
 
             # vstack_list.append(gc_array)

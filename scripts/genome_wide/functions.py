@@ -2,6 +2,8 @@
 import numpy as np
 import twobitreader as twobit
 
+del_min_size = 30
+
 '''
 Generic functions used in the channel scripts
 '''
@@ -53,11 +55,12 @@ def get_indels(read):
     pos = read.reference_start
     if read.cigartuples is not None:
         for ct in read.cigartuples:
-            if ct[1] == 'D':
-                dels.append((pos, pos+ct[0]))
-            if ct[1] == 'I':
-                ins.append((pos, pos+ct[0]))
-            pos = pos + ct[0]
+            # D is 2, I is 1
+            if ct[0] == 2 and ct[1] >= del_min_size:
+                dels.append(('D', pos, pos+ct[0]))
+            if ct[0] == 1:
+                ins.append(('I', pos, pos+ct[0]))
+            pos = pos + ct[1]
 
     return dels, ins
 
@@ -65,11 +68,15 @@ def get_indels(read):
 def has_indels(read):
 
     if read.cigartuples is not None:
-        cigar_set = set([ct[1] for ct in read.cigartuples])
-        if 'D' in cigar_set or 'I' in cigar_set:
+        cigar_set = set([ct[0] for ct in read.cigartuples])
+        # D is 2, I is 1
+        if len(set([1,2]) & cigar_set) > 0:
             return True
         else:
             return False
+    else:
+        return False
+
 
 # Return the mate of a read. Get read mate from BAM file
 def get_read_mate(read, bamfile):
