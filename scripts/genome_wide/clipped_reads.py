@@ -6,6 +6,7 @@ import os
 import bz2file
 import pickle
 from time import time
+import numpy as np
 import logging
 from functions import is_clipped, is_left_clipped, is_right_clipped, has_indels, get_indels
 from collections import defaultdict
@@ -91,18 +92,21 @@ def get_clipped_reads(ibam, chrName, outFile):
                 n_r / (now_t - last_t)))
             last_t = time()
 
-        for ref_pos in range(read.reference_start, read.reference_end+2):
-            read_quality[ref_pos].append(read.mapping_quality)
+        if not read.is_unmapped and read.mapping_quality >= minMAPQ:
 
-        if has_indels(read) and not read.is_unmapped and read.mapping_quality >= minMAPQ:
+            # add read mapping quality
+            for ref_pos in np.arange(read.reference_start, read.reference_end+2):
+                read_quality[ref_pos].append(read.mapping_quality)
 
-            dels, ins = get_indels(read)
+            if has_indels(read):
 
-            for d in dels:
-                clipped_reads['D_left'][d[0]] += 1
-                clipped_reads['D_right'][d[1]] += 1
-            for i in ins:
-                clipped_reads['I'][i[0]] += 1
+                dels, ins = get_indels(read)
+
+                for d in dels:
+                    clipped_reads['D_left'][d[0]] += 1
+                    clipped_reads['D_right'][d[1]] += 1
+                for i in ins:
+                    clipped_reads['I'][i[0]] += 1
 
         # Both read and mate should be mapped, with mapping quality greater than minMAPQ
         if not read.is_unmapped and not read.mate_is_unmapped and read.mapping_quality >= minMAPQ:
