@@ -10,13 +10,16 @@ NA12891_BAM='/hpc/cog_bioinf/diagnostiek/projects/na12878_wgs_trio/Set4GIAB12891
 PATIENT1_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CretuStancu2017/Patient1/Patient1.bam"
 PATIENT2_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CretuStancu2017/Patient2/Patient2.bam"
 
-BAM_ARRAY=(${NA12878_BAM} ${NA12892_BAM} ${NA12891_BAM} ${PATIENT1_BAM} ${PATIENT2_BAM})
-SAMPLE_ARRAY=('NA12878' 'NA12892' 'NA12891' 'PATIENT1' 'PATIENT2')
+#BAM_ARRAY=(${NA12878_BAM} ${NA12892_BAM} ${NA12891_BAM} ${PATIENT1_BAM} ${PATIENT2_BAM})
+#SAMPLE_ARRAY=('NA12878' 'NA12892' 'NA12891' 'PATIENT1' 'PATIENT2')
+
+BAM_ARRAY=(${NA12878_BAM})
+SAMPLE_ARRAY=('NA12878')
 
 CHRARRAY=(`seq 1 22` 'X' 'Y' 'MT')
 
 # Run single channel scripts (0) or ChannelMaker (1)
-RUNALL=1
+RUNALL=0
 
 if [ $RUNALL == 0 ]; then
 
@@ -31,7 +34,7 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
 
     for CHROMOSOME in ${CHRARRAY[@]}; do
         #for PRG in clipped_read_pos coverage clipped_read_distance clipped_reads split_read_distance; do
-	for PRG in clipped_reads; do
+	for PRG in clipped_read_pos; do
             JOB_NAME=$SAMPLE"_"$CHROMOSOME"_"${PRG}
 
             qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=$OUTDIR \
