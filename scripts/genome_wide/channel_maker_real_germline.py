@@ -1463,9 +1463,9 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
     if trainingMode and (sampleName == 'N1' or sampleName == 'N2'):
         prefix_train = 'Training_' + SVmode + '/'
     else:
-        # prefix_train = ''
+        prefix_train = ''
         # only for ovarian cancer
-        prefix_train = 'OC/'
+        #prefix_train = 'OC/'
 
     # Check for file existence
     if not HPC_MODE:
@@ -1584,7 +1584,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
             else:
 
                 logging.info('Reading clipped read positions')
-                with bz2file.BZ2File(clipped_read_pos_file[chrName], 'rb') as f:
+                with bz2file.BZ2File(prefix_train + sample + '/' + clipped_read_pos_file[chrName], 'rb') as f:
                     clipped_pos_cnt[chrName] = pickle.load(f)
                 logging.info('End of reading')
 

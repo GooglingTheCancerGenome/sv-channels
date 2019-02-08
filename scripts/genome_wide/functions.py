@@ -2,7 +2,7 @@
 import numpy as np
 import twobitreader as twobit
 
-del_min_size = 30
+del_min_size = 0
 
 '''
 Generic functions used in the channel scripts
@@ -57,9 +57,12 @@ def get_indels(read):
         for ct in read.cigartuples:
             # D is 2, I is 1
             if ct[0] == 2 and ct[1] >= del_min_size:
-                dels.append(('D', pos, pos+ct[0]))
+                #dels.append(('D', pos, pos+ct[0]))
+                dels.append(pos)
+                dels.append(pos + ct[1])
             if ct[0] == 1:
-                ins.append(('I', pos, pos+ct[0]))
+                #ins.append(('I', pos, pos+ct[0]))
+                ins.append(pos)
             pos = pos + ct[1]
 
     return dels, ins
