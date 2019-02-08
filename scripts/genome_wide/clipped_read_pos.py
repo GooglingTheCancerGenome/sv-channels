@@ -67,7 +67,7 @@ def get_clipped_read_positions(ibam, chrName, outFile):
                 # print(read)
                 dels, ins = fun.get_indels(read)
                 dels.extend(ins)
-                clipped_pos.extend(list(dels))
+                clipped_pos.extend(dels)
 
             if fun.is_left_clipped(read):
                 # read.reference_start is the 1-based start position of the read mapped on the reference genome
