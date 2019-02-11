@@ -103,11 +103,11 @@ def get_clipped_reads(ibam, chrName, outFile):
 
                 dels, ins = get_indels(read)
 
-                for d in dels:
-                    clipped_reads['D_left'][d[0]] += 1
-                    clipped_reads['D_right'][d[1]] += 1
-                for i in ins:
-                    clipped_reads['I'][i[0]] += 1
+                for deletion in dels:
+                    clipped_reads['D_left'][deletion[0]] += 1
+                    clipped_reads['D_right'][deletion[1]] += 1
+                for insertion in ins:
+                    clipped_reads['I'][insertion[0]] += 1
 
         # Both read and mate should be mapped, with mapping quality greater than minMAPQ
         if not read.is_unmapped and not read.mate_is_unmapped and read.mapping_quality >= minMAPQ:

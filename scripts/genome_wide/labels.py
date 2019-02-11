@@ -105,10 +105,22 @@ class SVRecord_generic:
         self.filter = record.filter
 
         # Deletions are defined by 3to5 connection, same chromosome for start and end, start before end
-        if ct == '3to5' and self.chrom == self.chrom2 and self.start <= self.end:
-            self.svtype = 'DEL'
+        if self.chrom == self.chrom2:
+            if ct == '3to5':
+                if self.start < self.end:
+                    self.svtype = 'DEL'
+                elif self.start == self.end - 1:
+                    self.svtype = 'INS'
+                else:
+                    self.svtype = record.info['SVTYPE']
+            elif ct == '5to5' or ct == '3to3':
+                self.svtype = 'INV'
+            elif ct == '5to3':
+                self.svtype = 'DUP'
+            else:
+                self.svtype = record.info['SVTYPE']
         else:
-            self.svtype = record.info['SVTYPE']
+            self.svtype = 'BND'
 
 
     @staticmethod
@@ -367,14 +379,15 @@ def create_dir(directory):
 
 
 def load_clipped_read_positions(sampleName, chrName):
-    channel_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth'
 
     vec_type = 'clipped_read_pos'
     print('Loading CR positions for Chr%s' % chrName)
     # Load files
     if HPC_MODE:
-        fn = '/'.join((sampleName, vec_type, chrName + '_' + vec_type + '.pbz2'))
+        channel_dir = ''
+        fn = os.path.join(channel_dir, sampleName, vec_type, chrName + '_' + vec_type + '.pbz2')
     else:
+        channel_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth'
         fn = '/'.join((channel_dir, sampleName, vec_type, chrName + '_' + vec_type + '.pbz2'))
 
     with bz2file.BZ2File(fn, 'rb') as f:
@@ -430,7 +443,7 @@ def initialize_nanosv_vcf_paths(sampleName):
 
         if sampleName[:7] == 'NA12878':
 
-            vcf_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth/' + sampleName[:7] + '/SV'
+            vcf_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth_no_INDELS/' + sampleName[:7] + '/SV'
             vcf_files = dict()
 
             for mapper in ['bwa', 'last']:
@@ -446,7 +459,7 @@ def initialize_nanosv_vcf_paths(sampleName):
 
         elif sampleName == 'Patient1' or sampleName == 'Patient2':
 
-            vcf_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth/' + sampleName + '/SV'
+            vcf_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth_no_INDELS/' + sampleName + '/SV'
             vcf_files = dict()
 
             for mapper in ['last']:
@@ -592,7 +605,7 @@ def get_labels_from_nanosv_vcf(sampleName):
     chr_list = set([var.chrom for var in sv_list])
 
     # print('Plotting CI distribution')
-    # plot_ci_dist(sv_list, sampleName)
+    plot_ci_dist(sv_list, sampleName)
 
     # print(chr_list)
     print('Total # of DELs: %d' % len(sv_list))
@@ -1142,11 +1155,16 @@ def clipped_read_positions_to_bed(sampleName, ibam):
 def nanosv_vcf_to_bed(sampleName):
     # Load SV list
     sv_list = read_nanosv_vcf(sampleName)
+
+    plot_ci_dist(sv_list, sampleName)
+
     # nanoSV & Manta SVs
     # sv_list = get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName)
 
     # Select deletions
     sv_list = [sv for sv in sv_list if sv.svtype == 'DEL' if sv.chrom == sv.chrom2 if sv.start < sv.end]
+
+    plot_ci_dist(sv_list, sampleName)
 
     lines = []
     for sv in sv_list:
@@ -1487,9 +1505,10 @@ def main():
     # get_labels_from_nanosv_vcf(sampleName=sampleName)
     # load_labels(sampleName=sampleName)
 
-    for sampleName in ['NA12878', 'Patient1', 'Patient2']:
-    #for sampleName in ['NA12878']:
-       get_labels(sampleName)
+    #for sampleName in ['NA12878', 'Patient1', 'Patient2']:
+    for sampleName in ['NA12878']:
+        get_labels(sampleName)
+        # nanosv_vcf_to_bed(sampleName)
 
     # crpos_giab = load_all_clipped_read_positions('NA12878')
     # crpos_ena = load_all_clipped_read_positions('NA12878_ENA')

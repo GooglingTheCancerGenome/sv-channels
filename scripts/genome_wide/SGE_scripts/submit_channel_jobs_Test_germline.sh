@@ -29,8 +29,8 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
     BAM=${BAM_ARRAY[$i]}
     OUTDIR=$SAMPLE
 
-    LOGDIR=${SAMPLE}"/log"
-    [ ! -d "$LOGDIR" ] && mkdir -p "$LOGDIR"
+#    LOGDIR=${SAMPLE}"/log"
+#    [ ! -d "$LOGDIR" ] && mkdir -p "$LOGDIR"
 
     for CHROMOSOME in ${CHRARRAY[@]}; do
         #for PRG in clipped_read_pos coverage clipped_read_distance clipped_reads split_read_distance; do
@@ -67,9 +67,9 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
 	SAMPLE=${SAMPLE_ARRAY[$i]}
 	BAM=${BAM_ARRAY[$i]}
 
-	LOGDIR=$SAMPLE"/log"
-	echo "creating directory " $LOGDIR
-	[ ! -d ${LOGDIR} ] && mkdir -p $LOGDIR
+#	LOGDIR=$SAMPLE"/log"
+#	echo "creating directory " $LOGDIR
+#	[ ! -d ${LOGDIR} ] && mkdir -p $LOGDIR
 
 	for CHROMOSOME in ${CHRARRAY[@]}; do
 	#for CHROMOSOME in 1; do

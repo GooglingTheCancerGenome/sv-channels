@@ -126,6 +126,9 @@ def get_one_hot_sequence(chrname, start, stop, nuc, HPC_MODE):
     #ltrdict = {'a': 0, 'c': 0, 'g': 0, 't': 0, 'n': 1}
     #return np.array([ltrdict[x.lower()] for x in genome['chr'+chrname][start:stop]])
 
+    if chrname == 'MT':
+        chrname = 'M'
+
     return np.array([1 if x.lower() == nuc.lower() else 0 for x in genome['chr' + chrname][start:stop]])
 
 
