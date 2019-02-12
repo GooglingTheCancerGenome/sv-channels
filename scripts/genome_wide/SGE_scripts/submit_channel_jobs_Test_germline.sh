@@ -13,8 +13,11 @@ PATIENT2_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CretuStancu2017/Pa
 #BAM_ARRAY=(${NA12878_BAM} ${NA12892_BAM} ${NA12891_BAM} ${PATIENT1_BAM} ${PATIENT2_BAM})
 #SAMPLE_ARRAY=('NA12878' 'NA12892' 'NA12891' 'PATIENT1' 'PATIENT2')
 
-BAM_ARRAY=(${NA12878_BAM})
-SAMPLE_ARRAY=('NA12878')
+#BAM_ARRAY=(${NA12878_BAM})
+#SAMPLE_ARRAY=('NA12878')
+
+BAM_ARRAY=(${PATIENT1_BAM} ${PATIENT2_BAM})
+SAMPLE_ARRAY=('PATIENT1' 'PATIENT2')
 
 CHRARRAY=(`seq 1 22` 'X' 'Y' 'MT')
 
@@ -32,9 +35,10 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
 #    LOGDIR=${SAMPLE}"/log"
 #    [ ! -d "$LOGDIR" ] && mkdir -p "$LOGDIR"
 
-    for CHROMOSOME in ${CHRARRAY[@]}; do
+    # for CHROMOSOME in ${CHRARRAY[@]}; do
+    for CHROMOSOME in '1'; do
         #for PRG in clipped_read_pos coverage clipped_read_distance clipped_reads split_read_distance; do
-	for PRG in clipped_read_pos; do
+	for PRG in clipped_reads; do
             JOB_NAME=$SAMPLE"_"$CHROMOSOME"_"${PRG}
 
             qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=$OUTDIR \
