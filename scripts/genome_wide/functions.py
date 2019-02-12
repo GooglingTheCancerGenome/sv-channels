@@ -50,7 +50,8 @@ def is_clipped(read):
 # Return start and end position of deletions and insertions
 def get_indels(read):
 
-    dels = []
+    dels_start = []
+    dels_end = []
     ins = []
     pos = read.reference_start
     if read.cigartuples is not None:
@@ -58,14 +59,14 @@ def get_indels(read):
             # D is 2, I is 1
             if ct[0] == 2 and ct[1] >= del_min_size:
                 #dels.append(('D', pos, pos+ct[0]))
-                dels.append(pos)
-                dels.append(pos + ct[1])
+                dels_start.append(pos)
+                dels_end.append(pos + ct[1])
             if ct[0] == 1:
                 #ins.append(('I', pos, pos+ct[0]))
                 ins.append(pos)
             pos = pos + ct[1]
 
-    return dels, ins
+    return dels_start, dels_end, ins
 
 
 def has_indels(read):
