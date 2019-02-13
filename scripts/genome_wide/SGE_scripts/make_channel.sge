@@ -1,6 +1,6 @@
 #!/bin/bash -x
 #$ -S /bin/bash
-#$ -l h_rt=2:00:00
+#$ -l h_rt=24:00:00
 #$ -l h_vmem=64G
 #$ -q all.q
 #$ -wd /hpc/cog_bioinf/ridder/users/lsantuari/Git/DeepSV_runs/060219/CNN/scripts

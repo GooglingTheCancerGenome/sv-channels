@@ -78,7 +78,7 @@ def get_split_read_distance(ibam, chrName, outFile):
             if read.has_tag('SA'):
                 # The read is left clipped
                 if is_left_clipped(read):
-                    chr, pos = get_suppl_aln(read)
+                    chr, pos, strand = get_suppl_aln(read)
                     # The read and the supplementary alignment are on the same chromosome
                     if chr == read.reference_name:
                         # print('Left split')
@@ -96,7 +96,7 @@ def get_split_read_distance(ibam, chrName, outFile):
 
                 # The read is right clipped
                 if is_right_clipped(read):
-                    chr, pos = get_suppl_aln(read)
+                    chr, pos, strand = get_suppl_aln(read)
                     # The read and the supplementary alignment are on the same chromosome
                     if chr == read.reference_name:
                         # print('Right split')
