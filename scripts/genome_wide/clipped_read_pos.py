@@ -65,8 +65,8 @@ def get_clipped_read_positions(ibam, chrName, outFile):
 
             if fun.has_indels(read):
                 # print(read)
-                dels, ins = fun.get_indels(read)
-                dels.extend(ins)
+                dels_start, dels_end, ins = fun.get_indels(read)
+                dels = dels_start + dels_end + ins
                 clipped_pos.extend(dels)
 
             if fun.is_left_clipped(read):
