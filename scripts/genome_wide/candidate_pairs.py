@@ -154,7 +154,7 @@ def inspect_pairs(candidate_pairs, outFile):
 
     bp_cnt = Counter(bp_list)
     min_support_bp = [k for (k, v) in bp_cnt.items() if v >= min_support]
-    logging.info('Min %d supported positions bp1; %d/%d' %
+    logging.info('Min %d supported positions bp1: %d/%d' %
           (min_support, len(min_support_bp), len(bp_cnt)))
     for bp1_id in min_support_bp:
         bp1_chr, bp1_pos, bp1_strand = bp1_id.split('_')
@@ -182,7 +182,7 @@ def inspect_pairs(candidate_pairs, outFile):
 
     bp_cnt = Counter(bp_list)
     min_support_bp = [k for (k, v) in bp_cnt.items() if v >= min_support]
-    logging.info('Min %d supported positions bp2; %d/%d' %
+    logging.info('Min %d supported positions bp2: %d/%d' %
           (min_support, len(min_support_bp), len(bp_cnt)))
     for bp1_id in min_support_bp:
         bp1_chr, bp1_pos, bp1_strand = bp1_id.split('_')
