@@ -9,6 +9,7 @@ from time import time
 import pysam
 import functions as fun
 
+min_support = 3
 
 class Breakpoint:
 
@@ -152,18 +153,19 @@ def inspect_pairs(candidate_pairs, outFile):
         bp_list.append(bp_id)
 
     bp_cnt = Counter(bp_list)
-    min_support_bp = [k for (k, v) in bp_cnt.items() if v >= 3]
-    print('min support positions bp1; %d/%d' %
-          (len(min_support_bp), len(bp_cnt)))
+    min_support_bp = [k for (k, v) in bp_cnt.items() if v >= min_support]
+    logging.info('Min %d supported positions bp1; %d/%d' %
+          (min_support, len(min_support_bp), len(bp_cnt)))
     for bp1_id in min_support_bp:
         bp1_chr, bp1_pos, bp1_strand = bp1_id.split('_')
         for bp2_id in bp_dict[bp1_id]:
             bp2_chr, bp2_strand = bp2_id.split('_')
-            bp2_pos = max(bp_dict[bp1_id][bp2_id]) if bp1_strand == '+' else min(bp_dict[bp1_id][bp2_id])
-            final_pairs.add(StructuralVariant(Breakpoint(bp1_chr, int(bp1_pos), bp1_strand),
-                                              Breakpoint(bp2_chr, int(bp2_pos), bp2_strand)))
+            if len(bp_dict[bp1_id][bp2_id]) >= min_support:
+                bp2_pos = max(bp_dict[bp1_id][bp2_id]) if bp1_strand == '+' else min(bp_dict[bp1_id][bp2_id])
+                final_pairs.add(StructuralVariant(Breakpoint(bp1_chr, int(bp1_pos), bp1_strand),
+                                                  Breakpoint(bp2_chr, int(bp2_pos), bp2_strand)))
 
-    print(len(final_pairs))
+    logging.info('Length of pair set after BP1 perspective: %d' % len(final_pairs))
 
     # from bp2 point of view
     bp_dict = defaultdict(dict)
@@ -179,18 +181,19 @@ def inspect_pairs(candidate_pairs, outFile):
         bp_list.append(bp_id)
 
     bp_cnt = Counter(bp_list)
-    min_support_bp = [k for (k, v) in bp_cnt.items() if v >= 3]
-    print('unique positions bp2; %d/%d' %
-          (len(min_support_bp), len(bp_cnt)))
+    min_support_bp = [k for (k, v) in bp_cnt.items() if v >= min_support]
+    logging.info('Min %d supported positions bp2; %d/%d' %
+          (min_support, len(min_support_bp), len(bp_cnt)))
     for bp1_id in min_support_bp:
         bp1_chr, bp1_pos, bp1_strand = bp1_id.split('_')
         for bp2_id in bp_dict[bp1_id]:
             bp2_chr, bp2_strand = bp2_id.split('_')
-            bp2_pos = max(bp_dict[bp1_id][bp2_id]) if bp1_strand == '+' else min(bp_dict[bp1_id][bp2_id])
-            final_pairs.add(StructuralVariant(Breakpoint(bp1_chr, int(bp1_pos), bp1_strand),
-                                              Breakpoint(bp2_chr, int(bp2_pos), bp2_strand)))
+            if len(bp_dict[bp1_id][bp2_id]) >= min_support:
+                bp2_pos = max(bp_dict[bp1_id][bp2_id]) if bp1_strand == '+' else min(bp_dict[bp1_id][bp2_id])
+                final_pairs.add(StructuralVariant(Breakpoint(bp1_chr, int(bp1_pos), bp1_strand),
+                                                  Breakpoint(bp2_chr, int(bp2_pos), bp2_strand)))
 
-    print(len(final_pairs))
+    logging.info('Length of pair set after BP2 perspective: %d' % len(final_pairs))
 
     # Write the output in pickle format
     with bz2file.BZ2File(outFile, 'wb') as f:

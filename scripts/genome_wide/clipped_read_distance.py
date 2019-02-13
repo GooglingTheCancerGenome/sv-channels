@@ -141,7 +141,7 @@ def main():
 
     t0 = time()
     get_clipped_read_distance(ibam=args.bam, chrName=args.chr, outFile=args.out)
-    print('Time: clipped read distance on BAM %s and Chr %s: %f' % (args.bam, args.chr, (time() - t0)))
+    logging.info('Time: clipped read distance on BAM %s and Chr %s: %f' % (args.bam, args.chr, (time() - t0)))
 
 
 if __name__ == '__main__':

@@ -84,6 +84,8 @@ def get_clipped_read_positions(ibam, chrName, outFile):
     # Count the number of clipped reads per position
     clipped_pos_cnt = Counter(clipped_pos)
 
+    logging.info('Number of unique positions: %d' % len(clipped_pos_cnt))
+
     # Write the output in pickle format
     with bz2file.BZ2File(outFile, 'wb') as f:
         pickle.dump(clipped_pos_cnt, f)
@@ -127,7 +129,7 @@ def main():
 
     t0 = time()
     get_clipped_read_positions(ibam=args.bam, chrName=args.chr, outFile=args.out)
-    print('Time: clipped read positions on BAM %s and Chr %s: %f' % (args.bam, args.chr, (time() - t0)))
+    logging.info('Time: clipped read positions on BAM %s and Chr %s: %f' % (args.bam, args.chr, (time() - t0)))
 
 
 if __name__ == '__main__':

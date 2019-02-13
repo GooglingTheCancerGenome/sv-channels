@@ -235,7 +235,7 @@ def main():
 
     t0 = time()
     get_clipped_reads(ibam=args.bam, chrName=args.chr, outFile=args.out)
-    print('Time: clipped reads on BAM %s and Chr %s: %f' % (args.bam, args.chr, (time() - t0)))
+    logging.info('Time: clipped reads on BAM %s and Chr %s: %f' % (args.bam, args.chr, (time() - t0)))
 
 
 if __name__ == '__main__':
