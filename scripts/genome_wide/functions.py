@@ -2,7 +2,8 @@
 import numpy as np
 import twobitreader as twobit
 
-del_min_size = 0
+del_min_size = 30
+ins_min_size = 30
 
 '''
 Generic functions used in the channel scripts
@@ -87,7 +88,7 @@ def get_indels(read):
                 #dels.append(('D', pos, pos+ct[0]))
                 dels_start.append(pos)
                 dels_end.append(pos + ct[1])
-            if ct[0] == 1:
+            if ct[0] == 1 and ct[1] >= ins_min_size:
                 #ins.append(('I', pos, pos+ct[0]))
                 ins.append(pos)
             pos = pos + ct[1]
