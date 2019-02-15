@@ -16,6 +16,7 @@ import numpy as np
 import pyBigWig
 import pysam
 from functions import get_one_hot_sequence, is_outlier
+from candidate_pairs import *
 
 # import matplotlib.pyplot as plt
 
