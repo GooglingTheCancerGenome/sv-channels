@@ -99,7 +99,6 @@ def get_mappability_bigwig():
 
 
 def load_bam(ibam):
-
     # check if the BAM file exists
     assert os.path.isfile(ibam)
     # open the BAM file
@@ -107,45 +106,106 @@ def load_bam(ibam):
 
 
 def get_chr_len_dict(ibam):
-
     bamfile = load_bam(ibam)
     # Extract chromosome length from the BAM header
     header_dict = bamfile.header
 
-    chrLen = {i['SN']:i['LN'] for i in header_dict['SQ']}
+    chrLen = {i['SN']: i['LN'] for i in header_dict['SQ']}
     return chrLen
 
 
-def load_channels(ibam, sample):
-
+def load_channels(sample, chr_list):
     prefix = ''
+    channel_names = ['candidate_pairs', 'clipped_reads_tuple', 'clipped_read_distance',
+                     'coverage', 'split_read_distance_tuple']
 
-    chr_list = get_chr_len_dict(ibam).keys()
-
-    channel_names = ['candidate_pairs', 'clipped_reads', 'clipped_read_distance',
-                     'coverage', 'split_read_distance']
     channel_data = defaultdict(dict)
 
-    for chr in chr_list:
-        logging.info('Loading data for Chr%s' % chr)
+    for chrom in chr_list:
+        logging.info('Loading data for Chr%s' % chrom)
         for ch in channel_names:
             logging.info('Loading data for channel %s' % ch)
             suffix = '.npy.bz2' if ch == 'coverage' else '.pbz2'
-            filename = os.path.join(prefix, sample, ch, '_'.join([chr, ch+suffix]))
+            filename = os.path.join(prefix, sample, ch, '_'.join([chrom, ch + suffix]))
             assert os.path.isfile(filename)
 
-            logging.info('Reading %s for Chr%s' % (ch, chr))
+            logging.info('Reading %s for Chr%s' % (ch, chrom))
             with bz2file.BZ2File(filename, 'rb') as f:
                 if suffix == '.npy.bz2':
-                    channel_data[chr][ch] = np.load(f)
+                    channel_data[chrom][ch] = np.load(f)
                 else:
-                    channel_data[chr][ch] = pickle.load(f)
+                    channel_data[chrom][ch] = pickle.load(f)
             logging.info('End of reading')
+
+        # unpack clipped_reads
+        channel_data[chrom]['read_quality'], channel_data[chrom]['clipped_reads'], \
+        channel_data[chrom]['clipped_reads_inversion'], channel_data[chrom]['clipped_reads_duplication'], \
+        channel_data[chrom]['clipped_reads_translocation'] = channel_data[chrom]['clipped_reads_tuple']
+        del channel_data[chrom]['clipped_reads_tuple']
+
+        # unpack split_reads
+        channel_data[chrom]['split_read_distance'], \
+        channel_data[chrom]['split_reads'] = channel_data[chrom]['split_read_distance_tuple']
+        del channel_data[chrom]['split_read_distance_tuple']
 
     return channel_data
 
 
-def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
+def channel_maker(ibam, chrom, sampleName, outFile):
+
+    def check_progress(i, n_r, last_t):
+
+        if not i % n_r:
+            now_t = time()
+            # print(type(now_t))
+            logging.info("%d candidate pairs processed (%f pairs / s)" % (
+                i,
+                n_r / (now_t - last_t)))
+            last_t = time()
+
+    n_channels = 29
+    bp_padding = 10
+    channel_index = 28
+
+    channel_data = load_channels(sampleName, chrList=[chrom])
+
+    bw_map = get_mappability_bigwig()
+
+    candidate_pairs_chr = [(bp1, bp2) for (bp1, bp2) in channel_data[chrom]['candidate_pairs']
+                           if bp1.chr == bp2.chr and bp1.chr == chrom]
+
+    channel_windows = np.zeros(shape=(len(candidate_pairs_chr),
+                                      win_len * 2 + bp_padding, n_channels), dtype=np.uint32)
+
+    # Consider a single sample
+    sample_list = sampleName.split('_')
+
+    for sample in sample_list:
+
+        # Log info every n_r times
+        n_r = 10 ** 3
+        # print(n_r)
+        last_t = time()
+
+        for i, sv in enumerate(candidate_pairs_chr, start=0):
+            check_progress(i, n_r, last_t)
+
+            bp1, bp2 = sv
+
+            channel_windows[i, :win_len, channel_index] = bw_map.values(bp1.chr,
+                                                             bp1.pos - win_hlen, bp1.pos + win_hlen)
+            channel_windows[i, win_len + bp_padding:, channel_index] = bw_map.values(bp2.chr,
+                                                                          bp2.pos - win_hlen, bp2.pos + win_hlen)
+
+    logging.info("channel_windows shape: %s" % channel_windows.shape)
+
+    # Save the list of channel vstacks
+    with gzip.GzipFile(outFile, "w") as f:
+        np.save(file=f, arr=channel_windows)
+    f.close()
+
+
+def channel_maker_test(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
     '''
     This function loads the channels and for each clipped read position with at least min_cr_support clipped reads, it
     creates a vstack with 22 channel vectors (11 for the Tumor and 11 for the Normal sample) of width equal to
@@ -161,6 +221,8 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
     # List where to store the channel vstacks
     ch_list = []
 
+    chr_list = get_chr_len_dict(ibam).keys()
+
     # Get Mappability BigWig
     bw_map = get_mappability_bigwig()
 
@@ -170,7 +232,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
     else:
         prefix_train = ''
         # only for ovarian cancer
-        #prefix_train = 'OC/'
+        # prefix_train = 'OC/'
 
     # Check for file existence
     if not HPC_MODE:
@@ -593,7 +655,6 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
                 for direction in ['forward', 'reverse']:
                     for clipped_arrangement in ['left', 'right', 'all']:
-
                         # vstack_list.append(
                         #     clipped_read_distance_array[sample][direction][clipped_arrangement])
                         # vstack_list.append(
@@ -673,10 +734,6 @@ def main():
                         help="Specify output")
     parser.add_argument('-s', '--sample', type=str, default='NA12878',
                         help="Specify sample")
-    parser.add_argument('-m', '--svmode', type=str, default='INDEL',
-                        help="Specify SV type")
-    parser.add_argument('-t', '--train', type=bool, default=True,
-                        help="Specify if training mode is active")
     parser.add_argument('-l', '--logfile', default='channel_maker.log',
                         help='File in which to write logs.')
 
@@ -691,18 +748,7 @@ def main():
 
     t0 = time()
 
-    # Get chromosome length
-    # chrlen = get_chr_len(args.bam, args.chr)
-
-    if args.svmode == 'TRA':
-        chrList = args.chr.split('_')
-    else:
-        chrList = [args.chr]
-
-    # channel_maker(ibam=args.bam, chrList=chrList, sampleName=args.sample, SVmode=args.svmode,
-    #               trainingMode=args.train, outFile=args.out)
-
-    load_channels(ibam=args.bam, sample=args.sample)
+    channel_maker(ibam=args.bam, chrom=args.chr, sampleName=args.sample, outFile=args.out)
 
     # print('Elapsed time channel_maker_real on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))
     print('Elapsed time channel_maker_real = %f' % (time() - t0))
