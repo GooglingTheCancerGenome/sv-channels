@@ -37,7 +37,7 @@ parser.add_argument('--BED', type=str, nargs='?', dest='bed_file',
                     default='/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/' + \
                             'run_test_INDEL/SV/chr17B_T.proper.bed')
 parser.add_argument('--OUT_DIR', type=str, nargs='?', dest='out_dir',
-                    # default='/Users/tschafers/Test_data/CNN/Results/')
+                    #default=os.getcwd())
                     default='/Users/lsantuari/Documents/Processed/Breakpoint2SV/Results/')
 parser.add_argument('--MAX_READ_COUNT', type=int, nargs='?', dest='max_read_count', default=5000)
 parser.add_argument('--MIN_MAPQ', type=int, nargs='?', dest='min_mapq', default=20)
@@ -97,6 +97,7 @@ class Breakpoint:
         for e in ['CR_R', 'CR_L', 'SR_L', 'SR_R', 'D', 'I', 'PE_L', 'PE_R']:
             self.support[e] = []
         self.mate_breakpoints = []
+        self.strand = ''
 
     def get_distance_to_breakpoint(self, read):
 
@@ -194,15 +195,15 @@ def breakpoint_to_sv_v2(chr, breakpoints):
                     if read.reference_start <= current_brkpnt.location.position <= read.reference_end:
                         if has_indels(read):
 
-                            ins, dels = get_cigar_indels()
+                            dels, ins = get_indels(read)
 
                             for i in ins:
-                                if i[0] <= current_brkpnt.location.position <= i[1]:
+                                if i[1] <= current_brkpnt.location.position <= i[2]:
                                     current_brkpnt.support['I'].append(i)
                                     current_brkpnt.mate_breakpoints.append(Breakpoint(read.reference_name, i[0]))
 
                             for d in dels:
-                                if d[0] <= current_brkpnt.location.position <= d[1]:
+                                if d[1] <= current_brkpnt.location.position <= d[2]:
                                     current_brkpnt.support['D'].append(d)
                                     current_brkpnt.mate_breakpoints.append(Breakpoint(read.reference_name, d[1]))
 
