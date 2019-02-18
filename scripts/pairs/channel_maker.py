@@ -116,8 +116,8 @@ def get_chr_len_dict(ibam):
 
 def load_channels(sample, chr_list):
     prefix = ''
-    channel_names = ['candidate_pairs', 'clipped_reads_tuple', 'clipped_read_distance',
-                     'coverage', 'split_read_distance_tuple']
+    channel_names = ['candidate_pairs', 'clipped_reads', 'clipped_read_distance',
+                     'coverage', 'split_read_distance']
 
     channel_data = defaultdict(dict)
 
@@ -140,13 +140,11 @@ def load_channels(sample, chr_list):
         # unpack clipped_reads
         channel_data[chrom]['read_quality'], channel_data[chrom]['clipped_reads'], \
         channel_data[chrom]['clipped_reads_inversion'], channel_data[chrom]['clipped_reads_duplication'], \
-        channel_data[chrom]['clipped_reads_translocation'] = channel_data[chrom]['clipped_reads_tuple']
-        del channel_data[chrom]['clipped_reads_tuple']
+        channel_data[chrom]['clipped_reads_translocation'] = channel_data[chrom]['clipped_reads']
 
         # unpack split_reads
         channel_data[chrom]['split_read_distance'], \
-        channel_data[chrom]['split_reads'] = channel_data[chrom]['split_read_distance_tuple']
-        del channel_data[chrom]['split_read_distance_tuple']
+        channel_data[chrom]['split_reads'] = channel_data[chrom]['split_read_distance']
 
     return channel_data
 
@@ -165,7 +163,6 @@ def channel_maker(ibam, chrom, sampleName, outFile):
 
     n_channels = 29
     bp_padding = 10
-    channel_index = 28
 
     channel_data = load_channels(sampleName, [chrom])
 
@@ -191,11 +188,26 @@ def channel_maker(ibam, chrom, sampleName, outFile):
             check_progress(i, n_r, last_t)
 
             bp1, bp2 = sv
+            chr1, start1, end1 = bp1.chr, bp1.pos - win_hlen, bp1.pos + win_hlen
+            chr2, start2, end2 = bp2.chr, bp2.pos - win_hlen, bp2.pos + win_hlen
 
-            channel_windows[i, :win_len, channel_index] = bw_map.values(bp1.chr,
-                                                             bp1.pos - win_hlen, bp1.pos + win_hlen)
-            channel_windows[i, win_len + bp_padding:, channel_index] = bw_map.values(bp2.chr,
-                                                                          bp2.pos - win_hlen, bp2.pos + win_hlen)
+            # coverage
+            channel_index = 1
+            channel_windows[i, :win_len, channel_index] = channel_data[chr1]['coverage'][start1, end1]
+            channel_windows[i, :win_len, channel_index] = channel_data[chr2]['coverage'][start2, end2]
+
+            # one hot encoding
+            nuc_list = ['A', 'T', 'C', 'G', 'N']
+            for idx, nuc in enumerate(nuc_list, start=23):
+                channel_windows[i, :win_len, channel_index] = get_one_hot_sequence(
+                    chr1, start1, end1, nuc, HPC_MODE)
+                channel_windows[i, win_len + bp_padding:, channel_index] = get_one_hot_sequence(
+                    chr2, start2, end2, nuc, HPC_MODE)
+
+            # mappability
+            channel_index = 28
+            channel_windows[i, :win_len, channel_index] = bw_map.values(chr1, start1, end1)
+            channel_windows[i, win_len + bp_padding:, channel_index] = bw_map.values(chr2, start2, end2)
 
     logging.info("channel_windows shape: %s" % channel_windows.shape)
 
