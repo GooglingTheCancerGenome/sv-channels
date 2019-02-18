@@ -46,7 +46,7 @@ def get_coverage(ibam, chrName, outFile):
     stop_pos = chrLen
 
     # Numpy array to store the coverage
-    cov = np.zeros(chrLen, dtype=int)
+    cov = np.zeros(chrLen, dtype=np.uint32)
 
     # Log information every n_r base pair positions
     n_r = 10 ** 6
@@ -72,10 +72,10 @@ def get_coverage(ibam, chrName, outFile):
 
     # Replacing pileup with count_coverage
     cov_A, cov_C, cov_G, cov_T = bamfile.count_coverage(chrName, start_pos, stop_pos, read_callback=check_read)
-    cov = np.asarray(cov_A, dtype=int) + \
-          np.asarray(cov_C, dtype=int) + \
-          np.asarray(cov_G, dtype=int) + \
-          np.asarray(cov_T, dtype=int)
+    cov = np.asarray(cov_A, dtype=np.uint32) + \
+          np.asarray(cov_C, dtype=np.uint32) + \
+          np.asarray(cov_G, dtype=np.uint32) + \
+          np.asarray(cov_T, dtype=np.uint32)
     # print(cov)
 
     # cov_A, cov_C, cov_G, cov_T = bamfile.count_coverage(chrName, start_pos, stop_pos)

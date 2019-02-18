@@ -8,26 +8,6 @@ import logging
 from functions import *
 from collections import defaultdict
 
-# Return chromosome and starting position of a supplementary alignment (split reads)
-def get_suppl_aln(read):
-    '''
-    This function returns the chromosome and start position of the first supplementary alignment ('SA' tag) for a read.
-    :param read: read object of the class pysam.AlignedSegment
-    :return: a tuple with chromosome and start position of the first supplementary alignment. None if there are no
-    supplementary alignments.
-    '''
-    if len(read.get_tag('SA')) > 0:
-        # print(read.get_tag('SA'))
-        supp_aln = read.get_tag('SA').split(';')[0]
-        sa_info = supp_aln.split(',')
-        # print(supp_aln)
-        # print(sa_info)
-        chr_sa = sa_info[0]
-        start_sa = int(sa_info[1])
-        return chr_sa, start_sa
-    else:
-        return None
-
 
 def get_split_read_distance(ibam, chrName, outFile):
 

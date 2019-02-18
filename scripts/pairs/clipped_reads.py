@@ -48,7 +48,7 @@ def get_clipped_reads(ibam, chrName, outFile):
     # AND read is reverse AND mate is forward AND mate is mapped after read
     clipped_reads_duplication = dict()
 
-    # TRAslocation:
+    # TRAnslocation:
     # Two channels: reads with mate mapped to a different chromosome and with
     # 1: opposite orientation
     # 2: same orientation
