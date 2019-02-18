@@ -167,7 +167,7 @@ def channel_maker(ibam, chrom, sampleName, outFile):
     bp_padding = 10
     channel_index = 28
 
-    channel_data = load_channels(sampleName, chrList=[chrom])
+    channel_data = load_channels(sampleName, [chrom])
 
     bw_map = get_mappability_bigwig()
 
