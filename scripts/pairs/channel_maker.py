@@ -106,14 +106,13 @@ def load_bam(ibam):
     return pysam.AlignmentFile(ibam, "rb")
 
 
-def get_chr_len(ibam):
+def get_chr_len_dict(ibam):
 
     bamfile = load_bam(ibam)
     # Extract chromosome length from the BAM header
     header_dict = bamfile.header
 
     chrLen = {i['SN']:i['LN'] for i in header_dict['SQ']}
-    print(chrLen)
     return chrLen
 
 
@@ -121,21 +120,26 @@ def load_channels(ibam, sample):
 
     prefix = ''
 
-    chr_list = get_chr_len(ibam).keys()
+    chr_list = get_chr_len_dict(ibam).keys()
 
     channel_names = ['candidate_pairs', 'clipped_reads', 'clipped_read_distance',
                      'coverage', 'split_read_distance']
     channel_data = defaultdict(dict)
 
     for chr in chr_list:
+        logging.info('Loading data for Chr%s' % chr)
         for ch in channel_names:
+            logging.info('Loading data for channel %s' % ch)
             suffix = '.npy.bz2' if ch == 'coverage' else '.pbz2'
             filename = os.path.join(prefix, sample, ch, '_'.join([chr, ch+suffix]))
             assert os.path.isfile(filename)
 
             logging.info('Reading %s for Chr%s' % (ch, chr))
             with bz2file.BZ2File(filename, 'rb') as f:
-                channel_data[chr][ch] = pickle.load(f)
+                if suffix == '.npy.bz2':
+                    channel_data[chr][ch] = np.load(f)
+                else:
+                    channel_data[chr][ch] = pickle.load(f)
             logging.info('End of reading')
 
     return channel_data
