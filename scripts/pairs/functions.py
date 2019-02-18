@@ -171,10 +171,10 @@ def get_one_hot_sequence_by_list(chrname, positions, HPC_MODE):
     if chrname == 'MT':
         chrname = 'M'
 
-    whole_chrom = str(genome[chrname])
+    whole_chrom = str(genome['chr' + chrname])
 
     nuc_list = ['A', 'T', 'C', 'G', 'N']
-    res = np.zeros(shape=(positions,len(nuc_list)), dtype=np.uint32)
+    res = np.zeros(shape=(len(positions),len(nuc_list)), dtype=np.uint32)
     for i, nuc in enumerate(nuc_list, start=0):
         res[:,i] = np.array([1 if whole_chrom[pos].lower() == nuc.lower() else 0 for pos in positions])
 

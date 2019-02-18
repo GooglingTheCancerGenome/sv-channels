@@ -149,16 +149,7 @@ def load_channels(sample, chr_list):
     return channel_data
 
 
-def channel_maker(ibam, chrom, sampleName, outFile):
-    def check_progress(i, n_r, last_t):
-
-        if i != 0 and not i % n_r:
-            now_t = time()
-            # print(type(now_t))
-            logging.info("%d candidate pairs processed (%f pairs / s)" % (
-                i,
-                n_r / (now_t - last_t)))
-            last_t = time()
+def channel_maker(chrom, sampleName, outFile):
 
     n_channels = 29
     bp_padding = 10
@@ -173,18 +164,6 @@ def channel_maker(ibam, chrom, sampleName, outFile):
     channel_windows = np.zeros(shape=(len(candidate_pairs_chr),
                                       win_len * 2 + bp_padding, n_channels), dtype=np.uint32)
 
-    # Consider a single sample
-    sample_list = sampleName.split('_')
-
-    # for sample in sample_list:
-
-    # Log info every n_r times
-    n_r = 10 ** 3
-    # print(n_r)
-    last_t = time()
-
-    i = 0
-
     # dictionary of key choices
     direction_list = {'clipped_reads': ['left', 'right', 'D_left', 'D_right', 'I'],
                       'split_reads': ['left', 'right'],
@@ -194,6 +173,11 @@ def channel_maker(ibam, chrom, sampleName, outFile):
                       'clipped_reads_translocation': ['opposite', 'same'],
                       'clipped_read_distance': ['forward', 'reverse']
                       }
+
+    # Consider a single sample
+    # sample_list = sampleName.split('_')
+
+    # for sample in sample_list:
 
     positions = []
     for sv in candidate_pairs_chr:
@@ -263,137 +247,27 @@ def channel_maker(ibam, chrom, sampleName, outFile):
                 channel_windows[:, idx, channel_index] = payload
                 channel_index += 1
 
+    current_channel = 'one_hot_encoding'
     logging.info("Adding channel %s" % current_channel)
 
     nuc_list = ['A', 'T', 'C', 'G', 'N']
 
     payload = get_one_hot_sequence_by_list(chrom, positions, HPC_MODE)
-    payload.shape = channel_windows[:, idx, channel_index].shape
+    payload.shape = channel_windows[:, idx, channel_index:channel_index+len(nuc_list)].shape
     channel_windows[:, idx, channel_index:channel_index+len(nuc_list)] = payload
     channel_index += len(nuc_list)
 
+    current_channel = 'mappability'
     logging.info("Adding channel %s" % current_channel)
 
-    payload = np.array([ bw_map.values(chrom, p, p+1) for p in positions ])
+    payload = []
+    for sv in candidate_pairs_chr:
+        bp1, bp2 = sv.tuple
+        payload.extend(bw_map.values(chrom, bp1.pos - win_hlen, bp1.pos + win_hlen) +
+                         bw_map.values(chrom, bp2.pos - win_hlen, bp2.pos + win_hlen))
+    payload = np.array(payload)
     payload.shape = channel_windows[:, idx, channel_index].shape
     channel_windows[:, idx, channel_index] = payload
-
-    #
-    # for sv in candidate_pairs_chr:
-    #
-    #     check_progress(i, n_r, last_t)
-    #
-    #     bp1, bp2 = sv.tuple
-    #     chr1, start1, end1 = bp1.chr, bp1.pos - win_hlen, bp1.pos + win_hlen
-    #     chr2, start2, end2 = bp2.chr, bp2.pos - win_hlen, bp2.pos + win_hlen
-    #
-    #     # index
-    #     channel_index = 0
-    #
-    #     for current_channel in ['coverage', 'read_quality',
-    #                             'clipped_reads', 'split_reads',
-    #                             'clipped_read_distance', 'split_read_distance']:
-    #
-    #     #for current_channel in ['coverage', 'read_quality']:
-    #
-    #         if current_channel == 'coverage' or current_channel == 'read_quality':
-    #
-    #             payload = np.concatenate((channel_data[chr1][current_channel][start1:end1],
-    #                                       np.zeros(shape=bp_padding, dtype=np.uint32),
-    #                                       channel_data[chr2][current_channel][start2:end2]), axis=0)
-    #             channel_windows[i, :, channel_index] = payload
-    #             del payload
-    #
-    #             channel_index += 1
-    #
-    #         elif current_channel == 'clipped_reads' or current_channel == 'split_reads':
-    #
-    #             split_direction_list = ['left', 'right', 'D_left', 'D_right', 'I'] \
-    #                 if current_channel == 'clipped_reads' else ['left', 'right']
-    #
-    #             for split_direction in split_direction_list:
-    #                 for pos in range(start1, end1):
-    #                     if pos in channel_data[chr1][current_channel][split_direction].keys():
-    #                         channel_windows[i, pos - start1, channel_index] = \
-    #                             channel_data[chr1][current_channel][split_direction][pos]
-    #                 for pos in range(start2, end2):
-    #                     if pos in channel_data[chr2][current_channel][split_direction].keys():
-    #                         channel_windows[i, (win_len+bp_padding) + (pos-start2), channel_index] = \
-    #                             channel_data[chr2][current_channel][split_direction][pos]
-    #                 channel_index += 1
-    #
-    #         elif current_channel == 'clipped_reads_inversion' or \
-    #             current_channel == 'clipped_reads_duplication':
-    #
-    #             for mate_direction in ['before', 'after']:
-    #                 for pos in range(start1, end1):
-    #                     if pos in channel_data[chr1][current_channel][mate_direction].keys():
-    #                         channel_windows[i, pos - start1, channel_index] = \
-    #                             channel_data[chr1][current_channel][mate_direction][pos]
-    #                 for pos in range(start2, end2):
-    #                     if pos in channel_data[chr2][current_channel][mate_direction].keys():
-    #                         channel_windows[i, (win_len+bp_padding) + (pos-start2), channel_index] = \
-    #                             channel_data[chr2][current_channel][mate_direction][pos]
-    #                 channel_index += 1
-    #
-    #         elif current_channel == 'clipped_reads_translocation':
-    #
-    #             for orientation in ['opposite', 'same']:
-    #                 for pos in range(start1, end1):
-    #                     if pos in channel_data[chr1][current_channel][orientation].keys():
-    #                         channel_windows[i, pos - start1, channel_index] = \
-    #                             channel_data[chr1][current_channel][orientation][pos]
-    #                 for pos in range(start2, end2):
-    #                     if pos in channel_data[chr2][current_channel][orientation].keys():
-    #                         channel_windows[i, (win_len+bp_padding) + (pos-start2), channel_index] = \
-    #                             channel_data[chr2][current_channel][orientation][pos]
-    #                 channel_index += 1
-    #
-    #         elif current_channel == 'clipped_read_distance':
-    #
-    #             for direction in ['forward', 'reverse']:
-    #                 for clipped_arrangement in ['left', 'right', 'all']:
-    #                     for pos in range(start1, end1):
-    #                         if pos in channel_data[chr1][current_channel][direction][clipped_arrangement].keys():
-    #                             channel_windows[i, pos-start1, channel_index] = \
-    #                                 statistics.median(
-    #                                 channel_data[chr1][current_channel][direction][clipped_arrangement][pos])
-    #                     for pos in range(start2, end2):
-    #                         if pos in channel_data[chr2][current_channel][direction][clipped_arrangement].keys():
-    #                             channel_windows[i, (win_len+bp_padding) + (pos-start2), channel_index] = \
-    #                                 statistics.median(
-    #                                 channel_data[chr2][current_channel][direction][clipped_arrangement][pos])
-    #                     channel_index += 1
-    #
-    #         elif current_channel == 'split_read_distance':
-    #
-    #             for split_direction in ['left', 'right']:
-    #                 for pos in range(start1, end1):
-    #                     if pos in channel_data[chr1][current_channel][split_direction].keys():
-    #                         channel_windows[i, pos - start1, channel_index] = \
-    #                             statistics.median(
-    #                                 channel_data[chr1][current_channel][split_direction][pos])
-    #                 for pos in range(start2, end2):
-    #                     if pos in channel_data[chr2][current_channel][split_direction].keys():
-    #                         channel_windows[i, (win_len + bp_padding) + (pos - start2), channel_index] = \
-    #                             statistics.median(
-    #                                 channel_data[chr2][current_channel][split_direction][pos])
-    #                 channel_index += 1
-    #
-    #     # one hot encoding
-    #     nuc_list = ['A', 'T', 'C', 'G', 'N']
-    #     for idx, nuc in enumerate(nuc_list, start=channel_index):
-    #         channel_windows[i, :win_len, channel_index] = get_one_hot_sequence(
-    #             chr1, start1, end1, nuc, HPC_MODE)
-    #         channel_windows[i, win_len + bp_padding:, channel_index] = get_one_hot_sequence(
-    #             chr2, start2, end2, nuc, HPC_MODE)
-    #         channel_index = idx + 1
-    #
-    #     # mappability
-    #     channel_windows[i, :win_len, channel_index] = bw_map.values(chr1, start1, end1)
-    #     channel_windows[i, win_len + bp_padding:, channel_index] = bw_map.values(chr2, start2, end2)
-    #
-    #     i += 1
 
     logging.info("channel_windows shape: %s" % str(channel_windows.shape))
 
@@ -401,6 +275,16 @@ def channel_maker(ibam, chrom, sampleName, outFile):
     with gzip.GzipFile(outFile, "w") as f:
         np.save(file=f, arr=channel_windows)
     f.close()
+
+
+def inspect_windows(outFile):
+
+    # Save the list of channel vstacks
+    with gzip.GzipFile(outFile, "r") as f:
+        channel_windows = np.load(f)
+    f.close()
+
+    print(channel_windows[0,:,:])
 
 
 def main():
@@ -443,7 +327,9 @@ def main():
 
     t0 = time()
 
-    channel_maker(ibam=args.bam, chrom=args.chr, sampleName=args.sample, outFile=args.out)
+    channel_maker(chrom=args.chr, sampleName=args.sample, outFile=args.out)
+
+    inspect_windows(outFile=args.out)
 
     # print('Elapsed time channel_maker_real on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))
     print('Elapsed time channel_maker_real = %f' % (time() - t0))
