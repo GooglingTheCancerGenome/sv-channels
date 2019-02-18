@@ -168,8 +168,8 @@ def channel_maker(ibam, chrom, sampleName, outFile):
 
     bw_map = get_mappability_bigwig()
 
-    candidate_pairs_chr = [(bp1, bp2) for (bp1, bp2) in channel_data[chrom]['candidate_pairs']
-                           if bp1.chr == bp2.chr and bp1.chr == chrom]
+    candidate_pairs_chr = [sv for sv in channel_data[chrom]['candidate_pairs']
+                           if sv[0].chr == sv[1].chr and sv[0].chr == chrom]
 
     channel_windows = np.zeros(shape=(len(candidate_pairs_chr),
                                       win_len * 2 + bp_padding, n_channels), dtype=np.uint32)
@@ -192,9 +192,13 @@ def channel_maker(ibam, chrom, sampleName, outFile):
             chr2, start2, end2 = bp2.chr, bp2.pos - win_hlen, bp2.pos + win_hlen
 
             # coverage
-            channel_index = 1
-            channel_windows[i, :win_len, channel_index] = channel_data[chr1]['coverage'][start1, end1]
-            channel_windows[i, :win_len, channel_index] = channel_data[chr2]['coverage'][start2, end2]
+            channel_index = 0
+            for current_channel in ['coverage', 'read_quality']:
+                channel_windows[i, :win_len, channel_index] = \
+                    channel_data[chr1][current_channel][start1:end1]
+                channel_windows[i, win_len + bp_padding:, channel_index] = \
+                    channel_data[chr2][current_channel][start2:end2]
+                channel_index += 1
 
             # one hot encoding
             nuc_list = ['A', 'T', 'C', 'G', 'N']
