@@ -30,7 +30,7 @@ echo "Running ${PRGARG} for ${BAMARG} ${CHRARG}"
 
 # coverage.py will output file with extension '.npy.bz2'
 if [ ${PRGARG} == 'coverage' ]; then
-        python "pairs/${PRGARG}.py" \
+        python "pairs/channel_maker/${PRGARG}.py" \
                 --bam ${BAMARG} \
                 --chr ${CHRARG} \
                 --out ${OUTARG}"/"${PRGARG}"/"${CHRARG}"_${PRGARG}.npy.bz2" \
@@ -39,7 +39,7 @@ if [ ${PRGARG} == 'coverage' ]; then
 # ChannelMaker for real data. Flag 'train' is only used to output the NoSV category for training, that for now it is
 # not implemented in the channel_make_train.py script
 elif [ ${PRGARG} == 'channel_maker' ]; then
-        python "pairs/${PRGARG}.py" \
+        python "pairs/channel_maker/${PRGARG}.py" \
                 --bam ${BAMARG} \
                 --chr ${CHRARG} \
 		        --sample ${SAMPLEARG} \
@@ -59,7 +59,7 @@ elif [ ${PRGARG} == 'channel_maker_train_germline' ]; then
 
 else
 # generic execution
-	python "pairs/${PRGARG}.py" \
+	python "pairs/channel_maker/${PRGARG}.py" \
                 --bam ${BAMARG} \
                 --chr ${CHRARG} \
                 --out ${OUTARG}"/"${PRGARG}"/"${CHRARG}"_${PRGARG}.pbz2" \

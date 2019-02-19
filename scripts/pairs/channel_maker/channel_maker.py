@@ -20,7 +20,7 @@ from candidate_pairs import *
 # import matplotlib.pyplot as plt
 
 # Flag used to set either paths on the local machine or on the HPC
-HPC_MODE = False
+HPC_MODE = True
 
 # Only clipped read positions supported by at least min_cr_support clipped reads are considered
 min_cr_support = 3
@@ -112,6 +112,7 @@ def get_chr_len_dict(ibam):
 
 
 def load_channels(sample, chr_list):
+
     prefix = ''
     channel_names = ['candidate_pairs', 'clipped_reads', 'clipped_read_distance',
                      'coverage', 'split_read_distance']
