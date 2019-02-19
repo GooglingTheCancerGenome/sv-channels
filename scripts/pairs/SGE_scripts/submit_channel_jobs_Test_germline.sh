@@ -13,11 +13,11 @@ PATIENT2_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CretuStancu2017/Pa
 #BAM_ARRAY=(${NA12878_BAM} ${NA12892_BAM} ${NA12891_BAM} ${PATIENT1_BAM} ${PATIENT2_BAM})
 #SAMPLE_ARRAY=('NA12878' 'NA12892' 'NA12891' 'PATIENT1' 'PATIENT2')
 
-#BAM_ARRAY=(${NA12878_BAM})
-#SAMPLE_ARRAY=('NA12878')
+BAM_ARRAY=(${NA12878_BAM})
+SAMPLE_ARRAY=('NA12878')
 
-BAM_ARRAY=(${PATIENT1_BAM} ${PATIENT2_BAM})
-SAMPLE_ARRAY=('PATIENT1' 'PATIENT2')
+#BAM_ARRAY=(${PATIENT1_BAM} ${PATIENT2_BAM})
+#SAMPLE_ARRAY=('PATIENT1' 'PATIENT2')
 
 CHRARRAY=(`seq 1 22` 'X' 'Y' 'MT')
 
@@ -62,7 +62,7 @@ SVMODE='INDEL'
 SLICE=("${SAMPLE_ARRAY[@]:0:2}")
 
 # ChannelMaker script to generate channel data for Training data
-PRG='channel_maker_real_germline'
+PRG='channel_maker'
 #for SAMPLE in ${SAMPLE_ARRAY[@]}; do
 
 for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
@@ -79,7 +79,7 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
 	#for CHROMOSOME in 1; do
 		OUTDIR=$SAMPLE
 		JOB_NAME=$SAMPLE"_"$CHROMOSOME"_"${PRG}
-		qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=${OUTDIR},SVMODEARG=${SVMODE} \
+		qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=${OUTDIR} \
 			-N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_channel.sge
     	done
 	#mv ${SAMPLE}"*.err" ${LOGDIR}

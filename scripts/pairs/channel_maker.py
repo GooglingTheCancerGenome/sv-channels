@@ -284,7 +284,8 @@ def inspect_windows(outFile):
         channel_windows = np.load(f)
     f.close()
 
-    print(channel_windows[0,:,:])
+    for i in range(29):
+        print(channel_windows[0,:,i])
 
 
 def main():
@@ -329,7 +330,7 @@ def main():
 
     channel_maker(chrom=args.chr, sampleName=args.sample, outFile=args.out)
 
-    inspect_windows(outFile=args.out)
+    # inspect_windows(outFile=args.out)
 
     # print('Elapsed time channel_maker_real on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))
     print('Elapsed time channel_maker_real = %f' % (time() - t0))

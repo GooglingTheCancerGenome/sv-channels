@@ -38,13 +38,11 @@ if [ ${PRGARG} == 'coverage' ]; then
 
 # ChannelMaker for real data. Flag 'train' is only used to output the NoSV category for training, that for now it is
 # not implemented in the channel_make_train.py script
-elif [ ${PRGARG} == 'channel_maker_real_germline' ]; then
+elif [ ${PRGARG} == 'channel_maker' ]; then
         python "pairs/${PRGARG}.py" \
                 --bam ${BAMARG} \
                 --chr ${CHRARG} \
 		        --sample ${SAMPLEARG} \
-		        --train True \
-		        --svmode ${SVMODEARG} \
                 --out ${OUTARG}"/"${PRGARG}"/"${SAMPLEARG}"_"${CHRARG}".npy.gz" \
                 --logfile ${OUTARG}"/"${PRGARG}"/"${SAMPLEARG}"_"${CHRARG}".log"
 
