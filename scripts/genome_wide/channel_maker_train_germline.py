@@ -470,7 +470,7 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
 
                     # clipped reads
                     clipped_reads_array[sample] = dict()
-                    for split_direction in ['left', 'right']:
+                    for split_direction in ['left', 'right', 'D_left', 'D_right', 'I']:
                         clipped_reads_array[sample][split_direction] = np.zeros(win_len, dtype=int)
                         for pos in range(start_win, end_win):
                             if pos in clipped_reads[sample][chrName][split_direction].keys():
@@ -550,7 +550,7 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
 
                     vstack_list.append(coverage_array[sample])
 
-                    for clipped_arrangement in ['left', 'right']:
+                    for split_direction in ['left', 'right', 'D_left', 'D_right', 'I']:
                         vstack_list.append(clipped_reads_array[sample][clipped_arrangement])
 
                     for mate_position in ['before', 'after']:
@@ -562,8 +562,8 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
 
                     for direction in ['forward', 'reverse']:
                         for clipped_arrangement in ['left', 'right', 'all']:
-                            vstack_list.append(clipped_read_distance_array[sample][direction][clipped_arrangement])
-                            vstack_list.append(clipped_read_distance_num[sample][direction][clipped_arrangement])
+                            # vstack_list.append(clipped_read_distance_array[sample][direction][clipped_arrangement])
+                            # vstack_list.append(clipped_read_distance_num[sample][direction][clipped_arrangement])
                             vstack_list.append(clipped_read_distance_median[sample][direction][clipped_arrangement])
                     for direction in ['left', 'right']:
                         vstack_list.append(split_reads_array[sample][direction])
@@ -572,7 +572,7 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                         vstack_list.append(split_read_distance_num[sample][direction])
                         vstack_list.append(split_read_distance_median[sample][direction])
 
-                vstack_list.append(gc_array)
+                # vstack_list.append(gc_array)
                 vstack_list.append(mappability_array)
 
                 # append one hot encoded sequence for the genomic region
