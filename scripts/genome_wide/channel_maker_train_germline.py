@@ -277,6 +277,7 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
     # Load channel data
     # Dictionaries where to load the channel data
     clipped_read_distance = dict()
+    read_quality = dict()
     clipped_reads = dict()
     clipped_reads_inversion = dict()
     clipped_reads_duplication = dict()
@@ -290,6 +291,7 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
         prefix = workdir + sample + '/'
 
         clipped_read_distance[sample] = dict()
+        read_quality[sample] = dict()
         clipped_reads[sample] = dict()
         clipped_reads_inversion[sample] = dict()
         clipped_reads_duplication[sample] = dict()
@@ -313,8 +315,11 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
 
             logging.info('Reading clipped reads')
             with bz2file.BZ2File(prefix + clipped_reads_file[chrName], 'rb') as f:
-                clipped_reads[sample][chrName], clipped_reads_inversion[sample][chrName], \
-                clipped_reads_duplication[sample][chrName], clipped_reads_translocation[sample][chrName] = pickle.load(f)
+                read_quality[sample][chrName], clipped_reads[sample][chrName], \
+                clipped_reads_inversion[sample][chrName], \
+                clipped_reads_duplication[sample][chrName], \
+                clipped_reads_translocation[sample][chrName] = pickle.load(
+                    f)
             logging.info('End of reading')
 
             logging.info('Reading coverage')
@@ -383,6 +388,7 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
     clipped_read_distance_num = dict()
     clipped_read_distance_median = dict()
 
+    read_quality_array = dict()
     clipped_reads_array = dict()
     clipped_reads_inversion_array = dict()
     clipped_reads_duplication_array = dict()
@@ -468,6 +474,9 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                                             clipped_read_distance[sample][chrName][direction][clipped_arrangement][pos])
                             # print(clipped_read_distance_array[direction][clipped_arrangement])
 
+                    # read quality
+                    read_quality_array[sample] = read_quality[sample][chrName][start_win:end_win]
+
                     # clipped reads
                     clipped_reads_array[sample] = dict()
                     for split_direction in ['left', 'right', 'D_left', 'D_right', 'I']:
@@ -550,6 +559,8 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
 
                     vstack_list.append(coverage_array[sample])
 
+                    vstack_list.append(read_quality_array[sample])
+
                     for split_direction in ['left', 'right', 'D_left', 'D_right', 'I']:
                         vstack_list.append(clipped_reads_array[sample][clipped_arrangement])
 
@@ -568,8 +579,8 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                     for direction in ['left', 'right']:
                         vstack_list.append(split_reads_array[sample][direction])
                     for direction in ['left', 'right']:
-                        vstack_list.append(split_read_distance_array[sample][direction])
-                        vstack_list.append(split_read_distance_num[sample][direction])
+                        # vstack_list.append(split_read_distance_array[sample][direction])
+                        # vstack_list.append(split_read_distance_num[sample][direction])
                         vstack_list.append(split_read_distance_median[sample][direction])
 
                 # vstack_list.append(gc_array)
