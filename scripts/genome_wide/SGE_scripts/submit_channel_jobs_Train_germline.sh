@@ -60,7 +60,7 @@ for SAMPLE in G1 N1; do
         #for CHROMOSOME in 1; do
             BAM=${INPATH}"$SAMPLE""/BAM/"$SAMPLE"/mapping/"$SAMPLE"_dedup.bam"
             OUTDIR="Training_"$SVMODE"/"$SAMPLE
-            JOB_NAME=$SAMPLE"_"$CHROMOSOME"_"${PRG}
+            JOB_NAME=$SAMPLE"_"$CHROMOSOME"_"${SVMODE}"_"${PRG}
 
 		    qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},SVMODEARG=${SVMODE},OUTARG=${OUTDIR} \
 		    -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_channel.sge
