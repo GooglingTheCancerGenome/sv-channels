@@ -332,7 +332,7 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
             print('Number of clipped read positions on chr %s:%d' % (chrName, len(clipped_pos[chrName])))
 
     # Loading breakpoints from BED file
-    if SVmode == 'INDEL':
+    if SVmode == 'INDEL' or SVmode == 'INDEL_HOM':
 
         # load the position for the artifically generated deletions (DEL, start and end) and insertion (only start)
         start_SV_DEL, end_SV_DEL, start_SV_INS = read_BED(SVmode, chrName)
