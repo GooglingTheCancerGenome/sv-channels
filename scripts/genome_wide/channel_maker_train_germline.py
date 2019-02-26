@@ -86,17 +86,17 @@ def read_BED(SVmode, chrName):
              
     '''''
 
-    if SVmode == 'INDEL':
+    if SVmode == 'INDEL' or SVmode == 'INDEL_HOM':
 
         # Path on the HPC
         if HPC_MODE:
-            wd = "/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/WG/run_"+ SVmode \
-                 + "_500K/genomes/"
-            truth_file = wd + "SV/GRCh37_"+SVmode+".bed"
+            # wd = "/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/WG/run_"+ SVmode \
+            #      + "_500K/genomes/"
+            # truth_file = wd + "SV/GRCh37_"+SVmode+".bed"
 
-            #wd = "/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_" + SVmode \
-            #         + "/genomes/"
-            #truth_file = wd + "SV/chr17_"+SVmode+".bed"
+            wd = "/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_" + SVmode \
+                    + "/genomes/"
+            truth_file = wd + "SV/chr17_"+SVmode+".bed"
 
         else:
             wd = "/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/"
