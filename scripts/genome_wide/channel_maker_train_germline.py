@@ -562,7 +562,7 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                     vstack_list.append(read_quality_array[sample])
 
                     for split_direction in ['left', 'right', 'D_left', 'D_right', 'I']:
-                        vstack_list.append(clipped_reads_array[sample][clipped_arrangement])
+                        vstack_list.append(clipped_reads_array[sample][split_direction])
 
                     for mate_position in ['before', 'after']:
                         vstack_list.append(clipped_reads_inversion_array[sample][mate_position])
