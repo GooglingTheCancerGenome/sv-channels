@@ -420,12 +420,17 @@ def initialize_nanosv_vcf_paths(sampleName):
         if sampleName[:7] == 'NA12878':
 
             vcf_dir = '/hpc/cog_bioinf/kloosterman/shared/nanosv_comparison/' + sampleName[:7]
+            vcf_dir_last = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Data_for_labels/',
+                                        sampleName, 'VCF')
 
             for mapper in ['bwa', 'minimap2', 'ngmlr', 'last']:
 
                 vcf_files[mapper] = dict()
 
-                vcf_files[mapper]['nanosv'] = vcf_dir + '/' + mapper + '/' + mapper + '_nanosv.sorted.vcf'
+                if mapper == 'last':
+                    vcf_files[mapper]['nanosv'] = os.path.join(vcf_dir_last,  mapper + '_nanosv.sorted.vcf')
+                else:
+                    vcf_files[mapper]['nanosv'] = vcf_dir + '/' + mapper + '/' + mapper + '_nanosv.sorted.vcf'
                 assert os.path.isfile(vcf_files[mapper]['nanosv'])
 
                 vcf_files[mapper]['nanosv_sniffles_settings'] = vcf_dir + '/' + mapper + '/' + \
