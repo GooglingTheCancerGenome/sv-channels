@@ -191,6 +191,9 @@ def read_BED(SVmode, chrName):
 
 def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
 
+    def get_win_id(chr, position):
+        return {'chromosome': chr, 'position': position}
+
     # Prefix for the relative path
     workdir = 'Training_' + SVmode + '/'
     if not HPC_MODE:
@@ -380,6 +383,7 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                      [SVmode + '_end'] * len(end_SV)
 
     label = []
+    label_id = []
     label_BPJ = []
     distance_BPJ = []
 
@@ -603,6 +607,8 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
 
                 # Append the label to the list of labels
                 label.append(lab)
+                # Append chromosome and position to label id
+                label_id.append(get_win_id(chrName, pos))
                 # Is the position a breakpoint junction?
                 if pos == center_pos:
                     # print('Center!')
@@ -625,6 +631,10 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
     # Save the list of labels
     with gzip.GzipFile(labelDir + sampleName + '_' + chrName + '_label.npy.gz', "w") as f:
         np.save(file=f, arr=label)
+    f.close()
+    # Save the list of label IDs
+    with gzip.GzipFile(labelDir + sampleName + '_' + chrName + '_label_ids.npy.gz', "w") as f:
+        np.save(file=f, arr=label_id)
     f.close()
     # Save the list of flags for breakpoint junctions (True/False)
     with gzip.GzipFile(labelDir + sampleName + '_' + chrName + '_label_BPJ.npy.gz', "w") as f:
