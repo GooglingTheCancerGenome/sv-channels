@@ -32,12 +32,6 @@ import tensorflow as tf
 # Pandas import
 import pandas as pd
 
-import altair as alt
-
-# Bokeh import
-from bokeh.io import show, output_file
-from bokeh.plotting import figure
-
 
 HPC_MODE = True
 
