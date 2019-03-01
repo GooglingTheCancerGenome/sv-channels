@@ -121,6 +121,8 @@ def data(datapath, channels):
 def real_data():
     # Create reference test set using Chr4 to ChrX
 
+    data_output_file = os.path.join(datapath_training, sample_name + '_' + label_type + '_training.npz')
+
     def get_label_dict():
         # Load label dictionary
         dico_file = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test',
@@ -131,39 +133,57 @@ def real_data():
 
         return dico
 
-    dico = get_label_dict()
+    def save_data(training_data, training_labels, training_id):
 
-    # Leaving out chromosome Y and MT for the moment
-    chr_list = list(map(str, np.arange(4, 23)))
-    chr_list.append('X')
+        np.savez(data_output_file, training_data=training_data,
+                 training_labels=training_labels, training_id=training_id)
+        os.system('gzip -f ' + data_output_file)
 
-    print(chr_list)
+    if not os.path.exists(data_output_file):
 
-    training_data = []
-    training_labels = []
-    training_id = []
+        dico = get_label_dict()
 
-    datapath = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test',
-                             date, 'TestData_'+date, sample_name, 'ChannelData')
+        # Leaving out chromosome Y and MT for the moment
+        chr_list = list(map(str, np.arange(4, 23)))
+        chr_list.append('X')
 
-    for i in chr_list:
-        print('Loading data for Chr%s' % i)
-        data_file = os.path.join(datapath, sample_name + '_' + str(i) + '.npy.gz')
-        with gzip.GzipFile(data_file, "rb") as f:
-            data_mat = np.load(f)
-            training_data.extend(data_mat)
-        f.close()
+        print(chr_list)
 
-        training_labels.extend(dico[label_type][i])
-        training_id.extend([d['chromosome'] + '_' + str(d['position']) for d in dico['id'][i]])
+        training_data = []
+        training_labels = []
+        training_id = []
 
-    print(Counter(training_labels))
+        datapath = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test',
+                                 date, 'TestData_'+date, sample_name, 'ChannelData')
 
-    training_data = np.array(training_data)
-    training_labels = np.array(training_labels)
-    training_id = np.array(training_id)
+        for i in chr_list:
+            print('Loading data for Chr%s' % i)
+            data_file = os.path.join(datapath, sample_name + '_' + str(i) + '.npy.gz')
+            with gzip.GzipFile(data_file, "rb") as f:
+                data_mat = np.load(f)
+                training_data.extend(data_mat)
+            f.close()
 
-    assert len(training_data) == len(training_labels)
+            training_labels.extend(dico[label_type][i])
+            training_id.extend([d['chromosome'] + '_' + str(d['position']) for d in dico['id'][i]])
+
+        print(Counter(training_labels))
+
+        training_data = np.array(training_data)
+        training_labels = np.array(training_labels)
+        training_id = np.array(training_id)
+
+        assert len(training_data) == len(training_labels)
+
+        save_data(training_data, training_labels, training_id)
+
+    else:
+
+        with gzip.GzipFile(data_output_file, "rb") as f:
+            npzfiles = np.load(f)
+            training_data = npzfiles['training_data']
+            training_labels = npzfiles['training_labels']
+            training_id = npzfiles['training_id']
 
     return training_data, training_labels, training_id
 
