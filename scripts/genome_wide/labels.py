@@ -720,7 +720,7 @@ def get_labels_from_nanosv_vcf(sampleName):
         if not HPC_MODE:
             channel_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth'
         else:
-            channel_dir = ''
+            channel_dir = '.'
 
         output_dir = '/'.join((channel_dir, sampleName, 'label'))
         create_dir(output_dir)
@@ -1450,7 +1450,7 @@ def get_labels(sampleName):
     if not HPC_MODE:
         channel_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth'
     else:
-        channel_dir = ''
+        channel_dir = '.'
 
     output_dir = '/'.join((channel_dir, sampleName, 'label_npy'))
     create_dir(output_dir)
@@ -1458,7 +1458,6 @@ def get_labels(sampleName):
     data_file = '/'.join((output_dir, 'labels.pickle'))
     # print(output_dir)
     pickle.dump(labels, open(data_file, "wb"))
-
     os.system('gzip ' + data_file)
 
 
