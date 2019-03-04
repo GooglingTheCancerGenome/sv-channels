@@ -269,7 +269,7 @@ def mixed_data(output):
 
         if data_mode == 'artificial':
             # artificial data only 0
-            indices_label = np.where(training_labels == 'noSV')[0]
+            indices_label = np.where(real_training_labels == 'noSV')[0]
             training_data = np.concatenate((art_training_data,
                                             real_training_data[indices_label]), axis=0)
             training_labels = np.concatenate((art_training_labels,
