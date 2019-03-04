@@ -239,12 +239,13 @@ def mixed_data(output):
         logging.info(str(i) + ':' + labels[i])
 
     # Load the test data
+    logging.info('Loading hold-out test set')
     X_test, y_test, y_test_binary, win_ids_test = data(datapath_test, channels)
 
     def subsample_nosv(data, labels, pc, lab):
         # print('subsample')
 
-        indices_label = np.where(training_labels == lab)[0]
+        indices_label = np.where(labels == lab)[0]
         # print(indices_label)
         indices_to_remove = indices_label[np.arange(int(round(len(indices_label) * pc)), len(indices_label))]
         # print(indices_to_remove)
