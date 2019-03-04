@@ -183,7 +183,7 @@ def real_data():
 
         logging.info('Loading real data...')
 
-        with gzip.GzipFile(data_output_file, "rb") as f:
+        with gzip.GzipFile(data_output_file+'.gz', "rb") as f:
             npzfiles = np.load(f)
             training_data = npzfiles['training_data']
             training_labels = npzfiles['training_labels']
