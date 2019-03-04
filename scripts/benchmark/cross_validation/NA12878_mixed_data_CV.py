@@ -181,6 +181,8 @@ def real_data():
 
     else:
 
+        logging.info('Loading real data...')
+
         with gzip.GzipFile(data_output_file, "rb") as f:
             npzfiles = np.load(f)
             training_data = npzfiles['training_data']
@@ -280,7 +282,7 @@ def mixed_data(output):
 
         for l in ['UK', 'INS_pos']:
             logging.info('Removing label %s' % l)
-            remove_label(training_data, training_labels, label=l)
+            training_data, training_labels = remove_label(training_data, training_labels, label=l)
 
         for pc in np.linspace(0.1, 1, num=9):
             # print(pc)
