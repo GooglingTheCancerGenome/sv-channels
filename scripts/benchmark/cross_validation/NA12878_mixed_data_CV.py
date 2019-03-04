@@ -269,8 +269,11 @@ def mixed_data(output):
 
         if data_mode == 'artificial':
             # artificial data only 0
-            training_data = art_training_data
-            training_labels = art_training_labels
+            indices_label = np.where(training_labels == 'noSV')[0]
+            training_data = np.concatenate((art_training_data,
+                                            real_training_data[indices_label]), axis=0)
+            training_labels = np.concatenate((art_training_labels,
+                                              real_training_labels[indices_label]), axis=0)
         elif data_mode == 'real':
             # real data only 1
             training_data = real_training_data
@@ -279,6 +282,9 @@ def mixed_data(output):
             # mixed data 2
             training_data = np.concatenate((real_training_data, art_training_data), axis=0)
             training_labels = np.concatenate((real_training_labels, art_training_labels), axis=0)
+
+        logging.info('Training data shape: %s' % str(training_data.shape))
+        logging.info('Training labels shape: %s' % str(training_labels.shape))
 
         for l in ['UK', 'INS_pos']:
             logging.info('Removing label %s' % l)
@@ -289,6 +295,10 @@ def mixed_data(output):
             logging.info('Running with proportion ' + str(pc) + '...')
 
             X, y = subsample_nosv(training_data, training_labels, pc, 'noSV')
+
+            logging.info('X shape: %s' % str(X.shape))
+            logging.info('y shape: %s' % str(y.shape))
+
             X = transpose_dataset(X)
 
             mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
