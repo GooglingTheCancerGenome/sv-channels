@@ -83,7 +83,7 @@ def get_channel_labels():
         labels.append("One_hot_encoding_"+nuc)
 
     for k, l in enumerate(labels):
-         print(str(k) + ':' + l)
+        logging.info(str(k) + ':' + l)
 
     return labels
 
@@ -149,7 +149,7 @@ def real_data():
         chr_list = list(map(str, np.arange(4, 23)))
         chr_list.append('X')
 
-        print(chr_list)
+        logging.info(chr_list)
 
         training_data = []
         training_labels = []
@@ -159,7 +159,7 @@ def real_data():
                                  date, 'TestData_'+date, sample_name, 'ChannelData')
 
         for i in chr_list:
-            print('Loading data for Chr%s' % i)
+            logging.info('Loading data for Chr%s' % i)
             data_file = os.path.join(datapath, sample_name + '_' + str(i) + '.npy.gz')
             with gzip.GzipFile(data_file, "rb") as f:
                 data_mat = np.load(f)
@@ -169,7 +169,7 @@ def real_data():
             training_labels.extend(dico[label_type][i])
             training_id.extend([d['chromosome'] + '_' + str(d['position']) for d in dico['id'][i]])
 
-        print(Counter(training_labels))
+        logging.info(Counter(training_labels))
 
         training_data = np.array(training_data)
         training_labels = np.array(training_labels)
@@ -232,9 +232,9 @@ def mixed_data(output):
     channels = np.arange(len(labels))
     channel_set = 'all'
 
-    print('Running cv with channels '+channel_set+':')
+    logging.info('Running cv with channels '+channel_set+':')
     for i in channels:
-        print(str(i) + ':' + labels[i])
+        logging.info(str(i) + ':' + labels[i])
 
     # Load the test data
     X_test, y_test, y_test_binary, win_ids_test = data(datapath_test, channels)
@@ -278,6 +278,10 @@ def mixed_data(output):
             training_data = np.concatenate((real_training_data, art_training_data), axis=0)
             training_labels = np.concatenate((real_training_labels, art_training_labels), axis=0)
 
+        for l in ['UK', 'INS_pos']:
+            logging.info('Removing label %s' % l)
+            remove_label(training_data, training_labels, label=l)
+
         for pc in np.linspace(0.1, 1, num=9):
             # print(pc)
             logging.info('Running with proportion ' + str(pc) + '...')
@@ -298,7 +302,7 @@ def mixed_data(output):
     results.to_csv(output, sep='\t')
 
 
-def remove_label(training_data, training_labels, training_id, label = 'UK'):
+def remove_label_with_id(training_data, training_labels, training_id, label = 'UK'):
 
     # Remove windows labelled as label
     keep = np.where(np.array(training_labels) != label)
@@ -307,6 +311,16 @@ def remove_label(training_data, training_labels, training_id, label = 'UK'):
     training_id = training_id[keep]
 
     return training_data, training_labels, training_id
+
+
+def remove_label(training_data, training_labels, label = 'UK'):
+
+    # Remove windows labelled as label
+    keep = np.where(np.array(training_labels) != label)
+    training_data = training_data[keep]
+    training_labels = training_labels[keep]
+
+    return training_data, training_labels
 
 
 def load_data(datapath, channels):
