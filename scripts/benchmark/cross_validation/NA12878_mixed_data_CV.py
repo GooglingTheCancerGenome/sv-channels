@@ -141,7 +141,7 @@ def real_data():
                  training_labels=training_labels, training_id=training_id)
         os.system('gzip -f ' + data_output_file)
 
-    if not os.path.exists(data_output_file+'.gz'):
+    if not os.path.exists(data_output_file + '.gz'):
 
         dico = get_label_dict()
 
@@ -183,7 +183,7 @@ def real_data():
 
         logging.info('Loading real data...')
 
-        with gzip.GzipFile(data_output_file+'.gz', "rb") as f:
+        with gzip.GzipFile(data_output_file + '.gz', 'rb') as f:
             npzfiles = np.load(f)
             training_data = npzfiles['training_data']
             training_labels = npzfiles['training_labels']
@@ -249,8 +249,8 @@ def mixed_data(output):
         # print(indices_label)
         indices_to_remove = indices_label[np.arange(int(round(len(indices_label) * pc)), len(indices_label))]
         # print(indices_to_remove)
-        X = np.delete(data, indices_to_remove)
-        y = np.delete(labels, indices_to_remove)
+        X = np.delete(data, indices_to_remove, axis=0)
+        y = np.delete(labels, indices_to_remove, axis=0)
 
         # print(X.shape)
         # print(y.shape)
@@ -269,6 +269,7 @@ def mixed_data(output):
         logging.info('Running with mode ' + data_mode + '...')
 
         if data_mode == 'artificial':
+
             # artificial data only 0
             indices_label = np.where(real_training_labels == 'noSV')[0]
             training_data = np.concatenate((art_training_data,
@@ -276,10 +277,13 @@ def mixed_data(output):
             training_labels = np.concatenate((art_training_labels,
                                               real_training_labels[indices_label]), axis=0)
         elif data_mode == 'real':
+
             # real data only 1
             training_data = real_training_data
             training_labels = real_training_labels
+
         elif data_mode == 'mixed':
+
             # mixed data 2
             training_data = np.concatenate((real_training_data, art_training_data), axis=0)
             training_labels = np.concatenate((real_training_labels, art_training_labels), axis=0)
