@@ -141,7 +141,7 @@ def real_data():
                  training_labels=training_labels, training_id=training_id)
         os.system('gzip -f ' + data_output_file)
 
-    if not os.path.exists(data_output_file):
+    if not os.path.exists(data_output_file+'.gz'):
 
         dico = get_label_dict()
 
@@ -660,6 +660,7 @@ def main():
     logging.basicConfig(
         format=FORMAT,
         filename=logfilename,
+        filemode='w',
         level=logging.INFO)
 
     mixed_data(output=args.output)
