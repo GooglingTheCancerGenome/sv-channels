@@ -236,7 +236,7 @@ def artificial_data():
     return training_data, training_labels
 
 
-def mixed_data(output):
+def mixed_data(output, data_mode):
 
     # create_dir('Plots')
 
@@ -277,59 +277,60 @@ def mixed_data(output):
     # artificial data only 0
     # real data only 1
     # mixed data 2
-    for data_mode in ['artificial','real','mixed']:
+    # for data_mode in ['artificial','real','mixed']:
 
-        logging.info('Running with mode ' + data_mode + '...')
+    logging.info('Running with mode ' + data_mode + '...')
 
-        if data_mode == 'artificial':
+    if data_mode == 'artificial':
 
-            # artificial data only 0
-            indices_label = np.where(real_training_labels == 'noSV')[0]
-            training_data = np.concatenate((art_training_data,
-                                            real_training_data[indices_label]), axis=0)
-            training_labels = np.concatenate((art_training_labels,
-                                              real_training_labels[indices_label]), axis=0)
-        elif data_mode == 'real':
+        # artificial data only 0
+        indices_label = np.where(real_training_labels == 'noSV')[0]
+        training_data = np.concatenate((art_training_data,
+                                        real_training_data[indices_label]), axis=0)
+        training_labels = np.concatenate((art_training_labels,
+                                          real_training_labels[indices_label]), axis=0)
+    elif data_mode == 'real':
 
-            # real data only 1
-            training_data = real_training_data
-            training_labels = real_training_labels
+        # real data only 1
+        training_data = real_training_data
+        training_labels = real_training_labels
 
-        elif data_mode == 'mixed':
+    elif data_mode == 'mixed':
 
-            # mixed data 2
-            training_data = np.concatenate((real_training_data, art_training_data), axis=0)
-            training_labels = np.concatenate((real_training_labels, art_training_labels), axis=0)
+        # mixed data 2
+        training_data = np.concatenate((real_training_data, art_training_data), axis=0)
+        training_labels = np.concatenate((real_training_labels, art_training_labels), axis=0)
 
-        logging.info('Training data shape: %s' % str(training_data.shape))
-        logging.info('Training labels shape: %s' % str(training_labels.shape))
+    logging.info('Training data shape: %s' % str(training_data.shape))
+    logging.info('Training labels shape: %s' % str(training_labels.shape))
 
-        for l in ['UK', 'INS_pos']:
-            logging.info('Removing label %s' % l)
-            training_data, training_labels = remove_label(training_data, training_labels, label=l)
+    for l in ['UK', 'INS_pos']:
+        logging.info('Removing label %s' % l)
+        training_data, training_labels = remove_label(training_data, training_labels, label=l)
 
-        for pc in np.linspace(0.1, 1, num=9):
-            # print(pc)
-            logging.info('Running with proportion ' + str(pc) + '...')
+    for pc in np.linspace(0.1, 1, num=9):
+        # print(pc)
+        logging.info('Running with proportion ' + str(pc) + '...')
 
-            X, y = subsample_nosv(training_data, training_labels, pc, 'noSV')
+        X, y = subsample_nosv(training_data, training_labels, pc, 'noSV')
 
-            logging.info('X shape: %s' % str(X.shape))
-            logging.info('y shape: %s' % str(y.shape))
+        logging.info('X shape: %s' % str(X.shape))
+        logging.info('y shape: %s' % str(y.shape))
 
-            X = transpose_dataset(X)
+        X = transpose_dataset(X)
 
-            mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
-            y_num = np.array([mapclasses[c] for c in y], dtype='int')
-            y_binary = to_categorical(y_num)
+        mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
+        y_num = np.array([mapclasses[c] for c in y], dtype='int')
+        y_binary = to_categorical(y_num)
 
-            results = results.append(cross_validation(X, y, y_binary, X_test,
-                                                      y_test, y_test_binary,
-                                                      channel_set, proportion=round(pc, 1),
-                                                      data_mode=data_mode))
+        results = results.append(cross_validation(X, y, y_binary, X_test,
+                                                  y_test, y_test_binary,
+                                                  channel_set, proportion=round(pc, 1),
+                                                  data_mode=data_mode))
 
     print(results)
-    results.to_csv(output, sep='\t')
+    filename, file_extension = os.path.splitext(output)
+    results.to_csv(filename+'_'+data_mode+'.'+file_extension, sep='\t')
 
 
 def remove_label_with_id(training_data, training_labels, training_id, label = 'UK'):
@@ -621,6 +622,8 @@ def plot_results():
 def main():
 
     parser = argparse.ArgumentParser(description='Tests multiple artificial/real/mixed training sets')
+    parser.add_argument('-m', '--mode', default='artificial',
+                        help='Data mode: artificial/real/mixed')
     parser.add_argument('-o', '--output', default='CV_results.csv',
                         help='File in which to write output.')
     parser.add_argument('-l', '--logfile', default='CV_results.log',
@@ -628,7 +631,9 @@ def main():
 
     args = parser.parse_args()
 
-    logfilename = args.logfile
+    filename, file_extension = os.path.splitext(args.logfile)
+    logfilename = filename + '_' + args.mode + '.' + file_extension
+
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(
         format=FORMAT,
@@ -636,7 +641,7 @@ def main():
         filemode='w',
         level=logging.INFO)
 
-    mixed_data(output=args.output)
+    mixed_data(output=args.output, data_mode=args.mode)
 
 
 if __name__ == '__main__':
