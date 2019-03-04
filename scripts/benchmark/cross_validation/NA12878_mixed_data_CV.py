@@ -46,6 +46,17 @@ datapath_training =  datapath_prefix+'/Processed/Test/'+\
 datapath_test =  datapath_prefix+'/Processed/Test/'+\
            date+'/TestData_'+date+'/'+sample_name+'/TestData/'
 
+def create_dir(directory):
+    '''
+    Create a directory if it does not exist. Raises an exception if the directory exists.
+    :param directory: directory to create
+    :return: None
+    '''
+    try:
+        os.makedirs(directory)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
 
 def get_channel_labels():
     # Fill labels for legend
@@ -226,6 +237,8 @@ def artificial_data():
 
 
 def mixed_data(output):
+
+    # create_dir('Plots')
 
     results = pd.DataFrame()
 
@@ -512,61 +525,6 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
         "average_precision_score": average_precision["micro"]
     }, ignore_index=True)
 
-    plt.figure()
-    plt.step(recall['micro'], precision['micro'], color='b', alpha=0.2,
-             where='post')
-    plt.fill_between(recall["micro"], precision["micro"], alpha=0.2, color='b')
-
-    plt.xlabel('Recall')
-    plt.ylabel('Precision')
-    plt.ylim([0.0, 1.05])
-    plt.xlim([0.0, 1.0])
-    plt.title(
-        'Average precision score, micro-averaged over all classes: AP={0:0.2f}'
-            .format(average_precision["micro"]))
-
-    plt.savefig('NA12878/Plots/Precision_Recall_avg_prec_score_Iter_'+str(cv_iter)+'_'+channels+'.png', bbox_inches='tight')
-    plt.close()
-
-    from itertools import cycle
-    # setup plot details
-    colors = cycle(['navy', 'turquoise', 'darkorange', 'cornflowerblue', 'teal'])
-
-    plt.figure(figsize=(7, 8))
-    f_scores = np.linspace(0.2, 0.8, num=4)
-    lines = []
-    labels = []
-    for f_score in f_scores:
-        x = np.linspace(0.01, 1)
-        y = f_score * x / (2 * x - f_score)
-        l, = plt.plot(x[y >= 0], y[y >= 0], color='gray', alpha=0.2)
-        plt.annotate('f1={0:0.1f}'.format(f_score), xy=(0.9, y[45] + 0.02))
-
-    lines.append(l)
-    labels.append('iso-f1 curves')
-    l, = plt.plot(recall["micro"], precision["micro"], color='gold', lw=2)
-    lines.append(l)
-    labels.append('micro-average Precision-recall (area = {0:0.2f})'
-                  ''.format(average_precision["micro"]))
-
-    for i, color in zip(range(n_classes), colors):
-        l, = plt.plot(recall[i], precision[i], color=color, lw=2)
-        lines.append(l)
-        labels.append('Precision-recall for class {0} (area = {1:0.2f})'
-                      ''.format(class_labels[i], average_precision[i]))
-
-    fig = plt.gcf()
-    fig.subplots_adjust(bottom=0.25)
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('Recall')
-    plt.ylabel('Precision')
-    plt.title('Extension of Precision-Recall curve to multi-class')
-    plt.legend(lines, labels, loc=(0, -.38), prop=dict(size=14))
-
-    plt.savefig('NA12878/Plots/Precision_Recall_avg_prec_score_per_class_Iter_' +
-                str(cv_iter) +'_'+channels+'.png', bbox_inches='tight')
-    plt.close()
 
     # for iter_class in mapclasses.values():
     #
