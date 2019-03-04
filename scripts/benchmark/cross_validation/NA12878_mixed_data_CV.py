@@ -1,6 +1,7 @@
 # Imports
 import gzip
 import os
+import argparse
 
 import numpy as np
 
@@ -221,7 +222,7 @@ def artificial_data():
     return training_data, training_labels
 
 
-def mixed_data():
+def mixed_data(output):
 
     results = pd.DataFrame()
 
@@ -256,24 +257,44 @@ def mixed_data():
     real_training_data, real_training_labels, real_training_id = real_data()
     art_training_data, art_training_labels = artificial_data()
 
-    training_data = np.concatenate((real_training_data, art_training_data), axis=0)
-    training_labels = np.concatenate((real_training_labels, art_training_labels), axis=0)
+    # artificial data only 0
+    # real data only 1
+    # mixed data 2
+    for data_mode in ['artificial','real','mixed']:
 
-    for pc in np.linspace(0.1, 1, num=9):
-        # print(pc)
-        X, y = subsample_nosv(training_data, training_labels, pc, 'noSV')
-        X = transpose_dataset(X)
+        logging.info('Running with mode ' + data_mode + '...')
 
-        mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
-        y_num = np.array([mapclasses[c] for c in y], dtype='int')
-        y_binary = to_categorical(y_num)
+        if data_mode == 'artificial':
+            # artificial data only 0
+            training_data = art_training_data
+            training_labels = art_training_labels
+        elif data_mode == 'real':
+            # real data only 1
+            training_data = real_training_data
+            training_labels = real_training_labels
+        elif data_mode == 'mixed':
+            # mixed data 2
+            training_data = np.concatenate((real_training_data, art_training_data), axis=0)
+            training_labels = np.concatenate((real_training_labels, art_training_labels), axis=0)
 
-        results = results.append(cross_validation(X, y, y_binary, X_test,
-                                                  y_test, y_test_binary,
-                                                  channel_set, proportion=round(pc, 1)))
+        for pc in np.linspace(0.1, 1, num=9):
+            # print(pc)
+            logging.info('Running with proportion ' + str(pc) + '...')
+
+            X, y = subsample_nosv(training_data, training_labels, pc, 'noSV')
+            X = transpose_dataset(X)
+
+            mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
+            y_num = np.array([mapclasses[c] for c in y], dtype='int')
+            y_binary = to_categorical(y_num)
+
+            results = results.append(cross_validation(X, y, y_binary, X_test,
+                                                      y_test, y_test_binary,
+                                                      channel_set, proportion=round(pc, 1),
+                                                      data_mode=data_mode))
 
     print(results)
-    results.to_csv("CV_results.csv", sep='\t')
+    results.to_csv(output, sep='\t')
 
 
 def remove_label(training_data, training_labels, training_id, label = 'UK'):
@@ -339,7 +360,7 @@ def create_model(X, y_binary):
 
 def cross_validation(X, y, y_binary, X_hold_out_test,
                      y_hold_out_test, y_hold_out_test_binary,
-                     channels, proportion):
+                     channels, proportion, data_mode):
 
     results = pd.DataFrame()
 
@@ -382,7 +403,8 @@ def cross_validation(X, y, y_binary, X_hold_out_test,
         print('Test loss and accuracy of best model: ' + str(score_test))
 
         results = evaluate_model(model, X_hold_out_test, y_hold_out_test,
-                                 y_hold_out_test_binary, results, index, channels, proportion,
+                                 y_hold_out_test_binary, results, index, channels,
+                                 proportion, data_mode,
                                  train_set_size=xtrain.shape[0],
                                  validation_set_size = xval.shape[0]
         )
@@ -413,7 +435,7 @@ def train_model(model, xtrain, ytrain, xval, yval):
     return history, best_model
 
 
-def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channels, proportion,
+def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channels, proportion, data_mode,
                    train_set_size, validation_set_size):
 
     mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
@@ -449,6 +471,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
 
     results = results.append({
         "channels": channels,
+        "data_mode": data_mode,
         "proportion": proportion,
         "fold": cv_iter+1,
         "training_set_size": train_set_size,
@@ -561,7 +584,7 @@ def run_cv():
     channels = np.arange(len(labels))
     channel_set = 'all'
 
-    print('Running cv with channels '+channel_set+':')
+    logging.info('Running cv with channels '+channel_set+':')
     # for i in channels:
     #     print(str(i) + ':' + labels[i])
 
@@ -572,7 +595,7 @@ def run_cv():
     results = results.append(cross_validation(X, y, y_binary, X_test, y_test,
                                               y_test_binary, channel_set, 1.0))
 
-    print(results)
+    logging.info(results)
     results.to_csv("NA12878/CV_results.csv", sep='\t')
 
 
@@ -601,16 +624,28 @@ def plot_results():
     plt.ylim(bottom=0.8)
     plt.tight_layout()
 
-    plt.savefig('NA12878/Plots/Results.png', bbox_inches='tight')
+    plt.savefig('Results.png', bbox_inches='tight')
     plt.close()
 
 
 def main():
 
-    # get_channel_labels()
-    # run_cv()
-    # plot_results()
-    mixed_data()
+    parser = argparse.ArgumentParser(description='Tests multiple artificial/real/mixed training sets')
+    parser.add_argument('-o', '--output', default='CV_results.csv',
+                        help='File in which to write output.')
+    parser.add_argument('-l', '--logfile', default='CV_results.log',
+                        help='File in which to write logs.')
+
+    args = parser.parse_args()
+
+    logfilename = args.logfile
+    FORMAT = '%(asctime)s %(message)s'
+    logging.basicConfig(
+        format=FORMAT,
+        filename=logfilename,
+        level=logging.INFO)
+
+    mixed_data(output=args.output)
 
 
 if __name__ == '__main__':
