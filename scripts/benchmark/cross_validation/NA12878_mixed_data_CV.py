@@ -308,7 +308,8 @@ def mixed_data(output, data_mode):
         logging.info('Removing label %s' % l)
         training_data, training_labels = remove_label(training_data, training_labels, label=l)
 
-    for pc in np.linspace(0.1, 1, num=9):
+    for pc in np.linspace(0.1, 1, num=10):
+
         # print(pc)
         logging.info('Running with proportion ' + str(pc) + '...')
 
@@ -323,8 +324,8 @@ def mixed_data(output, data_mode):
         y_num = np.array([mapclasses[c] for c in y], dtype='int')
         y_binary = to_categorical(y_num)
 
-        results = results.append(cross_validation(X, y, y_binary, X_test,
-                                                  y_test, y_test_binary,
+        results = results.append(cross_validation(X, y, y_binary,
+                                                  X_test, y_test, y_test_binary,
                                                   channel_set, proportion=round(pc, 1),
                                                   data_mode=data_mode))
 
