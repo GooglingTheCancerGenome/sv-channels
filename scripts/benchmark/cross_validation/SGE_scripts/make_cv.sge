@@ -1,0 +1,14 @@
+#!/bin/bash -x
+#$ -S /bin/bash
+#$ -l h_rt=92:00:00
+#$ -l h_vmem=300G
+#$ -q all.q
+#$ -wd /hpc/cog_bioinf/ridder/users/lsantuari/Git/DeepSV_runs/060219/CNN/scripts
+
+echo "Load python"
+source activate mcfly
+
+python "benchmark/cross_validation/NA12878_mixed_data_CV.py" \
+        --mode ${MODEARG} \
+        --output benchmark/cross_validation/CV_results.csv \
+        --logfile benchmark/cross_validation/CV_results.log
