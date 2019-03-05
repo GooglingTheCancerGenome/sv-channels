@@ -14,13 +14,14 @@ import bz2file
 import numpy as np
 import pyBigWig
 import pysam
-from functions import get_one_hot_sequence_by_list
+#from functions import get_one_hot_sequence_by_list, load_clipped_read_positions
+from functions import *
 from candidate_pairs import *
 
 # import matplotlib.pyplot as plt
 
 # Flag used to set either paths on the local machine or on the HPC
-HPC_MODE = True
+HPC_MODE = False
 
 # Only clipped read positions supported by at least min_cr_support clipped reads are considered
 min_cr_support = 3
@@ -54,24 +55,6 @@ def create_dir(directory):
     except OSError as e:
         if e.errno != errno.EEXIST:
             raise
-
-
-def load_clipped_read_positions(sampleName, chrName):
-    channel_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth'
-
-    vec_type = 'clipped_read_pos'
-    print('Loading CR positions for Chr %s' % chrName)
-    # Load files
-    if HPC_MODE:
-        fn = '/'.join((sampleName, vec_type, chrName + '_' + vec_type + '.pbz2'))
-    else:
-        fn = '/'.join((channel_dir, sampleName, vec_type, chrName + '_' + vec_type + '.pbz2'))
-    with bz2file.BZ2File(fn, 'rb') as f:
-        cpos = pickle.load(f)
-
-    cr_pos = [elem for elem, cnt in cpos.items() if cnt >= min_cr_support]
-
-    return cr_pos
 
 
 def count_clipped_read_positions(cpos_cnt):

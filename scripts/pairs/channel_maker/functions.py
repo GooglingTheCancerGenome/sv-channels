@@ -1,6 +1,10 @@
 # Imports
 import numpy as np
 import twobitreader as twobit
+import bz2file
+import pickle
+import os
+from channel_maker import *
 
 del_min_size = 30
 ins_min_size = 30
@@ -211,3 +215,74 @@ def is_outlier(points, thresh=3.5):
     modified_z_score = 0.6745 * diff / med_abs_deviation
 
     return modified_z_score > thresh
+
+
+def load_clipped_read_positions(sampleName, chrName, min_cr_support, HPC_MODE):
+    # channel_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth'
+    channel_dir = ''
+
+    vec_type = 'clipped_read_pos'
+    print('Loading CR positions for Chr %s' % chrName)
+    # Load files
+    if HPC_MODE:
+        fn = '/'.join((sampleName, vec_type, chrName + '_' + vec_type + '.pbz2'))
+    else:
+        #fn = '/'.join((channel_dir, sampleName, vec_type, chrName + '_' + vec_type + '.pbz2'))
+        fn = vec_type + '.pbz2'
+    with bz2file.BZ2File(fn, 'rb') as f:
+        cpos = pickle.load(f)
+
+    cr_pos = [elem for elem, cnt in cpos.items() if cnt >= min_cr_support]
+
+    return cr_pos
+
+
+def read_BED(SVmode, chrName, HPC_MODE):
+    '''
+
+    :return: For INDELs: 
+             start_SV_DEL: list of start positions for deletions.
+             end_SV_DEL: list of end positions for deletions. It corresponds to the start positions.
+             start_SV_INS: list of start positions for insertions.
+    '''''
+
+    if SVmode == 'INDEL' or SVmode == 'INDEL_HOM':
+
+        # Path on the HPC
+        if HPC_MODE:
+            # wd = "/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/WG/run_"+ SVmode \
+            #      + "_500K/genomes/"
+            # truth_file = wd + "SV/GRCh37_"+SVmode+".bed"
+
+            wd = "/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_" + SVmode \
+                 + "/genomes/"
+            truth_file = wd + "SV/chr17_" + SVmode + ".bed"
+
+        else:
+            wd = "/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/"
+            truth_file = wd + "SV/chr17_" + SVmode + ".bed"
+
+        assert os.path.isfile(truth_file)
+
+        chr_list_DEL = []
+        start_SV_DEL = []
+        end_SV_DEL = []
+
+        chr_list_INS = []
+        start_SV_INS = []
+
+        with(open(truth_file, 'r')) as i:
+            for line in i:
+                line = line.rstrip()
+                columns = line.split("\t")
+                chrom = str(columns[0])
+                if columns[4] == "DEL" and chrom == chrName:
+                    start_SV_DEL.append(int(columns[1]))
+                    end_SV_DEL.append(int(columns[3]))
+                    chr_list_DEL.append(chrom)
+                elif str(columns[4]) == "INS" and chrom == chrName:
+                    start_SV_INS.append(int(columns[1]))
+                    chr_list_INS.append(chrom)
+
+        return start_SV_DEL, end_SV_DEL, start_SV_INS
+
