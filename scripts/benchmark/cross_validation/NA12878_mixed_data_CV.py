@@ -109,7 +109,7 @@ def transpose_dataset(X):
     # return np.array(image)
 
     assert isinstance(X, np.ndarray)
-    return np.apply_along_axis(lambda x: x.T, 0, X)
+    return np.apply_along_axis(lambda x: x.transpose(), 0, X)
 
 
 def data(datapath, channels):
