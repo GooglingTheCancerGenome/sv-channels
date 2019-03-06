@@ -3,6 +3,7 @@ import gzip
 import os
 import argparse
 import logging
+import pickle
 
 import numpy as np
 
@@ -34,17 +35,17 @@ import tensorflow as tf
 # Pandas import
 import pandas as pd
 
-
 HPC_MODE = True
 
 sample_name = 'NA12878'
 date = '270219'
 label_type = 'Mills2011_nanosv'
 datapath_prefix = '/hpc/cog_bioinf/ridder/users/lsantuari' if HPC_MODE else '/Users/lsantuari/Documents'
-datapath_training =  datapath_prefix+'/Processed/Test/'+\
-           date+'/TestData_'+date+'/'+sample_name+'/TrainingData/'
-datapath_test =  datapath_prefix+'/Processed/Test/'+\
-           date+'/TestData_'+date+'/'+sample_name+'/TestData/'
+datapath_training = datapath_prefix + '/Processed/Test/' + \
+                    date + '/TestData_' + date + '/' + sample_name + '/TrainingData/'
+datapath_test = datapath_prefix + '/Processed/Test/' + \
+                date + '/TestData_' + date + '/' + sample_name + '/TestData/'
+
 
 def create_dir(directory):
     '''
@@ -57,6 +58,7 @@ def create_dir(directory):
     except OSError as e:
         if e.errno != errno.EEXIST:
             raise
+
 
 def get_channel_labels():
     # Fill labels for legend
@@ -91,7 +93,7 @@ def get_channel_labels():
     labels.append("Mappability")
 
     for nuc in ['A', 'T', 'C', 'G', 'N']:
-        labels.append("One_hot_encoding_"+nuc)
+        labels.append("One_hot_encoding_" + nuc)
 
     for k, l in enumerate(labels):
         logging.info(str(k) + ':' + l)
@@ -100,15 +102,17 @@ def get_channel_labels():
 
 
 def transpose_dataset(X):
-    image = []
-    for i in range (0, len(X -1)):
-        tr = X[i].transpose()
-        image.append(tr)
-    return np.array(image)
+    # image = []
+    # for i in range (0, len(X -1)):
+    #     tr = X[i].transpose()
+    #     image.append(tr)
+    # return np.array(image)
+
+    assert isinstance(X, np.ndarray)
+    return np.apply_along_axis(lambda x: x.T, 0, X)
 
 
 def data(datapath, channels):
-
     data_output_file = datapath + sample_name + '_' + label_type + '_channels.npy.gz'
     with gzip.GzipFile(data_output_file, "rb") as f:
         X = np.load(f)
@@ -128,7 +132,7 @@ def data(datapath, channels):
         win_ids = np.load(f)
     f.close()
 
-    return X[:,:,channels], y, y_binary, win_ids
+    return X[:, :, channels], y, y_binary, win_ids
 
 
 def real_data():
@@ -167,7 +171,7 @@ def real_data():
         training_id = []
 
         datapath = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test',
-                                 date, 'TestData_'+date, sample_name, 'ChannelData')
+                                date, 'TestData_' + date, sample_name, 'ChannelData')
 
         for i in chr_list:
             logging.info('Loading data for Chr%s' % i)
@@ -195,6 +199,7 @@ def real_data():
         logging.info('Loading real data...')
 
         with gzip.GzipFile(data_output_file + '.gz', 'rb') as f:
+
             npzfiles = np.load(f)
             training_data = npzfiles['training_data']
             training_labels = npzfiles['training_labels']
@@ -204,19 +209,17 @@ def real_data():
 
 
 def artificial_data():
-
     training_data = []
     training_labels = []
 
     base_dir = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test',
-                            date, 'TrainingData_'+date)
+                            date, 'TrainingData_' + date)
     sample = 'G1'
 
     for svtype in ['INDEL', 'INDEL_HOM']:
-
         datapath = os.path.join(base_dir, svtype, sample)
-        data_file = os.path.join(datapath, 'ChannelData', sample+'.npy.gz')
-        label_file = os.path.join(datapath, 'LabelData', sample+'_17_label.npy.gz')
+        data_file = os.path.join(datapath, 'ChannelData', sample + '.npy.gz')
+        label_file = os.path.join(datapath, 'LabelData', sample + '_17_label.npy.gz')
 
         with gzip.GzipFile(data_file, "rb") as f:
             data_mat = np.load(f)
@@ -237,8 +240,9 @@ def artificial_data():
 
 
 def mixed_data(output, data_mode):
-
     # create_dir('Plots')
+
+    filename, file_extension = os.path.splitext(output)
 
     results = pd.DataFrame()
 
@@ -247,7 +251,7 @@ def mixed_data(output, data_mode):
     channels = np.arange(len(labels))
     channel_set = 'all'
 
-    logging.info('Running cv with channels '+channel_set+':')
+    logging.info('Running cv with channels ' + channel_set + ':')
     for i in channels:
         logging.info(str(i) + ':' + labels[i])
 
@@ -271,71 +275,99 @@ def mixed_data(output, data_mode):
 
         return X, y
 
-    real_training_data, real_training_labels, real_training_id = real_data()
-    art_training_data, art_training_labels = artificial_data()
+    def get_labelled_windows(data_mode):
 
-    # artificial data only 0
-    # real data only 1
-    # mixed data 2
-    # for data_mode in ['artificial','real','mixed']:
+        logging.info('Loading data...')
+
+        real_training_data, real_training_labels, real_training_id = real_data()
+        art_training_data, art_training_labels = artificial_data()
+
+        # artificial data only 0
+        # real data only 1
+        # mixed data 2
+        # for data_mode in ['artificial','real','mixed']:
+
+        if data_mode == 'artificial':
+
+            # artificial data only 0
+            indices_label = np.where(real_training_labels == 'noSV')[0]
+            training_data = np.concatenate((art_training_data,
+                                            real_training_data[indices_label]), axis=0)
+            training_labels = np.concatenate((art_training_labels,
+                                              real_training_labels[indices_label]), axis=0)
+        elif data_mode == 'real':
+
+            # real data only 1
+            training_data = real_training_data
+            training_labels = real_training_labels
+
+        elif data_mode == 'mixed':
+
+            # mixed data 2
+            training_data = np.concatenate((real_training_data, art_training_data), axis=0)
+            training_labels = np.concatenate((real_training_labels, art_training_labels), axis=0)
+
+        logging.info('Training data shape: %s' % str(training_data.shape))
+        logging.info('Training labels shape: %s' % str(training_labels.shape))
+
+        for l in ['UK', 'INS_pos']:
+            logging.info('Removing label %s' % l)
+            training_data, training_labels = remove_label(training_data, training_labels, label=l)
+
+        logging.info('Data loaded.')
+
+        return training_data, training_labels
 
     logging.info('Running with mode ' + data_mode + '...')
 
-    if data_mode == 'artificial':
+    metrics = dict()
 
-        # artificial data only 0
-        indices_label = np.where(real_training_labels == 'noSV')[0]
-        training_data = np.concatenate((art_training_data,
-                                        real_training_data[indices_label]), axis=0)
-        training_labels = np.concatenate((art_training_labels,
-                                          real_training_labels[indices_label]), axis=0)
-    elif data_mode == 'real':
-
-        # real data only 1
-        training_data = real_training_data
-        training_labels = real_training_labels
-
-    elif data_mode == 'mixed':
-
-        # mixed data 2
-        training_data = np.concatenate((real_training_data, art_training_data), axis=0)
-        training_labels = np.concatenate((real_training_labels, art_training_labels), axis=0)
-
-    logging.info('Training data shape: %s' % str(training_data.shape))
-    logging.info('Training labels shape: %s' % str(training_labels.shape))
-
-    for l in ['UK', 'INS_pos']:
-        logging.info('Removing label %s' % l)
-        training_data, training_labels = remove_label(training_data, training_labels, label=l)
-
-    for pc in np.linspace(0.1, 1, num=10):
+    #for pc in np.linspace(0.1, 1, num=10):
+    for pc in [0.1]:
 
         # print(pc)
         logging.info('Running with proportion ' + str(pc) + '...')
 
+        pc_str = str(round(pc, 1))
+        metrics[pc_str] = dict()
+        training_data, training_labels = get_labelled_windows(data_mode)
+
         X, y = subsample_nosv(training_data, training_labels, pc, 'noSV')
+
+        del training_data
+        del training_labels
+
+        X = transpose_dataset(X)
 
         logging.info('X shape: %s' % str(X.shape))
         logging.info('y shape: %s' % str(y.shape))
-
-        X = transpose_dataset(X)
 
         mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
         y_num = np.array([mapclasses[c] for c in y], dtype='int')
         y_binary = to_categorical(y_num)
 
-        results = results.append(cross_validation(X, y, y_binary,
-                                                  X_test, y_test, y_test_binary,
-                                                  channel_set, proportion=round(pc, 1),
-                                                  data_mode=data_mode))
+        intermediate_result, metrics[pc_str] = cross_validation(X, y, y_binary,
+                                                                X_test, y_test, y_test_binary,
+                                                                channel_set, proportion=round(pc, 1),
+                                                                data_mode=data_mode)
+        logging.info(intermediate_result)
+        results.to_csv(filename + '_' + data_mode + '_' + str(round(pc, 1)) + file_extension, sep='\t')
+        results = results.append(intermediate_result)
+        del X, y
 
-    print(results)
-    filename, file_extension = os.path.splitext(output)
-    results.to_csv(filename+'_'+data_mode+'.'+file_extension, sep='\t')
+    logging.info('Writing metrics...')
+
+    metrics_output_file = filename + '_metrics_' + data_mode + '.pickle.gz'
+    with gzip.GzipFile(metrics_output_file, "wb") as f:
+        pickle.dump(f, metrics)
+    f.close()
+
+    logging.info(results)
+
+    results.to_csv(filename + '_' + data_mode + file_extension, sep='\t')
 
 
-def remove_label_with_id(training_data, training_labels, training_id, label = 'UK'):
-
+def remove_label_with_id(training_data, training_labels, training_id, label='UK'):
     # Remove windows labelled as label
     keep = np.where(np.array(training_labels) != label)
     training_data = training_data[keep]
@@ -345,8 +377,7 @@ def remove_label_with_id(training_data, training_labels, training_id, label = 'U
     return training_data, training_labels, training_id
 
 
-def remove_label(training_data, training_labels, label = 'UK'):
-
+def remove_label(training_data, training_labels, label='UK'):
     # Remove windows labelled as label
     keep = np.where(np.array(training_labels) != label)
     training_data = training_data[keep]
@@ -356,7 +387,6 @@ def remove_label(training_data, training_labels, label = 'UK'):
 
 
 def load_data(datapath, channels):
-
     data_output_file = datapath + sample_name + '_' + label_type + '_channels.npy.gz'
     with gzip.GzipFile(data_output_file, "rb") as f:
         X = np.load(f)
@@ -376,24 +406,23 @@ def load_data(datapath, channels):
         win_ids = np.load(f)
     f.close()
 
-    return X[:,:,channels], y, y_binary, win_ids
+    return X[:, :, channels], y, y_binary, win_ids
 
 
 def create_model(X, y_binary):
-
     models = modelgen.generate_models(X.shape,
                                       y_binary.shape[1],
-                                      number_of_models = 1,
-                                      model_type = 'CNN',
+                                      number_of_models=1,
+                                      model_type='CNN',
                                       cnn_min_layers=2,
                                       cnn_max_layers=2,
-                                      cnn_min_filters = 4,
-                                      cnn_max_filters = 4,
+                                      cnn_min_filters=4,
+                                      cnn_max_filters=4,
                                       cnn_min_fc_nodes=6,
                                       cnn_max_fc_nodes=6,
                                       low_lr=2, high_lr=2,
                                       low_reg=1, high_reg=1,
-                                      kernel_size = 7)
+                                      kernel_size=7)
 
     # i = 0
     # for model, params, model_types in models:
@@ -408,36 +437,35 @@ def create_model(X, y_binary):
 def cross_validation(X, y, y_binary, X_hold_out_test,
                      y_hold_out_test, y_hold_out_test_binary,
                      channels, proportion, data_mode):
-
     results = pd.DataFrame()
 
     # From https://medium.com/@literallywords/stratified-k-fold-with-keras-e57c487b1416
-    kfold_splits = 10
+    kfold_splits = 2
+
+    metrics = dict()
 
     # Instantiate the cross validator
     skf = StratifiedKFold(n_splits=kfold_splits, shuffle=True)
 
     # Loop through the indices the split() method returns
     for index, (train_indices, test_indices) in enumerate(skf.split(X, y)):
-
         print("Training on fold " + str(index + 1) + "/10...")
 
         # Generate batches from indices
         xtrain, xtest = X[train_indices], X[test_indices]
-        ytrain, ytest = y[train_indices], y[test_indices]
+        # ytrain, ytest = y[train_indices], y[test_indices]
         ytrain_binary, ytest_binary = y_binary[train_indices], y_binary[test_indices]
 
         # split into train/validation sets
         xtrain, xval, ytrain_binary, yval = train_test_split(xtrain, ytrain_binary,
                                                              test_size=0.2, random_state=2)
 
-        # Clear model, and create it
-        model = None
+        # Create a new model
         model = create_model(X, y_binary)
 
         # Debug message I guess
-        print ("Training new iteration on " + str(xtrain.shape[0]) + " training samples, " +
-         str(xval.shape[0]) + " validation samples, this may take a while...")
+        print("Training new iteration on " + str(xtrain.shape[0]) + " training samples, " +
+              str(xval.shape[0]) + " validation samples, this may take a while...")
 
         history, model = train_model(model, xtrain, ytrain_binary, xval, yval)
 
@@ -449,24 +477,25 @@ def cross_validation(X, y, y_binary, X_hold_out_test,
         score_test = model.evaluate(xtest, ytest_binary, verbose=False)
         print('Test loss and accuracy of best model: ' + str(score_test))
 
-        results = evaluate_model(model, X_hold_out_test, y_hold_out_test,
-                                 y_hold_out_test_binary, results, index, channels,
-                                 proportion, data_mode,
-                                 train_set_size=xtrain.shape[0],
-                                 validation_set_size = xval.shape[0]
-        )
-        #evaluate_model(model, X_test, y_test_binary, results, index, channels)
+        results, metrics[str(index + 1)] = evaluate_model(model, X_hold_out_test, y_hold_out_test,
+                                                          y_hold_out_test_binary, results, index, channels,
+                                                          proportion, data_mode,
+                                                          train_set_size=xtrain.shape[0],
+                                                          validation_set_size=xval.shape[0]
+                                                          )
+        # evaluate_model(model, X_test, y_test_binary, results, index, channels)
 
-    return results
+    return results, metrics
 
 
 def train_model(model, xtrain, ytrain, xval, yval):
 
     train_set_size = xtrain.shape[0]
+    nr_epochs = 1
 
     histories, val_accuracies, val_losses = find_architecture.train_models_on_samples(xtrain, ytrain,
                                                                                       xval, yval,
-                                                                                      model, nr_epochs=1,
+                                                                                      model, nr_epochs=nr_epochs,
                                                                                       subset_size=train_set_size,
                                                                                       verbose=False)
 
@@ -474,7 +503,6 @@ def train_model(model, xtrain, ytrain, xval, yval):
     best_model, best_params, best_model_types = model[best_model_index]
     # print(best_model_index, best_model_types, best_params)
 
-    nr_epochs = 1
     history = best_model.fit(xtrain, ytrain,
                              epochs=nr_epochs, validation_data=(xval, yval),
                              verbose=False)
@@ -484,27 +512,29 @@ def train_model(model, xtrain, ytrain, xval, yval):
 
 def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channels, proportion, data_mode,
                    train_set_size, validation_set_size):
-
     mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
     dict_sorted = sorted(mapclasses.items(), key=lambda x: x[1])
     # print(dict_sorted)
-    class_labels = [i[0] for i in dict_sorted]
+    # class_labels = [i[0] for i in dict_sorted]
 
     n_classes = ytest_binary.shape[1]
     # print(y_binarized)
     # print(n_classes)
 
-    probs = model.predict_proba(X_test, batch_size=1, verbose=False)
+    probs = model.predict_proba(X_test, batch_size=1000, verbose=False)
 
     # For each class
     precision = dict()
     recall = dict()
     thresholds = dict()
     average_precision = dict()
-    for i in range(n_classes):
-        precision[i], recall[i], thresholds[i] = precision_recall_curve(ytest_binary[:, i],
-                                                            probs[:, i])
-        average_precision[i] = average_precision_score(ytest_binary[:, i], probs[:, i])
+
+    # for i in range(n_classes):
+    for k, i in dict_sorted.items():
+
+        precision[k], recall[k], thresholds[k] = precision_recall_curve(ytest_binary[:, i],
+                                                                        probs[:, i])
+        average_precision[k] = average_precision_score(ytest_binary[:, i], probs[:, i])
 
     # A "micro-average": quantifying score on all classes jointly
     precision["micro"], recall["micro"], _ = precision_recall_curve(ytest_binary.ravel(),
@@ -520,13 +550,12 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
         "channels": channels,
         "data_mode": data_mode,
         "proportion": proportion,
-        "fold": cv_iter+1,
+        "fold": cv_iter + 1,
         "training_set_size": train_set_size,
         "validation_set_size": validation_set_size,
         "test_set_size": X_test.shape[0],
         "average_precision_score": average_precision["micro"]
     }, ignore_index=True)
-
 
     # for iter_class in mapclasses.values():
     #
@@ -559,11 +588,10 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
     #     # show the plot
     #     plt.savefig('Plots/Precision_Recall_multiclass_Iter_'+str(cv_iter)+'_'+channels+'.png', bbox_inches='tight')
 
-    return results
+    return results, (precision, recall, thresholds)
 
 
 def run_cv():
-
     labels = get_channel_labels()
 
     results = pd.DataFrame()
@@ -571,12 +599,12 @@ def run_cv():
     # # for channel_index in np.arange(0,len(labels)):
     # for channel_set, channels in channel_list.items():
 
-        # channels.append(channel_index)
+    # channels.append(channel_index)
 
     channels = np.arange(len(labels))
     channel_set = 'all'
 
-    logging.info('Running cv with channels '+channel_set+':')
+    logging.info('Running cv with channels ' + channel_set + ':')
     # for i in channels:
     #     print(str(i) + ':' + labels[i])
 
@@ -592,7 +620,6 @@ def run_cv():
 
 
 def plot_results():
-
     source = pd.read_csv(filepath_or_buffer='NA12878/CV_results.csv', delimiter='\t')
 
     import numpy as np
@@ -605,14 +632,14 @@ def plot_results():
     ind = np.arange(len(list(means.index)))  # the x locations for the groups
     width = 0.50  # the width of the bars: can also be len(x) sequence
 
-    p1 = plt.bar(ind, means, width, yerr=std)
+    plt.bar(ind, means, width, yerr=std)
 
     plt.ylabel('average_precision_score')
     plt.title('average_precision_score per channel set')
     plt.xticks(ind, list(means.index))
-    plt.xticks(rotation=45,  horizontalalignment='right')
-    #plt.yticks(np.arange(0.8, 1))
-    #plt.legend((p1[0]), ('Bar'))
+    plt.xticks(rotation=45, horizontalalignment='right')
+    # plt.yticks(np.arange(0.8, 1))
+    # plt.legend((p1[0]), ('Bar'))
     plt.ylim(bottom=0.8)
     plt.tight_layout()
 
@@ -621,7 +648,6 @@ def plot_results():
 
 
 def main():
-
     parser = argparse.ArgumentParser(description='Tests multiple artificial/real/mixed training sets')
     parser.add_argument('-m', '--mode', default='artificial',
                         help='Data mode: artificial/real/mixed')
@@ -633,7 +659,7 @@ def main():
     args = parser.parse_args()
 
     filename, file_extension = os.path.splitext(args.logfile)
-    logfilename = filename + '_' + args.mode + '.' + file_extension
+    logfilename = filename + '_' + args.mode + file_extension
 
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(
@@ -646,5 +672,4 @@ def main():
 
 
 if __name__ == '__main__':
-
     main()
