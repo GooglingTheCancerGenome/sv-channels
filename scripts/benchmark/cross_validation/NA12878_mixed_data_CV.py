@@ -319,8 +319,8 @@ def mixed_data(output, data_mode):
 
     metrics = dict()
 
-    #for pc in np.linspace(0.1, 1, num=10):
-    for pc in [0.1]:
+    for pc in np.linspace(0.1, 1, num=10):
+    #for pc in [0.1]:
 
         # print(pc)
         logging.info('Running with proportion ' + str(pc) + '...')
@@ -348,15 +348,17 @@ def mixed_data(output, data_mode):
                                                                 channel_set, proportion=round(pc, 1),
                                                                 data_mode=data_mode)
         logging.info(intermediate_result)
-        results.to_csv(filename + '_' + data_mode + '_' + str(round(pc, 1)) + file_extension, sep='\t')
+        intermediate_result.to_csv(
+            filename + '_' + data_mode + '_' + str(round(pc, 1)) + file_extension, sep='\t')
         results = results.append(intermediate_result)
+
         del X, y
 
     logging.info('Writing metrics...')
 
     metrics_output_file = filename + '_metrics_' + data_mode + '.pickle.gz'
     with gzip.GzipFile(metrics_output_file, "wb") as f:
-        pickle.dump(f, metrics)
+        pickle.dump(metrics, f)
     f.close()
 
     logging.info(results)
@@ -437,7 +439,7 @@ def cross_validation(X, y, y_binary, X_hold_out_test,
     results = pd.DataFrame()
 
     # From https://medium.com/@literallywords/stratified-k-fold-with-keras-e57c487b1416
-    kfold_splits = 2
+    kfold_splits = 10
 
     metrics = dict()
 
