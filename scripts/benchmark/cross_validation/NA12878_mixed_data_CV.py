@@ -102,14 +102,11 @@ def get_channel_labels():
 
 
 def transpose_dataset(X):
-    # image = []
-    # for i in range (0, len(X -1)):
-    #     tr = X[i].transpose()
-    #     image.append(tr)
-    # return np.array(image)
-
-    assert isinstance(X, np.ndarray)
-    return np.apply_along_axis(lambda x: x.transpose(), 0, X)
+    image = []
+    for i in range (0, len(X -1)):
+        tr = X[i].transpose()
+        image.append(tr)
+    return np.array(image)
 
 
 def data(datapath, channels):
