@@ -527,7 +527,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
     average_precision = dict()
 
     # for i in range(n_classes):
-    for k, i in dict_sorted.items():
+    for k, i in mapclasses.items():
 
         precision[k], recall[k], thresholds[k] = precision_recall_curve(ytest_binary[:, i],
                                                                         probs[:, i])
