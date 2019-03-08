@@ -55,8 +55,12 @@ def get_channel_labels():
 
     labels = list()
     labels.append("coverage")
+    labels.append("mean_read_quality")
     labels.append("#left_clipped_reads")
     labels.append("#right_clipped_reads")
+    labels.append("#CIGAR_D_left_reads")
+    labels.append("#CIGAR_D_right_reads")
+    labels.append("#CIGAR_I_right_reads")
     labels.append("INV_before")
     labels.append("INV_after")
     labels.append("DUP_before")
@@ -65,23 +69,24 @@ def get_channel_labels():
     labels.append("TRA_same")
 
     for direction in ['Forward', 'Reverse']:
-        for clipped in ['Left', 'Right', 'Not']:
-            for value in ['sum', 'num', 'median', 'outliers']:
+        for clipped in ['Left', 'Right', 'All']:
+            for value in ['median']:
                 labels.append(direction + '_' + clipped + '_Clipped_' + value)
 
     labels.append("#left split reads")
     labels.append("#right split reads")
 
     for clipped in ['L', 'R']:
-        for value in ['sum', 'num', 'median']:
+        for value in ['median']:
             labels.append(clipped + '_SplitRead_' + value)
 
-    labels.append("GC")
     labels.append("Mappability")
-    labels.append("One_hot_Ncoding")
+
+    for nuc in ['A', 'T', 'C', 'G', 'N']:
+        labels.append("One_hot_encoding_" + nuc)
 
     for k, l in enumerate(labels):
-         print(str(k) + ':' + l)
+        logging.info(str(k) + ':' + l)
 
     return labels
 
