@@ -17,7 +17,7 @@ from time import time
 import logging
 import csv
 import pandas as pd
-from plotnine import *
+# from plotnine import *
 import pyBigWig
 from functions import get_one_hot_sequence, is_outlier
 from itertools import chain
@@ -1417,13 +1417,16 @@ def nanosv_vcf_to_bed(sampleName):
         f.close()
 
 
-def get_gc_bigwig():
-    bw = pyBigWig.open("/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/UCSC/hg19/hg19.gc5Base.bw")
-    return bw
+# def get_gc_bigwig():
+#     bw = pyBigWig.open("/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/UCSC/hg19/hg19.gc5Base.bw")
+#     return bw
 
 
 def get_mappability_bigwig():
-    bw = pyBigWig.open("/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/Mappability/GRCh37.151mer.bw")
+
+    path = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/Mappability/' if HPC_MODE \
+        else '/Users/lsantuari/Documents/Data/GEM'
+    bw = pyBigWig.open(os.path.join(path, "GRCh37.151mer.bw"))
     return bw
 
 
@@ -1455,7 +1458,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
         chrLen[chrName] = [i['LN'] for i in header_dict['SQ'] if i['SN'] == chrName][0]
 
     # Get GC BigWig
-    bw_gc = get_gc_bigwig()
+    # bw_gc = get_gc_bigwig()
     # Get Mappability BigWig
     bw_map = get_mappability_bigwig()
 
@@ -1465,26 +1468,43 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
     else:
         prefix_train = ''
         # only for ovarian cancer
-        #prefix_train = 'OC/'
+        # prefix_train = 'OC/'
 
     # Check for file existence
     if not HPC_MODE:
 
         # Local BAM file for testing
-        sample_list = ['T0']
+        sample_list = sampleName.split('_')
 
-        clipped_read_pos_file = 'clipped_read_pos.pbz2'
-        clipped_read_distance_file = 'clipped_read_distance.pbz2'
-        clipped_reads_file = 'clipped_reads.pbz2'
-        coverage_file = 'coverage.npy.gz'
-        split_read_distance_file = 'split_read_distance.pbz2'
+        clipped_read_pos_file = dict()
+        clipped_read_distance_file = dict()
+        clipped_reads_file = dict()
+        coverage_file = dict()
+        split_read_distance_file = dict()
+        clipped_pos_cnt = dict()
 
-        # Check file existence
-        assert os.path.isfile(clipped_read_pos_file)
-        assert os.path.isfile(clipped_read_distance_file)
-        assert os.path.isfile(clipped_reads_file)
-        assert os.path.isfile(coverage_file)
-        assert os.path.isfile(split_read_distance_file)
+        for chrName in chrList:
+
+            clipped_read_pos_file[chrName] = 'clipped_read_pos.pbz2'
+            clipped_read_distance_file[chrName] = 'clipped_read_distance.pbz2'
+            clipped_reads_file[chrName] = 'clipped_reads.pbz2'
+            coverage_file[chrName] = 'coverage.npy.bz2'
+            split_read_distance_file[chrName] = 'split_read_distance.pbz2'
+
+            # Check file existence
+            assert os.path.isfile(clipped_read_pos_file[chrName])
+            assert os.path.isfile(clipped_read_distance_file[chrName])
+            assert os.path.isfile(clipped_reads_file[chrName])
+            assert os.path.isfile(coverage_file[chrName])
+            assert os.path.isfile(split_read_distance_file[chrName])
+
+            logging.info('Reading clipped read positions')
+            with bz2file.BZ2File(clipped_read_pos_file[chrName], 'rb') as f:
+                clipped_pos_cnt[chrName] = pickle.load(f)
+            logging.info('End of reading')
+
+            # Count the number of clipped read positions with a certain minimum number of clipped reads
+            count_clipped_read_positions(clipped_pos_cnt[chrName])
 
     else:
 
@@ -1539,10 +1559,11 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                                          clipped_read_pos_file[chrName], 'rb') as f:
                         clipped_pos_cnt_per_sample[sample] = pickle.load(f)
                     logging.info('End of reading')
-                    logging.info('Length of clipped_pos_cnt_per_sample for sample %s: %d' % (sample,
-                                                                                             len(
-                                                                                                 clipped_pos_cnt_per_sample[
-                                                                                                     sample])))
+                    logging.info('Length of clipped_pos_cnt_per_sample' +
+                                 ' for sample %s: %d' % (sample,
+                                                         len(
+                                                             clipped_pos_cnt_per_sample[
+                                                                 sample])))
 
                     # Count the number of clipped read positions with a certain minimum number of clipped reads
                     count_clipped_read_positions(clipped_pos_cnt_per_sample[sample])
@@ -1646,7 +1667,8 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
             with bz2file.BZ2File(prefix + coverage_file[chrName], 'rb') as f:
                 coverage[sample][chrName] = np.load(file=f)
             logging.info(
-                'End of reading, coverage length: %d out of %d' % (len(coverage[sample][chrName]), chrLen[chrName]))
+                'End of reading, coverage length: %d out of %d' %
+                (len(coverage[sample][chrName]), chrLen[chrName]))
 
             logging.info('Reading split read distances')
             with bz2file.BZ2File(prefix + split_read_distance_file[chrName], 'rb') as f:
@@ -1888,7 +1910,6 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
                 for direction in ['forward', 'reverse']:
                     for clipped_arrangement in ['left', 'right', 'all']:
-
                         # vstack_list.append(
                         #     clipped_read_distance_array[sample][direction][clipped_arrangement])
                         # vstack_list.append(
@@ -1918,6 +1939,9 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
             # logging.info("Shape of channel matrix: %s" % str(ch_vstack.shape))
             ch_vstack = np.vstack(vstack_list)
+
+            # print(ch_vstack)
+
             ch_list.append(ch_vstack)
 
     outDir = os.path.dirname(outFile)
@@ -1962,11 +1986,11 @@ def main():
     parser.add_argument('-b', '--bam', type=str,
                         default=inputBAM,
                         help="Specify input file (BAM)")
-    parser.add_argument('-c', '--chr', type=str, default='2',
+    parser.add_argument('-c', '--chr', type=str, default='17',
                         help="Specify chromosome")
     parser.add_argument('-o', '--out', type=str, default='channel_maker.npy.gz',
                         help="Specify output")
-    parser.add_argument('-s', '--sample', type=str, default='NA12878',
+    parser.add_argument('-s', '--sample', type=str, default='T1',
                         help="Specify sample")
     parser.add_argument('-m', '--svmode', type=str, default='INDEL',
                         help="Specify SV type")

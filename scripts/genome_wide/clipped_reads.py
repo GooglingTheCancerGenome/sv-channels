@@ -209,7 +209,7 @@ def main():
     #inputBAM = wd + "T0_dedup.bam"
     # Locally
     wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
-    inputBAM = wd + "G1_dedup.bam"
+    inputBAM = wd + "T1_dedup.bam"
 
     # Default chromosome is 17 for the artificial data
 

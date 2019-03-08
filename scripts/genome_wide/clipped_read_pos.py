@@ -98,10 +98,10 @@ def main():
     #wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
     #inputBAM = wd + "T0_dedup.bam"
     # Locally
-    # wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
-    # inputBAM = wd + "T1_dedup.bam"
-    wd = '/Users/lsantuari/Documents/mount_points/hpc_mnt/Datasets/CretuStancu2017/Patient1/'
-    inputBAM = wd + 'Patient1.bam'
+    wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
+    inputBAM = wd + "T1_dedup.bam"
+    #wd = '/Users/lsantuari/Documents/mount_points/hpc_mnt/Datasets/CretuStancu2017/Patient1/'
+    #inputBAM = wd + 'Patient1.bam'
 
     # Default chromosome is 17 for the artificial data
 
