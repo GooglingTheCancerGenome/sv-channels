@@ -3,7 +3,7 @@
 # This script generate the channel data for the germline SVs of the Training data.
 # The NoSV category is also added here, but for the moment it is generated using the channel_maker_real_somatic.py script
 
-SVMODE='INV'
+SVMODE='INDEL'
 
 # INPATH='/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/WG/run_'$SVMODE'_500K/samples/'
 INPATH='/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_'$SVMODE'/samples/'
@@ -15,7 +15,7 @@ GERMLINE2='G2'
 NOSV1="N1"
 NOSV2="N2"
 
-SAMPLE_ARRAY=(${GERMLINE1} ${GERMLINE2} ${NOSV1} ${NOSV2})
+SAMPLE_ARRAY=(${GERMLINE1} ${NOSV1})
 
 CHRARRAY=(`seq 1 22` 'X' 'Y' 'MT')
 
@@ -30,7 +30,7 @@ for SAMPLE in ${SAMPLE_ARRAY[@]}; do
 
             BAM=${INPATH}"$SAMPLE""/BAM/"$SAMPLE"/mapping/"$SAMPLE"_dedup.bam"
             OUTDIR="Training_"$SVMODE"/"$SAMPLE
-            JOB_NAME=$SAMPLE"_"$CHROMOSOME"_"${PRG}
+            JOB_NAME=$SAMPLE"_"$CHROMOSOME"_"${PRG}"_"$SVMODE
             echo qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=$OUTDIR \
             -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_channel.sge
         done

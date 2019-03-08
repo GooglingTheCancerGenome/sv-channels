@@ -233,6 +233,7 @@ def main():
     logging.basicConfig(
         format=FORMAT,
         filename=logfilename,
+        filemode='w',
         level=logging.INFO)
 
     t0 = time()
