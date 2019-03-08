@@ -63,11 +63,11 @@ def get_clipped_read_positions(ibam, chrName, outFile):
         # if (not read.is_unmapped) and (not read.mate_is_unmapped) and read.mapping_quality >= minMAPQ:
         if (not read.is_unmapped) and read.mapping_quality >= minMAPQ:
 
-            if fun.has_indels(read):
-                # print(read)
-                dels_start, dels_end, ins = fun.get_indels(read)
-                dels = dels_start + dels_end + ins
-                clipped_pos.extend(dels)
+            # if fun.has_indels(read):
+            #     # print(read)
+            #     dels_start, dels_end, ins = fun.get_indels(read)
+            #     dels = dels_start + dels_end + ins
+            #     clipped_pos.extend(dels)
 
             if fun.is_left_clipped(read):
                 # read.reference_start is the 1-based start position of the read mapped on the reference genome
