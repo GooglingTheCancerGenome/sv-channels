@@ -50,6 +50,18 @@ datapath_test =  datapath_prefix+'/Processed/Test/'+\
            date+'/TestData_'+date+'/'+sample_name+'/TestData/'
 
 
+def create_dir(directory):
+    '''
+    Create a directory if it does not exist. Raises an exception if the directory exists.
+    :param directory: directory to create
+    :return: None
+    '''
+    try:
+        os.makedirs(directory)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
+
 def get_channel_labels():
     # Fill labels for legend
 
@@ -322,6 +334,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
         'Average precision score, micro-averaged over all classes: AP={0:0.2f}'
             .format(average_precision["micro"]))
 
+    create_dir('NA12878/Plots')
     plt.savefig('NA12878/Plots/Precision_Recall_avg_prec_score_Iter_'+str(cv_iter)+'_'+channels+'.png', bbox_inches='tight')
     plt.close()
 
@@ -440,6 +453,7 @@ def run_cv():
     results = results.append(cross_validation(X, y, y_binary, X_test, y_test, y_test_binary, channel_set))
 
     print(results)
+    create_dir('NA12878')
     results.to_csv("NA12878/CV_results.csv", sep='\t')
 
 
