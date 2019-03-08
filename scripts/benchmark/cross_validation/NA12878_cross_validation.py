@@ -32,16 +32,16 @@ import tensorflow as tf
 # Pandas import
 import pandas as pd
 
-import altair as alt
+# import altair as alt
 
 # Bokeh import
-from bokeh.io import show, output_file
-from bokeh.plotting import figure
+# from bokeh.io import show, output_file
+# from bokeh.plotting import figure
 
 
-HPC_MODE = False
+HPC_MODE = True
 sample_name = 'NA12878'
-date = '231118'
+date = '080319'
 label_type = 'Mills2011_nanosv'
 datapath_prefix = '/hpc/cog_bioinf/ridder/users/lsantuari' if HPC_MODE else '/Users/lsantuari/Documents'
 datapath_training =  datapath_prefix+'/Processed/Test/'+\
@@ -263,7 +263,9 @@ def train_model(model, xtrain, ytrain, xval, yval):
 def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channels,
                    train_set_size, validation_set_size):
 
-    mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
+    # mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
+    mapclasses = {'DEL': 0, 'noDEL': 1}
+
     dict_sorted = sorted(mapclasses.items(), key=lambda x: x[1])
     # print(dict_sorted)
     class_labels = [i[0] for i in dict_sorted]
