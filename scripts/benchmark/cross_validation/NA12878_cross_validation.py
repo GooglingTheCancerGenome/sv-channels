@@ -86,7 +86,7 @@ def get_channel_labels():
         labels.append("One_hot_encoding_" + nuc)
 
     for k, l in enumerate(labels):
-        logging.info(str(k) + ':' + l)
+        print(str(k) + ':' + l)
 
     return labels
 
