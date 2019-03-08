@@ -1,6 +1,7 @@
 # Imports
 import gzip
 import os
+import errno
 
 import numpy as np
 
