@@ -12,6 +12,8 @@ import gzip
 import bz2file
 import os, errno
 import pickle
+import logging
+import gzip
 
 # Flag used to set either paths on the local machine or on the HPC
 HPC_MODE = False
@@ -23,6 +25,36 @@ win_len = win_hlen * 2
 
 __bpRE__ = None
 __symbolicRE__ = None
+
+
+class Breakpoint:
+
+    def __init__(self, chr, pos, strand):
+        self.chr = chr
+        self.pos = pos
+        self.strand = strand
+
+    def id(self):
+        return '_'.join([self.chr, str(self.pos), self.strand])
+
+
+class StructuralVariant:
+
+    def __init__(self, bp1, bp2):
+
+        if bp1.chr == bp2.chr:
+            if bp1.pos <= bp2.pos:
+                self.tuple = (bp1, bp2)
+            else:
+                self.tuple = (bp2, bp1)
+        elif bp1.chr < bp2.chr:
+            self.tuple = (bp1, bp2)
+        else:
+            self.tuple = (bp2, bp1)
+
+    def id(self):
+        bp1, bp2 = self.tuple
+        return '<=>'.join([bp1.id(), bp2.id()])
 
 
 # Classes
@@ -44,7 +76,7 @@ class SVRecord_generic:
             if 'SVLEN' in record.info.keys():
                 indellen = record.info['SVLEN']
             else:
-                indellen = abs(record.stop-record.pos)
+                indellen = abs(record.stop - record.pos)
 
         # print(record.info.keys())
 
@@ -62,7 +94,7 @@ class SVRecord_generic:
             else:
                 self.cipos = record.info['CIPOS']
         else:
-            self.cipos = (0,0)
+            self.cipos = (0, 0)
 
         # CIEND
         if 'CIEND' in record.info.keys():
@@ -73,7 +105,7 @@ class SVRecord_generic:
         elif 'CIRPOS' in record.info.keys():
             self.ciend = record.info['CIRPOS']
         else:
-            self.ciend = (0,0)
+            self.ciend = (0, 0)
 
         self.filter = record.filter
 
@@ -94,7 +126,6 @@ class SVRecord_generic:
                 self.svtype = record.info['SVTYPE']
         else:
             self.svtype = 'BND'
-
 
     @staticmethod
     def stdchrom(chrom):
@@ -304,7 +335,6 @@ def setupREs():
 
 
 def initialize_vcf_paths(sampleName):
-
     vcf_files = dict()
 
     if HPC_MODE:
@@ -318,7 +348,7 @@ def initialize_vcf_paths(sampleName):
             for mapper in ['bwa', 'minimap2', 'ngmlr', 'last']:
 
                 vcf_files[mapper] = dict()
-                vcf_files[mapper]['nanosv'] = os.path.join(vcf_dir, mapper, mapper+'_nanosv.sorted.vcf')
+                vcf_files[mapper]['nanosv'] = os.path.join(vcf_dir, mapper, mapper + '_nanosv.sorted.vcf')
                 assert os.path.isfile(vcf_files[mapper]['nanosv'])
 
                 vcf_files[mapper]['nanosv_sniffles_settings'] = os.path.join(vcf_dir, mapper,
@@ -328,7 +358,6 @@ def initialize_vcf_paths(sampleName):
                 assert os.path.isfile(vcf_files[mapper]['nanosv_sniffles_settings'])
 
                 if mapper in ['bwa', 'ngmlr']:
-
                     vcf_files[mapper]['sniffles'] = os.path.join(vcf_dir, mapper, mapper + '_sniffles.sorted.vcf')
                     assert os.path.isfile(vcf_files[mapper]['sniffles'])
 
@@ -360,7 +389,6 @@ def initialize_vcf_paths(sampleName):
             vcf_dir = os.path.join(base_dir, sampleName, 'SV')
 
             for mapper in ['last']:
-
                 vcf_files[mapper] = dict()
                 vcf_files[mapper]['nanosv'] = os.path.join(vcf_dir, mapper, mapper + '_nanosv.sorted.vcf')
                 assert os.path.isfile(vcf_files[mapper]['nanosv'])
@@ -400,7 +428,7 @@ def read_nanosv_vcf(sampleName):
         # Select good quality (no LowQual, only 'PASS') deletions (DEL)
         sv = [svrec for svrec in sv if svrec.svtype == 'DEL'
               # if 'LowQual' not in list(svrec.filter)]
-              #if 'PASS' in list(svrec.filter)]
+              # if 'PASS' in list(svrec.filter)]
               if 'PASS' in list(svrec.filter) or \
               'CIPOS' in list(svrec.filter) or \
               'CIEND' in list(svrec.filter)]
@@ -408,3 +436,215 @@ def read_nanosv_vcf(sampleName):
         return sv
     else:
         return None
+
+
+def load_bam(ibam):
+    # check if the BAM file exists
+    assert os.path.isfile(ibam)
+    # open the BAM file
+    return pysam.AlignmentFile(ibam, "rb")
+
+
+def get_chr_len_dict(ibam):
+    bamfile = load_bam(ibam)
+    # Extract chromosome length from the BAM header
+    header_dict = bamfile.header
+
+    chrLen = {i['SN']: i['LN'] for i in header_dict['SQ']}
+    return chrLen
+
+
+def read_bed_sv(inbed):
+    # Check file existence
+    assert os.path.isfile(inbed)
+    # Dictionary with chromosome keys to store SVs
+    sv_dict = defaultdict(list)
+
+    with(open(inbed, 'r')) as bed:
+        for line in bed:
+            columns = line.rstrip().split("\t")
+            chrom = str(columns[0])
+            if columns[3][:3] == "DEL":
+                sv_dict[chrom].append((int(columns[1]), int(columns[2]), columns[3]))
+
+    # print(sv_dict)
+    return sv_dict
+
+
+def read_bedpe_sv(inbed):
+    #
+    # Check file existence
+    assert os.path.isfile(inbed)
+    # Dictionary with chromosome keys to store SVs
+    sv_dict = defaultdict(list)
+
+    with(open(inbed, 'r')) as bed:
+        for line in bed:
+            columns = line.rstrip().split("\t")
+            if columns[0] == columns[3]:
+                chrom = str(columns[0])
+                chrom = chrom.replace('chr', '')
+                sv_dict[chrom].append(
+                    (int(columns[1]), int(columns[2]), 'DEL_start',
+                     int(columns[4]), int(columns[5]), 'DEL_end')
+                )
+
+    # print(sv_dict)
+    return sv_dict
+
+
+def load_candidate_pairs(sample, ibam):
+    logging.info('Loading data for candidate_pairs:')
+
+    chr_len = get_chr_len_dict(ibam)
+
+    prefix = '' if HPC_MODE else '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth/'
+    ch = 'candidate_pairs'
+
+    candidate_pairs_file = os.path.join(prefix, sample, ch + '.pgz')
+
+    if os.path.exists(candidate_pairs_file):
+
+        # Save candidate_pairs
+        with gzip.GzipFile(candidate_pairs_file, 'rb') as f:
+            candidate_pairs = pickle.load(f)
+        f.close()
+
+    else:
+
+        candidate_pairs = dict()
+
+        for chrom in chr_len.keys():
+
+            logging.info('Loading candidate_pairs for Chr%s' % chrom)
+            suffix = '.npy.bz2' if ch == 'coverage' else '.pbz2'
+            if HPC_MODE:
+                filename = os.path.join(prefix, sample, ch, '_'.join([chrom, ch + suffix]))
+            else:
+                filename = os.path.join(prefix, sample, ch, chrom + '_' + ch + suffix)
+
+            assert os.path.isfile(filename)
+
+            # logging.info('Reading %s for Chr%s' % (ch, chrom))
+            with bz2file.BZ2File(filename, 'rb') as f:
+                if suffix == '.npy.bz2':
+                    candidate_pairs[chrom] = np.load(f)
+                else:
+                    candidate_pairs[chrom] = pickle.load(f)
+            # logging.info('End of reading')
+
+        # Save candidate_pairs
+        with gzip.GzipFile(candidate_pairs_file, 'wb') as f:
+            pickle.dump(candidate_pairs, f)
+        f.close()
+
+    return candidate_pairs
+
+
+def get_pairs_with_overlap(sv_list, pairs, mode):
+    '''
+
+    :param sv_list: list, list of SVs
+    :param candidate_pairs: list, list of StructuralVariant
+    :return: list, list of cStructuralVariant whose Breakpoint windows completely overlap the CIPOS interval
+    and the CIEND interval
+    '''
+
+    def get_tree(pairs):
+        # Tree with windows for candidate pairs
+        print('Building tree with %d pairs' % len(pairs))
+
+        tree = dict()
+        tree['pair_bp1'] = IntervalTree()
+        tree['pair_bp2'] = IntervalTree()
+        # Populate tree
+        for p in pairs:
+            bp1, bp2 = p.tuple
+            tree['pair_bp1'][bp1.pos - win_hlen:bp1.pos + win_hlen + 1] = p.id()
+            tree['pair_bp2'][bp2.pos - win_hlen:bp2.pos + win_hlen + 1] = p.id()
+        return tree
+
+    def search_tree_with_sv(sv_list, tree):
+
+        overlap = dict()
+
+        if mode == 'VCF':
+
+            overlap['cipos'] = [tree['pair_bp1'][var.start + var.cipos[0]: var.start + var.cipos[1] + 1]
+                                for var in sv_list]
+            overlap['ciend'] = [tree['pair_bp2'][var.end + var.ciend[0]: var.end + var.ciend[1] + 1]
+                                for var in sv_list]
+        elif mode == 'BED':
+
+            overlap['cipos'] = [tree['pair_bp1'][bp1_start: bp1_end + 1]
+                                for bp1_start, bp1_end, bp1_lab, bp2_start, bp2_end, bp2_lab in sv_list]
+            overlap['ciend'] = [tree['pair_bp2'][bp2_start: bp2_end + 1]
+                                for bp1_start, bp1_end, bp1_lab, bp2_start, bp2_end, bp2_lab in sv_list]
+
+        return overlap
+
+    def get_overlap(tree, sv_list):
+
+        full_overlap_ids = []
+        partial_overlap_ids = []
+
+        rg_overlap = search_tree_with_sv(sv_list, tree)
+
+        # print('Length rg_overlap for cipos: %d' % len(rg_overlap['cipos']))
+        # print('Length rg_overlap for ciend: %d' % len(rg_overlap['ciend']))
+
+        for rg_bp1, rg_bp2, sv in zip(rg_overlap['cipos'], rg_overlap['ciend'], sv_list):
+
+            bp1_start, bp1_end, bp1_lab, bp2_start, bp2_end, bp2_lab = sv
+
+            rg_bp1_id_set = set([i for s, e, i in rg_bp1])
+            rg_bp2_id_set = set([i for s, e, i in rg_bp2])
+
+            common_ids = rg_bp1_id_set & rg_bp2_id_set
+
+            if len(common_ids) > 0:
+
+                # are SV CIPOS start and end positions fully included in the pair start endpoints?
+                set_bp1 = set()
+                for r in rg_bp1:
+                    s, e, i = r
+                    if i in common_ids and s <= bp1_start and e >= bp1_end:
+                        set_bp1.add(i)
+                    else:
+                        partial_overlap_ids.append(i)
+
+                # are SV CIEND start and end positions fully included in the pair end endpoints?
+                set_bp2 = set()
+                for r in rg_bp2:
+                    s, e, i = r
+                    if i in common_ids and s <= bp2_start and e >= bp2_end:
+                        set_bp2.add(i)
+                    else:
+                        partial_overlap_ids.append(i)
+
+                full_overlap_ids.extend(list(set_bp1 & set_bp2))
+
+        partial_overlap_ids = list(set(partial_overlap_ids))
+
+        print('Total candidate pairs with partial CI overlap: %d' % len(partial_overlap_ids))
+        print('Total candidate pairs with full CI overlap: %d' % len(full_overlap_ids))
+
+        return partial_overlap_ids, full_overlap_ids
+
+    t = get_tree(pairs)
+    partial, full = get_overlap(t, sv_list)
+
+    return partial, full
+
+
+def create_dir(directory):
+    '''
+    Create a directory if it does not exist. Raises an exception if the directory exists.
+    :param directory: directory to create
+    :return: None
+    '''
+    try:
+        os.makedirs(directory)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
