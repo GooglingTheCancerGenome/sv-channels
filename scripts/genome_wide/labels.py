@@ -1241,60 +1241,60 @@ def get_labels(sampleName):
         hpc_path = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Data_for_labels/', sampleName)
         sv_dict = dict()
 
-        # sv_dict['nanosv'] = read_nanosv_vcf(sampleName)
-        # sv_dict['nanosv_manta'] = get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName)
-        #
-        # for sv_caller in ['manta', 'delly', 'lumpy', 'gridss']:
-        #     # for sv_caller in ['gridss']:
-        #     sv_dict[sv_caller] = read_vcf(sampleName, sv_caller)
+        sv_dict['nanosv'] = read_nanosv_vcf(sampleName)
+        sv_dict['nanosv_manta'] = get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName)
+
+        for sv_caller in ['manta', 'delly', 'lumpy', 'gridss']:
+            # for sv_caller in ['gridss']:
+            sv_dict[sv_caller] = read_vcf(sampleName, sv_caller)
 
         if sampleName[:7] == 'NA12878':
-            # Mills2011
-            # inbed_path = hpc_path if HPC_MODE else \
-            #         '/Users/lsantuari/Documents/External_GitHub/sv_benchmark/input.na12878/'
-            # inbed = os.path.join(inbed_path, 'lumpy-Mills2011-call-set.bed')
-            # sv_dict['Mills2011'] = read_bed_sv(inbed)
+            Mills2011
+            inbed_path = hpc_path if HPC_MODE else \
+                    '/Users/lsantuari/Documents/External_GitHub/sv_benchmark/input.na12878/'
+            inbed = os.path.join(inbed_path, 'lumpy-Mills2011-call-set.bed')
+            sv_dict['Mills2011'] = read_bed_sv(inbed)
 
             inbed_path = hpc_path if HPC_MODE else \
                     '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/'
             inbed = os.path.join(inbed_path, 'Mills2011_nanosv_full_inclusion.unique.bed')
             sv_dict['Mills2011_nanosv'] = read_bed_sv(inbed)
 
-            # inbed_path = hpc_path if HPC_MODE else \
-            #         '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/'
-            # inbed = os.path.join(inbed_path, 'NA12878_nanosv_Mills2011.bed')
-            # sv_dict['nanosv_Mills2011'] = read_bed_sv(inbed)
-            #
-            # inbed_path = hpc_path if HPC_MODE else \
-            #         os.path.join('/Users/lsantuari/Documents/IGV/Screenshots/', sampleName[:7], 'overlaps')
-            # inbed = os.path.join(inbed_path, 'lumpy-Mills2011_manta_nanosv.bed')
-            # sv_dict['Mills2011_nanosv_manta'] = read_bed_sv(inbed)
-            #
-            # inbed_path = hpc_path if HPC_MODE else \
-            #         os.path.join('/Users/lsantuari/Documents/Processed/', sampleName[:7], 'Long_read_validation')
-            # inbed = os.path.join(inbed_path, 'lumpy-Mills2011-DEL.pacbio_moleculo.bed')
-            # sv_dict['Mills2011_PacBio_Moleculo'] = read_bed_sv(inbed)
-            #
-            # inbed_path = hpc_path if HPC_MODE else \
-            #         '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/'
-            # inbed = os.path.join(inbed_path, 'Mills2011_pacbio_moleculo_nanosv_full_inclusion.unique.bed')
-            # sv_dict['Mills2011_PacBio_Moleculo_nanosv'] = read_bed_sv(inbed)
-            #
-            # inbed_path = hpc_path if HPC_MODE else \
-            #         '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/'
-            # inbed = os.path.join(inbed_path, 'NA12878_nanosv_Mills2011-DEL.pacbio_moleculo.bed')
-            # sv_dict['nanosv_Mills2011_PacBio_Moleculo'] = read_bed_sv(inbed)
-            #
-            # inbed_path = hpc_path if HPC_MODE else \
-            #         os.path.join('/Users/lsantuari/Documents/Processed/', sampleName[:7], 'Long_read_validation')
-            # inbed = os.path.join(inbed_path, 'lumpy-Mills2011_pacbio_moleculo_manta_nanosv.bed')
-            # sv_dict['Mills2011_PacBio_Moleculo_nanosv_manta'] = read_bed_sv(inbed)
-            #
-            # inbed_path = hpc_path if HPC_MODE else \
-            #         os.path.join('/Users/lsantuari/Documents/Processed/', sampleName[:7], 'Long_read_validation',
-            #                      'Data_sources', 'Lumpy_paper_2014')
-            # inbed = os.path.join(inbed_path, 'lumpy-GASVPro-DELLY-Pindel-Mills2011_PacBio_Moleculo.bed')
-            # sv_dict['Mills2011_PacBio_Moleculo_Lumpy_GASVPro_DELLY_Pindel'] = read_bed_sv(inbed)
+            inbed_path = hpc_path if HPC_MODE else \
+                    '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/'
+            inbed = os.path.join(inbed_path, 'NA12878_nanosv_Mills2011.bed')
+            sv_dict['nanosv_Mills2011'] = read_bed_sv(inbed)
+
+            inbed_path = hpc_path if HPC_MODE else \
+                    os.path.join('/Users/lsantuari/Documents/IGV/Screenshots/', sampleName[:7], 'overlaps')
+            inbed = os.path.join(inbed_path, 'lumpy-Mills2011_manta_nanosv.bed')
+            sv_dict['Mills2011_nanosv_manta'] = read_bed_sv(inbed)
+
+            inbed_path = hpc_path if HPC_MODE else \
+                    os.path.join('/Users/lsantuari/Documents/Processed/', sampleName[:7], 'Long_read_validation')
+            inbed = os.path.join(inbed_path, 'lumpy-Mills2011-DEL.pacbio_moleculo.bed')
+            sv_dict['Mills2011_PacBio_Moleculo'] = read_bed_sv(inbed)
+
+            inbed_path = hpc_path if HPC_MODE else \
+                    '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/'
+            inbed = os.path.join(inbed_path, 'Mills2011_pacbio_moleculo_nanosv_full_inclusion.unique.bed')
+            sv_dict['Mills2011_PacBio_Moleculo_nanosv'] = read_bed_sv(inbed)
+
+            inbed_path = hpc_path if HPC_MODE else \
+                    '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/'
+            inbed = os.path.join(inbed_path, 'NA12878_nanosv_Mills2011-DEL.pacbio_moleculo.bed')
+            sv_dict['nanosv_Mills2011_PacBio_Moleculo'] = read_bed_sv(inbed)
+
+            inbed_path = hpc_path if HPC_MODE else \
+                    os.path.join('/Users/lsantuari/Documents/Processed/', sampleName[:7], 'Long_read_validation')
+            inbed = os.path.join(inbed_path, 'lumpy-Mills2011_pacbio_moleculo_manta_nanosv.bed')
+            sv_dict['Mills2011_PacBio_Moleculo_nanosv_manta'] = read_bed_sv(inbed)
+
+            inbed_path = hpc_path if HPC_MODE else \
+                    os.path.join('/Users/lsantuari/Documents/Processed/', sampleName[:7], 'Long_read_validation',
+                                 'Data_sources', 'Lumpy_paper_2014')
+            inbed = os.path.join(inbed_path, 'lumpy-GASVPro-DELLY-Pindel-Mills2011_PacBio_Moleculo.bed')
+            sv_dict['Mills2011_PacBio_Moleculo_Lumpy_GASVPro_DELLY_Pindel'] = read_bed_sv(inbed)
 
         return sv_dict
 
