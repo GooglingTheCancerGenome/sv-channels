@@ -181,7 +181,7 @@ def create_labels(sampleName, ibam):
     data_file = '/'.join((output_dir, 'labels.pickle'))
     # logging.info(output_dir)
     pickle.dump(labels, open(data_file, "wb"))
-    os.system('gzip ' + data_file)
+    os.system('gzip -f ' + data_file)
 
 
 def count_pairs(sampleName, ibam):
