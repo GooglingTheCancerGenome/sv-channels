@@ -11,6 +11,7 @@ from intervaltree import IntervalTree
 import functions as fun
 from channel_maker import *
 
+
 class Breakpoint:
 
     def __init__(self, chr, pos, strand, clipped):
@@ -101,19 +102,19 @@ def get_candidate_breakpoint_pairs(ibam, sample, chrName, outFile):
         # if (not read.is_unmapped) and (not read.mate_is_unmapped) and read.mapping_quality >= minMAPQ:
         if not read.is_unmapped and read.mapping_quality >= minMAPQ:
 
-            if fun.has_indels(read):
-                # print(read)
-                dels_start, dels_end, ins = fun.get_indels(read)
-                for deletion in zip(dels_start, dels_end):
-                    candidate_pairs.add(StructuralVariant(Breakpoint(chrName, deletion[0],
-                                                                     strand[read.is_reverse], 'r'),
-                                                          Breakpoint(chrName, deletion[1],
-                                                                     strand[read.is_reverse], 'l')))
-                for insertion in ins:
-                    candidate_pairs.add(StructuralVariant(Breakpoint(chrName, insertion,
-                                                                     strand[read.is_reverse], 'r'),
-                                                          Breakpoint(chrName, insertion + 1,
-                                                                     strand[read.is_reverse], 'l')))
+            # if fun.has_indels(read):
+            #     # print(read)
+            #     dels_start, dels_end, ins = fun.get_indels(read)
+            #     for deletion in zip(dels_start, dels_end):
+            #         candidate_pairs.add(StructuralVariant(Breakpoint(chrName, deletion[0],
+            #                                                          strand[read.is_reverse], 'r'),
+            #                                               Breakpoint(chrName, deletion[1],
+            #                                                          strand[read.is_reverse], 'l')))
+            #     for insertion in ins:
+            #         candidate_pairs.add(StructuralVariant(Breakpoint(chrName, insertion,
+            #                                                          strand[read.is_reverse], 'r'),
+            #                                               Breakpoint(chrName, insertion + 1,
+            #                                                          strand[read.is_reverse], 'l')))
 
             if fun.is_left_clipped(read):
                 cpos = read.reference_start
@@ -310,7 +311,7 @@ def main():
 
     get_candidate_breakpoint_pairs(ibam=args.bam, sample=args.sample, chrName=args.chr, outFile=args.out)
 
-    check_SV(chrName=args.chr, HPC_MODE=HPC_MODE, outFile=args.out)
+    # check_SV(chrName=args.chr, HPC_MODE=HPC_MODE, outFile=args.out)
 
     print('Time: candidate breakpoint pairs on BAM %s and Chr %s: %f' % (args.bam, args.chr, (time() - t0)))
 
