@@ -304,12 +304,13 @@ def mixed_data(output, data_mode):
             training_data = np.concatenate((real_training_data, art_training_data), axis=0)
             training_labels = np.concatenate((real_training_labels, art_training_labels), axis=0)
 
-        logging.info('Training data shape: %s' % str(training_data.shape))
-        logging.info('Training labels shape: %s' % str(training_labels.shape))
-
         for l in ['UK', 'INS_pos']:
             logging.info('Removing label %s' % l)
             training_data, training_labels = remove_label(training_data, training_labels, label=l)
+
+        training_data = transpose_dataset(training_data)
+        logging.info('Training data shape: %s' % str(training_data.shape))
+        logging.info('Training labels shape: %s' % str(training_labels.shape))
 
         logging.info('Data loaded.')
 
@@ -327,14 +328,12 @@ def mixed_data(output, data_mode):
 
         pc_str = str(round(pc, 1))
         metrics[pc_str] = dict()
-        training_data, training_labels = get_labelled_windows(data_mode)
+        windows, labels = get_labelled_windows(data_mode)
 
-        X, y = subsample_nosv(training_data, training_labels, pc, 'noSV')
+        X, y = subsample_nosv(windows, labels, pc, 'noSV')
 
-        del training_data
-        del training_labels
-
-        X = transpose_dataset(X)
+        del windows
+        del labels
 
         logging.info('X shape: %s' % str(X.shape))
         logging.info('y shape: %s' % str(y.shape))
