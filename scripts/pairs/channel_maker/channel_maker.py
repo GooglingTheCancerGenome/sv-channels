@@ -231,6 +231,19 @@ def channel_maker(chrom, sampleName, outFile):
                 channel_windows[:, idx, channel_index] = payload
                 channel_index += 1
 
+    current_channel = 'mappability'
+    logging.info("Adding channel %s at index %d" % (current_channel, channel_index))
+
+    payload = []
+    for sv in candidate_pairs_chr:
+        bp1, bp2 = sv.tuple
+        payload.extend(bw_map.values(chrom, bp1.pos - win_hlen, bp1.pos + win_hlen) +
+                       bw_map.values(chrom, bp2.pos - win_hlen, bp2.pos + win_hlen))
+    payload = np.array(payload)
+    payload.shape = channel_windows[:, idx, channel_index].shape
+    channel_windows[:, idx, channel_index] = payload
+    channel_index += 1
+
     current_channel = 'one_hot_encoding'
     logging.info("Adding channel %s at index %d" % (current_channel, channel_index))
 
@@ -240,18 +253,6 @@ def channel_maker(chrom, sampleName, outFile):
     payload.shape = channel_windows[:, idx, channel_index:channel_index+len(nuc_list)].shape
     channel_windows[:, idx, channel_index:channel_index+len(nuc_list)] = payload
     channel_index += len(nuc_list)
-
-    current_channel = 'mappability'
-    logging.info("Adding channel %s at index %d" % (current_channel, channel_index))
-
-    payload = []
-    for sv in candidate_pairs_chr:
-        bp1, bp2 = sv.tuple
-        payload.extend(bw_map.values(chrom, bp1.pos - win_hlen, bp1.pos + win_hlen) +
-                         bw_map.values(chrom, bp2.pos - win_hlen, bp2.pos + win_hlen))
-    payload = np.array(payload)
-    payload.shape = channel_windows[:, idx, channel_index].shape
-    channel_windows[:, idx, channel_index] = payload
 
     logging.info("channel_windows shape: %s" % str(channel_windows.shape))
 
