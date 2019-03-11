@@ -182,7 +182,7 @@ def channel_maker(chrom, sampleName, outFile):
                             'clipped_reads_translocation',
                             'clipped_read_distance', 'split_read_distance']:
 
-        logging.info("Adding channel %s" % current_channel)
+        logging.info("Adding channel %s at index %d" % (current_channel, channel_index))
 
         if current_channel == 'coverage' or current_channel == 'read_quality':
 
@@ -232,7 +232,7 @@ def channel_maker(chrom, sampleName, outFile):
                 channel_index += 1
 
     current_channel = 'one_hot_encoding'
-    logging.info("Adding channel %s" % current_channel)
+    logging.info("Adding channel %s at index %d" % (current_channel, channel_index))
 
     nuc_list = ['A', 'T', 'C', 'G', 'N']
 
@@ -242,7 +242,7 @@ def channel_maker(chrom, sampleName, outFile):
     channel_index += len(nuc_list)
 
     current_channel = 'mappability'
-    logging.info("Adding channel %s" % current_channel)
+    logging.info("Adding channel %s at index %d" % (current_channel, channel_index))
 
     payload = []
     for sv in candidate_pairs_chr:
