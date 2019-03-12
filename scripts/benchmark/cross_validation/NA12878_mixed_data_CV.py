@@ -685,7 +685,7 @@ def plot_precision_recall(proportion, cv_iter, mapclasses, precision, recall, av
     plt.legend(lines, labels, loc=(0, -.38), prop=dict(size=14))
 
     plt.savefig('PrecRec_' + str(cv_iter) +
-                '_' + proportion + '_' + str(cv_iter + 1) + '.png', bbox_inches='tight')
+                '_' + str(proportion) + '_' + str(cv_iter + 1) + '.png', bbox_inches='tight')
     plt.close()
 
 
