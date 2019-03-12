@@ -585,7 +585,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
     #     plt.savefig('PrecRec_' + str(cv_iter) +
     #                 '_'+proportion+'_'+str(cv_iter + 1)+'.png', bbox_inches='tight')
 
-    plot_precision_recall(proportion, cv_iter, n_classes, precision, recall, average_precision)
+    plot_precision_recall(proportion, cv_iter, mapclasses, precision, recall, average_precision)
 
     return results, (average_precision, precision, recall, thresholds)
 
@@ -646,7 +646,7 @@ def plot_results():
     plt.close()
 
 
-def plot_precision_recall(proportion, cv_iter, n_classes, precision, recall, average_precision):
+def plot_precision_recall(proportion, cv_iter, mapclasses, precision, recall, average_precision):
 
     from itertools import cycle
     # setup plot details
@@ -669,7 +669,7 @@ def plot_precision_recall(proportion, cv_iter, n_classes, precision, recall, ave
     labels.append('micro-average Precision-recall (area = {0:0.2f})'
                   ''.format(average_precision["micro"]))
 
-    for i, color in zip(range(n_classes), colors):
+    for i, color in zip(mapclasses.keys(), colors):
         l, = plt.plot(recall[i], precision[i], color=color, lw=2)
         lines.append(l)
         labels.append('Precision-recall for class {0} (area = {1:0.2f})'
