@@ -147,24 +147,33 @@ def get_channel_labels_TN():
 
 def data(datapath, channels):
 
-    data_output_file = datapath + sample_name + '_' + label_type + '_channels.npy.gz'
-    with gzip.GzipFile(data_output_file, "rb") as f:
-        X = np.load(f)
+    # data_output_file = datapath + sample_name + '_' + label_type + '_channels.npy.gz'
+    # with gzip.GzipFile(data_output_file, "rb") as f:
+    #     X = np.load(f)
+    #
+    # label_output_file = datapath + sample_name + '_' + label_type + '_labels.npy.gz'
+    # with gzip.GzipFile(label_output_file, "rb") as f:
+    #     y = np.load(f)
+    # f.close()
+    #
+    # label_output_file = datapath + sample_name + '_' + label_type + '_labels_binary.npy.gz'
+    # with gzip.GzipFile(label_output_file, "rb") as f:
+    #     y_binary = np.load(f)
+    # f.close()
+    #
+    # id_output_file = datapath + sample_name + '_' + label_type + '_ids.npy.gz'
+    # with gzip.GzipFile(id_output_file, "rb") as f:
+    #     win_ids = np.load(f)
+    # f.close()
 
-    label_output_file = datapath + sample_name + '_' + label_type + '_labels.npy.gz'
-    with gzip.GzipFile(label_output_file, "rb") as f:
-        y = np.load(f)
-    f.close()
+    data_output_file = os.path.join(datapath_training, sample_name + '_' + label_type)
 
-    label_output_file = datapath + sample_name + '_' + label_type + '_labels_binary.npy.gz'
-    with gzip.GzipFile(label_output_file, "rb") as f:
-        y_binary = np.load(f)
-    f.close()
-
-    id_output_file = datapath + sample_name + '_' + label_type + '_ids.npy.gz'
-    with gzip.GzipFile(id_output_file, "rb") as f:
-        win_ids = np.load(f)
-    f.close()
+    with gzip.GzipFile(data_output_file + '.npz.gz', 'rb') as f:
+        npzfiles = np.load(f)
+        X = npzfiles['X']
+        y = npzfiles['y']
+        y_binary = npzfiles['y_binary']
+        win_ids = npzfiles['z']
 
     # print(X.shape)
     # print(y.shape)
@@ -489,7 +498,7 @@ def plot_results():
 
 def main():
 
-    get_channel_labels()
+    # get_channel_labels()
     run_cv()
     plot_results()
 
