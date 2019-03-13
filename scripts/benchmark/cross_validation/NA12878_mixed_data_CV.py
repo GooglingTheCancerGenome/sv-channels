@@ -448,17 +448,17 @@ def cross_validation(X, y, y_binary, X_hold_out_test,
     skf = StratifiedKFold(n_splits=kfold_splits, shuffle=True)
 
     # Loop through the indices the split() method returns
-    for index, (train_indices, test_indices) in enumerate(skf.split(X, y)):
+    for index, (train_indices, val_indices) in enumerate(skf.split(X, y)):
         print("Training on fold " + str(index + 1) + "/10...")
 
         # Generate batches from indices
-        xtrain, xtest = X[train_indices], X[test_indices]
+        xtrain, xval = X[train_indices], X[val_indices]
         # ytrain, ytest = y[train_indices], y[test_indices]
-        ytrain_binary, ytest_binary = y_binary[train_indices], y_binary[test_indices]
+        ytrain_binary, yval_binary = y_binary[train_indices], y_binary[val_indices]
 
         # split into train/validation sets
-        xtrain, xval, ytrain_binary, yval = train_test_split(xtrain, ytrain_binary,
-                                                             test_size=0.2, random_state=2)
+        # xtrain, xval, ytrain_binary, yval = train_test_split(xtrain, ytrain_binary,
+        #                                                      test_size=0.2, random_state=2)
 
         # Create a new model
         model = create_model(X, y_binary)
@@ -548,8 +548,8 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
 
         precision[k], recall[k], thresholds[k] = precision_recall_curve(ytest_binary[:, i],
                                                                         probs[:, i])
-        average_precision[k] = average_precision_score(ytest_binary[:, i], probs[:, i])
-        f1_score_metric[k] = f1_score(ytest_binary[:, i], probs[:, i])
+        average_precision[k] = average_precision_score(ytest_binary[:, i], probs[:, i], average="weighted")
+        f1_score_metric[k] = f1_score(ytest_binary[:, i], probs[:, i], average="weighted")
 
     # A "micro-average": quantifying score on all classes jointly
     precision["micro"], recall["micro"], _ = precision_recall_curve(ytest_binary.ravel(),
