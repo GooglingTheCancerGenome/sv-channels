@@ -160,7 +160,7 @@ def real_data():
         # Leaving out chromosome Y and MT for the moment
         #chr_list = list(map(str, np.arange(4, 23)))
         chr_list = list(map(str, np.arange(1, 23)))
-        chr_list.append('X', 'Y')
+        chr_list.extend(['X', 'Y'])
 
         logging.info(chr_list)
 
