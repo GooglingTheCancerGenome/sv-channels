@@ -479,11 +479,9 @@ def cross_validation(X, y, y_binary, X_hold_out_test,
 
         results, metrics[str(index + 1)] = evaluate_model(model, X_hold_out_test, y_hold_out_test,
                                                           y_hold_out_test_binary, results, index, channels,
-                                                          proportion, data_mode,
+                                                          proportion, data_mode, output,
                                                           train_set_size=xtrain.shape[0],
-                                                          validation_set_size=xval.shape[0],
-                                                          output
-                                                          )
+                                                          validation_set_size=xval.shape[0])
         # evaluate_model(model, X_test, y_test_binary, results, index, channels)
 
     return results, metrics
@@ -511,8 +509,8 @@ def train_model(model, xtrain, ytrain, xval, yval):
     return history, best_model
 
 
-def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channels, proportion, data_mode,
-                   train_set_size, validation_set_size, output):
+def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channels, proportion, data_mode, output,
+                   train_set_size, validation_set_size):
     mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
     dict_sorted = sorted(mapclasses.items(), key=lambda x: x[1])
     # print(dict_sorted)
@@ -554,9 +552,21 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
     # A "micro-average": quantifying score on all classes jointly
     precision["micro"], recall["micro"], _ = precision_recall_curve(ytest_binary.ravel(),
                                                                     probs.ravel())
-    average_precision["weighted"] = average_precision_score(ytest_binary, probs,
-                                                         average="weighted")
-    print('Average precision score, micro-averaged over all classes: {0:0.2f}'
+
+    # Computing weighted precision and recall
+    precision["weighted"] = 0
+    recall["weighted"] = 0
+
+    for k, i in mapclasses.items():
+
+        precision["weighted"] += precision[k] * len(ytest_binary[:, i])
+        recall["weighted"] += recall[k] * len(ytest_binary[:, i])
+
+    precision["weighted"] /= len(ytest_binary)
+    recall["weighted"] /= len(ytest_binary)
+
+    average_precision["weighted"] = average_precision_score(ytest_binary, probs, average="weighted")
+    print('Average precision score, weighted over all classes: {0:0.2f}'
           .format(average_precision["weighted"]))
 
     results = results.append({
@@ -567,7 +577,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
         "training_set_size": train_set_size,
         "validation_set_size": validation_set_size,
         "test_set_size": X_test.shape[0],
-        "average_precision_score": average_precision["micro"]
+        "average_precision_score": average_precision["weighted"]
     }, ignore_index=True)
 
     # for iter_class in mapclasses.values():
