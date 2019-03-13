@@ -345,7 +345,8 @@ def mixed_data(output, data_mode):
         intermediate_result, metrics[pc_str] = cross_validation(X, y, y_binary,
                                                                 X_test, y_test, y_test_binary,
                                                                 channel_set, proportion=round(pc, 1),
-                                                                data_mode=data_mode)
+                                                                data_mode=data_mode,
+                                                                output=filename)
         logging.info(intermediate_result)
         intermediate_result.to_csv(
             filename + '_' + data_mode + '_' + str(round(pc, 1)) + file_extension, sep='\t')
@@ -434,7 +435,8 @@ def create_model(X, y_binary):
 
 def cross_validation(X, y, y_binary, X_hold_out_test,
                      y_hold_out_test, y_hold_out_test_binary,
-                     channels, proportion, data_mode):
+                     channels, proportion, data_mode, output):
+
     results = pd.DataFrame()
 
     # From https://medium.com/@literallywords/stratified-k-fold-with-keras-e57c487b1416
@@ -479,7 +481,8 @@ def cross_validation(X, y, y_binary, X_hold_out_test,
                                                           y_hold_out_test_binary, results, index, channels,
                                                           proportion, data_mode,
                                                           train_set_size=xtrain.shape[0],
-                                                          validation_set_size=xval.shape[0]
+                                                          validation_set_size=xval.shape[0],
+                                                          output
                                                           )
         # evaluate_model(model, X_test, y_test_binary, results, index, channels)
 
@@ -509,7 +512,7 @@ def train_model(model, xtrain, ytrain, xval, yval):
 
 
 def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channels, proportion, data_mode,
-                   train_set_size, validation_set_size):
+                   train_set_size, validation_set_size, output):
     mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
     dict_sorted = sorted(mapclasses.items(), key=lambda x: x[1])
     # print(dict_sorted)
@@ -520,6 +523,20 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
     # print(n_classes)
 
     probs = model.predict_proba(X_test, batch_size=1000, verbose=False)
+
+    # columns are predicted, rows are truth
+    predicted = probs.argmax(axis=1)
+    # print(predicted)
+    y_index = ytest_binary.argmax(axis=1)
+    classlabels = list(set(y_test))
+
+    # print(y_index)
+    confusion_matrix = pd.crosstab(pd.Series(y_index), pd.Series(predicted))
+    confusion_matrix.index = [classlabels[i] for i in confusion_matrix.index]
+    confusion_matrix.columns = [classlabels[i] for i in confusion_matrix.columns]
+    confusion_matrix.reindex(columns=[l for l in classlabels], fill_value=0)
+    confusion_matrix.to_csv(output+'_confusion_matrix_' + data_mode +
+                '_' + str(proportion) + '_' + str(cv_iter + 1) + '.csv', sep='\t')
 
     # For each class
     precision = dict()
@@ -537,10 +554,10 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
     # A "micro-average": quantifying score on all classes jointly
     precision["micro"], recall["micro"], _ = precision_recall_curve(ytest_binary.ravel(),
                                                                     probs.ravel())
-    average_precision["micro"] = average_precision_score(ytest_binary, probs,
-                                                         average="micro")
+    average_precision["weighted"] = average_precision_score(ytest_binary, probs,
+                                                         average="weighted")
     print('Average precision score, micro-averaged over all classes: {0:0.2f}'
-          .format(average_precision["micro"]))
+          .format(average_precision["weighted"]))
 
     results = results.append({
         "channels": channels,
@@ -585,7 +602,8 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
     #     plt.savefig('PrecRec_' + str(cv_iter) +
     #                 '_'+proportion+'_'+str(cv_iter + 1)+'.png', bbox_inches='tight')
 
-    plot_precision_recall(proportion, cv_iter, mapclasses, precision, recall, average_precision)
+    plot_precision_recall(data_mode, proportion, cv_iter, mapclasses,
+                          precision, recall, average_precision, output)
 
     return results, (average_precision, precision, recall, thresholds)
 
@@ -646,7 +664,8 @@ def plot_results():
     plt.close()
 
 
-def plot_precision_recall(proportion, cv_iter, mapclasses, precision, recall, average_precision):
+def plot_precision_recall(data_mode, proportion, cv_iter,
+                          mapclasses, precision, recall, average_precision, output):
 
     from itertools import cycle
     # setup plot details
@@ -667,7 +686,7 @@ def plot_precision_recall(proportion, cv_iter, mapclasses, precision, recall, av
     l, = plt.plot(recall["micro"], precision["micro"], color='gold', lw=2)
     lines.append(l)
     labels.append('micro-average Precision-recall (area = {0:0.2f})'
-                  ''.format(average_precision["micro"]))
+                  ''.format(average_precision["weighted"]))
 
     for i, color in zip(mapclasses.keys(), colors):
         l, = plt.plot(recall[i], precision[i], color=color, lw=2)
@@ -684,7 +703,7 @@ def plot_precision_recall(proportion, cv_iter, mapclasses, precision, recall, av
     plt.title('Extension of Precision-Recall curve to multi-class')
     plt.legend(lines, labels, loc=(0, -.38), prop=dict(size=14))
 
-    plt.savefig('PrecRec_' + str(cv_iter) +
+    plt.savefig(output+'_PrecRec_' + data_mode +
                 '_' + str(proportion) + '_' + str(cv_iter + 1) + '.png', bbox_inches='tight')
     plt.close()
 
