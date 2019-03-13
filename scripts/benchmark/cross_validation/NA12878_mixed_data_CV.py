@@ -547,13 +547,13 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
     # for i in range(n_classes):
     for k, i in mapclasses.items():
 
-        precision[k], recall[k], thresholds[k] = precision_recall_curve(ytest_binary[:, i],
+        precision[k], recall[k], thresholds[k] = precision_recall_curve(y_test[:, i],
                                                                         probs[:, i])
-        average_precision[k] = average_precision_score(ytest_binary[:, i], probs[:, i], average="weighted")
-        f1_score_metric[k] = f1_score(ytest_binary[:, i], probs[:, i], average="weighted")
+        average_precision[k] = average_precision_score(y_test[:, i], probs[:, i], average="weighted")
+        f1_score_metric[k] = f1_score(y_test[:, i], probs[:, i], average="weighted")
 
     # A "micro-average": quantifying score on all classes jointly
-    precision["micro"], recall["micro"], _ = precision_recall_curve(ytest_binary.ravel(),
+    precision["micro"], recall["micro"], _ = precision_recall_curve(y_test.ravel(),
                                                                     probs.ravel())
 
     # Computing weighted precision and recall
@@ -562,17 +562,17 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
 
     for k, i in mapclasses.items():
 
-        precision["weighted"] += precision[k] * len(ytest_binary[:, i])
-        recall["weighted"] += recall[k] * len(ytest_binary[:, i])
+        precision["weighted"] += precision[k] * len(y_test[:, i])
+        recall["weighted"] += recall[k] * len(y_test[:, i])
 
-    precision["weighted"] /= len(ytest_binary)
-    recall["weighted"] /= len(ytest_binary)
+    precision["weighted"] /= len(y_test)
+    recall["weighted"] /= len(y_test)
 
-    average_precision["weighted"] = average_precision_score(ytest_binary, probs, average="weighted")
+    average_precision["weighted"] = average_precision_score(y_test, probs, average="weighted")
     print('Average precision score, weighted over all classes: {0:0.2f}'
           .format(average_precision["weighted"]))
 
-    f1_score_metric["weighted"] = f1_score(ytest_binary, probs, average="weighted")
+    f1_score_metric["weighted"] = f1_score(y_test, probs, average="weighted")
 
     results = results.append({
         "channels": channels,
