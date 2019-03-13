@@ -158,8 +158,9 @@ def real_data():
         dico = get_label_dict()
 
         # Leaving out chromosome Y and MT for the moment
-        chr_list = list(map(str, np.arange(4, 23)))
-        chr_list.append('X')
+        #chr_list = list(map(str, np.arange(4, 23)))
+        chr_list = list(map(str, np.arange(1, 23)))
+        chr_list.append('X', 'Y')
 
         logging.info(chr_list)
 
@@ -433,8 +434,8 @@ def create_model(X, y_binary):
     return models
 
 
-def cross_validation(X, y, y_binary, X_hold_out_test,
-                     y_hold_out_test, y_hold_out_test_binary,
+def cross_validation(X, y, y_binary,
+                     X_hold_out_test, y_hold_out_test, y_hold_out_test_binary,
                      channels, proportion, data_mode, output):
 
     results = pd.DataFrame()
@@ -448,17 +449,17 @@ def cross_validation(X, y, y_binary, X_hold_out_test,
     skf = StratifiedKFold(n_splits=kfold_splits, shuffle=True)
 
     # Loop through the indices the split() method returns
-    for index, (train_indices, val_indices) in enumerate(skf.split(X, y)):
+    for index, (train_indices, test_indices) in enumerate(skf.split(X, y)):
         print("Training on fold " + str(index + 1) + "/10...")
 
         # Generate batches from indices
-        xtrain, xval = X[train_indices], X[val_indices]
-        # ytrain, ytest = y[train_indices], y[test_indices]
-        ytrain_binary, yval_binary = y_binary[train_indices], y_binary[val_indices]
+        xtrain, xtest = X[train_indices], X[test_indices]
+        ytrain, ytest = y[train_indices], y[test_indices]
+        ytrain_binary, ytest_binary = y_binary[train_indices], y_binary[test_indices]
 
         # split into train/validation sets
-        # xtrain, xval, ytrain_binary, yval = train_test_split(xtrain, ytrain_binary,
-        #                                                      test_size=0.2, random_state=2)
+        xtrain, xval, ytrain_binary, yval = train_test_split(xtrain, ytrain_binary,
+                                                             test_size=0.2, random_state=2)
 
         # Create a new model
         model = create_model(X, y_binary)
@@ -477,8 +478,8 @@ def cross_validation(X, y, y_binary, X_hold_out_test,
         score_test = model.evaluate(xtest, ytest_binary, verbose=False)
         print('Test loss and accuracy of best model: ' + str(score_test))
 
-        results, metrics[str(index + 1)] = evaluate_model(model, X_hold_out_test, y_hold_out_test,
-                                                          y_hold_out_test_binary, results, index, channels,
+        results, metrics[str(index + 1)] = evaluate_model(model, xtest, ytest,
+                                                          ytest_binary, results, index, channels,
                                                           proportion, data_mode, output,
                                                           train_set_size=xtrain.shape[0],
                                                           validation_set_size=xval.shape[0])
