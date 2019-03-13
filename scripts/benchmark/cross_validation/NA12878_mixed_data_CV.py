@@ -539,6 +539,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
     # For each class
     precision = dict()
     recall = dict()
+    f1_score_metric = dict()
     thresholds = dict()
     average_precision = dict()
 
@@ -548,6 +549,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
         precision[k], recall[k], thresholds[k] = precision_recall_curve(ytest_binary[:, i],
                                                                         probs[:, i])
         average_precision[k] = average_precision_score(ytest_binary[:, i], probs[:, i])
+        f1_score_metric[k] = f1_score(ytest_binary[:, i], probs[:, i])
 
     # A "micro-average": quantifying score on all classes jointly
     precision["micro"], recall["micro"], _ = precision_recall_curve(ytest_binary.ravel(),
@@ -569,6 +571,8 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
     print('Average precision score, weighted over all classes: {0:0.2f}'
           .format(average_precision["weighted"]))
 
+    f1_score_metric["weighted"] = f1_score(ytest_binary, probs, average="weighted")
+
     results = results.append({
         "channels": channels,
         "data_mode": data_mode,
@@ -577,7 +581,8 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
         "training_set_size": train_set_size,
         "validation_set_size": validation_set_size,
         "test_set_size": X_test.shape[0],
-        "average_precision_score": average_precision["weighted"]
+        "average_precision_score": average_precision["weighted"],
+        "f1_score": f1_score_metric["weighted"]
     }, ignore_index=True)
 
     # for iter_class in mapclasses.values():
@@ -615,7 +620,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
     plot_precision_recall(data_mode, proportion, cv_iter, mapclasses,
                           precision, recall, average_precision, output)
 
-    return results, (average_precision, precision, recall, thresholds)
+    return results, (average_precision, precision, recall, thresholds, f1_score_metric)
 
 
 def run_cv():
