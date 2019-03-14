@@ -549,6 +549,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
         precision[k], recall[k], thresholds[k] = precision_recall_curve(ytest_binary[:, i],
                                                                         probs[:, i])
         average_precision[k] = average_precision_score(ytest_binary[:, i], probs[:, i], average="weighted")
+        f1_score_metric[k] = f1_score(y_index, predicted, average=None)[i]
 
     # A "micro-average": quantifying score on all classes jointly
     precision["micro"], recall["micro"], _ = precision_recall_curve(ytest_binary.ravel(),
