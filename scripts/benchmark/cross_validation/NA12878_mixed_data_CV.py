@@ -312,6 +312,7 @@ def mixed_data(output, data_mode):
         training_data = transpose_dataset(training_data)
         logging.info('Training data shape: %s' % str(training_data.shape))
         logging.info('Training labels shape: %s' % str(training_labels.shape))
+        logging.info('Training labels: %s' % str(Counter(training_labels)))
 
         logging.info('Data loaded.')
 
@@ -320,6 +321,7 @@ def mixed_data(output, data_mode):
     logging.info('Running with mode ' + data_mode + '...')
 
     metrics = dict()
+    windows, labels = get_labelled_windows(data_mode)
 
     for pc in np.linspace(0.1, 1, num=10):
     #for pc in [0.1]:
@@ -329,12 +331,11 @@ def mixed_data(output, data_mode):
 
         pc_str = str(round(pc, 1))
         metrics[pc_str] = dict()
-        windows, labels = get_labelled_windows(data_mode)
 
         X, y = subsample_nosv(windows, labels, pc, 'noSV')
 
-        del windows
-        del labels
+        # del windows
+        # del labels
 
         logging.info('X shape: %s' % str(X.shape))
         logging.info('y shape: %s' % str(y.shape))
@@ -688,7 +689,7 @@ def plot_precision_recall(data_mode, proportion, cv_iter,
     labels.append('iso-f1 curves')
     l, = plt.plot(recall["micro"], precision["micro"], color='gold', lw=2)
     lines.append(l)
-    labels.append('micro-average Precision-recall (area = {0:0.2f})'
+    labels.append('weighted-average Precision-recall (area = {0:0.2f})'
                   ''.format(average_precision["weighted"]))
 
     for i, color in zip(mapclasses.keys(), colors):
