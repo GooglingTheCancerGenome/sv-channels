@@ -258,7 +258,8 @@ def mixed_data(output, data_mode):
     X_test, y_test, y_test_binary, win_ids_test = data(datapath_test, channels)
 
     def subsample_nosv(data, labels, pc, lab):
-        # print('subsample')
+
+        logging.info('subsample noSV:')
 
         indices_label = np.where(labels == lab)[0]
         # print(indices_label)
@@ -267,9 +268,9 @@ def mixed_data(output, data_mode):
         X = np.delete(data, indices_to_remove, axis=0)
         y = np.delete(labels, indices_to_remove, axis=0)
 
-        # print(X.shape)
-        # print(y.shape)
-        # print(Counter(y))
+        logging.info('X shape: %s' % str(X.shape))
+        logging.info('y shape: %s' % str(y.shape))
+        logging.info('y labels: %s' % str(Counter(y)))
 
         return X, y
 
