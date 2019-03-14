@@ -550,24 +550,10 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
         precision[k], recall[k], thresholds[k] = precision_recall_curve(ytest_binary[:, i],
                                                                         probs[:, i])
         average_precision[k] = average_precision_score(ytest_binary[:, i], probs[:, i], average="weighted")
-        f1_score_metric[k] = f1_score([1 if j == i else 0 for j in y_index],
-                                      [1 if j == i else 0 for j in predicted], average="weighted")
 
     # A "micro-average": quantifying score on all classes jointly
     precision["micro"], recall["micro"], _ = precision_recall_curve(ytest_binary.ravel(),
                                                                     probs.ravel())
-
-    # Computing weighted precision and recall
-    precision["weighted"] = 0
-    recall["weighted"] = 0
-
-    for k, i in mapclasses.items():
-
-        precision["weighted"] += precision[k] * len(ytest_binary[:, i])
-        recall["weighted"] += recall[k] * len(ytest_binary[:, i])
-
-    precision["weighted"] /= len(ytest_binary)
-    recall["weighted"] /= len(ytest_binary)
 
     average_precision["weighted"] = average_precision_score(ytest_binary, probs, average="weighted")
     print('Average precision score, weighted over all classes: {0:0.2f}'
