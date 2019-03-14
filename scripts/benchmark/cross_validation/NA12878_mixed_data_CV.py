@@ -279,7 +279,16 @@ def mixed_data(output, data_mode):
         logging.info('Loading data...')
 
         real_training_data, real_training_labels, real_training_id = real_data()
+
+        logging.info('Real data shape: %s' % str(real_training_data.shape))
+        logging.info('Real labels shape: %s' % str(real_training_labels.shape))
+        logging.info('Real labels: %s' % str(Counter(real_training_labels)))
+
         art_training_data, art_training_labels = artificial_data()
+
+        logging.info('Artificial data shape: %s' % str(art_training_data.shape))
+        logging.info('Artificial labels shape: %s' % str(art_training_labels.shape))
+        logging.info('Artificial labels: %s' % str(Counter(art_training_labels)))
 
         # artificial data only 0
         # real data only 1
