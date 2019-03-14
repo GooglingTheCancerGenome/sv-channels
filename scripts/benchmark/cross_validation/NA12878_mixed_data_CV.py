@@ -530,9 +530,9 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
 
     # print(y_index)
     confusion_matrix = pd.crosstab(pd.Series(y_index), pd.Series(predicted))
-    confusion_matrix.index = [classlabels[i] for i in confusion_matrix.index]
-    confusion_matrix.columns = [classlabels[i] for i in confusion_matrix.columns]
-    confusion_matrix.reindex(columns=[l for l in classlabels], fill_value=0)
+    confusion_matrix.index = [class_labels[i] for i in confusion_matrix.index]
+    confusion_matrix.columns = [class_labels[i] for i in confusion_matrix.columns]
+    confusion_matrix.reindex(columns=[l for l in class_labels], fill_value=0)
     confusion_matrix.to_csv(output+'_confusion_matrix_' + data_mode +
                 '_' + str(proportion) + '_' + str(cv_iter + 1) + '.csv', sep='\t')
 
