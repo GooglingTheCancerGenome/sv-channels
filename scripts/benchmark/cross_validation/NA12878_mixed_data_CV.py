@@ -515,7 +515,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
     mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
     dict_sorted = sorted(mapclasses.items(), key=lambda x: x[1])
     # print(dict_sorted)
-    # class_labels = [i[0] for i in dict_sorted]
+    class_labels = [i[0] for i in dict_sorted]
 
     n_classes = ytest_binary.shape[1]
     # print(y_binarized)
@@ -527,7 +527,6 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
     predicted = probs.argmax(axis=1)
     # print(predicted)
     y_index = ytest_binary.argmax(axis=1)
-    classlabels = list(set(y_test))
 
     # print(y_index)
     confusion_matrix = pd.crosstab(pd.Series(y_index), pd.Series(predicted))
