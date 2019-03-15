@@ -103,7 +103,7 @@ def get_channel_labels():
 
 def transpose_dataset(X):
     image = []
-    for i in range (0, len(X -1)):
+    for i in range(0, len(X - 1)):
         tr = X[i].transpose()
         image.append(tr)
     return np.array(image)
@@ -158,7 +158,7 @@ def real_data():
         dico = get_label_dict()
 
         # Leaving out chromosome Y and MT for the moment
-        #chr_list = list(map(str, np.arange(4, 23)))
+        # chr_list = list(map(str, np.arange(4, 23)))
         chr_list = list(map(str, np.arange(1, 23)))
         chr_list.append('X')
 
@@ -331,10 +331,11 @@ def mixed_data(output, data_mode):
     logging.info('Running with mode ' + data_mode + '...')
 
     metrics = dict()
-    windows, labels = get_labelled_windows(data_mode)
 
     for pc in np.linspace(0.1, 1, num=10):
-    #for pc in [0.1]:
+        # for pc in [0.1]:
+
+        windows, labels = get_labelled_windows(data_mode)
 
         # print(pc)
         logging.info('Running with proportion ' + str(pc) + '...')
@@ -344,8 +345,8 @@ def mixed_data(output, data_mode):
 
         X, y = subsample_nosv(windows, labels, pc, 'noSV')
 
-        # del windows
-        # del labels
+        del windows
+        del labels
 
         logging.info('X shape: %s' % str(X.shape))
         logging.info('y shape: %s' % str(y.shape))
@@ -361,7 +362,7 @@ def mixed_data(output, data_mode):
                                                                 output=filename)
         logging.info(intermediate_result)
         intermediate_result.to_csv(
-            filename + '_' + data_mode + '_' + str(round(pc, 1)) + file_extension, sep='\t')
+            filename + '_' + data_mode + '_' + pc_str + file_extension, sep='\t')
         results = results.append(intermediate_result)
 
         del X, y
@@ -435,12 +436,12 @@ def create_model(X, y_binary):
                                       low_reg=1, high_reg=1,
                                       kernel_size=7)
 
-    # i = 0
-    # for model, params, model_types in models:
-    #     print('model ' + str(i))
-    #     i = i + 1
-    #     print(params)
-    #     model.summary()
+    i = 0
+    for model, params, model_types in models:
+        logging.info('model ' + str(i))
+        i = i + 1
+        logging.info(params)
+        logging.info(model.summary())
 
     return models
 
@@ -448,7 +449,6 @@ def create_model(X, y_binary):
 def cross_validation(X, y, y_binary,
                      X_hold_out_test, y_hold_out_test, y_hold_out_test_binary,
                      channels, proportion, data_mode, output):
-
     results = pd.DataFrame()
 
     # From https://medium.com/@literallywords/stratified-k-fold-with-keras-e57c487b1416
@@ -461,6 +461,7 @@ def cross_validation(X, y, y_binary,
 
     # Loop through the indices the split() method returns
     for index, (train_indices, test_indices) in enumerate(skf.split(X, y)):
+
         print("Training on fold " + str(index + 1) + "/10...")
 
         # Generate batches from indices
@@ -469,17 +470,38 @@ def cross_validation(X, y, y_binary,
         ytrain_binary, ytest_binary = y_binary[train_indices], y_binary[test_indices]
 
         # split into train/validation sets
-        xtrain, xval, ytrain_binary, yval = train_test_split(xtrain, ytrain_binary,
-                                                             test_size=0.2, random_state=2)
+        xtrain_split, xval_split, ytrain_split, yval_split = train_test_split(xtrain, ytrain,
+                                                                              test_size=0.2, random_state=2,
+                                                                              stratify=ytrain)
+
+        logging.info('Training data shape: %s' % str(xtrain_split.shape))
+        logging.info('Training labels shape: %s' % str(ytrain_split.shape))
+        logging.info('Training labels: %s' % str(Counter(ytrain_split)))
+
+        logging.info('Validation data shape: %s' % str(xval_split.shape))
+        logging.info('Validation labels shape: %s' % str(yval_split.shape))
+        logging.info('Validation labels: %s' % str(Counter(yval_split)))
+
+        logging.info('Test data shape: %s' % str(xtest.shape))
+        logging.info('Test labels shape: %s' % str(ytest.shape))
+        logging.info('Test labels: %s' % str(Counter(ytest)))
+
+        mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
+
+        ytrain_split_num = np.array([mapclasses[c] for c in ytrain_split], dtype='int')
+        ytrain_split_binary = to_categorical(ytrain_split_num)
+
+        yval_split_num = np.array([mapclasses[c] for c in yval_split], dtype='int')
+        yval_split_binary = to_categorical(yval_split_num)
 
         # Create a new model
-        model = create_model(X, y_binary)
+        model = create_model(xtrain_split, ytrain_split_binary)
 
         # Debug message I guess
-        print("Training new iteration on " + str(xtrain.shape[0]) + " training samples, " +
-              str(xval.shape[0]) + " validation samples, this may take a while...")
+        print("Training new iteration on " + str(xtrain_split.shape[0]) + " training samples, " +
+              str(xval_split.shape[0]) + " validation samples, this may take a while...")
 
-        history, model = train_model(model, xtrain, ytrain_binary, xval, yval)
+        history, model = train_model(model, xtrain_split, ytrain_split_binary, xval_split, yval_split_binary)
 
         accuracy_history = history.history['acc']
         val_accuracy_history = history.history['val_acc']
@@ -492,15 +514,14 @@ def cross_validation(X, y, y_binary,
         results, metrics[str(index + 1)] = evaluate_model(model, xtest, ytest,
                                                           ytest_binary, results, index, channels,
                                                           proportion, data_mode, output,
-                                                          train_set_size=xtrain.shape[0],
-                                                          validation_set_size=xval.shape[0])
+                                                          train_set_size=xtrain_split.shape[0],
+                                                          validation_set_size=xval_split.shape[0])
         # evaluate_model(model, X_test, y_test_binary, results, index, channels)
 
     return results, metrics
 
 
 def train_model(model, xtrain, ytrain, xval, yval):
-
     train_set_size = xtrain.shape[0]
     nr_epochs = 1
 
@@ -544,8 +565,8 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
     confusion_matrix.index = [class_labels[i] for i in confusion_matrix.index]
     confusion_matrix.columns = [class_labels[i] for i in confusion_matrix.columns]
     confusion_matrix.reindex(columns=[l for l in class_labels], fill_value=0)
-    confusion_matrix.to_csv(output+'_confusion_matrix_' + data_mode +
-                '_' + str(proportion) + '_' + str(cv_iter + 1) + '.csv', sep='\t')
+    confusion_matrix.to_csv(output + '_confusion_matrix_' + data_mode +
+                            '_' + str(proportion) + '_' + str(cv_iter + 1) + '.csv', sep='\t')
 
     # For each class
     precision = dict()
@@ -556,7 +577,6 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
 
     # for i in range(n_classes):
     for k, i in mapclasses.items():
-
         precision[k], recall[k], thresholds[k] = precision_recall_curve(ytest_binary[:, i],
                                                                         probs[:, i])
         average_precision[k] = average_precision_score(ytest_binary[:, i], probs[:, i], average="weighted")
@@ -680,7 +700,6 @@ def plot_results():
 
 def plot_precision_recall(data_mode, proportion, cv_iter,
                           mapclasses, precision, recall, average_precision, output):
-
     from itertools import cycle
     # setup plot details
     colors = cycle(['navy', 'turquoise', 'darkorange', 'cornflowerblue', 'teal'])
@@ -717,7 +736,7 @@ def plot_precision_recall(data_mode, proportion, cv_iter,
     plt.title('Extension of Precision-Recall curve to multi-class')
     plt.legend(lines, labels, loc=(0, -.38), prop=dict(size=14))
 
-    plt.savefig(output+'_PrecRec_' + data_mode +
+    plt.savefig(output + '_PrecRec_' + data_mode +
                 '_' + str(proportion) + '_' + str(cv_iter + 1) + '.png', bbox_inches='tight')
     plt.close()
 
