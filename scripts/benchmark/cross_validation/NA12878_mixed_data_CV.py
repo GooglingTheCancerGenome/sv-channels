@@ -474,7 +474,8 @@ def cross_validation(X, y, y_binary,
         # split into train/validation sets
         xtrain_split, xval_split, ytrain_split, yval_split = train_test_split(xtrain, ytrain,
                                                                               test_size=0.2, random_state=2,
-                                                                              stratify=ytrain)
+                                                                              stratify=ytrain,
+                                                                              shuffle=True)
 
         logging.info('Training data shape: %s' % str(xtrain_split.shape))
         logging.info('Training labels shape: %s' % str(ytrain_split.shape))
