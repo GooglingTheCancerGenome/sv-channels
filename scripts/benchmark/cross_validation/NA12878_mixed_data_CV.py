@@ -422,6 +422,7 @@ def load_data(datapath, channels):
 
 
 def create_model(X, y_binary):
+
     models = modelgen.generate_models(X.shape,
                                       y_binary.shape[1],
                                       number_of_models=1,
@@ -522,6 +523,7 @@ def cross_validation(X, y, y_binary,
 
 
 def train_model(model, xtrain, ytrain, xval, yval):
+
     train_set_size = xtrain.shape[0]
     nr_epochs = 1
 
@@ -544,7 +546,9 @@ def train_model(model, xtrain, ytrain, xval, yval):
 
 def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channels, proportion, data_mode, output,
                    train_set_size, validation_set_size):
+
     mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
+
     dict_sorted = sorted(mapclasses.items(), key=lambda x: x[1])
     # print(dict_sorted)
     class_labels = [i[0] for i in dict_sorted]

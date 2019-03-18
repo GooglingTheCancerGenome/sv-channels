@@ -33,16 +33,10 @@ import tensorflow as tf
 # Pandas import
 import pandas as pd
 
-# import altair as alt
-
-# Bokeh import
-# from bokeh.io import show, output_file
-# from bokeh.plotting import figure
-
 
 HPC_MODE = True
 sample_name = 'NA12878'
-date = '080319'
+date = '270219'
 label_type = 'Mills2011_nanosv'
 datapath_prefix = '/hpc/cog_bioinf/ridder/users/lsantuari' if HPC_MODE else '/Users/lsantuari/Documents'
 datapath_training =  datapath_prefix+'/Processed/Test/'+\
@@ -100,47 +94,6 @@ def get_channel_labels():
 
     for k, l in enumerate(labels):
         print(str(k) + ':' + l)
-
-    return labels
-
-
-def get_channel_labels_TN():
-    # Fill labels for legend
-
-    labels = list()
-
-    for type in ['Tumor:', 'Normal:']:
-
-        labels.append(type+"coverage")
-        labels.append(type+"#left_clipped_reads")
-        labels.append(type+"#right_clipped_reads")
-        labels.append(type+"INV_before")
-        labels.append(type+"INV_after")
-        labels.append(type+"DUP_before")
-        labels.append(type+"DUP_after")
-        labels.append(type+"TRA_opposite")
-        labels.append(type+"TRA_same")
-
-        for direction in ['Forward', 'Reverse']:
-            for clipped in ['Left', 'Right', 'Not']:
-                for value in ['sum', 'num', 'median', 'outliers']:
-                    labels.append(type + direction + '_' + clipped + '_Clipped_' + value)
-
-        labels.append(type + "#left split reads")
-        labels.append(type + "#right split reads")
-
-        for clipped in ['L', 'R']:
-            for value in ['sum', 'num', 'median']:
-                labels.append(type + clipped + '_SplitRead_' + value)
-
-    # labels.append("GC")
-    labels.append("Mappability")
-
-    for nuc in ['A', 'T', 'C', 'G', 'N']:
-        labels.append("One_hot_"+nuc+"_encoding")
-
-    for k, l in enumerate(labels):
-         print(str(k) + ':' + l)
 
     return labels
 
@@ -239,7 +192,7 @@ def cross_validation(X, y, y_binary, X_hold_out_test, y_hold_out_test, y_hold_ou
                                                              test_size=0.2, random_state=2)
 
         # Clear model, and create it
-        model = None
+        # model = None
         model = create_model(X, y_binary)
 
         # Debug message I guess
@@ -290,8 +243,8 @@ def train_model(model, xtrain, ytrain, xval, yval):
 def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channels,
                    train_set_size, validation_set_size):
 
-    # mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
-    mapclasses = {'DEL': 0, 'noDEL': 1}
+    mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
+    # mapclasses = {'DEL': 0, 'noDEL': 1}
 
     dict_sorted = sorted(mapclasses.items(), key=lambda x: x[1])
     # print(dict_sorted)
@@ -426,6 +379,9 @@ def run_cv():
 
     labels = get_channel_labels()
 
+    create_dir('NA12878')
+    create_dir('NA12878/Plots')
+
     # basic_channels = np.append(np.arange(0, 9), [33, 34])
     # channel_list = {"base": basic_channels,
     #                 "base_PE_allReads": np.append(basic_channels, [19, 31]),
@@ -463,7 +419,7 @@ def run_cv():
     results = results.append(cross_validation(X, y, y_binary, X_test, y_test, y_test_binary, channel_set))
 
     print(results)
-    create_dir('NA12878')
+
     results.to_csv("NA12878/CV_results.csv", sep='\t')
 
 
