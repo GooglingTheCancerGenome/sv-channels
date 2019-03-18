@@ -28,6 +28,7 @@ from sklearn.metrics import auc
 from sklearn.metrics import average_precision_score
 from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import label_binarize
+from sklearn.utils import class_weight
 
 # TensorFlow import
 import tensorflow as tf
@@ -537,9 +538,14 @@ def train_model(model, xtrain, ytrain, xval, yval):
     best_model, best_params, best_model_types = model[best_model_index]
     # print(best_model_index, best_model_types, best_params)
 
+    class_weights = class_weight.compute_class_weight('balanced',
+                                                      np.unique(ytrain),
+                                                      ytrain)
+
     history = best_model.fit(xtrain, ytrain,
                              epochs=nr_epochs, validation_data=(xval, yval),
-                             verbose=False)
+                             verbose=False,
+                             class_weight=class_weights)
 
     return history, best_model
 
