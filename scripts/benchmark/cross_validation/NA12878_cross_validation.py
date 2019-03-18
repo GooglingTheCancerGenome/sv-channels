@@ -235,10 +235,13 @@ def train_model(model, xtrain, ytrain, xval, yval):
                                                       ytrain)
 
     nr_epochs = 1
+
+    class_weight_dict = dict(enumerate(class_weights))
+
     history = best_model.fit(xtrain, ytrain,
                              epochs=nr_epochs, validation_data=(xval, yval),
                              verbose=False,
-                             class_weight=class_weights)
+                             class_weight=class_weight_dict)
 
     return history, best_model
 
