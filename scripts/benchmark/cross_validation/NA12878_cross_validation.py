@@ -34,16 +34,17 @@ import tensorflow as tf
 # Pandas import
 import pandas as pd
 
-
 HPC_MODE = True
 sample_name = 'NA12878'
 date = '270219'
 label_type = 'Mills2011_nanosv'
 datapath_prefix = '/hpc/cog_bioinf/ridder/users/lsantuari' if HPC_MODE else '/Users/lsantuari/Documents'
-datapath_training =  datapath_prefix+'/Processed/Test/'+\
-           date+'/TestData_'+date+'/'+sample_name+'/TrainingData/'
-datapath_test =  datapath_prefix+'/Processed/Test/'+\
-           date+'/TestData_'+date+'/'+sample_name+'/TestData/'
+datapath_training = datapath_prefix + '/Processed/Test/' + \
+                    date + '/TestData_' + date + '/' + sample_name + '/TrainingData/'
+datapath_test = datapath_prefix + '/Processed/Test/' + \
+                date + '/TestData_' + date + '/' + sample_name + '/TestData/'
+
+balancing = 'balanced'
 
 
 def create_dir(directory):
@@ -57,6 +58,7 @@ def create_dir(directory):
     except OSError as e:
         if e.errno != errno.EEXIST:
             raise
+
 
 def get_channel_labels():
     # Fill labels for legend
@@ -100,7 +102,6 @@ def get_channel_labels():
 
 
 def data(datapath, channels):
-
     # data_output_file = datapath + sample_name + '_' + label_type + '_channels.npy.gz'
     # with gzip.GzipFile(data_output_file, "rb") as f:
     #     X = np.load(f)
@@ -120,7 +121,7 @@ def data(datapath, channels):
     #     win_ids = np.load(f)
     # f.close()
 
-    data_output_file = os.path.join(datapath_training, '_'.join([sample_name, label_type, 'balanced']))
+    data_output_file = os.path.join(datapath_training, '_'.join([sample_name, label_type, balancing]))
 
     with gzip.GzipFile(data_output_file + '.npz.gz', 'rb') as f:
         npzfiles = np.load(f)
@@ -139,24 +140,23 @@ def data(datapath, channels):
     # idx = np.append(idx, np.arange(41, 44))
     # idx = np.append(idx,[12,16,20,24,28,32])
 
-    return X[:,:,channels], y, y_binary, win_ids
+    return X[:, :, channels], y, y_binary, win_ids
 
 
 def create_model(X, y_binary):
-
     models = modelgen.generate_models(X.shape,
                                       y_binary.shape[1],
-                                      number_of_models = 1,
-                                      model_type = 'CNN',
+                                      number_of_models=1,
+                                      model_type='CNN',
                                       cnn_min_layers=2,
                                       cnn_max_layers=2,
-                                      cnn_min_filters = 4,
-                                      cnn_max_filters = 4,
+                                      cnn_min_filters=4,
+                                      cnn_max_filters=4,
                                       cnn_min_fc_nodes=6,
                                       cnn_max_fc_nodes=6,
                                       low_lr=2, high_lr=2,
                                       low_reg=1, high_reg=1,
-                                      kernel_size = 7)
+                                      kernel_size=7)
 
     # i = 0
     # for model, params, model_types in models:
@@ -169,7 +169,6 @@ def create_model(X, y_binary):
 
 
 def cross_validation(X, y, y_binary, X_hold_out_test, y_hold_out_test, y_hold_out_test_binary, channels):
-
     results = pd.DataFrame()
 
     # From https://medium.com/@literallywords/stratified-k-fold-with-keras-e57c487b1416
@@ -180,7 +179,6 @@ def cross_validation(X, y, y_binary, X_hold_out_test, y_hold_out_test, y_hold_ou
 
     # Loop through the indices the split() method returns
     for index, (train_indices, test_indices) in enumerate(skf.split(X, y)):
-
         print("Training on fold " + str(index + 1) + "/10...")
 
         # Generate batches from indices
@@ -197,8 +195,8 @@ def cross_validation(X, y, y_binary, X_hold_out_test, y_hold_out_test, y_hold_ou
         model = create_model(X, y_binary)
 
         # Debug message I guess
-        print ("Training new iteration on " + str(xtrain.shape[0]) + " training samples, " +
-         str(xval.shape[0]) + " validation samples, this may take a while...")
+        print("Training new iteration on " + str(xtrain.shape[0]) + " training samples, " +
+              str(xval.shape[0]) + " validation samples, this may take a while...")
 
         history, model = train_model(model, xtrain, ytrain_binary, xval, yval)
 
@@ -212,15 +210,14 @@ def cross_validation(X, y, y_binary, X_hold_out_test, y_hold_out_test, y_hold_ou
 
         results = evaluate_model(model, xtest, ytest, ytest_binary, results, index, channels,
                                  train_set_size=xtrain.shape[0],
-                                 validation_set_size = xval.shape[0]
-        )
-        #evaluate_model(model, X_test, y_test_binary, results, index, channels)
+                                 validation_set_size=xval.shape[0]
+                                 )
+        # evaluate_model(model, X_test, y_test_binary, results, index, channels)
 
     return results
 
 
 def train_model(model, xtrain, ytrain, xval, yval):
-
     train_set_size = xtrain.shape[0]
 
     histories, val_accuracies, val_losses = find_architecture.train_models_on_samples(xtrain, ytrain,
@@ -248,7 +245,6 @@ def train_model(model, xtrain, ytrain, xval, yval):
 
 def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channels,
                    train_set_size, validation_set_size):
-
     mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
     # mapclasses = {'DEL': 0, 'noDEL': 1}
 
@@ -283,7 +279,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
 
     results = results.append({
         "channels": channels,
-        "fold": cv_iter+1,
+        "fold": cv_iter + 1,
         "training_set_size": train_set_size,
         "validation_set_size": validation_set_size,
         "test_set_size": X_test.shape[0],
@@ -304,7 +300,9 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
             .format(average_precision["micro"]))
 
     create_dir('NA12878/Plots')
-    plt.savefig('NA12878/Plots/Precision_Recall_avg_prec_score_Iter_'+str(cv_iter)+'_'+channels+'.png', bbox_inches='tight')
+    plt.savefig('NA12878/Plots/Precision_Recall_avg_prec_score_Iter_' + str(cv_iter) +
+                '_' + channels + '_' + balancing + '.png',
+                bbox_inches='tight')
     plt.close()
 
     from itertools import cycle
@@ -344,7 +342,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
     plt.legend(lines, labels, loc=(0, -.38), prop=dict(size=14))
 
     plt.savefig('NA12878/Plots/Precision_Recall_avg_prec_score_per_class_Iter_' +
-                str(cv_iter) +'_'+channels+'.png', bbox_inches='tight')
+                str(cv_iter) + '_' + channels + '_' + balancing + '.png', bbox_inches='tight')
     plt.close()
 
     # for iter_class in mapclasses.values():
@@ -409,12 +407,12 @@ def run_cv():
     # # for channel_index in np.arange(0,len(labels)):
     # for channel_set, channels in channel_list.items():
 
-        # channels.append(channel_index)
+    # channels.append(channel_index)
 
     channels = np.arange(len(labels))
     channel_set = 'all'
 
-    print('Running cv with channels '+channel_set+':')
+    print('Running cv with channels ' + channel_set + ':')
     # for i in channels:
     #     print(str(i) + ':' + labels[i])
 
@@ -426,12 +424,12 @@ def run_cv():
 
     print(results)
 
-    results.to_csv("NA12878/CV_results.csv", sep='\t')
+    results.to_csv('NA12878/CV_results_' + balancing + '.csv', sep='\t')
 
 
 def plot_results():
 
-    source = pd.read_csv(filepath_or_buffer='NA12878/CV_results.csv', delimiter='\t')
+    source = pd.read_csv(filepath_or_buffer='NA12878/CV_results_' + balancing + '.csv', delimiter='\t')
 
     import numpy as np
     import matplotlib.pyplot as plt
@@ -448,23 +446,21 @@ def plot_results():
     plt.ylabel('average_precision_score')
     plt.title('average_precision_score per channel set')
     plt.xticks(ind, list(means.index))
-    plt.xticks(rotation=45,  horizontalalignment='right')
-    #plt.yticks(np.arange(0.8, 1))
-    #plt.legend((p1[0]), ('Bar'))
+    plt.xticks(rotation=45, horizontalalignment='right')
+    # plt.yticks(np.arange(0.8, 1))
+    # plt.legend((p1[0]), ('Bar'))
     plt.ylim(bottom=0.8)
     plt.tight_layout()
 
-    plt.savefig('NA12878/Plots/Results.png', bbox_inches='tight')
+    plt.savefig('NA12878/Plots/Results_' + balancing + '.png', bbox_inches='tight')
     plt.close()
 
 
 def main():
-
     # get_channel_labels()
     run_cv()
     plot_results()
 
 
 if __name__ == '__main__':
-
     main()
