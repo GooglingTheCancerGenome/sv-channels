@@ -119,7 +119,7 @@ def data(datapath, channels):
     #     win_ids = np.load(f)
     # f.close()
 
-    data_output_file = os.path.join(datapath_training, sample_name + '_' + label_type)
+    data_output_file = os.path.join(datapath_training, '_'.join([sample_name, label_type, 'balanced']))
 
     with gzip.GzipFile(data_output_file + '.npz.gz', 'rb') as f:
         npzfiles = np.load(f)
