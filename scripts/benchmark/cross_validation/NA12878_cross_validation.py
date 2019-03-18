@@ -187,18 +187,44 @@ def cross_validation(X, y, y_binary, X_hold_out_test, y_hold_out_test, y_hold_ou
         ytrain_binary, ytest_binary = y_binary[train_indices], y_binary[test_indices]
 
         # split into train/validation sets
-        xtrain, xval, ytrain_binary, yval = train_test_split(xtrain, ytrain_binary,
-                                                             test_size=0.2, random_state=2)
+        xtrain_split, xval_split, ytrain_split, yval_split = train_test_split(xtrain, ytrain,
+                                                                              test_size=0.2, random_state=2,
+                                                                              stratify=ytrain)
 
-        # Clear model, and create it
-        # model = None
-        model = create_model(X, y_binary)
+        print('Training data shape: %s' % str(xtrain_split.shape))
+        print('Training labels shape: %s' % str(ytrain_split.shape))
+        print('Training labels: %s' % str(Counter(ytrain_split)))
+
+        print('Validation data shape: %s' % str(xval_split.shape))
+        print('Validation labels shape: %s' % str(yval_split.shape))
+        print('Validation labels: %s' % str(Counter(yval_split)))
+
+        print('Test data shape: %s' % str(xtest.shape))
+        print('Test labels shape: %s' % str(ytest.shape))
+        print('Test labels: %s' % str(Counter(ytest)))
+
+        mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
+
+        ytrain_split_num = np.array([mapclasses[c] for c in ytrain_split], dtype='int')
+        ytrain_split_binary = to_categorical(ytrain_split_num)
+
+        yval_split_num = np.array([mapclasses[c] for c in yval_split], dtype='int')
+        yval_split_binary = to_categorical(yval_split_num)
+
+        # Create a new model
+        model = create_model(xtrain_split, ytrain_split_binary)
 
         # Debug message I guess
-        print("Training new iteration on " + str(xtrain.shape[0]) + " training samples, " +
-              str(xval.shape[0]) + " validation samples, this may take a while...")
+        print("Training new iteration on " + str(xtrain_split.shape[0]) + " training samples, " +
+              str(xval_split.shape[0]) + " validation samples, this may take a while...")
 
-        history, model = train_model(model, xtrain, ytrain_binary, xval, yval)
+        class_weights = class_weight.compute_class_weight('balanced',
+                                                          np.unique(ytrain_split),
+                                                          ytrain_split)
+        class_weight_dict = dict(enumerate(class_weights))
+
+        history, model = train_model(model, xtrain_split, ytrain_split_binary, class_weight_dict,
+                                     xval_split, yval_split_binary)
 
         accuracy_history = history.history['acc']
         val_accuracy_history = history.history['val_acc']
@@ -209,15 +235,18 @@ def cross_validation(X, y, y_binary, X_hold_out_test, y_hold_out_test, y_hold_ou
         print('Test loss and accuracy of best model: ' + str(score_test))
 
         results = evaluate_model(model, xtest, ytest, ytest_binary, results, index, channels,
-                                 train_set_size=xtrain.shape[0],
-                                 validation_set_size=xval.shape[0]
+                                 train_set_size=xtrain_split.shape[0],
+                                 validation_set_size=xval_split.shape[0]
                                  )
         # evaluate_model(model, X_test, y_test_binary, results, index, channels)
 
     return results
 
 
-def train_model(model, xtrain, ytrain, xval, yval):
+def train_model(model, xtrain, class_weights, ytrain, xval, yval):
+
+    nr_epochs = 1
+
     train_set_size = xtrain.shape[0]
 
     histories, val_accuracies, val_losses = find_architecture.train_models_on_samples(xtrain, ytrain,
@@ -230,18 +259,10 @@ def train_model(model, xtrain, ytrain, xval, yval):
     best_model, best_params, best_model_types = model[best_model_index]
     # print(best_model_index, best_model_types, best_params)
 
-    class_weights = class_weight.compute_class_weight('balanced',
-                                                      np.unique(ytrain),
-                                                      ytrain)
-
-    nr_epochs = 1
-
-    class_weight_dict = dict(enumerate(class_weights))
-
     history = best_model.fit(xtrain, ytrain,
                              epochs=nr_epochs, validation_data=(xval, yval),
                              verbose=False,
-                             class_weight=class_weight_dict)
+                             class_weight=class_weights)
 
     return history, best_model
 

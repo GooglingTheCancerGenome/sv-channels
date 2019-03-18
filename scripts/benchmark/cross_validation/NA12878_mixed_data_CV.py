@@ -503,7 +503,13 @@ def cross_validation(X, y, y_binary,
         print("Training new iteration on " + str(xtrain_split.shape[0]) + " training samples, " +
               str(xval_split.shape[0]) + " validation samples, this may take a while...")
 
-        history, model = train_model(model, xtrain_split, ytrain_split_binary, xval_split, yval_split_binary)
+        class_weights = class_weight.compute_class_weight('balanced',
+                                                          np.unique(ytrain_split),
+                                                          ytrain_split)
+        class_weight_dict = dict(enumerate(class_weights))
+
+        history, model = train_model(model, xtrain_split, ytrain_split_binary, class_weight_dict,
+                                     xval_split, yval_split_binary)
 
         accuracy_history = history.history['acc']
         val_accuracy_history = history.history['val_acc']
@@ -523,7 +529,7 @@ def cross_validation(X, y, y_binary,
     return results, metrics
 
 
-def train_model(model, xtrain, ytrain, xval, yval):
+def train_model(model, xtrain, class_weights, ytrain, xval, yval):
 
     train_set_size = xtrain.shape[0]
     nr_epochs = 1
@@ -538,15 +544,10 @@ def train_model(model, xtrain, ytrain, xval, yval):
     best_model, best_params, best_model_types = model[best_model_index]
     # print(best_model_index, best_model_types, best_params)
 
-    class_weights = class_weight.compute_class_weight('balanced',
-                                                      np.unique(ytrain),
-                                                      ytrain)
-    class_weight_dict = dict(enumerate(class_weights))
-
     history = best_model.fit(xtrain, ytrain,
                              epochs=nr_epochs, validation_data=(xval, yval),
                              verbose=False,
-                             class_weight=class_weight_dict)
+                             class_weight=class_weights)
 
     return history, best_model
 
