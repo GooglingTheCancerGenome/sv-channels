@@ -508,8 +508,8 @@ def cross_validation(X, y, y_binary,
                                                           ytrain_split)
         class_weight_dict = dict(enumerate(class_weights))
 
-        history, model = train_model(model, xtrain_split, ytrain_split_binary, class_weight_dict,
-                                     xval_split, yval_split_binary)
+        history, model = train_model(model, xtrain_split, ytrain_split_binary,
+                                     xval_split, yval_split_binary, class_weight_dict)
 
         accuracy_history = history.history['acc']
         val_accuracy_history = history.history['val_acc']
@@ -529,7 +529,7 @@ def cross_validation(X, y, y_binary,
     return results, metrics
 
 
-def train_model(model, xtrain, class_weights, ytrain, xval, yval):
+def train_model(model, xtrain, ytrain, xval, yval, class_weights):
 
     train_set_size = xtrain.shape[0]
     nr_epochs = 1
@@ -547,7 +547,8 @@ def train_model(model, xtrain, class_weights, ytrain, xval, yval):
     history = best_model.fit(xtrain, ytrain,
                              epochs=nr_epochs, validation_data=(xval, yval),
                              verbose=False,
-                             class_weight=class_weights)
+                             class_weight=class_weights,
+                             shuffle=True)
 
     return history, best_model
 
