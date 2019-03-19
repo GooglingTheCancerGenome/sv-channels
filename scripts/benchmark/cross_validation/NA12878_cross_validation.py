@@ -173,7 +173,9 @@ def create_model(X, y_binary):
     return models
 
 
-def cross_validation(X, y, y_binary, X_hold_out_test, y_hold_out_test, y_hold_out_test_binary, channels):
+#def cross_validation(X, y, y_binary, X_hold_out_test, y_hold_out_test, y_hold_out_test_binary, channels):
+def cross_validation(X, y, y_binary, channels):
+
     results = pd.DataFrame()
 
     # From https://medium.com/@literallywords/stratified-k-fold-with-keras-e57c487b1416
@@ -230,8 +232,11 @@ def cross_validation(X, y, y_binary, X_hold_out_test, y_hold_out_test, y_hold_ou
         class_weight_dict = dict(enumerate(class_weights))
         print("Class weights: %s" % str(class_weight_dict))
 
+        sample_weights = np.array([class_weight_dict[mapclasses[c]] for c in ytrain_split])
+        print("Sample weights: %s" % Counter(sample_weights))
+
         history, model = train_model(model, xtrain_split, ytrain_split_binary,
-                                     xval_split, yval_split_binary, class_weight_dict)
+                                     xval_split, yval_split_binary, sample_weights)
 
         accuracy_history = history.history['acc']
         val_accuracy_history = history.history['val_acc']
@@ -250,7 +255,7 @@ def cross_validation(X, y, y_binary, X_hold_out_test, y_hold_out_test, y_hold_ou
     return results
 
 
-def train_model(model, xtrain, ytrain, xval, yval, class_weights):
+def train_model(model, xtrain, ytrain, xval, yval, sample_weights):
 
     nr_epochs = 1
 
@@ -269,7 +274,7 @@ def train_model(model, xtrain, ytrain, xval, yval, class_weights):
     history = best_model.fit(xtrain, ytrain,
                              epochs=nr_epochs, validation_data=(xval, yval),
                              verbose=False,
-                             class_weight=class_weights,
+                             sample_weight=sample_weights,
                              shuffle=True)
 
     return history, best_model
@@ -450,9 +455,10 @@ def run_cv():
 
     # Load the data
     X, y, y_binary, win_ids = data(datapath_training, channels)
-    X_test, y_test, y_test_binary, win_ids_test = data(datapath_test, channels)
+    #X_test, y_test, y_test_binary, win_ids_test = data(datapath_test, channels)
 
-    results = results.append(cross_validation(X, y, y_binary, X_test, y_test, y_test_binary, channel_set))
+    #results = results.append(cross_validation(X, y, y_binary, X_test, y_test, y_test_binary, channel_set))
+    results = results.append(cross_validation(X, y, y_binary, channel_set))
 
     print(results)
 
