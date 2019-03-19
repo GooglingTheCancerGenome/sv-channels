@@ -103,33 +103,37 @@ def get_channel_labels():
 
 def data(datapath, channels):
 
-    # data_output_file = datapath + sample_name + '_' + label_type + '_channels.npy.gz'
-    # with gzip.GzipFile(data_output_file, "rb") as f:
-    #     X = np.load(f)
-    #
-    # label_output_file = datapath + sample_name + '_' + label_type + '_labels.npy.gz'
-    # with gzip.GzipFile(label_output_file, "rb") as f:
-    #     y = np.load(f)
-    # f.close()
-    #
-    # label_output_file = datapath + sample_name + '_' + label_type + '_labels_binary.npy.gz'
-    # with gzip.GzipFile(label_output_file, "rb") as f:
-    #     y_binary = np.load(f)
-    # f.close()
-    #
-    # id_output_file = datapath + sample_name + '_' + label_type + '_ids.npy.gz'
-    # with gzip.GzipFile(id_output_file, "rb") as f:
-    #     win_ids = np.load(f)
-    # f.close()
+    if datapath == datapath_test:
 
-    data_output_file = os.path.join(datapath, '_'.join([sample_name, label_type, balancing]))
+        data_output_file = datapath + sample_name + '_' + label_type + '_channels.npy.gz'
+        with gzip.GzipFile(data_output_file, "rb") as f:
+            X = np.load(f)
 
-    with gzip.GzipFile(data_output_file + '.npz.gz', 'rb') as f:
-        npzfiles = np.load(f)
-        X = npzfiles['X']
-        y = npzfiles['y']
-        y_binary = npzfiles['y_binary']
-        win_ids = npzfiles['z']
+        label_output_file = datapath + sample_name + '_' + label_type + '_labels.npy.gz'
+        with gzip.GzipFile(label_output_file, "rb") as f:
+            y = np.load(f)
+        f.close()
+
+        label_output_file = datapath + sample_name + '_' + label_type + '_labels_binary.npy.gz'
+        with gzip.GzipFile(label_output_file, "rb") as f:
+            y_binary = np.load(f)
+        f.close()
+
+        id_output_file = datapath + sample_name + '_' + label_type + '_ids.npy.gz'
+        with gzip.GzipFile(id_output_file, "rb") as f:
+            win_ids = np.load(f)
+        f.close()
+
+    elif datapath == datapath_training:
+
+        data_output_file = os.path.join(datapath, '_'.join([sample_name, label_type, balancing]))
+
+        with gzip.GzipFile(data_output_file + '.npz.gz', 'rb') as f:
+            npzfiles = np.load(f)
+            X = npzfiles['X']
+            y = npzfiles['y']
+            y_binary = npzfiles['y_binary']
+            win_ids = npzfiles['z']
 
     # print(X.shape)
     # print(y.shape)
