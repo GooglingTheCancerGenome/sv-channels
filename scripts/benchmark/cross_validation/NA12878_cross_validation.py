@@ -102,6 +102,7 @@ def get_channel_labels():
 
 
 def data(datapath, channels):
+
     # data_output_file = datapath + sample_name + '_' + label_type + '_channels.npy.gz'
     # with gzip.GzipFile(data_output_file, "rb") as f:
     #     X = np.load(f)
@@ -121,7 +122,7 @@ def data(datapath, channels):
     #     win_ids = np.load(f)
     # f.close()
 
-    data_output_file = os.path.join(datapath_training, '_'.join([sample_name, label_type, balancing]))
+    data_output_file = os.path.join(datapath, '_'.join([sample_name, label_type, balancing]))
 
     with gzip.GzipFile(data_output_file + '.npz.gz', 'rb') as f:
         npzfiles = np.load(f)
