@@ -532,14 +532,14 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                         split_read_distance_array[sample][split_direction] = np.zeros(win_len, dtype=np.uint32)
                         split_read_distance_num[sample][split_direction] = np.zeros(win_len, dtype=np.uint32)
                         split_read_distance_median[sample][split_direction] = np.zeros(win_len, dtype=np.uint32)
-
-                        if pos in split_read_distance[sample][chrName][split_direction].keys():
-                            split_read_distance_array[sample][split_direction][pos - start_win] = \
-                                sum(split_read_distance[sample][chrName][split_direction][pos])
-                            split_read_distance_array[sample][split_direction][pos - start_win] = \
-                                len(split_read_distance[sample][chrName][split_direction][pos])
-                            split_read_distance_array[sample][split_direction][pos - start_win] = \
-                                statistics.median(split_read_distance[sample][chrName][split_direction][pos])
+                        for pos in range(start_win, end_win):
+                            if pos in split_read_distance[sample][chrName][split_direction].keys():
+                                split_read_distance_array[sample][split_direction][pos - start_win] = \
+                                    sum(split_read_distance[sample][chrName][split_direction][pos])
+                                split_read_distance_array[sample][split_direction][pos - start_win] = \
+                                    len(split_read_distance[sample][chrName][split_direction][pos])
+                                split_read_distance_array[sample][split_direction][pos - start_win] = \
+                                    statistics.median(split_read_distance[sample][chrName][split_direction][pos])
 
                     # split reads
                     split_reads_array[sample] = dict()
