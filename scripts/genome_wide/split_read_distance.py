@@ -57,50 +57,50 @@ def get_split_read_distance(ibam, chrName, outFile):
             # Check if the read has a supplementary alignment: is the read a split read?
             if read.has_tag('SA'):
                 # The read is left clipped
-                if is_left_clipped(read):
-                    # print('Left clipped')
+                # if is_left_clipped(read):
+                #     # print('Left clipped')
+                #     # print(read)
+                #     chr, pos, strand = get_suppl_aln(read)
+                #     # print('%s:%d-%s' % (chr, pos, strand))
+                #     # The read and the supplementary alignment are on the same chromosome
+                #     if chr == read.reference_name:
+                #         # print('Left split')
+                #         # print(str(read))
+                #         refpos = read.reference_start
+                #         #if pos not in split_read_distance['left'].keys():
+                #         #    split_read_distance['left'][pos] = [abs(refpos - pos)]
+                #         #else:
+                #         split_read_distance['left'][pos].append(abs(refpos - pos))
+                #         #if pos not in split_reads['left'].keys():
+                #         #    split_reads['left'][pos] = 1
+                #         #else:
+                #         # print('Adding for left at %d position' % refpos)
+                #         # print('Adding for right at %d position' % pos)
+                #         split_reads['left'][refpos] += 1
+                #         # split_reads['right'][pos] += 1
+
+                # The read is right clipped
+                if is_right_clipped(read):
+                    # print('Right clipped')
                     # print(read)
                     chr, pos, strand = get_suppl_aln(read)
                     # print('%s:%d-%s' % (chr, pos, strand))
                     # The read and the supplementary alignment are on the same chromosome
                     if chr == read.reference_name:
-                        # print('Left split')
-                        # print(str(read))
-                        refpos = read.reference_start
-                        #if pos not in split_read_distance['left'].keys():
-                        #    split_read_distance['left'][pos] = [abs(refpos - pos)]
+                        print('Right split')
+                        print(str(read))
+                        refpos = read.reference_end
+                        #if pos not in split_read_distance['right'].keys():
+                        #    split_read_distance['right'][pos] = [abs(pos - refpos)]
                         #else:
-                        split_read_distance['left'][pos].append(abs(refpos - pos))
-                        #if pos not in split_reads['left'].keys():
-                        #    split_reads['left'][pos] = 1
+                        split_read_distance['right'][pos].append(abs(pos - refpos))
+                        #if pos not in split_reads['right'].keys():
+                        #    split_reads['right'][pos] = 1
                         #else:
-                        # print('Adding for left at %d position' % refpos)
-                        # print('Adding for right at %d position' % pos)
-                        split_reads['left'][refpos] += 1
-                        split_reads['right'][pos] += 1
-
-                # # The read is right clipped
-                # if is_right_clipped(read):
-                #     print('Right clipped')
-                #     print(read)
-                #     chr, pos, strand = get_suppl_aln(read)
-                #     print('%s:%d-%s' % (chr, pos, strand))
-                #     # The read and the supplementary alignment are on the same chromosome
-                #     if chr == read.reference_name:
-                #         # print('Right split')
-                #         # print(str(read))
-                #         refpos = read.reference_end + 1
-                #         #if pos not in split_read_distance['right'].keys():
-                #         #    split_read_distance['right'][pos] = [abs(pos - refpos)]
-                #         #else:
-                #         split_read_distance['right'][pos].append(abs(pos - refpos))
-                #         #if pos not in split_reads['right'].keys():
-                #         #    split_reads['right'][pos] = 1
-                #         #else:
-                #         print('Adding for left at %d position' % pos)
-                #         print('Adding for right at %d position' % refpos)
-                #         split_reads['right'][refpos] += 1
-                #         split_reads['left'][pos] += 1
+                        print('Adding for left at %d position' % pos)
+                        print('Adding for right at %d position' % refpos)
+                        split_reads['right'][refpos] += 1
+                        split_reads['left'][pos] += 1
 
 
     # Save two dictionaries: split_read_distance and split_reads
