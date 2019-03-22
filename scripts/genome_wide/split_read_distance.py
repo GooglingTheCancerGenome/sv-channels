@@ -93,7 +93,9 @@ def get_split_read_distance(ibam, chrName, outFile):
                         #if pos not in split_read_distance['right'].keys():
                         #    split_read_distance['right'][pos] = [abs(pos - refpos)]
                         #else:
-                        split_read_distance['right'][pos].append(abs(pos - refpos))
+                        d = abs(refpos - pos)
+                        split_read_distance['right'][refpos].append(d)
+                        split_read_distance['left'][pos].append(d)
                         #if pos not in split_reads['right'].keys():
                         #    split_reads['right'][pos] = 1
                         #else:
