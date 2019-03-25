@@ -174,7 +174,7 @@ def create_model(X, y_binary):
 
 
 #def cross_validation(X, y, y_binary, X_hold_out_test, y_hold_out_test, y_hold_out_test_binary, channels):
-def cross_validation(X, y, y_binary, channels):
+def cross_validation(X, y, y_binary, win_ids, channels):
 
     results = pd.DataFrame()
 
@@ -192,6 +192,7 @@ def cross_validation(X, y, y_binary, channels):
         xtrain, xtest = X[train_indices], X[test_indices]
         ytrain, ytest = y[train_indices], y[test_indices]
         ytrain_binary, ytest_binary = y_binary[train_indices], y_binary[test_indices]
+        win_ids_test = win_ids[test_indices]
 
         # split into train/validation sets
         xtrain_split, xval_split, ytrain_split, yval_split = train_test_split(xtrain, ytrain,
@@ -246,7 +247,7 @@ def cross_validation(X, y, y_binary, channels):
         score_test = model.evaluate(xtest, ytest_binary, verbose=False)
         print('Test loss and accuracy of best model: ' + str(score_test))
 
-        results = evaluate_model(model, xtest, ytest, ytest_binary, results, index, channels,
+        results = evaluate_model(model, xtest, ytest, ytest_binary, win_ids_test, results, index, channels,
                                  train_set_size=xtrain_split.shape[0],
                                  validation_set_size=xval_split.shape[0]
                                  )
@@ -280,8 +281,16 @@ def train_model(model, xtrain, ytrain, xval, yval, sample_weights):
     return history, best_model
 
 
-def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channels,
+def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test, results, cv_iter, channels,
                    train_set_size, validation_set_size):
+
+    def write_bed(win_ids, pred_class, probs):
+        with open('NA12878/' + 'predictions_'+ str(cv_iter + 1) + '.bed','w') as f:
+            for i, c, p in zip(win_ids, pred_class, probs):
+                line ='\t'.join([i['chromosome'], i['position'],
+                                 i['position']+1, c, p])
+                f.write(line+'\n')
+
     mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
     # mapclasses = {'DEL': 0, 'noDEL': 1}
 
@@ -293,12 +302,16 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
     # print(y_binarized)
     # print(n_classes)
 
-    probs = model.predict_proba(X_test, batch_size=1, verbose=False)
+    probs = model.predict_proba(X_test, batch_size=1000, verbose=False)
 
     # columns are predicted, rows are truth
     predicted = probs.argmax(axis=1)
     # print(predicted)
     y_index = ytest_binary.argmax(axis=1)
+
+    predicted_class = [class_labels[i] for i in predicted]
+    probs_class = [probs[i] for i in predicted]
+    write_bed(win_ids_test, predicted_class, probs_class)
 
     # print(y_index)
     confusion_matrix = pd.crosstab(pd.Series(y_index), pd.Series(predicted))
@@ -470,8 +483,40 @@ def run_cv():
     X, y, y_binary, win_ids = data(datapath_training, channels)
     #X_test, y_test, y_test_binary, win_ids_test = data(datapath_test, channels)
 
+    def oversample(X, y):
+
+        cnt_lab = Counter(y)
+
+        max_v = max([v for k, v in cnt_lab.items()])
+
+        data_balanced = []
+        labels_balanced = []
+
+        for l in cnt_lab.keys():
+            # print(l)
+            iw = np.where(y == l)
+            # ii = iw[0][:min_v]
+            ii = np.random.choice(a=iw[0], size=max_v, replace=True)
+            data_balanced.extend(X[ii])
+            labels_balanced.extend(y[ii])
+
+        print(Counter(labels_balanced))
+
+        X = np.array(data_balanced)
+        y = np.array(labels_balanced)
+
+        return X, y
+
+    print('X shape: %s' % str(X.shape))
+    print('y shape: %s' % str(y.shape))
+
+    X, y = oversample(X, y)
+
+    print('X oversampled shape: %s' % str(X.shape))
+    print('y oversampled shape: %s' % str(y.shape))
+
     #results = results.append(cross_validation(X, y, y_binary, X_test, y_test, y_test_binary, channel_set))
-    results = results.append(cross_validation(X, y, y_binary, channel_set))
+    results = results.append(cross_validation(X, y, y_binary, win_ids, channel_set))
 
     print(results)
 
