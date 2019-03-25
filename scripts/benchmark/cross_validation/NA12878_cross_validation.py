@@ -274,7 +274,7 @@ def train_model(model, xtrain, ytrain, xval, yval, sample_weights):
     history = best_model.fit(xtrain, ytrain,
                              epochs=nr_epochs, validation_data=(xval, yval),
                              verbose=False,
-                             sample_weight=sample_weights,
+                             # sample_weight=sample_weights,
                              shuffle=True)
 
     return history, best_model
@@ -294,6 +294,19 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
     # print(n_classes)
 
     probs = model.predict_proba(X_test, batch_size=1, verbose=False)
+
+    # columns are predicted, rows are truth
+    predicted = probs.argmax(axis=1)
+    # print(predicted)
+    y_index = ytest_binary.argmax(axis=1)
+
+    # print(y_index)
+    confusion_matrix = pd.crosstab(pd.Series(y_index), pd.Series(predicted))
+    confusion_matrix.index = [class_labels[i] for i in confusion_matrix.index]
+    confusion_matrix.columns = [class_labels[i] for i in confusion_matrix.columns]
+    confusion_matrix.reindex(columns=[l for l in class_labels], fill_value=0)
+    confusion_matrix.to_csv('NA12878/' + 'NA12878_confusion_matrix' +
+                            '_' + str(cv_iter + 1) + '.csv', sep='\t')
 
     # For each class
     precision = dict()

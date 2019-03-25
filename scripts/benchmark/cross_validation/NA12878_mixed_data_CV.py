@@ -275,6 +275,30 @@ def mixed_data(output, data_mode):
 
         return X, y
 
+    def oversample(X, y):
+
+        cnt_lab = Counter(y)
+
+        max_v = max([v for k, v in cnt_lab.items()])
+
+        data_balanced = []
+        labels_balanced = []
+
+        for l in cnt_lab.keys():
+            # print(l)
+            iw = np.where(y == l)
+            # ii = iw[0][:min_v]
+            ii = np.random.choice(a=iw[0], size=max_v, replace=True)
+            data_balanced.extend(X[ii])
+            labels_balanced.extend(y[ii])
+
+        logging.info(Counter(labels_balanced))
+
+        X = np.array(data_balanced)
+        y = np.array(labels_balanced)
+
+        return X, y
+
     def get_labelled_windows(data_mode):
 
         logging.info('Loading data...')
@@ -351,6 +375,11 @@ def mixed_data(output, data_mode):
 
         logging.info('X shape: %s' % str(X.shape))
         logging.info('y shape: %s' % str(y.shape))
+
+        X, y = oversample(X, y)
+
+        logging.info('X oversampled shape: %s' % str(X.shape))
+        logging.info('y oversampled shape: %s' % str(y.shape))
 
         mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
         y_num = np.array([mapclasses[c] for c in y], dtype='int')
@@ -551,7 +580,7 @@ def train_model(model, xtrain, ytrain, xval, yval, sample_weights):
     history = best_model.fit(xtrain, ytrain,
                              epochs=nr_epochs, validation_data=(xval, yval),
                              verbose=False,
-                             sample_weight=sample_weights,
+                             # sample_weight=sample_weights,
                              shuffle=True)
 
     return history, best_model
