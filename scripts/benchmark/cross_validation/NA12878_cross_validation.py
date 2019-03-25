@@ -287,8 +287,8 @@ def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test, results, c
     def write_bed(win_ids, pred_class, probs):
         with open('NA12878/' + 'predictions_'+ str(cv_iter + 1) + '.bed','w') as f:
             for i, c, p in zip(win_ids, pred_class, probs):
-                line ='\t'.join([i['chromosome'], i['position'],
-                                 i['position']+1, c, p])
+                line ='\t'.join([i['chromosome'], str(i['position']),
+                                 str(i['position']+1), c, str(p)])
                 f.write(line+'\n')
 
     mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
@@ -303,6 +303,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test, results, c
     # print(n_classes)
 
     probs = model.predict_proba(X_test, batch_size=1000, verbose=False)
+    print('probs shape: %s' % str(probs.shape))
 
     # columns are predicted, rows are truth
     predicted = probs.argmax(axis=1)
@@ -310,7 +311,8 @@ def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test, results, c
     y_index = ytest_binary.argmax(axis=1)
 
     predicted_class = [class_labels[i] for i in predicted]
-    probs_class = [probs[i] for i in predicted]
+    probs_class = [probs[i,v] for i, v in enumerate(predicted)]
+    # print(probs_class)
     write_bed(win_ids_test, predicted_class, probs_class)
 
     # print(y_index)
@@ -510,10 +512,10 @@ def run_cv():
     print('X shape: %s' % str(X.shape))
     print('y shape: %s' % str(y.shape))
 
-    X, y = oversample(X, y)
-
-    print('X oversampled shape: %s' % str(X.shape))
-    print('y oversampled shape: %s' % str(y.shape))
+    # X, y = oversample(X, y)
+    #
+    # print('X oversampled shape: %s' % str(X.shape))
+    # print('y oversampled shape: %s' % str(y.shape))
 
     #results = results.append(cross_validation(X, y, y_binary, X_test, y_test, y_test_binary, channel_set))
     results = results.append(cross_validation(X, y, y_binary, win_ids, channel_set))
