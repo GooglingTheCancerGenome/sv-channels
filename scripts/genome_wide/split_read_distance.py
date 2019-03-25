@@ -87,8 +87,8 @@ def get_split_read_distance(ibam, chrName, outFile):
                     # print('%s:%d-%s' % (chr, pos, strand))
                     # The read and the supplementary alignment are on the same chromosome
                     if chr == read.reference_name:
-                        print('Right split')
-                        print(str(read))
+                        # print('Right split')
+                        # print(str(read))
                         refpos = read.reference_end
                         #if pos not in split_read_distance['right'].keys():
                         #    split_read_distance['right'][pos] = [abs(pos - refpos)]
@@ -99,8 +99,8 @@ def get_split_read_distance(ibam, chrName, outFile):
                         #if pos not in split_reads['right'].keys():
                         #    split_reads['right'][pos] = 1
                         #else:
-                        print('Adding for left at %d position' % pos)
-                        print('Adding for right at %d position' % refpos)
+                        # print('Adding for left at %d position' % pos)
+                        # print('Adding for right at %d position' % refpos)
                         split_reads['right'][refpos] += 1
                         split_reads['left'][pos] += 1
 

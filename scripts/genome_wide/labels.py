@@ -1249,7 +1249,7 @@ def get_labels(sampleName):
             sv_dict[sv_caller] = read_vcf(sampleName, sv_caller)
 
         if sampleName[:7] == 'NA12878':
-            Mills2011
+            # Mills2011
             inbed_path = hpc_path if HPC_MODE else \
                     '/Users/lsantuari/Documents/External_GitHub/sv_benchmark/input.na12878/'
             inbed = os.path.join(inbed_path, 'lumpy-Mills2011-call-set.bed')
