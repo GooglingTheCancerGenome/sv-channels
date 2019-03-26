@@ -27,6 +27,8 @@ from itertools import chain
 # Flag used to set either paths on the local machine or on the HPC
 HPC_MODE = True
 
+CANDIDATE_POSITIONS = "SR"
+
 # Only clipped read positions supported by at least min_cr_support clipped reads are considered
 min_cr_support = 3
 # Window half length
@@ -199,8 +201,10 @@ def create_dir(directory):
 def load_clipped_read_positions(sampleName, chrName):
     channel_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth'
 
-    vec_type = 'clipped_read_pos'
+    vec_type = 'clipped_read_pos' if CANDIDATE_POSITIONS == "CR" else 'split_read_pos'
+
     print('Loading CR positions for Chr %s' % chrName)
+
     # Load files
     if HPC_MODE:
         fn = '/'.join((sampleName, vec_type, chrName + '_' + vec_type + '.pbz2'))
@@ -1462,6 +1466,8 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
     # Get Mappability BigWig
     bw_map = get_mappability_bigwig()
 
+    vec_type = 'clipped_read_pos' if CANDIDATE_POSITIONS == "CR" else 'split_read_pos'
+
     # Set the correct prefix for the path
     if trainingMode and (sampleName == 'N1' or sampleName == 'N2'):
         prefix_train = 'Training_' + SVmode + '/'
@@ -1485,7 +1491,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
         for chrName in chrList:
 
-            clipped_read_pos_file[chrName] = 'clipped_read_pos.pbz2'
+            clipped_read_pos_file[chrName] = vec_type + '.pbz2'
             clipped_read_distance_file[chrName] = 'clipped_read_distance.pbz2'
             clipped_reads_file[chrName] = 'clipped_reads.pbz2'
             coverage_file[chrName] = 'coverage.npy.bz2'
@@ -1523,7 +1529,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
             # File with clipped read positions, output of the clipped_read_pos script
             # clipped_read_pos_file[chrName] = prefix_train + sample_list[0] + \
             #                                  '/clipped_read_pos/' + chrName + '_clipped_read_pos.pbz2'
-            clipped_read_pos_file[chrName] = 'clipped_read_pos/' + chrName + '_clipped_read_pos.pbz2'
+            clipped_read_pos_file[chrName] = vec_type + '/' + chrName + '_' + vec_type + '.pbz2'
             # File with the clipped read distances, output of the clipped_read_distance script
             clipped_read_distance_file[chrName] = 'clipped_read_distance/' + chrName + '_clipped_read_distance.pbz2'
             # File with the clipped reads, output of the clipped_reads script
@@ -1557,7 +1563,11 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                     logging.info('Reading clipped read positions for sample %s' % sample)
                     with bz2file.BZ2File(prefix_train + sample + '/' +
                                          clipped_read_pos_file[chrName], 'rb') as f:
-                        clipped_pos_cnt_per_sample[sample] = pickle.load(f)
+                        if CANDIDATE_POSITIONS == "CR":
+                            clipped_pos_cnt_per_sample[sample] = pickle.load(f)
+                        else:
+                            positions, locations = pickle.load(f)
+                            clipped_pos_cnt_per_sample[sample] = positions
                     logging.info('End of reading')
                     logging.info('Length of clipped_pos_cnt_per_sample' +
                                  ' for sample %s: %d' % (sample,
@@ -1606,7 +1616,11 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
                 logging.info('Reading clipped read positions')
                 with bz2file.BZ2File(prefix_train + sample + '/' + clipped_read_pos_file[chrName], 'rb') as f:
-                    clipped_pos_cnt[chrName] = pickle.load(f)
+                    if CANDIDATE_POSITIONS == "CR":
+                        clipped_pos_cnt[sample] = pickle.load(f)
+                    else:
+                        positions, locations = pickle.load(f)
+                        clipped_pos_cnt[sample] = positions
                 logging.info('End of reading')
 
                 # Count the number of clipped read positions with a certain minimum number of clipped reads

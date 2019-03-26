@@ -19,6 +19,8 @@ win_len = win_hlen * 2
 # Minimum clipped read support to consider
 min_cr_support = 3
 
+CANDIDATE_POSITIONS = "SR"
+
 
 def create_dir(directory):
     '''
@@ -199,6 +201,8 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
     if not HPC_MODE:
         workdir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/' + workdir
 
+    vec_type = 'clipped_read_pos' if CANDIDATE_POSITIONS == "CR" else 'split_read_pos'
+
     # List used to store the channel vstacks
     ch_list = []
 
@@ -235,7 +239,7 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
 
         # File with clipped read positions, output of the clipped_read_pos script
         clipped_read_pos_file[chrName] = workdir + sampleName + \
-            '/clipped_read_pos/' + chrName + '_clipped_read_pos.pbz2'
+            '/' + vec_type + '/' + chrName + '_' + vec_type + '.pbz2'
         # File with the clipped read distances, output of the clipped_read_distance script
         clipped_read_distance_file[chrName] = 'clipped_read_distance/' + chrName + '_clipped_read_distance.pbz2'
         # File with the clipped reads, output of the clipped_reads script
@@ -271,7 +275,11 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
         logging.info('Reading clipped read positions')
 
         with bz2file.BZ2File(clipped_read_pos_file[chrName], 'rb') as f:
-            clipped_pos_cnt[chrName] = pickle.load(f)
+            if CANDIDATE_POSITIONS == "CR":
+                clipped_pos_cnt[chrName] = pickle.load(f)
+            else:
+                positions, locations = pickle.load(f)
+                clipped_pos_cnt[sample] = positions
         logging.info('End of reading')
 
         # Count the number of clipped read positions with a certain minimum number of clipped reads
