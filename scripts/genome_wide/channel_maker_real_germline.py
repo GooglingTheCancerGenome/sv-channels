@@ -1506,7 +1506,11 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
             logging.info('Reading clipped read positions')
             with bz2file.BZ2File(clipped_read_pos_file[chrName], 'rb') as f:
-                clipped_pos_cnt[chrName] = pickle.load(f)
+                if CANDIDATE_POSITIONS == "CR":
+                    clipped_pos_cnt[chrName] = pickle.load(f)
+                else:
+                    positions, locations = pickle.load(f)
+                    clipped_pos_cnt[chrName] = positions
             logging.info('End of reading')
 
             # Count the number of clipped read positions with a certain minimum number of clipped reads
