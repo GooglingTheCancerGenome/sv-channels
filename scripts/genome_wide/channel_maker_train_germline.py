@@ -279,7 +279,7 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                 clipped_pos_cnt[chrName] = pickle.load(f)
             else:
                 positions, locations = pickle.load(f)
-                clipped_pos_cnt[sample] = positions
+                clipped_pos_cnt[chrName] = positions
         logging.info('End of reading')
 
         # Count the number of clipped read positions with a certain minimum number of clipped reads
