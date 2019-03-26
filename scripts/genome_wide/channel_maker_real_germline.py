@@ -1628,7 +1628,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                 logging.info('End of reading')
 
                 # Count the number of clipped read positions with a certain minimum number of clipped reads
-                count_clipped_read_positions(clipped_pos_cnt[chrName])
+                count_clipped_read_positions(clipped_pos_cnt[sample])
 
     # Load channel data
     # Dictionaries where to load the channel data
