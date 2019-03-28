@@ -171,8 +171,8 @@ def real_data():
         dico = get_label_dict()
 
         # Leaving out chromosome Y and MT for the moment
-        # chr_list = list(map(str, np.arange(4, 23)))
-        chr_list = list(map(str, np.arange(1, 23)))
+        chr_list = list(map(str, np.arange(4, 23)))
+        # chr_list = list(map(str, np.arange(1, 23)))
         chr_list.append('X')
 
         logging.info(chr_list)
