@@ -370,7 +370,7 @@ def mixed_data(output, data_mode):
     metrics = dict()
 
     #for pc in np.linspace(0.1, 1, num=10):
-    for pc in np.linspace(0.4, 1, num=7):
+    for pc in np.linspace(0.1, 0.5, num=10):
         # for pc in [0.1]:
 
         windows, labels = get_labelled_windows(data_mode)
@@ -500,76 +500,79 @@ def cross_validation(X, y, y_binary,
 
     metrics = dict()
 
+    mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
+
     # Instantiate the cross validator
-    skf = StratifiedKFold(n_splits=kfold_splits, shuffle=True)
+    # skf = StratifiedKFold(n_splits=kfold_splits, shuffle=True)
 
     # Loop through the indices the split() method returns
-    for index, (train_indices, test_indices) in enumerate(skf.split(X, y)):
+    # for index, (train_indices, val_indices) in enumerate(skf.split(X, y)):
 
-        print("Training on fold " + str(index + 1) + "/10...")
+    # print("Training on fold " + str(index + 1) + "/10...")
 
-        # Generate batches from indices
-        xtrain, xtest = X[train_indices], X[test_indices]
-        ytrain, ytest = y[train_indices], y[test_indices]
-        ytrain_binary, ytest_binary = y_binary[train_indices], y_binary[test_indices]
+    # Generate batches from indices
+    # xtrain, xval = X[train_indices], X[val_indices]
+    # ytrain, yval = y[train_indices], y[val_indices]
+    # ytrain_binary, yval_binary = y_binary[train_indices], y_binary[val_indices]
 
-        # split into train/validation sets
-        xtrain_split, xval_split, ytrain_split, yval_split = train_test_split(xtrain, ytrain,
-                                                                              test_size=0.2, random_state=2,
-                                                                              stratify=ytrain,
-                                                                              shuffle=True)
+    # split into train/validation sets
+    xtrain, xval, ytrain, yval = train_test_split(X, y,
+                                                  test_size=0.1, random_state=2,
+                                                  stratify=y,
+                                                  shuffle=True)
 
-        logging.info('Training data shape: %s' % str(xtrain_split.shape))
-        logging.info('Training labels shape: %s' % str(ytrain_split.shape))
-        logging.info('Training labels: %s' % str(Counter(ytrain_split)))
+    ytrain_num = np.array([mapclasses[c] for c in ytrain], dtype='int')
+    ytrain_binary = to_categorical(ytrain_num)
 
-        logging.info('Validation data shape: %s' % str(xval_split.shape))
-        logging.info('Validation labels shape: %s' % str(yval_split.shape))
-        logging.info('Validation labels: %s' % str(Counter(yval_split)))
+    yval_num = np.array([mapclasses[c] for c in yval], dtype='int')
+    yval_binary = to_categorical(yval_num)
 
-        logging.info('Test data shape: %s' % str(xtest.shape))
-        logging.info('Test labels shape: %s' % str(ytest.shape))
-        logging.info('Test labels: %s' % str(Counter(ytest)))
+    logging.info('Training data shape: %s' % str(xtrain.shape))
+    logging.info('Training labels shape: %s' % str(ytrain.shape))
+    logging.info('Training labels: %s' % str(Counter(ytrain)))
 
-        mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
+    logging.info('Validation data shape: %s' % str(xval.shape))
+    logging.info('Validation labels shape: %s' % str(yval.shape))
+    logging.info('Validation labels: %s' % str(Counter(yval)))
 
-        ytrain_split_num = np.array([mapclasses[c] for c in ytrain_split], dtype='int')
-        ytrain_split_binary = to_categorical(ytrain_split_num)
+    # logging.info('Test data shape: %s' % str(xtest.shape))
+    # logging.info('Test labels shape: %s' % str(ytest.shape))
+    # logging.info('Test labels: %s' % str(Counter(ytest)))
 
-        yval_split_num = np.array([mapclasses[c] for c in yval_split], dtype='int')
-        yval_split_binary = to_categorical(yval_split_num)
+    for index in np.arange(1, 10, 1):
 
         # Create a new model
-        model = create_model(xtrain_split, ytrain_split_binary)
+        model = create_model(xtrain, ytrain_binary)
 
         # Debug message I guess
-        print("Training new iteration on " + str(xtrain_split.shape[0]) + " training samples, " +
-              str(xval_split.shape[0]) + " validation samples, this may take a while...")
+        print("Training new iteration on " + str(xtrain.shape[0]) + " training samples, " +
+              str(xval.shape[0]) + " validation samples, this may take a while...")
 
         class_weights = class_weight.compute_class_weight('balanced',
-                                                          np.unique(ytrain_split),
-                                                          ytrain_split)
+                                                          np.unique(ytrain),
+                                                          ytrain)
         class_weight_dict = dict(enumerate(class_weights))
 
-        sample_weights = np.array([class_weight_dict[mapclasses[c]] for c in ytrain_split])
+        sample_weights = np.array([class_weight_dict[mapclasses[c]] for c in ytrain])
         print("Sample weights: %s" % Counter(sample_weights))
 
-        history, model = train_model(model, xtrain_split, ytrain_split_binary,
-                                     xval_split, yval_split_binary, sample_weights)
+        history, model = train_model(model, xtrain, ytrain_binary,
+                                     xval, yval_binary, sample_weights)
 
         accuracy_history = history.history['acc']
         val_accuracy_history = history.history['val_acc']
         print("Last training accuracy: " + str(accuracy_history[-1]) + ", last validation accuracy: " + str(
             val_accuracy_history[-1]))
 
-        score_test = model.evaluate(xtest, ytest_binary, verbose=False)
-        print('Test loss and accuracy of best model: ' + str(score_test))
+        # score_test = model.evaluate(X_hold_out_test, y_hold_out_test_binary, verbose=False)
+        # print('Test loss and accuracy of best model: ' + str(score_test))
 
-        results, metrics[str(index + 1)] = evaluate_model(model, xtest, ytest,
-                                                          ytest_binary, results, index, channels,
+        results, metrics[str(index + 1)] = evaluate_model(model, X_hold_out_test, y_hold_out_test,
+                                                          y_hold_out_test_binary, results, index, channels,
                                                           proportion, data_mode, output,
-                                                          train_set_size=xtrain_split.shape[0],
-                                                          validation_set_size=xval_split.shape[0])
+                                                          train_set_size=xtrain.shape[0],
+                                                          validation_set_size=xval.shape[0])
+
         # evaluate_model(model, X_test, y_test_binary, results, index, channels)
 
     return results, metrics
@@ -655,7 +658,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
         "channels": channels,
         "data_mode": data_mode,
         "proportion": proportion,
-        "fold": cv_iter + 1,
+        "run": cv_iter + 1,
         "training_set_size": train_set_size,
         "validation_set_size": validation_set_size,
         "test_set_size": X_test.shape[0],

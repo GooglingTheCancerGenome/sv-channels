@@ -36,7 +36,10 @@ import pandas as pd
 
 HPC_MODE = True
 sample_name = 'NA12878'
+
 date = '270219'
+#date = '260319'
+
 label_type = 'Mills2011_nanosv'
 datapath_prefix = '/hpc/cog_bioinf/ridder/users/lsantuari' if HPC_MODE else '/Users/lsantuari/Documents'
 datapath_training = datapath_prefix + '/Processed/Test/' + \
