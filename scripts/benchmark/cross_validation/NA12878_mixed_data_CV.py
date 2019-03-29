@@ -254,7 +254,7 @@ def artificial_data():
 def mixed_data(output, data_mode):
     # create_dir('Plots')
 
-    create_dir(data_mode)
+    create_dir(os.path.join(date, data_mode))
 
     filename, file_extension = os.path.splitext(output)
 
