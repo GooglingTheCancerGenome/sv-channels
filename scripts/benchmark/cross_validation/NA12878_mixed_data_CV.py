@@ -253,6 +253,8 @@ def artificial_data():
 def mixed_data(output, data_mode):
     # create_dir('Plots')
 
+    create_dir(data_mode)
+
     filename, file_extension = os.path.splitext(output)
 
     results = pd.DataFrame()
@@ -399,8 +401,9 @@ def mixed_data(output, data_mode):
         y_binary = to_categorical(y_num)
 
         intermediate_result, metrics[pc_str] = cross_validation(X, y, y_binary,
-                                                                X_test, y_test, y_test_binary,
-                                                                channel_set, proportion=round(pc, 1),
+                                                                X_test, y_test, y_test_binary, win_ids_test,
+                                                                channel_set,
+                                                                proportion=round(pc, 1),
                                                                 data_mode=data_mode,
                                                                 output=filename)
         logging.info(intermediate_result)
@@ -412,7 +415,9 @@ def mixed_data(output, data_mode):
 
     logging.info('Writing metrics...')
 
-    metrics_output_file = filename + '_metrics_' + data_mode + '.pickle.gz'
+    outdir = os.path.join(data_mode, 'metrics')
+    create_dir(outdir)
+    metrics_output_file = os.path.join(outdir, filename + '_metrics_' + data_mode + '.pickle.gz')
     with gzip.GzipFile(metrics_output_file, "wb") as f:
         pickle.dump(metrics, f)
     f.close()
@@ -491,7 +496,7 @@ def create_model(X, y_binary):
 
 
 def cross_validation(X, y, y_binary,
-                     X_hold_out_test, y_hold_out_test, y_hold_out_test_binary,
+                     X_hold_out_test, y_hold_out_test, y_hold_out_test_binary, win_ids_test,
                      channels, proportion, data_mode, output):
     results = pd.DataFrame()
 
@@ -539,7 +544,7 @@ def cross_validation(X, y, y_binary,
     # logging.info('Test labels shape: %s' % str(ytest.shape))
     # logging.info('Test labels: %s' % str(Counter(ytest)))
 
-    for index in np.arange(1, 10, 1):
+    for index in np.arange(0, 10, 1):
 
         # Create a new model
         model = create_model(xtrain, ytrain_binary)
@@ -568,7 +573,8 @@ def cross_validation(X, y, y_binary,
         # print('Test loss and accuracy of best model: ' + str(score_test))
 
         results, metrics[str(index + 1)] = evaluate_model(model, X_hold_out_test, y_hold_out_test,
-                                                          y_hold_out_test_binary, results, index, channels,
+                                                          y_hold_out_test_binary, win_ids_test,
+                                                          results, index, channels,
                                                           proportion, data_mode, output,
                                                           train_set_size=xtrain.shape[0],
                                                           validation_set_size=xval.shape[0])
@@ -602,8 +608,31 @@ def train_model(model, xtrain, ytrain, xval, yval, sample_weights):
     return history, best_model
 
 
-def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channels, proportion, data_mode, output,
+def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
+                   results, cv_iter, channels, proportion, data_mode, output,
                    train_set_size, validation_set_size):
+
+    def write_bed(predicted, y_index, win_ids_test, class_labels):
+
+        outdir = os.path.join(data_mode, 'predictions')
+        create_dir(outdir)
+        outfile = os.path.join(outdir, output + '_predictions_' + data_mode +
+                               '_' + str(proportion) + '_' + str(cv_iter + 1) + '.bed')
+
+        lines = []
+        for p, r, w in zip(predicted, y_index, win_ids_test):
+            lines.append('\t'.join([w['chromosome'], w['position'], w['position']+1,
+                                    'PRED:' + class_labels[p] + '_TRUE:' + class_labels[r]]))
+
+        f = gzip.open(outfile, 'wb')
+        try:
+            # use set to make lines unique
+            for l in lines:
+                f.write(l)
+        finally:
+            f.close()
+
+
 
     mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
 
@@ -617,18 +646,33 @@ def evaluate_model(model, X_test, y_test, ytest_binary, results, cv_iter, channe
 
     probs = model.predict_proba(X_test, batch_size=1000, verbose=False)
 
+    # save model
+    outdir = os.path.join(data_mode, 'models')
+    create_dir(outdir)
+    model.save(os.path.join(outdir, output + '_model_' + data_mode +
+                            '_' + str(proportion) + '_' + str(cv_iter + 1) + '.hdf5'))
+
     # columns are predicted, rows are truth
     predicted = probs.argmax(axis=1)
     # print(predicted)
+    # true
     y_index = ytest_binary.argmax(axis=1)
 
+    # write predictions
+    write_bed(predicted, y_index, win_ids_test, class_labels)
+
     # print(y_index)
+    outdir = os.path.join(data_mode, 'confusion_matrix')
+    create_dir(outdir)
+
     confusion_matrix = pd.crosstab(pd.Series(y_index), pd.Series(predicted))
     confusion_matrix.index = [class_labels[i] for i in confusion_matrix.index]
     confusion_matrix.columns = [class_labels[i] for i in confusion_matrix.columns]
     confusion_matrix.reindex(columns=[l for l in class_labels], fill_value=0)
-    confusion_matrix.to_csv(output + '_confusion_matrix_' + data_mode +
-                            '_' + str(proportion) + '_' + str(cv_iter + 1) + '.csv', sep='\t')
+    confusion_matrix.to_csv(
+        os.path.join(outdir, output + '_confusion_matrix_' + data_mode +
+                     '_' + str(proportion) + '_' + str(cv_iter + 1) + '.csv'), sep='\t'
+    )
 
     # For each class
     precision = dict()
@@ -762,6 +806,10 @@ def plot_results():
 
 def plot_precision_recall(data_mode, proportion, cv_iter,
                           mapclasses, precision, recall, average_precision, output):
+
+    outdir = os.path.join(data_mode, 'plots')
+    create_dir(outdir)
+
     from itertools import cycle
     # setup plot details
     colors = cycle(['navy', 'turquoise', 'darkorange', 'cornflowerblue', 'teal'])
@@ -798,12 +846,13 @@ def plot_precision_recall(data_mode, proportion, cv_iter,
     plt.title('Extension of Precision-Recall curve to multi-class')
     plt.legend(lines, labels, loc=(0, -.38), prop=dict(size=14))
 
-    plt.savefig(output + '_PrecRec_' + data_mode +
-                '_' + str(proportion) + '_' + str(cv_iter + 1) + '.png', bbox_inches='tight')
+    plt.savefig(os.path.join(outdir, output + '_PrecRec_' + data_mode +
+                '_' + str(proportion) + '_' + str(cv_iter + 1) + '.png', bbox_inches='tight'))
     plt.close()
 
 
 def main():
+
     parser = argparse.ArgumentParser(description='Tests multiple artificial/real/mixed training sets')
     parser.add_argument('-m', '--mode', default='artificial',
                         help='Data mode: artificial/real/mixed')
