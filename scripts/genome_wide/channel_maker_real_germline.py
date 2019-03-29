@@ -198,10 +198,10 @@ def create_dir(directory):
             raise
 
 
-def load_clipped_read_positions(sampleName, chrName):
+def load_clipped_read_positions(sampleName, chrName, candpos):
     channel_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth'
 
-    vec_type = 'clipped_read_pos' if CANDIDATE_POSITIONS == "CR" else 'split_read_pos'
+    vec_type = 'clipped_read_pos' if candpos == "CR" else 'split_read_pos'
 
     print('Loading CR positions for Chr %s' % chrName)
 
@@ -622,7 +622,7 @@ def create_labels_nanosv_vcf(sampleName, ibam):
         chrLen = get_chr_len(ibam, chrName)
 
         # Load CR positions
-        cr_pos = load_clipped_read_positions(sampleName, chrName)
+        cr_pos = load_clipped_read_positions(sampleName, chrName, CANDIDATE_POSITIONS)
 
         # Remove positions with windows falling off chromosome boundaries
         cr_pos = [pos for pos in cr_pos if win_hlen <= pos <= (chrLen - win_hlen)]
@@ -827,7 +827,7 @@ def write_sv_without_cr(sampleName, ibam):
         chrLen = get_chr_len(ibam, chrName)
 
         # Load CR positions
-        cr_pos = load_clipped_read_positions(sampleName, chrName)
+        cr_pos = load_clipped_read_positions(sampleName, chrName, CANDIDATE_POSITIONS)
         # Remove positions with windows falling off chromosome boundaries
         cr_pos = [pos for pos in cr_pos if win_hlen <= pos <= (chrLen - win_hlen)]
 
@@ -1028,7 +1028,7 @@ def create_labels_bed(sampleName, ibam):
         chrLen = get_chr_len(ibam, chrName)
 
         # Load CR positions
-        cr_pos = load_clipped_read_positions(sampleName, chrName)
+        cr_pos = load_clipped_read_positions(sampleName, chrName, CANDIDATE_POSITIONS)
 
         # Remove positions with windows falling off chromosome boundaries
         cr_pos = [pos for pos in cr_pos if win_hlen <= pos <= (chrLen - win_hlen)]
@@ -1375,18 +1375,19 @@ def load_NoCR_positions():
     print(list(no_clipped_read_pos))
 
 
-def clipped_read_positions_to_bed(sampleName):
+def clipped_read_positions_to_bed(sampleName, candpos):
+
     chrlist = list(map(str, range(1, 23)))
     chrlist.extend(['X', 'Y'])
     # print(chrlist)
 
     lines = []
     for chrName in chrlist:
-        crpos_list = load_clipped_read_positions(sampleName, chrName)
+        crpos_list = load_clipped_read_positions(sampleName, chrName, candpos)
         lines.extend(
             [bytes(chrName + '\t' + str(crpos) + '\t' + str(crpos + 1) + '\n', 'utf-8') for crpos in crpos_list])
 
-    crout = sampleName + '_clipped_read_pos.bed.gz'
+    crout = sampleName + '_' + candpos + '.bed.gz'
     f = gzip.open(crout, 'wb')
     try:
         for l in lines:
@@ -2037,8 +2038,12 @@ def main():
     else:
         chrList = [args.chr]
 
-    channel_maker(ibam=args.bam, chrList=chrList, sampleName=args.sample, SVmode=args.svmode,
-                  trainingMode=args.train, outFile=args.out)
+    # channel_maker(ibam=args.bam, chrList=chrList, sampleName=args.sample, SVmode=args.svmode,
+    #               trainingMode=args.train, outFile=args.out)
+
+    for sampleName in ['NA12878']:
+        clipped_read_positions_to_bed(sampleName, 'CR')
+        clipped_read_positions_to_bed(sampleName, 'SR')
 
     # for sampleName in ['NA12878', 'Patient1', 'Patient2']:
     #     create_labels_nanosv_vcf(sampleName=sampleName, ibam=args.bam)
