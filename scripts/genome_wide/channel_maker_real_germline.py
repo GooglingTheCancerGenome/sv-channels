@@ -2042,12 +2042,12 @@ def main():
     else:
         chrList = [args.chr]
 
-    # channel_maker(ibam=args.bam, chrList=chrList, sampleName=args.sample, SVmode=args.svmode,
-    #               trainingMode=args.train, outFile=args.out)
+    channel_maker(ibam=args.bam, chrList=chrList, sampleName=args.sample, SVmode=args.svmode,
+                  trainingMode=args.train, outFile=args.out)
 
-    for sampleName in ['NA12878']:
-        clipped_read_positions_to_bed(sampleName, 'CR')
-        clipped_read_positions_to_bed(sampleName, 'SR')
+    # for sampleName in ['NA12878']:
+    #     clipped_read_positions_to_bed(sampleName, 'CR')
+    #     clipped_read_positions_to_bed(sampleName, 'SR')
 
     # for sampleName in ['NA12878', 'Patient1', 'Patient2']:
     #     create_labels_nanosv_vcf(sampleName=sampleName, ibam=args.bam)
