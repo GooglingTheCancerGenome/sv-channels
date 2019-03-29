@@ -211,7 +211,11 @@ def load_clipped_read_positions(sampleName, chrName, candpos):
     else:
         fn = '/'.join((channel_dir, sampleName, vec_type, chrName + '_' + vec_type + '.pbz2'))
     with bz2file.BZ2File(fn, 'rb') as f:
-        cpos = pickle.load(f)
+        if candpos == "CR":
+            cpos = pickle.load(f)
+        else:
+            positions, locations = pickle.load(f)
+            cpos = positions
 
     cr_pos = [elem for elem, cnt in cpos.items() if cnt >= min_cr_support]
 
