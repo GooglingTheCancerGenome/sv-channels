@@ -625,7 +625,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
             lines.append('\t'.join([w['chromosome'], str(w['position']), str(w['position']+1),
                                     'PRED:' + class_labels[p] + '_TRUE:' + class_labels[r]]))
 
-        f = gzip.open(outfile, 'wb')
+        f = open(outfile, 'w')
         try:
             # use set to make lines unique
             for l in lines:
