@@ -4,6 +4,7 @@
 #$ -l h_vmem=300G
 #$ -q all.q
 #$ -wd /hpc/cog_bioinf/ridder/users/lsantuari/Git/DeepSV_runs/060219/CNN/scripts/benchmark/cross_validation
+#$ -pe threaded 16
 
 echo "Load python"
 source activate mcfly
