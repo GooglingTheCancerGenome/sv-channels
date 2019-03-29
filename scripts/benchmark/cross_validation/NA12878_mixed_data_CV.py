@@ -39,7 +39,8 @@ import pandas as pd
 HPC_MODE = True
 
 sample_name = 'NA12878'
-date = '270219'
+date = '270219' # clipped reads
+# date = '260319' # split reads
 label_type = 'Mills2011_nanosv'
 datapath_prefix = '/hpc/cog_bioinf/ridder/users/lsantuari' if HPC_MODE else '/Users/lsantuari/Documents'
 datapath_training = datapath_prefix + '/Processed/Test/' + \
@@ -415,7 +416,7 @@ def mixed_data(output, data_mode):
 
     logging.info('Writing metrics...')
 
-    outdir = os.path.join(data_mode, 'metrics')
+    outdir = os.path.join(date, data_mode, 'metrics')
     create_dir(outdir)
     metrics_output_file = os.path.join(outdir, filename + '_metrics_' + data_mode + '.pickle.gz')
     with gzip.GzipFile(metrics_output_file, "wb") as f:
@@ -614,14 +615,14 @@ def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
 
     def write_bed(predicted, y_index, win_ids_test, class_labels):
 
-        outdir = os.path.join(data_mode, 'predictions')
+        outdir = os.path.join(date, data_mode, 'predictions')
         create_dir(outdir)
         outfile = os.path.join(outdir, output + '_predictions_' + data_mode +
                                '_' + str(proportion) + '_' + str(cv_iter + 1) + '.bed')
 
         lines = []
         for p, r, w in zip(predicted, y_index, win_ids_test):
-            lines.append('\t'.join([w['chromosome'], w['position'], w['position']+1,
+            lines.append('\t'.join([w['chromosome'], str(w['position']), str(w['position']+1),
                                     'PRED:' + class_labels[p] + '_TRUE:' + class_labels[r]]))
 
         f = gzip.open(outfile, 'wb')
@@ -645,7 +646,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
     probs = model.predict_proba(X_test, batch_size=1000, verbose=False)
 
     # save model
-    outdir = os.path.join(data_mode, 'models')
+    outdir = os.path.join(date, data_mode, 'models')
     create_dir(outdir)
     model.save(os.path.join(outdir, output + '_model_' + data_mode +
                             '_' + str(proportion) + '_' + str(cv_iter + 1) + '.hdf5'))
@@ -660,7 +661,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
     write_bed(predicted, y_index, win_ids_test, class_labels)
 
     # print(y_index)
-    outdir = os.path.join(data_mode, 'confusion_matrix')
+    outdir = os.path.join(date, data_mode, 'confusion_matrix')
     create_dir(outdir)
 
     confusion_matrix = pd.crosstab(pd.Series(y_index), pd.Series(predicted))
@@ -805,7 +806,7 @@ def plot_results():
 def plot_precision_recall(data_mode, proportion, cv_iter,
                           mapclasses, precision, recall, average_precision, output):
 
-    outdir = os.path.join(data_mode, 'plots')
+    outdir = os.path.join(date, data_mode, 'plots')
     create_dir(outdir)
 
     from itertools import cycle
