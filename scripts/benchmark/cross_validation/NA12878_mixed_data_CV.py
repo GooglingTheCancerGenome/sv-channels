@@ -632,8 +632,6 @@ def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
         finally:
             f.close()
 
-
-
     mapclasses = {'DEL_start': 1, 'DEL_end': 0, 'noSV': 2}
 
     dict_sorted = sorted(mapclasses.items(), key=lambda x: x[1])
