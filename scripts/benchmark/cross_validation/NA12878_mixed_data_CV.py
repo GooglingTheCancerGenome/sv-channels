@@ -4,6 +4,7 @@ import os
 import argparse
 import logging
 import pickle
+import errno
 
 import numpy as np
 
