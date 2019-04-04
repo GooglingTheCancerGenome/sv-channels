@@ -620,13 +620,14 @@ def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
 
         outdir = os.path.join(date, data_mode, 'predictions')
         create_dir(outdir)
-        outfile = os.path.join(outdir, output + '_predictions_' + data_mode +
+        outfile = os.path.join(outdir, output + '_wrong_predictions_' + data_mode +
                                '_' + str(proportion) + '_' + str(cv_iter + 1) + '.bed')
 
         lines = []
         for p, r, w in zip(predicted, y_index, win_ids_test):
-            lines.append('\t'.join([w['chromosome'], str(w['position']), str(w['position']+1),
-                                    'PRED:' + class_labels[p] + '_TRUE:' + class_labels[r]])+'\n')
+            if class_labels[p] != class_labels[r]:
+                lines.append('\t'.join([w['chromosome'], str(w['position']), str(w['position']+1),
+                                        'PRED:' + class_labels[p] + '_TRUE:' + class_labels[r]])+'\n')
 
         f = open(outfile, 'w')
         try:
