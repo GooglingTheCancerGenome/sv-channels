@@ -409,8 +409,10 @@ def mixed_data(output, data_mode):
                                                                 data_mode=data_mode,
                                                                 output=filename)
         logging.info(intermediate_result)
-        intermediate_result.to_csv(
-            filename + '_' + data_mode + '_' + pc_str + file_extension, sep='\t')
+        outdir = os.path.join(date, data_mode, 'intermediate_results')
+        create_dir(outdir)
+        intermediate_result.to_csv(os.path.join(outdir,
+            filename + '_' + data_mode + '_' + pc_str + file_extension), sep='\t')
         results = results.append(intermediate_result)
 
         del X, y
@@ -624,7 +626,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
         lines = []
         for p, r, w in zip(predicted, y_index, win_ids_test):
             lines.append('\t'.join([w['chromosome'], str(w['position']), str(w['position']+1),
-                                    'PRED:' + class_labels[p] + '_TRUE:' + class_labels[r]]))
+                                    'PRED:' + class_labels[p] + '_TRUE:' + class_labels[r]])+'\n')
 
         f = open(outfile, 'w')
         try:
