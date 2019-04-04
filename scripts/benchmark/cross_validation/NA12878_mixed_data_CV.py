@@ -373,8 +373,8 @@ def mixed_data(output, data_mode):
 
     metrics = dict()
 
-    #for pc in np.linspace(0.1, 1, num=10):
-    for pc in np.linspace(0.1, 0.5, num=10):
+    for pc in np.linspace(0.1, 1, num=10):
+    #for pc in np.linspace(0.1, 0.5, num=10):
         # for pc in [0.1]:
 
         windows, labels = get_labelled_windows(data_mode)
