@@ -69,17 +69,39 @@ def get_channel_labels():
     labels = list()
     labels.append("coverage")
     labels.append("mean_read_quality")
+
     labels.append("#left_clipped_reads")
+    labels.append("#left_clipped_reads_freq")
+
     labels.append("#right_clipped_reads")
+    labels.append("#right_clipped_reads_freq")
+
     labels.append("#CIGAR_D_left_reads")
+    labels.append("#CIGAR_D_left_reads_freq")
+
     labels.append("#CIGAR_D_right_reads")
+    labels.append("#CIGAR_D_right_reads_freq")
+
     labels.append("#CIGAR_I_right_reads")
+    labels.append("#CIGAR_I_right_reads_freq")
+
     labels.append("INV_before")
+    labels.append("INV_before_freq")
+
     labels.append("INV_after")
+    labels.append("INV_after_freq")
+
     labels.append("DUP_before")
+    labels.append("DUP_before_freq")
+
     labels.append("DUP_after")
+    labels.append("DUP_after_freq")
+
     labels.append("TRA_opposite")
+    labels.append("TRA_opposite_freq")
+
     labels.append("TRA_same")
+    labels.append("TRA_same_freq")
 
     for direction in ['Forward', 'Reverse']:
         for clipped in ['Left', 'Right', 'All']:
@@ -87,7 +109,9 @@ def get_channel_labels():
                 labels.append(direction + '_' + clipped + '_Clipped_' + value)
 
     labels.append("#left split reads")
+    labels.append("#left split reads freq")
     labels.append("#right split reads")
+    labels.append("#right split reads freq")
 
     for clipped in ['L', 'R']:
         for value in ['median']:
