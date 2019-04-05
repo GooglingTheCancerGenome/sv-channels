@@ -1927,7 +1927,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                     vstack_list.append(
                         np.nan_to_num(
                             np.divide(
-                                clipped_reads_array[sample][direction], coverage_array[sample]
+                                clipped_reads_array[sample][clipped_arrangement], coverage_array[sample]
                             )
                         )
                     )
@@ -1937,7 +1937,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                     vstack_list.append(
                         np.nan_to_num(
                             np.divide(
-                                clipped_reads_inversion_array[sample][direction], coverage_array[sample]
+                                clipped_reads_inversion_array[sample][mate_position], coverage_array[sample]
                             )
                         )
                     )
@@ -1946,7 +1946,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                     vstack_list.append(
                         np.nan_to_num(
                             np.divide(
-                                clipped_reads_duplication_array[sample][direction], coverage_array[sample]
+                                clipped_reads_duplication_array[sample][mate_position], coverage_array[sample]
                             )
                         )
                     )
@@ -1956,7 +1956,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                     vstack_list.append(
                         np.nan_to_num(
                             np.divide(
-                                clipped_reads_translocation_array[sample][direction], coverage_array[sample]
+                                clipped_reads_translocation_array[sample][orientation], coverage_array[sample]
                             )
                         )
                     )
