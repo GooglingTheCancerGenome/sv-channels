@@ -17,7 +17,8 @@ NOSV2="N2"
 
 SAMPLE_ARRAY=(${GERMLINE1} ${NOSV1})
 
-CHRARRAY=(`seq 1 22` 'X' 'Y' 'MT')
+# CHRARRAY=(`seq 1 22` 'X' 'Y' 'MT')
+CHRARRAY=('17')
 
 # Run single channel scripts (0) or ChannelMaker (1)
 RUNALL=0
