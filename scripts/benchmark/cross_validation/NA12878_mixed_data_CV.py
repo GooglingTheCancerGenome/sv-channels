@@ -591,7 +591,7 @@ def cross_validation(X, y, y_binary,
 def train_model(model, xtrain, ytrain, xval, yval, sample_weights):
 
     train_set_size = xtrain.shape[0]
-    nr_epochs = 1
+    nr_epochs = 10
 
     histories, val_accuracies, val_losses = find_architecture.train_models_on_samples(xtrain, ytrain,
                                                                                       xval, yval,
@@ -604,7 +604,8 @@ def train_model(model, xtrain, ytrain, xval, yval, sample_weights):
     # print(best_model_index, best_model_types, best_params)
 
     history = best_model.fit(xtrain, ytrain,
-                             epochs=nr_epochs, validation_data=(xval, yval),
+                             epochs=nr_epochs,
+                             validation_data=(xval, yval),
                              verbose=False,
                              # sample_weight=sample_weights,
                              shuffle=True)
