@@ -575,13 +575,41 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
 
                     for split_direction in ['left', 'right', 'D_left', 'D_right', 'I']:
                         vstack_list.append(clipped_reads_array[sample][split_direction])
+                        vstack_list.append(
+                            np.nan_to_num(
+                                np.divide(
+                                    clipped_reads_array[sample][direction], coverage_array[sample]
+                                )
+                            )
+                        )
 
                     for mate_position in ['before', 'after']:
                         vstack_list.append(clipped_reads_inversion_array[sample][mate_position])
+                        vstack_list.append(
+                            np.nan_to_num(
+                                np.divide(
+                                    clipped_reads_inversion_array[sample][direction], coverage_array[sample]
+                                )
+                            )
+                        )
                     for mate_position in ['before', 'after']:
                         vstack_list.append(clipped_reads_duplication_array[sample][mate_position])
+                        vstack_list.append(
+                            np.nan_to_num(
+                                np.divide(
+                                    clipped_reads_duplication_array[sample][direction], coverage_array[sample]
+                                )
+                            )
+                        )
                     for orientation in ['opposite', 'same']:
                         vstack_list.append(clipped_reads_translocation_array[sample][orientation])
+                        vstack_list.append(
+                            np.nan_to_num(
+                                np.divide(
+                                    clipped_reads_translocation_array[sample][direction], coverage_array[sample]
+                                )
+                            )
+                        )
 
                     for direction in ['forward', 'reverse']:
                         for clipped_arrangement in ['left', 'right', 'all']:
@@ -590,6 +618,14 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                             vstack_list.append(clipped_read_distance_median[sample][direction][clipped_arrangement])
                     for direction in ['left', 'right']:
                         vstack_list.append(split_reads_array[sample][direction])
+                        vstack_list.append(
+                            np.nan_to_num(
+                                np.divide(
+                                    split_reads_array[sample][direction], coverage_array[sample]
+                                )
+                            )
+                        )
+
                     for direction in ['left', 'right']:
                         # vstack_list.append(split_read_distance_array[sample][direction])
                         # vstack_list.append(split_read_distance_num[sample][direction])
