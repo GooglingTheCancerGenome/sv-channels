@@ -12,6 +12,8 @@ from collections import Counter
 import pyBigWig
 from functions import get_one_hot_sequence
 
+np.seterr(divide='ignore')
+
 HPC_MODE = True
 
 win_hlen = 100
@@ -578,7 +580,7 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                         vstack_list.append(
                             np.nan_to_num(
                                 np.divide(
-                                    clipped_reads_array[sample][split_direction], coverage_array[sample]
+                                    clipped_reads_array[sample][split_direction]+1, coverage_array[sample]+1
                                 )
                             )
                         )
@@ -588,7 +590,7 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                         vstack_list.append(
                             np.nan_to_num(
                                 np.divide(
-                                    clipped_reads_inversion_array[sample][mate_position], coverage_array[sample]
+                                    clipped_reads_inversion_array[sample][mate_position]+1, coverage_array[sample]+1
                                 )
                             )
                         )
@@ -597,7 +599,7 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                         vstack_list.append(
                             np.nan_to_num(
                                 np.divide(
-                                    clipped_reads_duplication_array[sample][mate_position], coverage_array[sample]
+                                    clipped_reads_duplication_array[sample][mate_position]+1, coverage_array[sample]+1
                                 )
                             )
                         )
@@ -606,7 +608,7 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                         vstack_list.append(
                             np.nan_to_num(
                                 np.divide(
-                                    clipped_reads_translocation_array[sample][orientation], coverage_array[sample]
+                                    clipped_reads_translocation_array[sample][orientation]+1, coverage_array[sample]+1
                                 )
                             )
                         )
@@ -621,7 +623,7 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                         vstack_list.append(
                             np.nan_to_num(
                                 np.divide(
-                                    split_reads_array[sample][direction], coverage_array[sample]
+                                    split_reads_array[sample][direction]+1, coverage_array[sample]+1
                                 )
                             )
                         )

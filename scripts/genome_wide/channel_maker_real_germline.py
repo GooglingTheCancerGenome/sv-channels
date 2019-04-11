@@ -24,6 +24,8 @@ from itertools import chain
 
 # import matplotlib.pyplot as plt
 
+np.seterr(divide='ignore')
+
 # Flag used to set either paths on the local machine or on the HPC
 HPC_MODE = True
 
@@ -1927,7 +1929,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                     vstack_list.append(
                         np.nan_to_num(
                             np.divide(
-                                clipped_reads_array[sample][clipped_arrangement], coverage_array[sample]
+                                clipped_reads_array[sample][clipped_arrangement]+1, coverage_array[sample]+1
                             )
                         )
                     )
@@ -1937,7 +1939,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                     vstack_list.append(
                         np.nan_to_num(
                             np.divide(
-                                clipped_reads_inversion_array[sample][mate_position], coverage_array[sample]
+                                clipped_reads_inversion_array[sample][mate_position]+1, coverage_array[sample]+1
                             )
                         )
                     )
@@ -1946,7 +1948,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                     vstack_list.append(
                         np.nan_to_num(
                             np.divide(
-                                clipped_reads_duplication_array[sample][mate_position], coverage_array[sample]
+                                clipped_reads_duplication_array[sample][mate_position]+1, coverage_array[sample]+1
                             )
                         )
                     )
@@ -1956,7 +1958,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                     vstack_list.append(
                         np.nan_to_num(
                             np.divide(
-                                clipped_reads_translocation_array[sample][orientation], coverage_array[sample]
+                                clipped_reads_translocation_array[sample][orientation]+1, coverage_array[sample]+1
                             )
                         )
                     )
@@ -1979,7 +1981,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                     vstack_list.append(
                         np.nan_to_num(
                             np.divide(
-                                split_reads_array[sample][direction], coverage_array[sample]
+                                split_reads_array[sample][direction]+1, coverage_array[sample]+1
                             )
                         )
                     )
