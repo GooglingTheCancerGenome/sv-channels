@@ -22,9 +22,14 @@ def get_split_read_positions(ibam, chrName, outFile):
 
     def append_coord(split_pos_coord, chrName, refpos, chr, pos):
 
-        if refpos < pos:
+        if chrName == chr:
+            if refpos < pos:
+                split_pos_coord.append((chrName, refpos, chr, pos))
+            else:
+                split_pos_coord.append((chr, pos, chrName, refpos))
+        elif chrName < chr:
             split_pos_coord.append((chrName, refpos, chr, pos))
-        else:
+        elif chrName > chr:
             split_pos_coord.append((chr, pos, chrName, refpos))
 
         return split_pos_coord
@@ -105,6 +110,7 @@ def get_split_read_positions(ibam, chrName, outFile):
     split_pos_coord = set(split_pos_coord)
 
     logging.info('Number of unique positions: %d' % len(split_pos_cnt))
+    logging.info('Number of unique pair of positions: %d' % len(split_pos_coord))
 
     # Write the output in pickle format
     with bz2file.BZ2File(outFile, 'wb') as f:
