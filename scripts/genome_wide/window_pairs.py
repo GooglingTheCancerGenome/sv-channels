@@ -25,7 +25,7 @@ def get_channel_dir(sample_name):
     if HPC_MODE:
 
         datapath_prefix = '/hpc/cog_bioinf/ridder/users/lsantuari'
-        channel_dir = datapath_prefix + 'Git/DeepSV_runs/' + date + '/CNN/scripts'
+        channel_dir = datapath_prefix + '/Git/DeepSV_runs/' + date + '/CNN/scripts'
     else:
         channel_dir = '/Users/lsantuari/Documents/Processed/Test/test_060219'
 
