@@ -12,11 +12,25 @@ import pickle
 import logging
 from itertools import chain
 
-#channel_dir = '/Users/lsantuari/Documents/Processed/Test/test_060219'
-channel_dir = ''
+HPC_MODE = True
+
+date = '260319'
 
 chr_list = list(map(str, np.arange(1, 23)))
 chr_list.append('X')
+
+
+def get_channel_dir(sample_name):
+
+    if HPC_MODE:
+
+        datapath_prefix = '/hpc/cog_bioinf/ridder/users/lsantuari'
+        channel_dir = datapath_prefix + '/Processed/Test/' + \
+                      date + '/TestData_' + date + '/' + sample_name + '/TrainingData/'
+    else:
+        channel_dir = '/Users/lsantuari/Documents/Processed/Test/test_060219'
+
+    return channel_dir
 
 
 def transposeDataset(X):
@@ -31,7 +45,7 @@ def transposeDataset(X):
 def load_labels(sample_name):
 
     # Load label dictionary
-    labels_file = os.path.join(channel_dir, sample_name, 'label_npy', 'labels.pickle.gz')
+    labels_file = os.path.join(get_channel_dir(sample_name), sample_name, 'label_npy', 'labels.pickle.gz')
     with gzip.GzipFile(labels_file, "rb") as f:
         labels_dict = np.load(f)
     f.close()
@@ -49,7 +63,7 @@ def load_split_read_positions(sample_name):
         logging.info('Loading SR positions for Chr%s' % chrName)
         # Load files
 
-        fn = os.path.join(channel_dir, sample_name, vec_type, chrName + '_' + vec_type + '.pbz2')
+        fn = os.path.join(get_channel_dir(sample_name), sample_name, vec_type, chrName + '_' + vec_type + '.pbz2')
 
         with bz2file.BZ2File(fn, 'rb') as f:
             positions[chrName], locations[chrName] = pickle.load(f)
@@ -66,7 +80,7 @@ def load_windows(sample_name, label_type, labels_dict):
     for i in chr_list:
 
         logging.info('Loading data for Chr%s' % i)
-        data_file = os.path.join(channel_dir, sample_name, 'channel_maker_real_germline',
+        data_file = os.path.join(get_channel_dir(sample_name), sample_name, 'channel_maker_real_germline',
                                   sample_name + '_' + str(i) + '.npy.gz')
         with gzip.GzipFile(data_file, "rb") as f:
             data_mat = np.load(f)
@@ -91,14 +105,14 @@ def load_windows(sample_name, label_type, labels_dict):
 
 def save_window_pairs(sample_name, label_type, X, y, y_binary, z):
 
-    data_output_file = os.path.join(channel_dir, '_'.join([sample_name, label_type, 'pairs']))
+    data_output_file = os.path.join(get_channel_dir(sample_name), '_'.join([sample_name, label_type, 'pairs']))
     np.savez(data_output_file, X=X, y=y, y_binary=y_binary, z=z)
     os.system('gzip -f ' + data_output_file + '.npz')
 
 
 def load_window_pairs(sample_name, label_type):
 
-    data_output_file = os.path.join(channel_dir, '_'.join([sample_name, label_type, 'pairs']))
+    data_output_file = os.path.join(get_channel_dir(sample_name), '_'.join([sample_name, label_type, 'pairs']))
 
     with gzip.GzipFile(data_output_file + '.npz.gz', 'rb') as f:
         npzfiles = np.load(f)
@@ -189,7 +203,7 @@ def main():
     parser = argparse.ArgumentParser(description='Make window pairs')
     parser.add_argument('-s', '--samplename', type=str, default='NA12878',
                         help="Specify sample name")
-    parser.add_argument('-t', '--labeltype', type=str, default='Mills2011_nanosv',
+    parser.add_argument('-t', '--labeltype', type=str, default='Mills2011',
                         help="Specify label set")
     parser.add_argument('-l', '--logfile', default='window_pairs.log',
                         help='File in which to write logs.')
