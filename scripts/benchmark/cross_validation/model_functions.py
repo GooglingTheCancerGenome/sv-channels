@@ -87,7 +87,7 @@ def create_model(X, y_binary):
 def train_model(model, xtrain, ytrain, xval, yval):
 
     train_set_size = xtrain.shape[0]
-    nr_epochs = 1
+    nr_epochs = 50
 
     histories, val_accuracies, val_losses = find_architecture.train_models_on_samples(xtrain, ytrain,
                                                                                       xval, yval,
