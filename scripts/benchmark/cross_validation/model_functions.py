@@ -166,8 +166,8 @@ def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
     write_bed(predicted, y_index, win_ids_test, class_labels)
 
     # print(y_index)
-    outdir = os.path.join('confusion_matrix')
-    create_dir(date, outdir)
+    outdir = os.path.join(date, 'confusion_matrix')
+    create_dir(outdir)
 
     confusion_matrix = pd.crosstab(pd.Series(y_index), pd.Series(predicted))
     confusion_matrix.index = [class_labels[i] for i in confusion_matrix.index]
@@ -218,8 +218,8 @@ def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
 
 def plot_precision_recall(cv_iter, mapclasses, precision, recall, average_precision, output):
 
-    outdir = os.path.join('plots')
-    create_dir(date, outdir)
+    outdir = os.path.join(date, 'plots')
+    create_dir(outdir)
 
     from itertools import cycle
     # setup plot details
