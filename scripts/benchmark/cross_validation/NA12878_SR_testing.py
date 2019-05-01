@@ -231,7 +231,7 @@ def run_cv(output):
 
         intermediate_results, metrics[str(index + 1)] = evaluate_model(model, X_test, y_test,
                                                                        y_test_binary, z_test,
-                                                                       results, index, output,
+                                                                       results, index, filename,
                                                                        train_set_size=xtrain.shape[0],
                                                                        validation_set_size=xval.shape[0],
                                                                        mapclasses=mapclasses)
