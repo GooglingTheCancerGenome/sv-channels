@@ -14,7 +14,7 @@ from itertools import chain
 
 HPC_MODE = True
 
-date = '260319'
+date = '060219'
 
 chr_list = list(map(str, np.arange(1, 23)))
 chr_list.append('X')
@@ -25,8 +25,7 @@ def get_channel_dir(sample_name):
     if HPC_MODE:
 
         datapath_prefix = '/hpc/cog_bioinf/ridder/users/lsantuari'
-        channel_dir = datapath_prefix + '/Processed/Test/' + \
-                      date + '/TestData_' + date + '/' + sample_name + '/TrainingData/'
+        channel_dir = datapath_prefix + 'Git/DeepSV_runs/' + date + '/CNN/scripts'
     else:
         channel_dir = '/Users/lsantuari/Documents/Processed/Test/test_060219'
 
