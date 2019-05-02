@@ -212,7 +212,7 @@ def run_cv(index, output):
     ytrain_binary = make_label_binary(ytrain, mapclasses)
     yval_binary = make_label_binary(yval, mapclasses)
 
-    logging.info('Test run:{0}'.format(index+1))
+    logging.info('Test run:{0}'.format(str(index+1)))
 
     # Create a new model
     model = create_model(xtrain, ytrain_binary)
