@@ -214,7 +214,7 @@ def run_cv(output):
 
     for index in np.arange(0, 10, 1):
 
-        logging.info('Test run:{0}'.format(str(index+1)))
+        logging.info('Test run:{0}'.format(str(int(index)+1)))
 
         # Create a new model
         model = create_model(xtrain, ytrain_binary)
