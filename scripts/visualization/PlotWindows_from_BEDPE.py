@@ -117,8 +117,13 @@ def data(sample_name, label_type, suffix):
 
 def load_bedpe():
 
-    input_file = '/Users/lsantuari/Documents/Processed/NA12878/'+\
-                 'IGV_snaps/SR_models/CV_results_wrong_predictions_10.bedpe'
+    if HPC_MODE:
+        input_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Git/DeepSV_runs/'+\
+                     '060219/CNN/scripts/benchmark/cross_validation/010519/'+\
+                     'predictions/CV_results_wrong_predictions_10.bedpe'
+    else:
+        input_file = '/Users/lsantuari/Documents/Processed/NA12878/'+\
+                     'IGV_snaps/SR_models/CV_results_wrong_predictions_10.bedpe'
 
     content = []
     with open(input_file)as f:
