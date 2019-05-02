@@ -46,7 +46,8 @@ HPC_MODE = True
 sample_name = 'NA12878'
 label_type = 'Mills2011'
 
-date = '260319'
+# date = '260319'
+date = '050419'
 
 if HPC_MODE:
 

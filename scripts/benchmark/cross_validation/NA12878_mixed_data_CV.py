@@ -41,7 +41,9 @@ HPC_MODE = True
 
 sample_name = 'NA12878'
 # date = '270219' # clipped reads
-date = '260319' # split reads
+# date = '260319' # split reads
+date = '050419' # split reads
+
 label_type = 'Mills2011_nanosv'
 datapath_prefix = '/hpc/cog_bioinf/ridder/users/lsantuari' if HPC_MODE else '/Users/lsantuari/Documents'
 datapath_training = datapath_prefix + '/Processed/Test/' + \
@@ -124,6 +126,7 @@ def get_channel_labels():
 
     for k, l in enumerate(labels):
         logging.info(str(k) + ':' + l)
+        print(str(k) + ':' + l)
 
     return labels
 
@@ -475,6 +478,7 @@ def remove_label(training_data, training_labels, label='UK'):
 
 
 def load_data(datapath, channels):
+
     data_output_file = datapath + sample_name + '_' + label_type + '_channels.npy.gz'
     with gzip.GzipFile(data_output_file, "rb") as f:
         X = np.load(f)
@@ -577,7 +581,7 @@ def cross_validation(X, y, y_binary,
         # Create a new model
         model = create_model(xtrain, ytrain_binary)
 
-        # Debug message I guess
+        # Debug message
         print("Training new iteration on " + str(xtrain.shape[0]) + " training samples, " +
               str(xval.shape[0]) + " validation samples, this may take a while...")
 
@@ -901,7 +905,8 @@ def main():
         filemode='w',
         level=logging.INFO)
 
-    mixed_data(output=args.output, data_mode=args.mode)
+    #mixed_data(output=args.output, data_mode=args.mode)
+    get_channel_labels()
 
 
 if __name__ == '__main__':
