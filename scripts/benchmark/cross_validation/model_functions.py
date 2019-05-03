@@ -120,7 +120,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
 
         outdir = os.path.join(date, 'predictions')
         create_dir(outdir)
-        outfile = os.path.join(outdir, output + '_wrong_predictions_' + str(cv_iter + 1) + '.bedpe')
+        outfile = os.path.join(outdir, output + '_wrong_predictions_' + str(int(cv_iter) + 1) + '.bedpe')
 
         lines = []
 
@@ -155,7 +155,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
     # save model
     outdir = os.path.join(date, 'models')
     create_dir(outdir)
-    model.save(os.path.join(outdir, '{0}_model_{1}.hdf5'.format(output, str(cv_iter + 1))))
+    model.save(os.path.join(outdir, '{0}_model_{1}.hdf5'.format(output, str(int(cv_iter) + 1))))
 
     # columns are predicted, rows are truth
     predicted = probs.argmax(axis=1)
@@ -175,7 +175,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
     confusion_matrix.columns = [class_labels[i] for i in confusion_matrix.columns]
     confusion_matrix.reindex(columns=[l for l in class_labels], fill_value=0)
     confusion_matrix.to_csv(
-        os.path.join(outdir, '{0}_confusion_matrix_{1}.csv'.format(output, str(cv_iter + 1))), sep='\t'
+        os.path.join(outdir, '{0}_confusion_matrix_{1}.csv'.format(output, str(int(cv_iter) + 1))), sep='\t'
     )
 
     # For each class
@@ -258,6 +258,6 @@ def plot_precision_recall(cv_iter, mapclasses, precision, recall, average_precis
     plt.title('Extension of Precision-Recall curve to multi-class')
     plt.legend(lines, labels, loc=(0, -.38), prop=dict(size=14))
 
-    plt.savefig(os.path.join(outdir, '{0}_PrecRec_{1}.png'.format(output, str(cv_iter + 1))),
+    plt.savefig(os.path.join(outdir, '{0}_PrecRec_{1}.png'.format(output, str(int(cv_iter) + 1))),
                 bbox_inches='tight')
     plt.close()
