@@ -119,11 +119,11 @@ def load_bedpe():
 
     if HPC_MODE:
         input_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Git/DeepSV_runs/'+\
-                     '060219/CNN/scripts/benchmark/cross_validation/010519/'+\
-                     'predictions/CV_results_wrong_predictions_10.bedpe'
+                     '060219/CNN/scripts/benchmark/cross_validation/020519/'+\
+                     'predictions/CV_results_wrong_predictions_1.bedpe'
     else:
         input_file = '/Users/lsantuari/Documents/Processed/NA12878/'+\
-                     'IGV_snaps/SR_models/CV_results_wrong_predictions_10.bedpe'
+                     'IGV_snaps/SR_models/020519/CV_results_wrong_predictions_1.bedpe'
 
     content = []
     with open(input_file)as f:
@@ -178,7 +178,7 @@ def main():
 
         pos, lab = b
         idx, = np.where(z == pos)
-        plot_channels(X[idx,:,:], z[idx], l)
+        plot_channels(X[idx,:,:], z[idx], lab)
 
 
 if __name__ == '__main__':
