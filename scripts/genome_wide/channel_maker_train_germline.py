@@ -198,6 +198,13 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
     def get_win_id(chr, position):
         return {'chromosome': chr, 'position': position}
 
+    def get_frequency(reads_array, coverage_array):
+
+        frequency_array = np.zeros(win_len, dtype=np.uint32)
+        idx, = np.where(reads_array != 0)
+        frequency_array[idx] = reads_array[idx]/coverage_array[idx]
+        return frequency_array
+
     # Prefix for the relative path
     workdir = 'Training_' + SVmode + '/'
     if not HPC_MODE:
@@ -575,42 +582,30 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
 
                     vstack_list.append(read_quality_array[sample])
 
-                    for split_direction in ['left', 'right', 'D_left', 'D_right', 'I']:
-                        vstack_list.append(clipped_reads_array[sample][split_direction])
+                    for clipped_arrangement in ['left', 'right', 'D_left', 'D_right', 'I']:
+                        vstack_list.append(clipped_reads_array[sample][clipped_arrangement])
                         vstack_list.append(
-                            np.nan_to_num(
-                                np.divide(
-                                    clipped_reads_array[sample][split_direction]+1, coverage_array[sample]+1
-                                )
-                            )
+                            get_frequency(clipped_reads_array[sample][clipped_arrangement],
+                                          coverage_array[sample])
                         )
 
                     for mate_position in ['before', 'after']:
                         vstack_list.append(clipped_reads_inversion_array[sample][mate_position])
                         vstack_list.append(
-                            np.nan_to_num(
-                                np.divide(
-                                    clipped_reads_inversion_array[sample][mate_position]+1, coverage_array[sample]+1
-                                )
-                            )
+                            get_frequency(clipped_reads_inversion_array[sample][mate_position],
+                                          coverage_array[sample])
                         )
                     for mate_position in ['before', 'after']:
                         vstack_list.append(clipped_reads_duplication_array[sample][mate_position])
                         vstack_list.append(
-                            np.nan_to_num(
-                                np.divide(
-                                    clipped_reads_duplication_array[sample][mate_position]+1, coverage_array[sample]+1
-                                )
-                            )
+                            get_frequency(clipped_reads_duplication_array[sample][mate_position],
+                                          coverage_array[sample])
                         )
                     for orientation in ['opposite', 'same']:
                         vstack_list.append(clipped_reads_translocation_array[sample][orientation])
                         vstack_list.append(
-                            np.nan_to_num(
-                                np.divide(
-                                    clipped_reads_translocation_array[sample][orientation]+1, coverage_array[sample]+1
-                                )
-                            )
+                            get_frequency(clipped_reads_translocation_array[sample][orientation],
+                                          coverage_array[sample])
                         )
 
                     for direction in ['forward', 'reverse']:
@@ -621,11 +616,8 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                     for direction in ['left', 'right']:
                         vstack_list.append(split_reads_array[sample][direction])
                         vstack_list.append(
-                            np.nan_to_num(
-                                np.divide(
-                                    split_reads_array[sample][direction]+1, coverage_array[sample]+1
-                                )
-                            )
+                            get_frequency(split_reads_array[sample][direction],
+                                          coverage_array[sample])
                         )
 
                     for direction in ['left', 'right']:
