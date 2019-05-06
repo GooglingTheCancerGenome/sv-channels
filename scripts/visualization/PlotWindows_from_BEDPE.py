@@ -102,6 +102,7 @@ def get_channel_labels():
 
 def data(sample_name, label_type, suffix):
 
+    print('Load data...')
     data_output_file = os.path.join(channel_dir, '_'.join([sample_name, label_type, suffix]))
 
     with gzip.GzipFile(data_output_file + '.npz.gz', 'rb') as f:
@@ -112,6 +113,7 @@ def data(sample_name, label_type, suffix):
         y_binary = npzfiles['y_binary']
         z = npzfiles['z']
 
+    print('Data loaded...')
     return X, y, y_binary, z
 
 
@@ -137,33 +139,34 @@ def load_bedpe():
 
 def plot_channels(X, z, l):
 
+    title_plot = z.replace(':', '-')+' '+l.replace(':', '-')
+    print('Plotting %s' % title_plot)
+
     number_channels = X.shape[1]
-
+    print(number_channels)
     label = get_channel_labels()
-
-    plt.title(z+' '+l)
+    print(len(label))
 
     fig = plt.figure(figsize=(6, 4))
-    for i in range(7, 8):
-        for j in range(number_channels-1, -1, -1):
-            shift = 0
-            start = 0
-            if sum(X[i][j]) != 0:
-                X_win = (X[i][j]-min(X[i][j]))/max(X[i][j])
+    fig.suptitle(str(z)+' '+l, fontsize=20)
 
-            else:
-                X_win = X[i][j]
+    for j in range(number_channels-1, -1, -1):
 
-            Z = [x + j+1 for x in X_win]
-            plt.plot(Z, label=label[j], linewidth=0.9)
-            plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., prop={'size': 5})
-            plt.yticks(range(0, len(label)+1, 1))
-            plt.tick_params(axis='both', which='major', labelsize=5)
-            plt.axvline(x=200, color='r', linewidth=0.05, alpha=0.5)
-            plt.axvline(x=209, color='r', linewidth=0.05, alpha=0.5)
+        if sum(X[:,j]) != 0:
+            X_win = (X[:,j]-min(X[:,j]))/max(X[:,j])
+        else:
+            X_win = X[:,j]
 
-        plt.savefig('plots/Channels_'+z+' '+l+'.png', format='png', dpi=300, bbox_inches='tight')
-        plt.show()
+        Z = [x + j+1 for x in X_win]
+        plt.plot(Z, label=label[j], linewidth=0.9)
+        plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., prop={'size': 5})
+        plt.yticks(range(0, len(label)+1, 1))
+        plt.tick_params(axis='both', which='major', labelsize=5)
+        plt.axvline(x=200, color='r', linewidth=0.05, alpha=0.5)
+        plt.axvline(x=209, color='r', linewidth=0.05, alpha=0.5)
+
+    plt.savefig('plots/'+title_plot+'.png', format='png', dpi=300, bbox_inches='tight')
+    plt.show()
     plt.close()
 
 
@@ -172,7 +175,7 @@ def main():
     create_dir('plots')
 
     bedpe_lines = load_bedpe()
-    X, y, y_binary, z = data('NA12878', 'Mills2011', 'pairs')
+    X, y, y_binary, z = data('NA12878', 'Mills2011', 'pairs_test')
 
     for b in bedpe_lines:
 
