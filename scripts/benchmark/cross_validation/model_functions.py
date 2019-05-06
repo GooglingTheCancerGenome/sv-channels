@@ -114,12 +114,13 @@ def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
                    results, cv_iter, output,
                    train_set_size, validation_set_size, mapclasses):
 
-    def write_bed(predicted, y_index, win_ids_test, class_labels):
+    def write_bed_wrong_predictions(predicted, y_index, win_ids_test, class_labels):
 
         #print(class_labels)
 
         outdir = os.path.join(date, 'predictions')
         create_dir(outdir)
+
         outfile = os.path.join(outdir, output + '_wrong_predictions_' + str(int(cv_iter) + 1) + '.bedpe')
 
         lines = []
@@ -141,6 +142,35 @@ def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
                 f.write(l)
         finally:
             f.close()
+
+    def write_bed_predictions(predicted, y_index, win_ids_test, class_labels):
+
+        # print(class_labels)
+
+        outdir = os.path.join(date, 'predictions')
+        create_dir(outdir)
+
+        outfile = os.path.join(outdir, output + '_DEL_predicted_' + str(int(cv_iter) + 1) + '.bedpe')
+
+        lines = []
+
+        for p, r, w in zip(predicted, y_index, win_ids_test):
+
+            if class_labels[p] == 'DEL':
+                chr1, pos1, chr2, pos2 = unfold_win_id(w)
+                # print('{0}_{1}:{2}_{3}'.format(chr1, pos1, chr2, pos2))
+                lines.append('\t'.join([str(chr1), str(pos1), str(int(pos1) + 1),
+                                        str(chr2), str(pos2), str(int(pos2) + 1),
+                                        'PRED:' + class_labels[p] + '_TRUE:' + class_labels[r]]) + '\n')
+
+        f = open(outfile, 'w')
+        try:
+            # use set to make lines unique
+            for l in lines:
+                f.write(l)
+        finally:
+            f.close()
+
 
     dict_sorted = sorted(mapclasses.items(), key=lambda x: x[1])
     # print(dict_sorted)
@@ -164,7 +194,8 @@ def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
     y_index = ytest_binary.argmax(axis=1)
 
     # write predictions
-    write_bed(predicted, y_index, win_ids_test, class_labels)
+    write_bed_wrong_predictions(predicted, y_index, win_ids_test, class_labels)
+    write_bed_predictions(predicted, y_index, win_ids_test, class_labels)
 
     # print(y_index)
     outdir = os.path.join(date, 'confusion_matrix')
