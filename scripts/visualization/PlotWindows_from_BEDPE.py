@@ -139,13 +139,13 @@ def load_bedpe():
 
 def plot_channels(X, z, l):
 
-    title_plot = str(z).replace(':', '-')+' '+l.replace(':', '-')
+    title_plot = str(z[0]).replace(':', '-')+' '+l.replace(':', '-')
     print('Plotting %s' % title_plot)
 
     number_channels = X.shape[1]
-    print(number_channels)
+    #print(number_channels)
     label = get_channel_labels()
-    print(len(label))
+    #print(len(label))
 
     fig = plt.figure(figsize=(6, 4))
     fig.suptitle(str(z)+' '+l, fontsize=20)
