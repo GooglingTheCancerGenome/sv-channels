@@ -120,8 +120,8 @@ def data(sample_name, label_type, suffix):
 def load_bedpe():
 
     if HPC_MODE:
-        input_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Git/DeepSV_runs/'+\
-                     '060219/CNN/scripts/benchmark/cross_validation/020519/'+\
+        input_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Git/DeepSV_runs/' + \
+                     '060219/CNN/scripts/benchmark/cross_validation/020519/' + \
                      'predictions/CV_results_wrong_predictions_1.bedpe'
     else:
         input_file = '/Users/lsantuari/Documents/Processed/NA12878/'+\
@@ -131,9 +131,9 @@ def load_bedpe():
     with open(input_file)as f:
         for line in f:
             l = line.strip().split()
-            l = ('_'.join([l[0], l[1], l[4]]), l[6])
+            l = ('_'.join([l[0], l[1]]) + ':' + '_'.join([l[3], l[4]]), l[6])
             content.append(l)
-    #print(content)
+    # print(content)
     return content
 
 
@@ -180,7 +180,9 @@ def main():
     for b in bedpe_lines:
 
         pos, lab = b
+        # print('%s => %s' % (pos, lab))
         idx, = np.where(z == pos)
+        # print('%s' % (idx))
         plot_channels(X[idx][0], z[idx], lab)
 
 
