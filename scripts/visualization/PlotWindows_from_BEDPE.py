@@ -166,7 +166,7 @@ def plot_channels(X, z, l):
         plt.axvline(x=209, color='r', linewidth=0.05, alpha=0.5)
 
     plt.savefig('plots/'+title_plot+'.png', format='png', dpi=300, bbox_inches='tight')
-    plt.show()
+    # plt.show()
     plt.close()
 
 
@@ -181,7 +181,7 @@ def main():
 
         pos, lab = b
         idx, = np.where(z == pos)
-        plot_channels(X[idx,:,:], z[idx], lab)
+        plot_channels(X[idx][0], z[idx], lab)
 
 
 if __name__ == '__main__':
