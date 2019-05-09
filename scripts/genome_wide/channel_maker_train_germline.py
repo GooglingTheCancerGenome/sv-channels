@@ -19,7 +19,7 @@ HPC_MODE = True
 win_hlen = 100
 win_len = win_hlen * 2
 # Minimum clipped read support to consider
-min_cr_support = 3
+min_cr_support = 1
 
 CANDIDATE_POSITIONS = "SR"
 

@@ -32,7 +32,7 @@ HPC_MODE = True
 CANDIDATE_POSITIONS = "SR"
 
 # Only clipped read positions supported by at least min_cr_support clipped reads are considered
-min_cr_support = 3
+min_cr_support = 1
 # Window half length
 win_hlen = 100
 # Window size
