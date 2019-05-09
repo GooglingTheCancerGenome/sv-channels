@@ -36,6 +36,14 @@ if [ ${PRGARG} == 'coverage' ]; then
                 --out ${OUTARG}"/"${PRGARG}"/"${CHRARG}"_${PRGARG}.npy.bz2" \
                 --logfile ${OUTARG}"/"${PRGARG}"/"${CHRARG}"_${PRGARG}.log"
 
+# snv.py will output file with extension '.npz.gz'
+elif [ ${PRGARG} == 'snv' ]; then
+        python "genome_wide/${PRGARG}.py" \
+                --bam ${BAMARG} \
+                --chr ${CHRARG} \
+                --out ${OUTARG}"/"${PRGARG}"/"${CHRARG}"_${PRGARG}.npz" \
+                --logfile ${OUTARG}"/"${PRGARG}"/"${CHRARG}"_${PRGARG}.log"
+
 # ChannelMaker for real data. Flag 'train' is only used to output the NoSV category for training, that for now it is
 # not implemented in the channel_make_train.py script
 elif [ ${PRGARG} == 'channel_maker_real_germline' ]; then

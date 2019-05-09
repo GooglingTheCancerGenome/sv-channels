@@ -38,7 +38,7 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
     # for CHROMOSOME in ${CHRARRAY[@]}; do
     for CHROMOSOME in '1'; do
         #for PRG in clipped_read_pos coverage clipped_read_distance clipped_reads split_read_distance; do
-	for PRG in clipped_reads; do
+	for PRG in snv; do
             JOB_NAME=$SAMPLE"_"$CHROMOSOME"_"${PRG}
 
             qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=$OUTDIR \
