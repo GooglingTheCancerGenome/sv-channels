@@ -24,6 +24,15 @@ def get_snvs(ibam, chrName, outFile):
             genome = twobit.TwoBitFile('/Users/lsantuari/Documents/Data/GiaB/reference/hg19.2bit')
         return genome
 
+    def get_snv_number(query_seq_list, reference_base):
+
+        if len(query_seq_list) > 0:
+            cnt = Counter(list(map(lambda x:x.upper(), query_seq_list)))
+            return cnt['A']+cnt['T']+cnt['C']+cnt['G']-cnt[reference_base]
+        else:
+            return 0
+
+
     # Check if the BAM file in input exists
     assert os.path.isfile(ibam)
 
@@ -40,13 +49,15 @@ def get_snvs(ibam, chrName, outFile):
     # Fetch reads over the entire chromosome between positions [0, chrLen]
     start_pos = 0
     stop_pos = chrLen
+    #stop_pos = 10000000
 
     reference_sequence = get_2bit_genome()
 
-    snv_array = np.zeros(shape=(11, chrLen), dtype=float)
-    snv_list = ['BQ', 'nALN', 'nSEG', 'A', 'a', 'C', 'c', 'G', 'g', 'T', 't']
-    snv_dict = {v:n for n, v in enumerate(snv_list)}
-
+    # snv_list = ['BQ', 'nALN', 'nSEG', 'A', 'a', 'C', 'c', 'G', 'g', 'T', 't']
+    snv_list = ['BQ', 'SNV']
+    snv_array = np.zeros(shape=(len(snv_list), stop_pos+1), dtype=float)
+    snv_dict = {v: n for n, v in enumerate(snv_list)}
+    # print(snv_dict)
     # Print every n_r alignments processed
     n_r = 10 ** 6
     # Record the current time
@@ -56,18 +67,22 @@ def get_snvs(ibam, chrName, outFile):
         # pileupcolumn.set_min_base_quality(0)
         # print("\ncoverage at base %s = %s" %
         #       (pileupcolumn.pos, pileupcolumn.nsegments))
-        if pileupcolumn.nsegments > 0:
+        if pileupcolumn.nsegments > 0 and start_pos <= pileupcolumn.pos <= stop_pos:
             quals = pileupcolumn.get_query_qualities()
             if len(quals) > 0:
                 snv_array[snv_dict['BQ'], pileupcolumn.pos] = np.median(pileupcolumn.get_query_qualities())
-            snv_array[snv_dict['nALN'], pileupcolumn.pos] = pileupcolumn.get_num_aligned()
-            snv_array[snv_dict['nSEG'], pileupcolumn.pos] = pileupcolumn.nsegments
+            # snv_array[snv_dict['nALN'], pileupcolumn.pos] = pileupcolumn.get_num_aligned()
+            # snv_array[snv_dict['nSEG'], pileupcolumn.pos] = pileupcolumn.nsegments
 
-            cnt = Counter(pileupcolumn.get_query_sequences())
+            query_seq_list = pileupcolumn.get_query_sequences()
+            snv_number = get_snv_number(query_seq_list, reference_sequence['chr' + chrName][pileupcolumn.pos])
+            snv_array[snv_dict['SNV'], pileupcolumn.pos] = snv_number/pileupcolumn.nsegments \
+                if pileupcolumn.nsegments !=0 else 0
+
             # print(cnt)
-            for k in cnt.keys():
-                if k in snv_list and k.upper() != reference_sequence['chr' + chrName][pileupcolumn.pos]:
-                    snv_array[snv_dict[k], pileupcolumn.pos] = cnt[k]
+            # for k in cnt.keys():
+            #     if k in snv_list and k.upper() != reference_sequence['chr' + chrName][pileupcolumn.pos]:
+            #         snv_array[snv_dict[k], pileupcolumn.pos] = cnt[k]
 
 
     # Close the BAM file
@@ -93,7 +108,7 @@ def main():
     # Default chromosome is 17 for the artificial data
 
     # Parse the arguments of the script
-    parser = argparse.ArgumentParser(description='Get split reads positions')
+    parser = argparse.ArgumentParser(description='Get snv info')
     parser.add_argument('-b', '--bam', type=str,
                         default=inputBAM,
                         help="Specify input file (BAM)")
