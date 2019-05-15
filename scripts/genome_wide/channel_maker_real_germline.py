@@ -21,22 +21,29 @@ import pandas as pd
 import pyBigWig
 from functions import get_one_hot_sequence, is_outlier
 from itertools import chain
+import json
 
 # import matplotlib.pyplot as plt
 
 np.seterr(divide='ignore')
 
 # Flag used to set either paths on the local machine or on the HPC
-HPC_MODE = True
+# HPC_MODE = True
 
-CANDIDATE_POSITIONS = "SR"
+# CANDIDATE_POSITIONS = "SR"
 
 # Only clipped read positions supported by at least min_cr_support clipped reads are considered
-min_cr_support = 1
+# min_cr_support = 3
 # Window half length
-win_hlen = 100
+# win_hlen = 100
+
+with open('parameters.json', 'r') as f:
+    config = json.load(f)
+
+HPC_MODE = config["DEFAULT"]["HPC_MODE"]
+CANDIDATE_POSITIONS = config["DEFAULT"]["CANDIDATE_POSITIONS"]
 # Window size
-win_len = win_hlen * 2
+win_len = config["DEFAULT"]["WIN_HLEN"] * 2
 
 
 class SVRecord_SUR:
@@ -1382,7 +1389,6 @@ def load_NoCR_positions():
 
 
 def clipped_read_positions_to_bed(sampleName, candpos):
-
     chrlist = list(map(str, range(1, 23)))
     chrlist.extend(['X', 'Y'])
     # print(chrlist)
@@ -1434,7 +1440,6 @@ def nanosv_vcf_to_bed(sampleName):
 
 
 def get_mappability_bigwig():
-
     path = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/Mappability/' if HPC_MODE \
         else '/Users/lsantuari/Documents/Data/GEM'
     bw = pyBigWig.open(os.path.join(path, "GRCh37.151mer.bw"))
@@ -1458,7 +1463,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
         frequency_array = np.zeros(win_len, dtype=np.uint32)
         idx, = np.where(reads_array != 0)
-        frequency_array[idx] = reads_array[idx]/coverage_array[idx]
+        frequency_array[idx] = reads_array[idx] / coverage_array[idx]
         return frequency_array
 
     # List where to store the channel vstacks
@@ -1502,6 +1507,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
         coverage_file = dict()
         split_read_distance_file = dict()
         clipped_pos_cnt = dict()
+        snv_file = dict()
 
         for chrName in chrList:
 
@@ -1510,6 +1516,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
             clipped_reads_file[chrName] = 'clipped_reads.pbz2'
             coverage_file[chrName] = 'coverage.npy.bz2'
             split_read_distance_file[chrName] = 'split_read_distance.pbz2'
+            # snv_file[chrName] = 'snv.npz.gz'
 
             # Check file existence
             assert os.path.isfile(clipped_read_pos_file[chrName])
@@ -1517,6 +1524,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
             assert os.path.isfile(clipped_reads_file[chrName])
             assert os.path.isfile(coverage_file[chrName])
             assert os.path.isfile(split_read_distance_file[chrName])
+            # assert os.path.isfile(snv_file[chrName])
 
             logging.info('Reading clipped read positions')
             with bz2file.BZ2File(clipped_read_pos_file[chrName], 'rb') as f:
@@ -1541,6 +1549,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
         coverage_file = dict()
         split_read_distance_file = dict()
         clipped_pos_cnt = dict()
+        snv_file = dict()
 
         for chrName in chrList:
 
@@ -1556,6 +1565,8 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
             coverage_file[chrName] = 'coverage/' + chrName + '_coverage.npy.bz2'
             # File with the split reads and split read distance, output of the split_read_distance script
             split_read_distance_file[chrName] = 'split_read_distance/' + chrName + '_split_read_distance.pbz2'
+            # File with SNV information, output of the snv script
+            snv_file[chrName] = 'snv/' + chrName + '_snv.npz.gz'
 
             # Check file existence
             # print('Checking file: %s' % clipped_read_pos_file[chrName])
@@ -1569,6 +1580,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                 assert os.path.isfile(prefix_train + sample + '/' + clipped_reads_file[chrName])
                 assert os.path.isfile(prefix_train + sample + '/' + coverage_file[chrName])
                 assert os.path.isfile(prefix_train + sample + '/' + split_read_distance_file[chrName])
+                # assert os.path.isfile(prefix_train + sample + '/' + snv_file[chrName])
 
             logging.info('Chromosome %s' % chrName)
 
@@ -1655,6 +1667,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
     coverage = dict()
     split_reads = dict()
     split_read_distance = dict()
+    snv = dict()
 
     outliers = dict()
 
@@ -1673,6 +1686,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
         coverage[sample] = dict()
         split_reads[sample] = dict()
         split_read_distance[sample] = dict()
+        snv[sample] = dict()
 
         outliers[sample] = dict()
 
@@ -1706,6 +1720,12 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
             with bz2file.BZ2File(prefix + split_read_distance_file[chrName], 'rb') as f:
                 split_read_distance[sample][chrName], split_reads[sample][chrName] = pickle.load(f)
             logging.info('End of reading')
+
+            # logging.info('Reading SNVs')
+            # with gzip.GzipFile(prefix + snv_file[chrName], 'rb') as f:
+            #     npzfiles = np.load(f)
+            #     snv = npzfiles['snv_array']
+            # logging.info('End of reading')
 
             logging.info('Finding outliers')
             outliers[sample][chrName] = dict()
@@ -1744,12 +1764,15 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
     clipped_reads_translocation_array = dict()
 
     coverage_array = dict()
+    discordant_coverage_array = dict()
 
     split_read_distance_array = dict()
     split_read_distance_num = dict()
     split_read_distance_median = dict()
 
     split_reads_array = dict()
+
+    snv_array = dict()
 
     gc_array = dict()
     mappability_array = dict()
@@ -1887,8 +1910,11 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                                 clipped_reads_translocation[sample][chrName][orientation][pos]
 
                 # coverage
-                coverage_array[sample] = coverage[sample][chrName][start_win:end_win]
+                coverage_array[sample] = coverage[sample][chrName][0,start_win:end_win]
+                discordant_coverage_array[sample] = coverage[sample][chrName][1, start_win:end_win]
+
                 assert len(coverage_array[sample]) == win_len
+                assert len(discordant_coverage_array[sample]) == win_len
 
                 # split read distance
                 split_read_distance_array[sample] = dict()
@@ -1922,12 +1948,15 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
             mappability_array = bw_map.values(chrName, start_win, end_win)
             assert len(mappability_array) == win_len
 
+            # snv_array = snv[chrName][:,start_win:end_win]
+
             # Fill the numpy vstack
             vstack_list = []
             for sample in sample_list:
                 # logging.info("Considering sample %s" % sample)
 
                 vstack_list.append(coverage_array[sample])
+                vstack_list.append(discordant_coverage_array[sample])
 
                 vstack_list.append(read_quality_array[sample])
 
@@ -1965,11 +1994,11 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                         # vstack_list.append(
                         #     clipped_read_distance_num[sample][direction][clipped_arrangement])
 
-                        vstack_list.append(
-                            clipped_read_distance_median[sample][direction][clipped_arrangement])
-
                         # vstack_list.append(
-                        #     clipped_read_distance_outlier[sample][direction][clipped_arrangement])
+                        #     clipped_read_distance_median[sample][direction][clipped_arrangement])
+
+                        vstack_list.append(
+                            clipped_read_distance_outlier[sample][direction][clipped_arrangement])
 
                 for direction in ['left', 'right']:
                     vstack_list.append(split_reads_array[sample][direction])
@@ -1991,6 +2020,9 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                 one_hot_n = get_one_hot_sequence(chrName, start_win, end_win, nuc, HPC_MODE)
                 assert len(one_hot_n) == win_len
                 vstack_list.append(one_hot_n)
+
+            # append the SNV information
+            # vstack_list.append(snv_array)
 
             # logging.info("Shape of channel matrix: %s" % str(ch_vstack.shape))
             ch_vstack = np.vstack(vstack_list)

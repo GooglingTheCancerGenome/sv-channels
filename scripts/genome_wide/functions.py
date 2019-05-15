@@ -137,9 +137,7 @@ def get_read_mate(read, bamfile):
     return None
 
 
-#Return a one-hot encoding for the chromosome region chr:start-stop
-# with Ns encoded as 1 and other chromosomes encoded as 0
-def get_one_hot_sequence(chrname, start, stop, nuc, HPC_MODE):
+def get_reference_sequence(HPC_MODE):
 
     if HPC_MODE:
         # Path on the HPC of the 2bit version of the human reference genome (hg19)
@@ -147,6 +145,25 @@ def get_one_hot_sequence(chrname, start, stop, nuc, HPC_MODE):
     else:
         # Path on the local machine of the 2bit version of the human reference genome (hg19)
         genome = twobit.TwoBitFile('/Users/lsantuari/Documents/Data/GiaB/reference/hg19.2bit')
+
+    return genome
+
+
+def is_flanked_by_n(chrname, pos, HPC_MODE):
+
+    genome = get_reference_sequence(HPC_MODE)
+
+    if "N" in genome['chr' + chrname][pos-1:pos+1].upper():
+        return True
+    else:
+        return False
+
+
+#Return a one-hot encoding for the chromosome region chr:start-stop
+# with Ns encoded as 1 and other chromosomes encoded as 0
+def get_one_hot_sequence(chrname, start, stop, nuc, HPC_MODE):
+
+    genome = get_reference_sequence(HPC_MODE)
 
     #ltrdict = {'a': 1, 'c': 2, 'g': 3, 't': 4, 'n': 0}
 
