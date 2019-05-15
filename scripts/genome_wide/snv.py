@@ -11,7 +11,10 @@ import functions as fun
 import numpy as np
 import twobitreader as twobit
 
-HPC_MODE = True
+with open('parameters.json', 'r') as f:
+    config = json.load(f)
+
+HPC_MODE = config["DEFAULT"]["HPC_MODE"]
 
 def get_snvs(ibam, chrName, outFile):
 
@@ -49,7 +52,7 @@ def get_snvs(ibam, chrName, outFile):
     # Fetch reads over the entire chromosome between positions [0, chrLen]
     start_pos = 0
     stop_pos = chrLen
-    #stop_pos = 10000000
+    # stop_pos = 10000000
 
     reference_sequence = get_2bit_genome()
 

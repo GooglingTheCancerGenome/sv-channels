@@ -1,0 +1,8 @@
+{
+  "DEFAULT": {
+    "HPC_MODE": false,
+    "CANDIDATE_POSITIONS" : "SR",
+    "MIN_SUPPORT": 3,
+    "WIN_HLEN": 100
+  }
+}
