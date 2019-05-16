@@ -8,9 +8,8 @@ import pickle
 from time import time
 import numpy as np
 import logging
-from functions import is_clipped, is_left_clipped, is_right_clipped, has_indels, get_indels
+from functions import is_clipped, is_left_clipped, is_right_clipped, has_indels, get_indels, get_reference_sequence
 from collections import defaultdict
-
 
 def get_clipped_reads(ibam, chrName, outFile):
     '''
@@ -26,6 +25,8 @@ def get_clipped_reads(ibam, chrName, outFile):
 
     # Minimum read mapping quality to consider
     minMAPQ = 30
+
+    genome = get_reference_sequence()
 
     # Dictionary to store number of clipped reads per position
     clipped_reads = dict()
@@ -191,6 +192,8 @@ def get_clipped_reads(ibam, chrName, outFile):
     #                 if clipped_reads_inversion[mate_position][pos] != 0])
 
     read_quality = np.divide(read_quality_sum, read_quality_count, where=read_quality_count!=0)
+    # where there are no reads, use median mapping quality
+    read_quality[np.where(read_quality_count==0)] = np.median(read_quality)
 
     # save clipped reads dictionary
     with bz2file.BZ2File(outFile, 'wb') as f:
