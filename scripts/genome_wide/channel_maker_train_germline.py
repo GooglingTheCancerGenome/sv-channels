@@ -10,18 +10,20 @@ import logging
 import statistics
 from collections import Counter
 import pyBigWig
-from functions import get_one_hot_sequence
+from functions import get_one_hot_sequence, is_outlier
+import json
 
 np.seterr(divide='ignore')
 
-HPC_MODE = True
+with open('./genome_wide/parameters.json', 'r') as f:
+    config = json.load(f)
 
-win_hlen = 100
-win_len = win_hlen * 2
-# Minimum clipped read support to consider
-min_cr_support = 1
+HPC_MODE = config["DEFAULT"]["HPC_MODE"]
+CANDIDATE_POSITIONS = config["DEFAULT"]["CANDIDATE_POSITIONS"]
+# Window size
+win_hlen = config["DEFAULT"]["WIN_HLEN"]
+win_len = config["DEFAULT"]["WIN_HLEN"] * 2
 
-CANDIDATE_POSITIONS = "SR"
 
 
 def create_dir(directory):
@@ -37,23 +39,15 @@ def create_dir(directory):
             raise
 
 
-def get_gc_bigwig():
-    '''
-    returns a BigWig file for the GC track of the hg19 genome release using 5 bp sliding window
-    :return: bigWigFile
-    '''
-
-    bw = pyBigWig.open("/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/UCSC/hg19/hg19.gc5Base.bw")
-    return bw
+# def get_gc_bigwig():
+#     bw = pyBigWig.open("/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/UCSC/hg19/hg19.gc5Base.bw")
+#     return bw
 
 
 def get_mappability_bigwig():
-    '''
-    returns a BigWig file for the mappability track of the GRCh37 genome release generated using GEM mappability
-    for 151 bp reads and maximum 6 mismatches
-    :return: bigWigFile
-    '''
-    bw = pyBigWig.open("/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/Mappability/GRCh37.151mer.bw")
+    path = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/Mappability/' if HPC_MODE \
+        else '/Users/lsantuari/Documents/Data/GEM'
+    bw = pyBigWig.open(os.path.join(path, "GRCh37.151mer.bw"))
     return bw
 
 
@@ -228,7 +222,7 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
         chrLen[chrName] = [i['LN'] for i in header_dict['SQ'] if i['SN'] == chrName][0]
 
     # Get GC BigWig
-    bw_gc = get_gc_bigwig()
+    # bw_gc = get_gc_bigwig()
     # Get Mappability BigWig
     bw_map = get_mappability_bigwig()
 
@@ -353,6 +347,20 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                 split_read_distance[sample][chrName], split_reads[sample][chrName] = pickle.load(f)
             logging.info('End of reading')
 
+            logging.info('Finding outliers')
+            outliers[sample][chrName] = dict()
+            for direction in ['forward', 'reverse']:
+                outliers[sample][chrName][direction] = dict()
+                for clipped_arrangement in ['left', 'right', 'all']:
+                    points = np.array(list(chain.from_iterable(
+                        clipped_read_distance[sample][chrName][direction][clipped_arrangement].values()
+                    )))
+                    outlier_vec = is_outlier(points)
+                    outliers[sample][chrName][direction][clipped_arrangement] = \
+                        set(points[np.where(outlier_vec)].flatten())
+                    # print(outliers)
+            logging.info('Outliers found')
+
             clipped_pos[chrName] = [k for k, v in clipped_pos_cnt[chrName].items() if v >= min_cr_support]
             print('Number of clipped read positions on chr %s:%d' % (chrName, len(clipped_pos[chrName])))
 
@@ -408,6 +416,7 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
     clipped_read_distance_array = dict()
     clipped_read_distance_num = dict()
     clipped_read_distance_median = dict()
+    clipped_read_distance_outlier = dict()
 
     read_quality_array = dict()
     clipped_reads_array = dict()
@@ -466,11 +475,13 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                     clipped_read_distance_array[sample] = dict()
                     clipped_read_distance_num[sample] = dict()
                     clipped_read_distance_median[sample] = dict()
+                    clipped_read_distance_outlier[sample] = dict()
 
                     for direction in ['forward', 'reverse']:
                         clipped_read_distance_array[sample][direction] = dict()
                         clipped_read_distance_num[sample][direction] = dict()
                         clipped_read_distance_median[sample][direction] = dict()
+                        clipped_read_distance_outlier[sample][direction] = dict()
 
                     for direction in ['forward', 'reverse']:
                         # for clipped_arrangement in ['c2c', 'nc2c', 'c2nc', 'nc2nc']:
@@ -493,7 +504,27 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                                         pos - start_win] = \
                                         statistics.median(
                                             clipped_read_distance[sample][chrName][direction][clipped_arrangement][pos])
-                            # print(clipped_read_distance_array[direction][clipped_arrangement])
+                                    # print(clipped_read_distance_array[direction][clipped_arrangement])
+
+                                    if direction == 'forward':
+
+                                        clipped_read_distance_outlier[sample][direction][clipped_arrangement][
+                                        (pos - start_win):] = \
+                                            clipped_read_distance_outlier[sample][direction][clipped_arrangement][
+                                            (pos - start_win):] + \
+                                            len(set(
+                                                clipped_read_distance[sample][chrName][direction][clipped_arrangement][pos])
+                                                & outliers[sample][chrName][direction][clipped_arrangement])
+
+                                    elif direction == 'reverse':
+
+                                        clipped_read_distance_outlier[sample][direction][clipped_arrangement][
+                                        :(pos - start_win)] = \
+                                            clipped_read_distance_outlier[sample][direction][clipped_arrangement][
+                                            :(pos - start_win)] + \
+                                            len(set(
+                                                clipped_read_distance[sample][chrName][direction][clipped_arrangement][pos])
+                                                & outliers[sample][chrName][direction][clipped_arrangement])
 
                     # read quality
                     read_quality_array[sample] = read_quality[sample][chrName][start_win:end_win]
@@ -567,8 +598,8 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                                 split_reads_array[sample][split_direction][pos - start_win] = \
                                     split_reads[sample][chrName][split_direction][pos]
 
-                gc_array = bw_gc.values('chr' + chrName, start_win, end_win)
-                assert len(gc_array) == win_len
+                # gc_array = bw_gc.values('chr' + chrName, start_win, end_win)
+                # assert len(gc_array) == win_len
                 mappability_array = bw_map.values(chrName, start_win, end_win)
                 assert len(mappability_array) == win_len
 
@@ -612,7 +643,10 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                         for clipped_arrangement in ['left', 'right', 'all']:
                             # vstack_list.append(clipped_read_distance_array[sample][direction][clipped_arrangement])
                             # vstack_list.append(clipped_read_distance_num[sample][direction][clipped_arrangement])
-                            vstack_list.append(clipped_read_distance_median[sample][direction][clipped_arrangement])
+                            # vstack_list.append(clipped_read_distance_median[sample][direction][clipped_arrangement])
+                            vstack_list.append(
+                                clipped_read_distance_outlier[sample][direction][clipped_arrangement])
+
                     for direction in ['left', 'right']:
                         vstack_list.append(split_reads_array[sample][direction])
                         vstack_list.append(
