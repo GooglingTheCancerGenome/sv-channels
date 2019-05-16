@@ -11,8 +11,12 @@ import bz2file
 import pickle
 import logging
 from itertools import chain
+import json
 
-HPC_MODE = True
+with open('parameters.json', 'r') as f:
+    config = json.load(f)
+
+HPC_MODE = config["DEFAULT"]["HPC_MODE"]
 
 date = '060219'
 
@@ -156,15 +160,15 @@ def make_window_pairs(sample_name, label_type):
             training_pos_pairs.append(bp1 + ':' + bp2)
 
             # windows side by side
-            np_win_pair = np.concatenate((training_data[win_id_dict[bp1]],
-                                             padding,
-                                             training_data[win_id_dict[bp2]]),
-                                            axis=1)
+            # np_win_pair = np.concatenate((training_data[win_id_dict[bp1]],
+            #                                  padding,
+            #                                  training_data[win_id_dict[bp2]]),
+            #                                 axis=1)
 
             # windows on top of one another
-            # np_win_pair = np.concatenate((training_data[win_id_dict[bp1]],
-            #                                  training_data[win_id_dict[bp2]]),
-            #                                 axis=0)
+            np_win_pair = np.concatenate((training_data[win_id_dict[bp1]],
+                                             training_data[win_id_dict[bp2]]),
+                                            axis=0)
 
             # print(np_win_pair.shape)
             training_data_pairs.append(np_win_pair)
