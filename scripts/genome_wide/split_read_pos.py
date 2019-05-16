@@ -4,10 +4,12 @@ import logging
 import os
 import pickle
 import bz2file
-from collections import Counter
+from collections import Counter, defaultdict
 from time import time
 import pysam
 import functions as fun
+
+strand_str = {True: '-', False: '+'}
 
 
 def get_split_read_positions(ibam, chrName, outFile):
@@ -19,6 +21,34 @@ def get_split_read_positions(ibam, chrName, outFile):
     :return: None. Outputs a dictionary with the positions of split read positions as keys and
     the number of split reads per position as values
     '''''
+
+    def overlap(read1, read2):
+        if read1.reference_start <= read2.reference_start <= read1.reference_end or \
+                read1.reference_start <= read2.reference_end <= read1.reference_end:
+            return True
+        else:
+            return False
+
+    def get_distance(chrA, refpos, chrB, pos, chrlen_dict, chrlist):
+
+        dist = 0
+        if chrA == chrB:
+            dist = abs(refpos - pos)
+        else:
+            if chrName < chr:
+                chr1 = chrA
+                chr2 = chrB
+            else:
+                chr1 = chrB
+                chr2 = chrA
+            dist += chrlen_dict[chr1] - refpos
+            i = chrlist.index(chr1) + 1
+            while chrlist[i] != chr2:
+                dist += chrlen_dict[chrlist[i]]
+                i += 1
+            dist += pos
+
+        return dist
 
     def append_coord(split_pos_coord, chrName, refpos, chr, pos):
 
@@ -39,6 +69,7 @@ def get_split_read_positions(ibam, chrName, outFile):
 
     # Minimum read mapping quality to consider
     minMAPQ = 30
+    min_support = 3
 
     # Load the BAM file
     bamfile = pysam.AlignmentFile(ibam, "rb")
@@ -47,9 +78,17 @@ def get_split_read_positions(ibam, chrName, outFile):
     # Get the chromosome length from the header
     chrLen = [i['LN'] for i in header_dict['SQ'] if i['SN'] == chrName][0]
 
+    chrlen_dict = {i['SN']: i['LN'] for i in header_dict['SQ']}
+    chrlist = sorted(chrlen_dict.keys())
+
     # List to store the split read positions
     split_pos = []
     split_pos_coord = []
+
+    discordant_reads_pos = []
+    discordant_reads_coord = []
+
+    reads_in_cluster = defaultdict()
 
     # Fetch reads over the entire chromosome between positions [0, chrLen]
     start_pos = 0
@@ -101,33 +140,88 @@ def get_split_read_positions(ibam, chrName, outFile):
                         split_pos.append(refpos)
                         split_pos_coord = append_coord(split_pos_coord, chrName, refpos, chr, pos)
 
+            if not read.mate_is_unmapped and not read.is_proper_pair:
+
+                refpos = read.reference_end if not read.is_reverse else read.reference_start
+
+                strand_id = '_'.join([read.reference_name, strand_str[read.is_reverse],
+                                      read.next_reference_name, strand_str[read.mate_is_reverse]])
+
+                if strand_id in reads_in_cluster.keys():
+
+                    chr1, pos1, chr2, pos2, cnt, read_ref = reads_in_cluster[strand_id]
+
+                    if overlap(read, read_ref):
+
+                        if (not read.is_reverse and refpos > pos1) or \
+                                (read.is_reverse and refpos < pos1):
+                            pos1 = refpos
+
+                        if (read.next_reference_start > pos2 and not read.mate_is_reverse) or \
+                                (read.next_reference_start < pos2 and read.mate_is_reverse):
+                            pos2 = read.next_reference_start
+
+                        cnt += 1
+                        # print('Adding %s_%d_%s_%d_%d' % (chr1, pos1, chr2, pos2, cnt))
+                        reads_in_cluster[strand_id] = (chr1, pos1, chr2, pos2, cnt, read)
+
+                else:
+                    reads_in_cluster[strand_id] = (read.reference_name, refpos,
+                                                   read.next_reference_name, read.next_reference_start, 1, read)
+            else:
+
+                for strand_id in reads_in_cluster.keys():
+                    chr1, pos1, chr2, pos2, cnt, read = reads_in_cluster[strand_id]
+                    if cnt >= min_support:
+                        discordant_reads_pos.extend([pos1]*cnt)
+                        discordant_reads_coord = append_coord(discordant_reads_coord, chr1, pos1, chr2, pos2)
+
+                reads_in_cluster = defaultdict()
+
     # Close the BAM file
     bamfile.close()
 
     # Count the number of split reads per position
     split_pos_cnt = Counter(split_pos)
-
     split_pos_coord = set(split_pos_coord)
 
-    logging.info('Number of unique positions: %d' % len(split_pos_cnt))
-    logging.info('Number of unique pair of positions: %d' % len(split_pos_coord))
+    logging.info('Number of unique split read positions: %d' % len(
+        [p for p, c in split_pos_cnt.items() if c >= min_support])
+                 )
+    logging.info('Number of unique pair of split read positions: %d' % len(split_pos_coord))
+
+    discordant_reads_cnt = Counter(discordant_reads_pos)
+    discordant_reads_coord = set(discordant_reads_coord)
+
+    logging.info('Number of unique discordant positions: %d' % len(
+        [p for p, c in discordant_reads_cnt.items() if c >= min_support])
+                 )
+    logging.info('Number of unique pair of discordant positions: %d' % len(discordant_reads_coord))
+
+    total_reads_cnt = Counter(split_pos + discordant_reads_pos)
+    total_reads_coord = set(split_pos_coord | discordant_reads_coord)
+
+    logging.info('Number of unique total positions: %d' % len(
+        [p for p, c in total_reads_cnt.items() if c >= min_support])
+                 )
+    logging.info('Number of unique pair of total positions: %d' % len(total_reads_coord))
 
     # Write the output in pickle format
     with bz2file.BZ2File(outFile, 'wb') as f:
-        pickle.dump((split_pos_cnt, split_pos_coord), f)
+        pickle.dump((total_reads_cnt, total_reads_coord), f)
 
 
 def main():
 
     # Default BAM file for testing
     # On the HPC
-    #wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
-    #inputBAM = wd + "T0_dedup.bam"
+    # wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
+    # inputBAM = wd + "T0_dedup.bam"
     # Locally
     wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
     inputBAM = wd + "T1_dedup.bam"
-    #wd = '/Users/lsantuari/Documents/mount_points/hpc_mnt/Datasets/CretuStancu2017/Patient1/'
-    #inputBAM = wd + 'Patient1.bam'
+    # wd = '/Users/lsantuari/Documents/mount_points/hpc_mnt/Datasets/CretuStancu2017/Patient1/'
+    # inputBAM = wd + 'Patient1.bam'
 
     # Default chromosome is 17 for the artificial data
 
