@@ -42,7 +42,7 @@ chrom_lengths = {'1': 249250621, '2': 243199373, '3': 198022430, '4': 191154276,
 __bpRE__ = None
 __symbolicRE__ = None
 
-with open('parameters.json', 'r') as f:
+with open('./genome_wide/parameters.json', 'r') as f:
     config = json.load(f)
 
 HPC_MODE = config["DEFAULT"]["HPC_MODE"]
