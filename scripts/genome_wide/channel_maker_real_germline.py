@@ -37,7 +37,7 @@ np.seterr(divide='ignore')
 # Window half length
 # win_hlen = 100
 
-with open('parameters.json', 'r') as f:
+with open('./genome_wide/parameters.json', 'r') as f:
     config = json.load(f)
 
 HPC_MODE = config["DEFAULT"]["HPC_MODE"]
