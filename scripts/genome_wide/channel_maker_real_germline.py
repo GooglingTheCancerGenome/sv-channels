@@ -43,7 +43,10 @@ with open('parameters.json', 'r') as f:
 HPC_MODE = config["DEFAULT"]["HPC_MODE"]
 CANDIDATE_POSITIONS = config["DEFAULT"]["CANDIDATE_POSITIONS"]
 # Window size
+win_hlen = config["DEFAULT"]["WIN_HLEN"]
 win_len = config["DEFAULT"]["WIN_HLEN"] * 2
+# Support for clipped/split reads
+min_cr_support = config["DEFAULT"]["MIN_SUPPORT"]
 
 
 class SVRecord_SUR:

@@ -15,7 +15,9 @@ import os, errno
 import pickle
 from time import time
 import pandas as pd
-from plotnine import *
+import json
+
+# from plotnine import *
 import pprint
 
 import logging
@@ -37,19 +39,19 @@ chrom_lengths = {'1': 249250621, '2': 243199373, '3': 198022430, '4': 191154276,
                  '19': 59128983, '20': 63025520, '21': 48129895, '22': 51304566, 'X': 155270560, \
                  'Y': 59373566, 'MT': 16569}
 
-# Flag used to set either paths on the local machine or on the HPC
-HPC_MODE = True
-
-# Only clipped read positions supported by at least min_cr_support clipped reads are considered
-min_cr_support = 3
-# Window half length
-win_hlen = 100
-# Window size
-win_len = win_hlen * 2
-
 __bpRE__ = None
 __symbolicRE__ = None
 
+with open('parameters.json', 'r') as f:
+    config = json.load(f)
+
+HPC_MODE = config["DEFAULT"]["HPC_MODE"]
+CANDIDATE_POSITIONS = config["DEFAULT"]["CANDIDATE_POSITIONS"]
+# Window size
+win_hlen = config["DEFAULT"]["WIN_HLEN"]
+win_len = config["DEFAULT"]["WIN_HLEN"] * 2
+# Only clipped read positions supported by at least min_cr_support clipped reads are considered
+min_cr_support = config["DEFAULT"]["MIN_SUPPORT"]
 
 # Classes
 
@@ -380,7 +382,8 @@ def create_dir(directory):
 
 def load_clipped_read_positions(sampleName, chrName):
 
-    vec_type = 'clipped_read_pos'
+    vec_type = 'clipped_read_pos' if CANDIDATE_POSITIONS == "CR" else 'split_read_pos'
+
     print('Loading CR positions for Chr%s' % chrName)
     # Load files
     if HPC_MODE:
@@ -391,7 +394,11 @@ def load_clipped_read_positions(sampleName, chrName):
         fn = '/'.join((channel_dir, sampleName, vec_type, chrName + '_' + vec_type + '.pbz2'))
 
     with bz2file.BZ2File(fn, 'rb') as f:
-        cpos = pickle.load(f)
+        if CANDIDATE_POSITIONS == "CR":
+            cpos = pickle.load(f)
+        else:
+            positions, locations = pickle.load(f)
+            cpos = positions
 
     # Filter by minimum support
     cr_pos = [elem for elem, cnt in cpos.items() if cnt >= min_cr_support]
@@ -1255,10 +1262,18 @@ def get_labels(sampleName):
             inbed = os.path.join(inbed_path, 'lumpy-Mills2011-call-set.bed')
             sv_dict['Mills2011'] = read_bed_sv(inbed)
 
+            # inbed_path = hpc_path if HPC_MODE else \
+            #     '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/'
+            # inbed = os.path.join(inbed_path, 'Mills2011_nanosv_full_inclusion.bed')
+            inbed_path = hpc_path if HPC_MODE else \
+                    '/Users/lsantuari/Documents/External_GitHub/sv_benchmark/input.na12878/'
+            inbed = os.path.join(inbed_path, 'lumpy-Mills2011-call-set.nanosv.sorted.bed')
+            sv_dict['Mills2011_nanosv'] = read_bed_sv(inbed)
+
             inbed_path = hpc_path if HPC_MODE else \
                     '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/'
             inbed = os.path.join(inbed_path, 'Mills2011_nanosv_full_inclusion.unique.bed')
-            sv_dict['Mills2011_nanosv'] = read_bed_sv(inbed)
+            sv_dict['Mills2011_nanosv_unique'] = read_bed_sv(inbed)
 
             inbed_path = hpc_path if HPC_MODE else \
                     '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/'
