@@ -44,10 +44,11 @@ from model_functions import create_model, train_model, evaluate_model, unfold_wi
 HPC_MODE = True
 
 sample_name = 'NA12878'
-label_type = 'Mills2011'
+label_type = 'Mills2011_nanosv'
 
 # date = '260319'
-date = '050419'
+# date = '050419'
+date = '170519'
 
 if HPC_MODE:
 

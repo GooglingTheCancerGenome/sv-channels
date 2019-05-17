@@ -1,6 +1,7 @@
 #!/bin/bash -x
 
 for RUN in {1..9}; do
+# for RUN in 0; do
         JOB_NAME="CV_"$RUN
         qsub -v RUNARG=$RUN \
              -N $JOB_NAME \

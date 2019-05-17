@@ -33,7 +33,8 @@ from sklearn.utils import class_weight
 
 import pandas as pd
 
-date = '020519'
+# date = '020519'
+date = '170519'
 
 
 def unfold_win_id(win_id):
