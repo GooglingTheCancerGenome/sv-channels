@@ -9,12 +9,13 @@ NA12892_BAM='/hpc/cog_bioinf/diagnostiek/projects/na12878_wgs_trio/Set4GIAB12892
 NA12891_BAM='/hpc/cog_bioinf/diagnostiek/projects/na12878_wgs_trio/Set4GIAB12891/mapping/Set4GIAB12891_dedup.bam'
 PATIENT1_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CretuStancu2017/Patient1/Patient1.bam"
 PATIENT2_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CretuStancu2017/Patient2/Patient2.bam"
+NA24385_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/GiaB/HG002_NA24385_son/NIST_Illumina_2x250bps/novoalign_bams/HG002.hs37d5.2x250.bam"
 
 #BAM_ARRAY=(${NA12878_BAM} ${NA12892_BAM} ${NA12891_BAM} ${PATIENT1_BAM} ${PATIENT2_BAM})
 #SAMPLE_ARRAY=('NA12878' 'NA12892' 'NA12891' 'PATIENT1' 'PATIENT2')
 
-BAM_ARRAY=(${NA12878_BAM})
-SAMPLE_ARRAY=('NA12878')
+BAM_ARRAY=(${NA24385_BAM})
+SAMPLE_ARRAY=('NA24385')
 
 # BAM_ARRAY=(${PATIENT1_BAM} ${PATIENT2_BAM})
 # SAMPLE_ARRAY=('PATIENT1' 'PATIENT2')
