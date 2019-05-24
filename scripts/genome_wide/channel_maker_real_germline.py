@@ -1583,7 +1583,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
             clipped_read_pos_file[chrName] = vec_type + '/' + chrName + '_' + vec_type + '.pbz2'
 
             vec_type = 'split_read_pos'
-            split_reads_file[chrName] = vec_type + '/' + chrName + '_' + vec_type + '.pbz2'
+            split_read_pos_file[chrName] = vec_type + '/' + chrName + '_' + vec_type + '.pbz2'
 
             # File with the clipped read distances, output of the clipped_read_distance script
             clipped_read_distance_file[chrName] = 'clipped_read_distance/' + chrName + '_clipped_read_distance.pbz2'
@@ -1601,9 +1601,14 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
             # assert os.path.isfile(clipped_read_pos_file[chrName])
 
             for sample in sample_list:
+
                 # Check file existence
                 logging.info('Checking file: %s => %s' % (sample, clipped_read_pos_file[chrName]))
                 assert os.path.isfile(prefix_train + sample + '/' + clipped_read_pos_file[chrName])
+
+                logging.info('Checking file: %s => %s' % (sample, split_read_pos_file[chrName]))
+                assert os.path.isfile(prefix_train + sample + '/' + split_read_pos_file[chrName])
+
                 assert os.path.isfile(prefix_train + sample + '/' + clipped_read_distance_file[chrName])
                 assert os.path.isfile(prefix_train + sample + '/' + clipped_reads_file[chrName])
                 assert os.path.isfile(prefix_train + sample + '/' + coverage_file[chrName])
