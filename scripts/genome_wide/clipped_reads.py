@@ -26,8 +26,6 @@ def get_clipped_reads(ibam, chrName, outFile):
     # Minimum read mapping quality to consider
     minMAPQ = 30
 
-    genome = get_reference_sequence()
-
     # Dictionary to store number of clipped reads per position
     clipped_reads = dict()
     # For left- and right-clipped reads
