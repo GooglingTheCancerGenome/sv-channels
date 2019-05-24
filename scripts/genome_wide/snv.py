@@ -11,10 +11,11 @@ import functions as fun
 import numpy as np
 import twobitreader as twobit
 
-with open('parameters.json', 'r') as f:
+with open('./genome_wide/parameters.json', 'r') as f:
     config = json.load(f)
 
 HPC_MODE = config["DEFAULT"]["HPC_MODE"]
+
 
 def get_snvs(ibam, chrName, outFile):
 
