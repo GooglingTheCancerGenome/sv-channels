@@ -1448,7 +1448,7 @@ def nanosv_vcf_to_bed(sampleName):
 def get_mappability_bigwig():
     path = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/Mappability/' if HPC_MODE \
         else '/Users/lsantuari/Documents/Data/GEM'
-    bw = pyBigWig.open(os.path.join(path, "GRCh37." + read_length + "mer.bw"))
+    bw = pyBigWig.open(os.path.join(path, "GRCh37." + str(read_length) + "mer.bw"))
     return bw
 
 
