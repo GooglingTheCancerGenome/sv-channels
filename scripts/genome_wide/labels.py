@@ -51,7 +51,8 @@ CANDIDATE_POSITIONS = config["DEFAULT"]["CANDIDATE_POSITIONS"]
 win_hlen = config["DEFAULT"]["WIN_HLEN"]
 win_len = config["DEFAULT"]["WIN_HLEN"] * 2
 # Only clipped read positions supported by at least min_cr_support clipped reads are considered
-min_cr_support = config["DEFAULT"]["MIN_SUPPORT"]
+min_cr_support = config["DEFAULT"]["MIN_CR_SUPPORT"]
+min_sr_support = config["DEFAULT"]["MIN_SR_SUPPORT"]
 
 # Classes
 
@@ -382,26 +383,35 @@ def create_dir(directory):
 
 def load_clipped_read_positions(sampleName, chrName):
 
-    vec_type = 'clipped_read_pos' if CANDIDATE_POSITIONS == "CR" else 'split_read_pos'
+    def get_filepath(vec_type):
+
+        if HPC_MODE:
+            channel_dir = ''
+            fn = os.path.join(channel_dir, sampleName, vec_type, chrName + '_' + vec_type + '.pbz2')
+        else:
+            channel_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth'
+            fn = '/'.join((channel_dir, sampleName, vec_type, chrName + '_' + vec_type + '.pbz2'))
+
+        return fn
+
+    # vec_type = 'clipped_read_pos' if CANDIDATE_POSITIONS == "CR" else 'split_read_pos'
 
     print('Loading CR positions for Chr%s' % chrName)
     # Load files
-    if HPC_MODE:
-        channel_dir = ''
-        fn = os.path.join(channel_dir, sampleName, vec_type, chrName + '_' + vec_type + '.pbz2')
-    else:
-        channel_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth'
-        fn = '/'.join((channel_dir, sampleName, vec_type, chrName + '_' + vec_type + '.pbz2'))
 
-    with bz2file.BZ2File(fn, 'rb') as f:
-        if CANDIDATE_POSITIONS == "CR":
-            cpos = pickle.load(f)
-        else:
-            positions, locations = pickle.load(f)
-            cpos = positions
+    with bz2file.BZ2File(get_filepath('clipped_read_pos'), 'rb') as f:
+        cpos = pickle.load(f)
+
+    with bz2file.BZ2File(get_filepath('split_read_pos'), 'rb') as f:
+        positions, locations = pickle.load(f)
+        spos = positions
 
     # Filter by minimum support
-    cr_pos = [elem for elem, cnt in cpos.items() if cnt >= min_cr_support]
+    # cr_pos = [elem for elem, cnt in cpos.items() if cnt >= min_cr_support]
+
+    cr_pos = [k for k, v in cpos.items() if v >= min_cr_support]
+    sr_pos = [k for k, v in spos.items() if v >= min_sr_support]
+    cr_pos = [k for k in cr_pos if k in sr_pos]
 
     # Remove positions with windows falling off chromosome boundaries
     # print(f'win_hlen = {win_hlen}, chrom_lengths[{chrName}] = {chrom_lengths[chrName]}')
