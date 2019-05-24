@@ -46,7 +46,10 @@ CANDIDATE_POSITIONS = config["DEFAULT"]["CANDIDATE_POSITIONS"]
 win_hlen = config["DEFAULT"]["WIN_HLEN"]
 win_len = config["DEFAULT"]["WIN_HLEN"] * 2
 # Support for clipped/split reads
-min_cr_support = config["DEFAULT"]["MIN_SUPPORT"]
+min_cr_support = config["DEFAULT"]["MIN_CR_SUPPORT"]
+min_sr_support = config["DEFAULT"]["MIN_SR_SUPPORT"]
+
+read_length = config["DEFAULT"]["READ_LENGTH"]
 
 
 class SVRecord_SUR:
@@ -1445,7 +1448,7 @@ def nanosv_vcf_to_bed(sampleName):
 def get_mappability_bigwig():
     path = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/Mappability/' if HPC_MODE \
         else '/Users/lsantuari/Documents/Data/GEM'
-    bw = pyBigWig.open(os.path.join(path, "GRCh37.151mer.bw"))
+    bw = pyBigWig.open(os.path.join(path, "GRCh37." + read_length + "mer.bw"))
     return bw
 
 
@@ -1488,7 +1491,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
     # Get Mappability BigWig
     bw_map = get_mappability_bigwig()
 
-    vec_type = 'clipped_read_pos' if CANDIDATE_POSITIONS == "CR" else 'split_read_pos'
+    # vec_type = 'clipped_read_pos' if CANDIDATE_POSITIONS == "CR" else 'split_read_pos'
 
     # Set the correct prefix for the path
     if trainingMode and (sampleName == 'N1' or sampleName == 'N2'):
@@ -1505,16 +1508,20 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
         sample_list = sampleName.split('_')
 
         clipped_read_pos_file = dict()
+        split_read_pos_file = dict()
+
         clipped_read_distance_file = dict()
         clipped_reads_file = dict()
         coverage_file = dict()
         split_read_distance_file = dict()
         clipped_pos_cnt = dict()
+        split_pos_cnt = dict()
         snv_file = dict()
 
         for chrName in chrList:
-
-            clipped_read_pos_file[chrName] = vec_type + '.pbz2'
+            # clipped_read_pos_file[chrName] = vec_type + '.pbz2'
+            clipped_read_pos_file[chrName] = 'clipped_read_pos' + '.pbz2'
+            split_read_pos_file[chrName] = 'split_read_pos' + '.pbz2'
             clipped_read_distance_file[chrName] = 'clipped_read_distance.pbz2'
             clipped_reads_file[chrName] = 'clipped_reads.pbz2'
             coverage_file[chrName] = 'coverage.npy.bz2'
@@ -1523,6 +1530,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
             # Check file existence
             assert os.path.isfile(clipped_read_pos_file[chrName])
+            assert os.path.isfile(split_read_pos_file[chrName])
             assert os.path.isfile(clipped_read_distance_file[chrName])
             assert os.path.isfile(clipped_reads_file[chrName])
             assert os.path.isfile(coverage_file[chrName])
@@ -1531,15 +1539,20 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
             logging.info('Reading clipped read positions')
             with bz2file.BZ2File(clipped_read_pos_file[chrName], 'rb') as f:
-                if CANDIDATE_POSITIONS == "CR":
-                    clipped_pos_cnt[chrName] = pickle.load(f)
-                else:
-                    positions, locations = pickle.load(f)
-                    clipped_pos_cnt[chrName] = positions
+                clipped_pos_cnt[chrName] = pickle.load(f)
+            logging.info('End of reading')
+
+            logging.info('Reading split read positions')
+            with bz2file.BZ2File(split_read_pos_file[chrName], 'rb') as f:
+                positions, locations = pickle.load(f)
+                split_pos_cnt[chrName] = positions
             logging.info('End of reading')
 
             # Count the number of clipped read positions with a certain minimum number of clipped reads
+            logging.info('Counting clipped read positions')
             count_clipped_read_positions(clipped_pos_cnt[chrName])
+            logging.info('Counting split read positions')
+            count_clipped_read_positions(split_pos_cnt[chrName])
 
     else:
 
@@ -1547,11 +1560,14 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
         sample_list = sampleName.split('_')
 
         clipped_read_pos_file = dict()
+        split_read_pos_file = dict()
         clipped_read_distance_file = dict()
         clipped_reads_file = dict()
+        split_reads_file = dict()
         coverage_file = dict()
         split_read_distance_file = dict()
         clipped_pos_cnt = dict()
+        split_pos_cnt = dict()
         snv_file = dict()
 
         for chrName in chrList:
@@ -1559,7 +1575,14 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
             # File with clipped read positions, output of the clipped_read_pos script
             # clipped_read_pos_file[chrName] = prefix_train + sample_list[0] + \
             #                                  '/clipped_read_pos/' + chrName + '_clipped_read_pos.pbz2'
+            # clipped_read_pos_file[chrName] = vec_type + '/' + chrName + '_' + vec_type + '.pbz2'
+
+            vec_type = 'clipped_read_pos'
             clipped_read_pos_file[chrName] = vec_type + '/' + chrName + '_' + vec_type + '.pbz2'
+
+            vec_type = 'split_read_pos'
+            split_reads_file[chrName] = vec_type + '/' + chrName + '_' + vec_type + '.pbz2'
+
             # File with the clipped read distances, output of the clipped_read_distance script
             clipped_read_distance_file[chrName] = 'clipped_read_distance/' + chrName + '_clipped_read_distance.pbz2'
             # File with the clipped reads, output of the clipped_reads script
@@ -1592,24 +1615,39 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                 clipped_pos_cnt_per_sample = dict()
                 clipped_pos = dict()
 
+                split_pos_cnt_per_sample = dict()
+                split_pos = dict()
+
                 for sample in sample_list:
                     logging.info('Reading clipped read positions for sample %s' % sample)
                     with bz2file.BZ2File(prefix_train + sample + '/' +
                                          clipped_read_pos_file[chrName], 'rb') as f:
-                        if CANDIDATE_POSITIONS == "CR":
-                            clipped_pos_cnt_per_sample[sample] = pickle.load(f)
-                        else:
-                            positions, locations = pickle.load(f)
-                            clipped_pos_cnt_per_sample[sample] = positions
-                    logging.info('End of reading')
+                        clipped_pos_cnt_per_sample[sample] = pickle.load(f)
+
                     logging.info('Length of clipped_pos_cnt_per_sample' +
                                  ' for sample %s: %d' % (sample,
                                                          len(
                                                              clipped_pos_cnt_per_sample[
                                                                  sample])))
 
+                    logging.info('Reading split read positions for sample %s' % sample)
+                    with bz2file.BZ2File(prefix_train + sample + '/' +
+                                         split_read_pos_file[chrName], 'rb') as f:
+                        positions, locations = pickle.load(f)
+                        split_pos_cnt_per_sample[sample] = positions
+                    logging.info('End of reading')
+
+                    logging.info('Length of split_pos_cnt_per_sample' +
+                                 ' for sample %s: %d' % (sample,
+                                                         len(
+                                                             split_pos_cnt_per_sample[
+                                                                 sample])))
+
                     # Count the number of clipped read positions with a certain minimum number of clipped reads
+                    logging.info('Counting clipped read positions')
                     count_clipped_read_positions(clipped_pos_cnt_per_sample[sample])
+                    logging.info('Counting split read positions')
+                    count_clipped_read_positions(split_pos_cnt_per_sample[sample])
 
                     # if sample == sample_list[0]:
                     #     cr_support = min_cr_support
@@ -1622,42 +1660,60 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                                  ' for sample %s after min support = %d: %d' %
                                  (sample, min_cr_support, len(clipped_pos[sample])))
 
+                    split_pos[sample] = [k for k, v in split_pos_cnt_per_sample[sample].items()
+                                         if v >= min_sr_support]
+                    logging.info('Length of clipped_pos_cnt_per_sample ' +
+                                 ' for sample %s after min support = %d: %d' %
+                                 (sample, min_sr_support, len(split_pos[sample])))
+
+                # In case of Tumor/Normal comparison, only keep clipped read position that have support
+                # in the Tumor but not in the Normal. Liquid tumors might be exceptions
                 clipped_pos_keep = set(clipped_pos[sample_list[0]]) - set(clipped_pos[sample_list[1]])
                 logging.info('Length of cr_pos_keep: %d' % len(clipped_pos_keep))
 
-                sample = sample_list[0]
+                tumor_sample = sample_list[0]
                 # clipped_pos_cnt[chrName] = {k: v for (k, v) in clipped_pos_cnt_per_sample[sample_list[0]]
                 #                             if k in clipped_pos_keep}
                 logging.info('Length of clipped_pos_cnt keys: %d, intersection size: %d' %
-                             (len(clipped_pos_cnt_per_sample[sample].keys()),
-                              len(set(clipped_pos_cnt_per_sample[sample].keys()) & clipped_pos_keep)))
+                             (len(clipped_pos_cnt_per_sample[tumor_sample].keys()),
+                              len(set(clipped_pos_cnt_per_sample[tumor_sample].keys()) & clipped_pos_keep)))
 
-                clipped_pos_cnt[chrName] = {k: clipped_pos_cnt_per_sample[sample][k]
-                                            for k in clipped_pos_cnt_per_sample[sample].keys()
+                clipped_pos_cnt[chrName] = {k: clipped_pos_cnt_per_sample[tumor_sample][k]
+                                            for k in clipped_pos_cnt_per_sample[tumor_sample].keys()
                                             if k in clipped_pos_keep}
 
                 # Count the number of clipped read positions with a certain minimum number of clipped reads
                 logging.info('Clipped read positions with support only in the Tumor:')
                 count_clipped_read_positions(clipped_pos_cnt[chrName])
 
-                clipped_pos[sample] = [pos for pos in clipped_pos[sample]
-                                       if win_hlen <= pos <= (chrLen[chrName] - win_hlen)]
-                logging.info('Length of cr_pos for sample %s after extremes removed: %d' % (sample,
-                                                                                            len(clipped_pos[sample])))
+                clipped_pos[tumor_sample] = [k for k, v in clipped_pos_cnt[chrName].items()]
+
+                clipped_pos[tumor_sample] = [pos for pos in clipped_pos[tumor_sample]
+                                             if win_hlen <= pos <= (chrLen[chrName] - win_hlen)]
+                logging.info(
+                    'Length of cr_pos for sample %s after extremes removed: %d' % (tumor_sample,
+                                                                                   len(clipped_pos[tumor_sample]))
+                )
 
             else:
 
                 logging.info('Reading clipped read positions')
                 with bz2file.BZ2File(prefix_train + sample + '/' + clipped_read_pos_file[chrName], 'rb') as f:
-                    if CANDIDATE_POSITIONS == "CR":
-                        clipped_pos_cnt[chrName] = pickle.load(f)
-                    else:
-                        positions, locations = pickle.load(f)
-                        clipped_pos_cnt[chrName] = positions
+                    clipped_pos_cnt[chrName] = pickle.load(f)
                 logging.info('End of reading')
 
                 # Count the number of clipped read positions with a certain minimum number of clipped reads
                 count_clipped_read_positions(clipped_pos_cnt[chrName])
+
+                logging.info('Reading split read positions')
+                with bz2file.BZ2File(prefix_train + sample + '/' + split_read_pos_file[chrName], 'rb') as f:
+                    positions, locations = pickle.load(f)
+                    split_pos_cnt[chrName] = positions
+                logging.info('End of reading')
+
+                # Count the number of clipped read positions with a certain minimum number of clipped reads
+                count_clipped_read_positions(split_pos_cnt[chrName])
+
 
     # Load channel data
     # Dictionaries where to load the channel data
@@ -1679,6 +1735,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
         prefix = prefix_train + sample + '/' if HPC_MODE else ''
 
         clipped_pos = dict()
+        split_pos = dict()
 
         clipped_read_distance[sample] = dict()
         read_quality[sample] = dict()
@@ -1751,6 +1808,8 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
             clipped_pos[chrName] = [k for k, v in clipped_pos_cnt[chrName].items()]
         else:
             clipped_pos[chrName] = [k for k, v in clipped_pos_cnt[chrName].items() if v >= min_cr_support]
+            split_pos[chrName] = [k for k, v in split_pos_cnt[chrName].items() if v >= min_sr_support]
+            clipped_pos[chrName] = [k for k in clipped_pos[chrName] if k in split_pos[chrName]]
 
     # print(clipped_pos)
 
@@ -1913,7 +1972,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                                 clipped_reads_translocation[sample][chrName][orientation][pos]
 
                 # coverage
-                coverage_array[sample] = coverage[sample][chrName][0,start_win:end_win]
+                coverage_array[sample] = coverage[sample][chrName][0, start_win:end_win]
                 discordant_coverage_array[sample] = coverage[sample][chrName][1, start_win:end_win]
 
                 assert len(coverage_array[sample]) == win_len

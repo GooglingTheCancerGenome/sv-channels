@@ -1,8 +1,10 @@
 {
   "DEFAULT": {
     "HPC_MODE": false,
-    "CANDIDATE_POSITIONS" : "SR",
-    "MIN_SUPPORT": 3,
+    "CANDIDATE_POSITIONS" : "SR_CR",
+    "READ_LENGTH": 151,
+    "MIN_CR_SUPPORT": 3,
+    "MIN_SR_SUPPORT": 1,
     "WIN_HLEN": 100
   }
 }
