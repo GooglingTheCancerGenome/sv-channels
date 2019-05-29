@@ -27,7 +27,7 @@ def check_read(read):
     return False
 
 
-def check_read_is_proper_paired(read):
+def check_read_is_proper_paired_forward(read):
     '''
 
     :param read: AlignedSegment
@@ -38,7 +38,24 @@ def check_read_is_proper_paired(read):
     '''
 
     if not read.is_unmapped and not read.mate_is_unmapped and read.mapping_quality >= minMAPQ \
-            and not read.is_proper_pair:
+            and not read.is_proper_pair and not read.is_reverse:
+        return True
+
+    return False
+
+
+def check_read_is_proper_paired_reverse(read):
+    '''
+
+    :param read: AlignedSegment
+    :return: True if all these conditions are valid:
+        - read and mate are mapped on the same chromosome,
+        - read mapping quality is greater than minMAPQ,
+        - read and mate are mapped on opposite strands
+    '''
+
+    if not read.is_unmapped and not read.mate_is_unmapped and read.mapping_quality >= minMAPQ \
+            and not read.is_proper_pair and read.is_reverse:
         return True
 
     return False
@@ -95,13 +112,20 @@ def get_coverage(ibam, chrName, outFile):
           np.asarray(cov_T, dtype=int)
 
     cov_A, cov_C, cov_G, cov_T = bamfile.count_coverage(chrName, start_pos, stop_pos,
-                                                        read_callback=check_read_is_proper_paired)
-    cov_disc = np.asarray(cov_A, dtype=int) + \
+                                                        read_callback=check_read_is_proper_paired_forward)
+    cov_disc_f = np.asarray(cov_A, dtype=int) + \
           np.asarray(cov_C, dtype=int) + \
           np.asarray(cov_G, dtype=int) + \
           np.asarray(cov_T, dtype=int)
 
-    cov = np.vstack((cov, cov_disc))
+    cov_A, cov_C, cov_G, cov_T = bamfile.count_coverage(chrName, start_pos, stop_pos,
+                                                        read_callback=check_read_is_proper_paired_reverse)
+    cov_disc_r = np.asarray(cov_A, dtype=int) + \
+          np.asarray(cov_C, dtype=int) + \
+          np.asarray(cov_G, dtype=int) + \
+          np.asarray(cov_T, dtype=int)
+
+    cov = np.vstack((cov, cov_disc_f, cov_disc_r))
 
     # print(cov)
 
