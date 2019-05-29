@@ -10,6 +10,7 @@ import pysam
 import functions as fun
 import numpy as np
 import twobitreader as twobit
+import json
 
 with open('./genome_wide/parameters.json', 'r') as f:
     config = json.load(f)
