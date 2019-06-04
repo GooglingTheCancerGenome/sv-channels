@@ -235,7 +235,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
     f1_score_metric["weighted"] = f1_score(y_index, predicted, average="weighted")
 
     results = results.append({
-        "run": cv_iter + 1,
+        "run": str(cv_iter + 1),
         "training_set_size": train_set_size,
         "validation_set_size": validation_set_size,
         "test_set_size": X_test.shape[0],
