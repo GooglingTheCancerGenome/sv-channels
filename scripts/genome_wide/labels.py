@@ -32,6 +32,8 @@ import statistics
 wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
 inputBAM = wd + "T1_dedup.bam"
 
+ci_slop = 10
+
 # Chromosome lengths for reference genome hg19/GRCh37
 chrom_lengths = {'1': 249250621, '2': 243199373, '3': 198022430, '4': 191154276, '5': 180915260, '6': 171115067, \
                  '7': 159138663, '8': 146364022, '9': 141213431, '10': 135534747, '11': 135006516, '12': 133851895, \
@@ -54,6 +56,7 @@ win_len = config["DEFAULT"]["WIN_HLEN"] * 2
 min_cr_support = config["DEFAULT"]["MIN_CR_SUPPORT"]
 min_sr_support = config["DEFAULT"]["MIN_SR_SUPPORT"]
 
+
 # Classes
 
 class SVRecord_generic:
@@ -74,7 +77,7 @@ class SVRecord_generic:
             if 'SVLEN' in record.info.keys():
                 indellen = record.info['SVLEN']
             else:
-                indellen = abs(record.stop-record.pos)
+                indellen = abs(record.stop - record.pos)
 
         # print(record.info.keys())
 
@@ -92,7 +95,7 @@ class SVRecord_generic:
             else:
                 self.cipos = record.info['CIPOS']
         else:
-            self.cipos = (0,0)
+            self.cipos = (-ci_slop, ci_slop)
 
         # CIEND
         if 'CIEND' in record.info.keys():
@@ -103,7 +106,7 @@ class SVRecord_generic:
         elif 'CIRPOS' in record.info.keys():
             self.ciend = record.info['CIRPOS']
         else:
-            self.ciend = (0,0)
+            self.ciend = (-ci_slop, ci_slop)
 
         self.filter = record.filter
 
@@ -124,7 +127,6 @@ class SVRecord_generic:
                 self.svtype = record.info['SVTYPE']
         else:
             self.svtype = 'BND'
-
 
     @staticmethod
     def stdchrom(chrom):
@@ -382,7 +384,6 @@ def create_dir(directory):
 
 
 def load_clipped_read_positions(sampleName, chrName):
-
     def get_filepath(vec_type):
 
         if HPC_MODE:
@@ -423,13 +424,12 @@ def load_clipped_read_positions(sampleName, chrName):
 def load_all_clipped_read_positions(sampleName):
     cr_pos_dict = {}
     for chrName in chrom_lengths.keys():
-    #for chrName in ['22']:
+        # for chrName in ['22']:
         cr_pos_dict[chrName] = load_clipped_read_positions(sampleName, chrName)
     return cr_pos_dict
 
 
 def initialize_nanosv_vcf_paths(sampleName):
-
     vcf_files = dict()
 
     if HPC_MODE:
@@ -446,7 +446,7 @@ def initialize_nanosv_vcf_paths(sampleName):
                 vcf_files[mapper] = dict()
 
                 if mapper == 'last':
-                    vcf_files[mapper]['nanosv'] = os.path.join(vcf_dir_last,  mapper + '_nanosv.sorted.vcf')
+                    vcf_files[mapper]['nanosv'] = os.path.join(vcf_dir_last, mapper + '_nanosv.sorted.vcf')
                 # else:
                 #     vcf_files[mapper]['nanosv'] = vcf_dir + '/' + mapper + '/' + mapper + '_nanosv.sorted.vcf'
                 # assert os.path.isfile(vcf_files[mapper]['nanosv'])
@@ -527,7 +527,7 @@ def read_nanosv_vcf(sampleName):
         # Select good quality (no LowQual, only 'PASS') deletions (DEL)
         sv = [svrec for svrec in sv if svrec.svtype == 'DEL'
               # if 'LowQual' not in list(svrec.filter)]
-              #if 'PASS' in list(svrec.filter)]
+              # if 'PASS' in list(svrec.filter)]
               if 'PASS' in list(svrec.filter) or \
               'CIPOS' in list(svrec.filter) or \
               'CIEND' in list(svrec.filter)]
@@ -567,8 +567,13 @@ def read_vcf(sampleName, sv_caller):
 
     if HPC_MODE:
 
-        filename = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Data_for_labels',
-                                sampleName, 'VCF', sv_caller + '.sym.vcf')
+        if sampleName == 'NA24385':
+            filename = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/',
+                                    'Datasets/GiaB/HG002_NA24385_son/NIST_SVs_Integration_v0.6/',
+                                    'processed/HG002_SVs_Tier1_v0.6.PASS.vcf')
+        else:
+            filename = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Data_for_labels',
+                                    sampleName, 'VCF', sv_caller + '.sym.vcf')
     else:
 
         if sampleName[:7] == 'NA12878':
@@ -672,7 +677,7 @@ def get_labels_from_nanosv_vcf(sampleName):
 
             # id_start = '_'.join((var.chrom, str(var.start+var.cipos[0]),  str(var.start+var.cipos[1])))
             # id_end = '_'.join((var.chrom, str(var.end + var.ciend[0]), str(var.end+var.ciend[1])))
-            assert var.start <= var.end, "Start: "+str(var.start)+" End: "+str(var.end)
+            assert var.start <= var.end, "Start: " + str(var.start) + " End: " + str(var.end)
 
             # print('var start -> %s:%d CIPOS: (%d, %d)' % (chrName, var.start, var.cipos[0], var.cipos[1]))
             # print('var end -> %s:%d CIEND: (%d, %d)' % (chrName, var.end, var.ciend[0], var.ciend[1]))
@@ -1219,7 +1224,6 @@ def nanosv_vcf_to_bed(sampleName):
 
 # Get labels
 def get_labels(sampleName):
-
     print(f'running {sampleName}')
 
     def get_win_id(chr, position):
@@ -1244,7 +1248,7 @@ def get_labels(sampleName):
             id_start = var.svtype + '_start'
             id_end = var.svtype + '_end'
 
-            assert var.start <= var.end, "Start: "+str(var.start)+" End: "+str(var.end)
+            assert var.start <= var.end, "Start: " + str(var.start) + " End: " + str(var.end)
 
             # print('var start -> %s:%d CIPOS: (%d, %d)' % (chrName, var.start, var.cipos[0], var.cipos[1]))
             # print('var end -> %s:%d CIEND: (%d, %d)' % (chrName, var.end, var.ciend[0], var.ciend[1]))
@@ -1259,17 +1263,18 @@ def get_labels(sampleName):
         hpc_path = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Data_for_labels/', sampleName)
         sv_dict = dict()
 
-        sv_dict['nanosv'] = read_nanosv_vcf(sampleName)
-        sv_dict['nanosv_manta'] = get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName)
+        if sampleName in ['NA12878', 'PATIENT1', 'PATIENT2']:
+            sv_dict['nanosv'] = read_nanosv_vcf(sampleName)
+            sv_dict['nanosv_manta'] = get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName)
 
-        for sv_caller in ['manta', 'delly', 'lumpy', 'gridss']:
-            # for sv_caller in ['gridss']:
-            sv_dict[sv_caller] = read_vcf(sampleName, sv_caller)
+            for sv_caller in ['manta', 'delly', 'lumpy', 'gridss']:
+                # for sv_caller in ['gridss']:
+                sv_dict[sv_caller] = read_vcf(sampleName, sv_caller)
 
         if sampleName[:7] == 'NA12878':
             # Mills2011
             inbed_path = hpc_path if HPC_MODE else \
-                    '/Users/lsantuari/Documents/External_GitHub/sv_benchmark/input.na12878/'
+                '/Users/lsantuari/Documents/External_GitHub/sv_benchmark/input.na12878/'
             inbed = os.path.join(inbed_path, 'lumpy-Mills2011-call-set.bed')
             sv_dict['Mills2011'] = read_bed_sv(inbed)
 
@@ -1277,50 +1282,53 @@ def get_labels(sampleName):
             #     '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/'
             # inbed = os.path.join(inbed_path, 'Mills2011_nanosv_full_inclusion.bed')
             inbed_path = hpc_path if HPC_MODE else \
-                    '/Users/lsantuari/Documents/External_GitHub/sv_benchmark/input.na12878/'
+                '/Users/lsantuari/Documents/External_GitHub/sv_benchmark/input.na12878/'
             inbed = os.path.join(inbed_path, 'lumpy-Mills2011-call-set.nanosv.sorted.bed')
             sv_dict['Mills2011_nanosv'] = read_bed_sv(inbed)
 
             inbed_path = hpc_path if HPC_MODE else \
-                    '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/'
+                '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/'
             inbed = os.path.join(inbed_path, 'Mills2011_nanosv_full_inclusion.unique.bed')
             sv_dict['Mills2011_nanosv_unique'] = read_bed_sv(inbed)
 
             inbed_path = hpc_path if HPC_MODE else \
-                    '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/'
+                '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/'
             inbed = os.path.join(inbed_path, 'NA12878_nanosv_Mills2011.bed')
             sv_dict['nanosv_Mills2011'] = read_bed_sv(inbed)
 
             inbed_path = hpc_path if HPC_MODE else \
-                    os.path.join('/Users/lsantuari/Documents/IGV/Screenshots/', sampleName[:7], 'overlaps')
+                os.path.join('/Users/lsantuari/Documents/IGV/Screenshots/', sampleName[:7], 'overlaps')
             inbed = os.path.join(inbed_path, 'lumpy-Mills2011_manta_nanosv.bed')
             sv_dict['Mills2011_nanosv_manta'] = read_bed_sv(inbed)
 
             inbed_path = hpc_path if HPC_MODE else \
-                    os.path.join('/Users/lsantuari/Documents/Processed/', sampleName[:7], 'Long_read_validation')
+                os.path.join('/Users/lsantuari/Documents/Processed/', sampleName[:7], 'Long_read_validation')
             inbed = os.path.join(inbed_path, 'lumpy-Mills2011-DEL.pacbio_moleculo.bed')
             sv_dict['Mills2011_PacBio_Moleculo'] = read_bed_sv(inbed)
 
             inbed_path = hpc_path if HPC_MODE else \
-                    '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/'
+                '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/'
             inbed = os.path.join(inbed_path, 'Mills2011_pacbio_moleculo_nanosv_full_inclusion.unique.bed')
             sv_dict['Mills2011_PacBio_Moleculo_nanosv'] = read_bed_sv(inbed)
 
             inbed_path = hpc_path if HPC_MODE else \
-                    '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/'
+                '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/'
             inbed = os.path.join(inbed_path, 'NA12878_nanosv_Mills2011-DEL.pacbio_moleculo.bed')
             sv_dict['nanosv_Mills2011_PacBio_Moleculo'] = read_bed_sv(inbed)
 
             inbed_path = hpc_path if HPC_MODE else \
-                    os.path.join('/Users/lsantuari/Documents/Processed/', sampleName[:7], 'Long_read_validation')
+                os.path.join('/Users/lsantuari/Documents/Processed/', sampleName[:7], 'Long_read_validation')
             inbed = os.path.join(inbed_path, 'lumpy-Mills2011_pacbio_moleculo_manta_nanosv.bed')
             sv_dict['Mills2011_PacBio_Moleculo_nanosv_manta'] = read_bed_sv(inbed)
 
             inbed_path = hpc_path if HPC_MODE else \
-                    os.path.join('/Users/lsantuari/Documents/Processed/', sampleName[:7], 'Long_read_validation',
-                                 'Data_sources', 'Lumpy_paper_2014')
+                os.path.join('/Users/lsantuari/Documents/Processed/', sampleName[:7], 'Long_read_validation',
+                             'Data_sources', 'Lumpy_paper_2014')
             inbed = os.path.join(inbed_path, 'lumpy-GASVPro-DELLY-Pindel-Mills2011_PacBio_Moleculo.bed')
             sv_dict['Mills2011_PacBio_Moleculo_Lumpy_GASVPro_DELLY_Pindel'] = read_bed_sv(inbed)
+
+        elif sampleName == 'NA24385':
+            sv_dict['sv_tier1'] = read_nanosv_vcf(sampleName)
 
         return sv_dict
 
@@ -1372,7 +1380,7 @@ def get_labels(sampleName):
     #    print(sv_dict[sv_dict_key])
 
     for sv_dict_key in sv_dict.keys():
-    #for sv_dict_key in ['Mills2011_nanosv']:
+        # for sv_dict_key in ['Mills2011_nanosv']:
         # for sv_dict_key in ['Mills2011_PacBio_Moleculo_Lumpy_GASVPro_DELLY_Pindel']:
 
         print(f'running {sv_dict_key}')
@@ -1556,7 +1564,7 @@ def main():
     # load_labels(sampleName=sampleName)
 
     # for sampleName in ['NA12878', 'Patient1', 'Patient2']:
-    for sampleName in ['NA12878']:
+    for sampleName in ['NA24385']:
         get_labels(sampleName)
         # nanosv_vcf_to_bed(sampleName)
 
