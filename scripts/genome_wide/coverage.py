@@ -80,13 +80,35 @@ def get_coverage(ibam, chrName, outFile):
     stop_pos = chrLen
 
     # Numpy array to store the coverage
-    cov = np.zeros(chrLen, dtype=int)
+    cov = np.zeros((3, chrLen), dtype=np.uint32)
 
     # Log information every n_r base pair positions
     n_r = 10 ** 6
     # print(n_r)
     last_t = time()
     # print(type(last_t))
+
+    # Pysam iterator to fetch the reads
+    iter = bamfile.fetch(chrName, start_pos, stop_pos)
+
+    for i, read in enumerate(iter, start=1):
+
+        # Every n_r alignments, write log informations
+        if not i % n_r:
+            # Record the current time
+            now_t = time()
+            # print(type(now_t))
+            logging.info("%d alignments processed (%f alignments / s)" % (
+                i,
+                n_r / (now_t - last_t)))
+            last_t = time()
+
+        if check_read(read):
+            cov[0, read.reference_start:read.reference_end - 1] += 1
+        if check_read_is_proper_paired_forward(read):
+            cov[1, read.reference_start:read.reference_end - 1] += 1
+        if check_read_is_proper_paired_reverse(read):
+            cov[2, read.reference_start:read.reference_end - 1] += 1
 
     # # Iterate over the chromosome positions
     # for i, pile in enumerate(bamfile.pileup(chrName, start_pos, stop_pos, truncate=True), start=1):
@@ -105,27 +127,27 @@ def get_coverage(ibam, chrName, outFile):
     #         logging.info("Out of memory for chr %s and BAM file %s !" % (chrName, ibam))
 
     # Replacing pileup with count_coverage
-    cov_A, cov_C, cov_G, cov_T = bamfile.count_coverage(chrName, start_pos, stop_pos, read_callback=check_read)
-    cov = np.asarray(cov_A, dtype=int) + \
-          np.asarray(cov_C, dtype=int) + \
-          np.asarray(cov_G, dtype=int) + \
-          np.asarray(cov_T, dtype=int)
-
-    cov_A, cov_C, cov_G, cov_T = bamfile.count_coverage(chrName, start_pos, stop_pos,
-                                                        read_callback=check_read_is_proper_paired_forward)
-    cov_disc_f = np.asarray(cov_A, dtype=int) + \
-          np.asarray(cov_C, dtype=int) + \
-          np.asarray(cov_G, dtype=int) + \
-          np.asarray(cov_T, dtype=int)
-
-    cov_A, cov_C, cov_G, cov_T = bamfile.count_coverage(chrName, start_pos, stop_pos,
-                                                        read_callback=check_read_is_proper_paired_reverse)
-    cov_disc_r = np.asarray(cov_A, dtype=int) + \
-          np.asarray(cov_C, dtype=int) + \
-          np.asarray(cov_G, dtype=int) + \
-          np.asarray(cov_T, dtype=int)
-
-    cov = np.vstack((cov, cov_disc_f, cov_disc_r))
+    # cov_A, cov_C, cov_G, cov_T = bamfile.count_coverage(chrName, start_pos, stop_pos, read_callback=check_read)
+    # cov = np.asarray(cov_A, dtype=int) + \
+    #       np.asarray(cov_C, dtype=int) + \
+    #       np.asarray(cov_G, dtype=int) + \
+    #       np.asarray(cov_T, dtype=int)
+    #
+    # cov_A, cov_C, cov_G, cov_T = bamfile.count_coverage(chrName, start_pos, stop_pos,
+    #                                                     read_callback=check_read_is_proper_paired_forward)
+    # cov_disc_f = np.asarray(cov_A, dtype=int) + \
+    #       np.asarray(cov_C, dtype=int) + \
+    #       np.asarray(cov_G, dtype=int) + \
+    #       np.asarray(cov_T, dtype=int)
+    #
+    # cov_A, cov_C, cov_G, cov_T = bamfile.count_coverage(chrName, start_pos, stop_pos,
+    #                                                     read_callback=check_read_is_proper_paired_reverse)
+    # cov_disc_r = np.asarray(cov_A, dtype=int) + \
+    #       np.asarray(cov_C, dtype=int) + \
+    #       np.asarray(cov_G, dtype=int) + \
+    #       np.asarray(cov_T, dtype=int)
+    #
+    # cov = np.vstack((cov, cov_disc_f, cov_disc_r))
 
     # print(cov)
 
@@ -144,7 +166,6 @@ def get_coverage(ibam, chrName, outFile):
             np.save(file=f, arr=cov)
         except MemoryError:
             logging.info("Out of memory for chr %s and BAM file %s !" % (chrName, ibam))
-
 
 def main():
     # Default BAM file for testing
