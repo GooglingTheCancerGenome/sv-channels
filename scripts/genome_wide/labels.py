@@ -29,10 +29,10 @@ import statistics
 # wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
 # inputBAM = wd + "T0_dedup.bam"
 # Locally
-wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
-inputBAM = wd + "T1_dedup.bam"
+# wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
+# inputBAM = wd + "T1_dedup.bam"
 
-ci_slop = 10
+ci_slop = 0
 
 # Chromosome lengths for reference genome hg19/GRCh37
 chrom_lengths = {'1': 249250621, '2': 243199373, '3': 198022430, '4': 191154276, '5': 180915260, '6': 171115067, \
@@ -403,6 +403,8 @@ def load_clipped_read_positions(sampleName, chrName):
     with bz2file.BZ2File(get_filepath('clipped_read_pos'), 'rb') as f:
         cpos = pickle.load(f)
 
+    print('Loading SR positions for Chr%s' % chrName)
+
     with bz2file.BZ2File(get_filepath('split_read_pos'), 'rb') as f:
         positions, locations = pickle.load(f)
         spos = positions
@@ -410,9 +412,13 @@ def load_clipped_read_positions(sampleName, chrName):
     # Filter by minimum support
     # cr_pos = [elem for elem, cnt in cpos.items() if cnt >= min_cr_support]
 
+    print('Calculating CR positions for min support {}, length={}'.format(min_cr_support, len(cpos)))
     cr_pos = [k for k, v in cpos.items() if v >= min_cr_support]
+    print('Calculating SR positions for min support {}, length={}'.format(min_sr_support, len(spos)))
     sr_pos = [k for k, v in spos.items() if v >= min_sr_support]
-    cr_pos = [k for k in cr_pos if k in sr_pos]
+    print('Calculating CR positions in SR positions')
+    cr_pos = sorted(list(set(cr_pos) & set(sr_pos)))
+    print('Final CR positions={}'.format(len(cr_pos)))
 
     # Remove positions with windows falling off chromosome boundaries
     # print(f'win_hlen = {win_hlen}, chrom_lengths[{chrName}] = {chrom_lengths[chrName]}')
@@ -1518,9 +1524,9 @@ def main():
     '''
 
     parser = argparse.ArgumentParser(description='Create channels from saved data')
-    parser.add_argument('-b', '--bam', type=str,
-                        default=inputBAM,
-                        help="Specify input file (BAM)")
+    # parser.add_argument('-b', '--bam', type=str,
+    #                     default=inputBAM,
+    #                     help="Specify input file (BAM)")
     parser.add_argument('-o', '--out', type=str, default='channel_maker.npy.gz',
                         help="Specify output")
     parser.add_argument('-s', '--sample', type=str, default='NA12878',
@@ -1564,7 +1570,7 @@ def main():
     # load_labels(sampleName=sampleName)
 
     # for sampleName in ['NA12878', 'Patient1', 'Patient2']:
-    for sampleName in ['NA24385']:
+    for sampleName in ['NA12878']:
         get_labels(sampleName)
         # nanosv_vcf_to_bed(sampleName)
 
