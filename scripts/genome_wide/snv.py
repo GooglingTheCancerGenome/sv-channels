@@ -16,7 +16,7 @@ with open('./genome_wide/parameters.json', 'r') as f:
     config = json.load(f)
 
 HPC_MODE = config["DEFAULT"]["HPC_MODE"]
-
+MAX_PILEUP_BUFFER_SIZE = 8000
 
 def get_snvs(ibam, chrName, outFile):
 
@@ -72,7 +72,7 @@ def get_snvs(ibam, chrName, outFile):
         # pileupcolumn.set_min_base_quality(0)
         # print("\ncoverage at base %s = %s" %
         #       (pileupcolumn.pos, pileupcolumn.nsegments))
-        if pileupcolumn.nsegments > 0 and start_pos <= pileupcolumn.pos <= stop_pos:
+        if 0 < pileupcolumn.nsegments < MAX_PILEUP_BUFFER_SIZE and start_pos <= pileupcolumn.pos <= stop_pos:
             quals = pileupcolumn.get_query_qualities()
             if len(quals) > 0:
                 snv_array[snv_dict['BQ'], pileupcolumn.pos] = np.median(pileupcolumn.get_query_qualities())
