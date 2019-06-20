@@ -78,11 +78,20 @@ def get_snvs(ibam, chrName, outFile):
                 snv_array[snv_dict['BQ'], pileupcolumn.pos] = np.median(pileupcolumn.get_query_qualities())
             # snv_array[snv_dict['nALN'], pileupcolumn.pos] = pileupcolumn.get_num_aligned()
             # snv_array[snv_dict['nSEG'], pileupcolumn.pos] = pileupcolumn.nsegments
+            try:
 
-            query_seq_list = pileupcolumn.get_query_sequences()
-            snv_number = get_snv_number(query_seq_list, reference_sequence['chr' + chrName][pileupcolumn.pos])
-            snv_array[snv_dict['SNV'], pileupcolumn.pos] = snv_number/pileupcolumn.nsegments \
-                if pileupcolumn.nsegments !=0 else 0
+                query_seq_list = pileupcolumn.get_query_sequences()
+                snv_number = get_snv_number(query_seq_list, reference_sequence['chr' + chrName][pileupcolumn.pos])
+                snv_array[snv_dict['SNV'], pileupcolumn.pos] = snv_number/pileupcolumn.nsegments \
+                    if pileupcolumn.nsegments !=0 else 0
+
+            except AssertionError as error:
+                # Output expected AssertionErrors.
+                logging.log_exception(error)
+                logging.info('Position {}:{} has {} nsegments'.format(chrName,
+                                                                      pileupcolumn.pos,
+                                                                      pileupcolumn.nsegments))
+                continue
 
             # print(cnt)
             # for k in cnt.keys():
