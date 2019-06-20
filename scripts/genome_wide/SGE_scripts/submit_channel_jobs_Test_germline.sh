@@ -9,13 +9,23 @@ NA12892_BAM='/hpc/cog_bioinf/diagnostiek/projects/na12878_wgs_trio/Set4GIAB12892
 NA12891_BAM='/hpc/cog_bioinf/diagnostiek/projects/na12878_wgs_trio/Set4GIAB12891/mapping/Set4GIAB12891_dedup.bam'
 PATIENT1_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CretuStancu2017/Patient1/Patient1.bam"
 PATIENT2_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CretuStancu2017/Patient2/Patient2.bam"
-NA24385_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/GiaB/HG002_NA24385_son/NIST_Illumina_2x250bps/novoalign_bams/HG002.hs37d5.2x250.bam"
+
+NA24385_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/GiaB/HG002_NA24385_son/NIST_Illumina_2x250bps/bam/NA24385/mapping/NA24385_dedup.bam"
+
+CHM1_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/CHM1/bam/CHM1/mapping/CHM1_dedup.bam"
+CHM13_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/CHM13/bam/CHM13/mapping/CHM13_dedup.bam"
 
 #BAM_ARRAY=(${NA12878_BAM} ${NA12892_BAM} ${NA12891_BAM} ${PATIENT1_BAM} ${PATIENT2_BAM})
 #SAMPLE_ARRAY=('NA12878' 'NA12892' 'NA12891' 'PATIENT1' 'PATIENT2')
 
-BAM_ARRAY=(${NA24385_BAM})
-SAMPLE_ARRAY=('NA24385')
+#BAM_ARRAY=(${NA12878_BAM})
+#SAMPLE_ARRAY=('NA12878')
+
+#BAM_ARRAY=(${NA24385_BAM})
+#SAMPLE_ARRAY=('NA24385')
+
+BAM_ARRAY=(${CHM1_BAM} ${CHM13_BAM})
+SAMPLE_ARRAY=('CHM1' 'CHM13')
 
 # BAM_ARRAY=(${PATIENT1_BAM} ${PATIENT2_BAM})
 # SAMPLE_ARRAY=('PATIENT1' 'PATIENT2')
@@ -36,10 +46,10 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
 #    LOGDIR=${SAMPLE}"/log"
 #    [ ! -d "$LOGDIR" ] && mkdir -p "$LOGDIR"
 
-    # for CHROMOSOME in ${CHRARRAY[@]}; do
-    for CHROMOSOME in '1'; do
-        #for PRG in clipped_read_pos coverage clipped_read_distance clipped_reads split_read_distance; do
-	for PRG in snv; do
+    for CHROMOSOME in ${CHRARRAY[@]}; do
+    #for CHROMOSOME in '1'; do
+        for PRG in clipped_read_pos split_read_pos coverage clipped_read_distance clipped_reads split_read_distance snv; do
+	#for PRG in snv; do
             JOB_NAME=$SAMPLE"_"$CHROMOSOME"_"${PRG}
 
             qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=$OUTDIR \
