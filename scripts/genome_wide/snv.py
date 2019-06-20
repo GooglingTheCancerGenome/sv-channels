@@ -87,7 +87,7 @@ def get_snvs(ibam, chrName, outFile):
 
             except AssertionError as error:
                 # Output expected AssertionErrors.
-                logging.log_exception(error)
+                logging.info(error)
                 logging.info('Position {}:{} has {} nsegments'.format(chrName,
                                                                       pileupcolumn.pos,
                                                                       pileupcolumn.nsegments))
