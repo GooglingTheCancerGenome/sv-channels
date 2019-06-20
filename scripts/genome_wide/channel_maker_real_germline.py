@@ -1788,11 +1788,11 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                 split_read_distance[sample][chrName], split_reads[sample][chrName] = pickle.load(f)
             logging.info('End of reading')
 
-            # logging.info('Reading SNVs')
-            # with gzip.GzipFile(prefix + snv_file[chrName], 'rb') as f:
-            #     npzfiles = np.load(f)
-            #     snv = npzfiles['snv_array']
-            # logging.info('End of reading')
+            logging.info('Reading SNVs')
+            with gzip.GzipFile(prefix + snv_file[chrName], 'rb') as f:
+                npzfiles = np.load(f)
+                snv = npzfiles['snv_array']
+            logging.info('End of reading')
 
             logging.info('Finding outliers')
             outliers[sample][chrName] = dict()
@@ -1843,9 +1843,6 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
     snv_array = dict()
 
-    gc_array = dict()
-    mappability_array = dict()
-
     # Log info every n_r times
     n_r = 10 ** 3
     # print(n_r)
@@ -1889,7 +1886,13 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                 clipped_read_distance_median[sample] = dict()
                 clipped_read_distance_outlier[sample] = dict()
 
+                for snv_field in ['median_base_quality', 'snv_frequency']:
+                    snv_array[sample][snv_field] = dict()
+
                 for direction in ['forward', 'reverse']:
+
+                    discordant_coverage_array[sample][direction] = dict()
+
                     clipped_read_distance_array[sample][direction] = dict()
                     clipped_read_distance_num[sample][direction] = dict()
                     clipped_read_distance_median[sample][direction] = dict()
@@ -1980,10 +1983,15 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
                 # coverage
                 coverage_array[sample] = coverage[sample][chrName][0, start_win:end_win]
-                discordant_coverage_array[sample] = coverage[sample][chrName][1, start_win:end_win]
+                discordant_coverage_array[sample]['forward'] = coverage[sample][chrName][1, start_win:end_win]
+                discordant_coverage_array[sample]['reverse'] = coverage[sample][chrName][2, start_win:end_win]
 
                 assert len(coverage_array[sample]) == win_len
-                assert len(discordant_coverage_array[sample]) == win_len
+                assert len(discordant_coverage_array[sample]['forward']) == win_len
+                assert len(discordant_coverage_array[sample]['reverse']) == win_len
+
+                snv_array[sample]['median_base_quality'] = snv[sample][chrName][0, start_win:end_win]
+                snv_array[sample]['snv_frequency'] = snv[sample][chrName][1, start_win:end_win]
 
                 # split read distance
                 split_read_distance_array[sample] = dict()
@@ -2025,7 +2033,12 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                 # logging.info("Considering sample %s" % sample)
 
                 vstack_list.append(coverage_array[sample])
-                vstack_list.append(discordant_coverage_array[sample])
+
+                for direction in ['forward', 'reverse']:
+                    vstack_list.append(discordant_coverage_array[sample][direction])
+
+                for snv_field in ['median_base_quality', 'snv_frequency']:
+                    vstack_list.append(snv_array[sample][snv_field])
 
                 vstack_list.append(read_quality_array[sample])
 
