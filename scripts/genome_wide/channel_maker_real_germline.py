@@ -1885,6 +1885,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                 clipped_read_distance_median[sample] = dict()
                 clipped_read_distance_outlier[sample] = dict()
                 snv_array[sample] = dict()
+                discordant_coverage_array[sample] = dict()
 
                 for snv_field in ['median_base_quality', 'snv_frequency']:
                     snv_array[sample][snv_field] = dict()
