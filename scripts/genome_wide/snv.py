@@ -12,11 +12,12 @@ import numpy as np
 import twobitreader as twobit
 import json
 
-with open('./genome_wide/parameters.json', 'r') as f:
-    config = json.load(f)
+
+config = fun.get_config_file()
 
 HPC_MODE = config["DEFAULT"]["HPC_MODE"]
 MAX_PILEUP_BUFFER_SIZE = 8000
+minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
 
 def get_snvs(ibam, chrName, outFile):
 
@@ -40,9 +41,6 @@ def get_snvs(ibam, chrName, outFile):
 
     # Check if the BAM file in input exists
     assert os.path.isfile(ibam)
-
-    # Minimum read mapping quality to consider
-    minMAPQ = 30
 
     # Load the BAM file
     bamfile = pysam.AlignmentFile(ibam, "rb")

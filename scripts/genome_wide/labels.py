@@ -82,9 +82,9 @@ class SVRecord_generic:
         # print(record.info.keys())
 
         self.id = record.id
-        self.chrom = record.chrom
+        self.chrom = record.chrom.replace('chr', '')
         self.start = record.pos
-        self.chrom2 = chr2
+        self.chrom2 = chr2.replace('chr', '')
         self.end = pos2
         self.alt = record.alts[0]
 
@@ -577,6 +577,10 @@ def read_vcf(sampleName, sv_caller):
             filename = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/',
                                     'Datasets/GiaB/HG002_NA24385_son/NIST_SVs_Integration_v0.6/',
                                     'processed/HG002_SVs_Tier1_v0.6.PASS.vcf')
+
+        elif sampleName in ['CHM1', 'CHM13']:
+            filename = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/Huddleston2016/',
+                                    'structural_variants/',sampleName+'_SVs.annotated.vcf.gz')
         else:
             filename = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Data_for_labels',
                                     sampleName, 'VCF', sv_caller + '.sym.vcf')
@@ -1334,7 +1338,10 @@ def get_labels(sampleName):
             sv_dict['Mills2011_PacBio_Moleculo_Lumpy_GASVPro_DELLY_Pindel'] = read_bed_sv(inbed)
 
         elif sampleName == 'NA24385':
-            sv_dict['sv_tier1'] = read_nanosv_vcf(sampleName)
+            sv_dict['sv_tier1'] = read_vcf(sampleName)
+
+        elif sampleName in ['CHM1', 'CHM13']:
+            sv_dict['huddleston2016'] = read_vcf(sampleName)
 
         return sv_dict
 
@@ -1570,7 +1577,7 @@ def main():
     # load_labels(sampleName=sampleName)
 
     # for sampleName in ['NA12878', 'Patient1', 'Patient2']:
-    for sampleName in ['NA12878']:
+    for sampleName in ['NA12878', 'NA24385', 'CHM1', 'CHM13']:
         get_labels(sampleName)
         # nanosv_vcf_to_bed(sampleName)
 

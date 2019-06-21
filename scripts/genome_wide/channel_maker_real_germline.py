@@ -19,7 +19,7 @@ import csv
 import pandas as pd
 # from plotnine import *
 import pyBigWig
-from functions import get_one_hot_sequence, is_outlier
+from functions import get_one_hot_sequence, is_outlier, get_config_file
 from itertools import chain
 import json
 
@@ -37,8 +37,7 @@ np.seterr(divide='ignore')
 # Window half length
 # win_hlen = 100
 
-with open('./genome_wide/parameters.json', 'r') as f:
-    config = json.load(f)
+config = get_config_file()
 
 HPC_MODE = config["DEFAULT"]["HPC_MODE"]
 CANDIDATE_POSITIONS = config["DEFAULT"]["CANDIDATE_POSITIONS"]

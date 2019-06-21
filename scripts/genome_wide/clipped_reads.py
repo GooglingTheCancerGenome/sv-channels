@@ -8,7 +8,8 @@ import pickle
 from time import time
 import numpy as np
 import logging
-from functions import is_clipped, is_left_clipped, is_right_clipped, has_indels, get_indels, get_reference_sequence
+from functions import is_clipped, is_left_clipped, is_right_clipped, has_indels,\
+    get_indels, get_reference_sequence, get_config_file
 from collections import defaultdict
 
 def get_clipped_reads(ibam, chrName, outFile):
@@ -23,8 +24,8 @@ def get_clipped_reads(ibam, chrName, outFile):
     # Check if the BAM file in input exists
     assert os.path.isfile(ibam)
 
-    # Minimum read mapping quality to consider
-    minMAPQ = 30
+    config = get_config_file()
+    minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
 
     # Dictionary to store number of clipped reads per position
     clipped_reads = dict()

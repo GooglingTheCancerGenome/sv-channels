@@ -24,7 +24,8 @@ def get_clipped_read_positions(ibam, chrName, outFile):
     assert os.path.isfile(ibam)
 
     # Minimum read mapping quality to consider
-    minMAPQ = 30
+    config = fun.get_config_file()
+    minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
 
     # Load the BAM file
     bamfile = pysam.AlignmentFile(ibam, "rb")

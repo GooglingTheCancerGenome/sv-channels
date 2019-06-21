@@ -67,9 +67,9 @@ def get_split_read_positions(ibam, chrName, outFile):
     # Check if the BAM file in input exists
     assert os.path.isfile(ibam)
 
-    # Minimum read mapping quality to consider
-    minMAPQ = 30
-    min_support = 3
+    config = fun.get_config_file()
+    minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
+    min_support = config["DEFAULT"]["MIN_SR_SUPPORT"]
 
     # Load the BAM file
     bamfile = pysam.AlignmentFile(ibam, "rb")
@@ -117,11 +117,11 @@ def get_split_read_positions(ibam, chrName, outFile):
         # if (not read.is_unmapped) and (not read.mate_is_unmapped) and read.mapping_quality >= minMAPQ:
         if (not read.is_unmapped) and read.mapping_quality >= minMAPQ:
 
-            # if fun.has_indels(read):
-            #     # print(read)
-            #     dels_start, dels_end, ins = fun.get_indels(read)
-            #     dels = dels_start + dels_end + ins
-            #     split_pos.extend(dels)
+            if fun.has_indels(read):
+                # print(read)
+                dels_start, dels_end, ins = fun.get_indels(read)
+                dels = dels_start + dels_end + ins
+                split_pos.extend(dels)
             if read.has_tag('SA'):
                 chr, pos, strand = fun.get_suppl_aln(read)
                 if fun.is_right_clipped(read):

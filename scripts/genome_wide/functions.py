@@ -1,9 +1,10 @@
 # Imports
 import numpy as np
 import twobitreader as twobit
+import json
 
-del_min_size = 30
-ins_min_size = 30
+del_min_size = 50
+ins_min_size = 50
 
 '''
 Generic functions used in the channel scripts
@@ -207,3 +208,10 @@ def is_outlier(points, thresh=3.5):
     modified_z_score = 0.6745 * diff / med_abs_deviation
 
     return modified_z_score > thresh
+
+
+def get_config_file():
+
+    with open('./genome_wide/parameters.json', 'r') as f:
+        config = json.load(f)
+    return config

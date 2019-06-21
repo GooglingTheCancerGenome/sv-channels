@@ -26,7 +26,9 @@ def get_clipped_read_distance(ibam, chrName, outFile):
     assert os.path.isfile(ibam)
 
     # minimum read mapping quality to consider
-    minMAPQ = 30
+    config = fun.get_config_file()
+    minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
+
     # open BAM file
     bamfile = pysam.AlignmentFile(ibam, "rb")
     # get chromosome length from BAM header

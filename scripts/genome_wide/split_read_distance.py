@@ -11,8 +11,8 @@ from collections import defaultdict
 
 def get_split_read_distance(ibam, chrName, outFile):
 
-    # minimum mapping quality to consider
-    minMAPQ = 30
+    config = get_config_file()
+    minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
 
     # Dictionary to store left/right split read distance
     split_read_distance = dict()
