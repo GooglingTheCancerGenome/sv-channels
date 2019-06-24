@@ -1612,7 +1612,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                 assert os.path.isfile(prefix_train + sample + '/' + clipped_reads_file[chrName])
                 assert os.path.isfile(prefix_train + sample + '/' + coverage_file[chrName])
                 assert os.path.isfile(prefix_train + sample + '/' + split_read_distance_file[chrName])
-                # assert os.path.isfile(prefix_train + sample + '/' + snv_file[chrName])
+                assert os.path.isfile(prefix_train + sample + '/' + snv_file[chrName])
 
             logging.info('Chromosome %s' % chrName)
 
@@ -1991,8 +1991,8 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                 assert len(discordant_coverage_array[sample]['forward']) == win_len
                 assert len(discordant_coverage_array[sample]['reverse']) == win_len
 
-                snv_array[sample]['median_base_quality'] = snv[sample][chrName][0, start_win:end_win]
-                snv_array[sample]['snv_frequency'] = snv[sample][chrName][1, start_win:end_win]
+                snv_array[sample]['median_base_quality'] = snv[sample][0, start_win:end_win]
+                snv_array[sample]['snv_frequency'] = snv[sample][1, start_win:end_win]
 
                 # split read distance
                 split_read_distance_array[sample] = dict()
