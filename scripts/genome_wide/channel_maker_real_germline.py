@@ -1790,7 +1790,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
             logging.info('Reading SNVs')
             with gzip.GzipFile(prefix + snv_file[chrName], 'rb') as f:
                 npzfiles = np.load(f)
-                snv = npzfiles['snv_array']
+                snv[sample][chrName] = npzfiles['snv_array']
             logging.info('End of reading')
 
             logging.info('Finding outliers')
@@ -1991,8 +1991,8 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                 assert len(discordant_coverage_array[sample]['forward']) == win_len
                 assert len(discordant_coverage_array[sample]['reverse']) == win_len
 
-                snv_array[sample]['median_base_quality'] = snv[sample][0, start_win:end_win]
-                snv_array[sample]['snv_frequency'] = snv[sample][1, start_win:end_win]
+                snv_array[sample]['median_base_quality'] = snv[sample][chrName][0, start_win:end_win]
+                snv_array[sample]['snv_frequency'] = snv[sample][chrName][1, start_win:end_win]
 
                 # split read distance
                 split_read_distance_array[sample] = dict()
