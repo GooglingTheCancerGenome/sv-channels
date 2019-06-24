@@ -19,6 +19,7 @@ HPC_MODE = config["DEFAULT"]["HPC_MODE"]
 MAX_PILEUP_BUFFER_SIZE = 8000
 minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
 
+
 def get_snvs(ibam, chrName, outFile):
 
     def get_2bit_genome():
@@ -32,7 +33,8 @@ def get_snvs(ibam, chrName, outFile):
 
     def get_snv_number(query_seq_list, reference_base):
 
-        if len(query_seq_list) > 0:
+        reference_base = reference_base.upper()
+        if len(query_seq_list) > 0 and reference_base != 'N':
             cnt = Counter(list(map(lambda x:x.upper(), query_seq_list)))
             return cnt['A']+cnt['T']+cnt['C']+cnt['G']-cnt[reference_base]
         else:
@@ -66,7 +68,7 @@ def get_snvs(ibam, chrName, outFile):
     # Record the current time
     last_t = time()
 
-    for pileupcolumn in bamfile.pileup(chrName, start_pos, stop_pos, min_mapping_quality=minMAPQ):
+    for pileupcolumn in bamfile.pileup(chrName, start_pos, stop_pos, stepper='all'):
         # pileupcolumn.set_min_base_quality(0)
         # print("\ncoverage at base %s = %s" %
         #       (pileupcolumn.pos, pileupcolumn.nsegments))
