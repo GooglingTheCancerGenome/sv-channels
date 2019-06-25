@@ -1384,7 +1384,8 @@ def get_labels(sampleName):
 
     sv_dict = get_sv_dict()
 
-    crpos_all_sv = get_crpos_overlap_with_sv_callsets(sv_dict, cr_pos_dict)
+    # Get overlap of candidate positions with all SV breakpoints (all 4 SV callers)
+    # crpos_all_sv = get_crpos_overlap_with_sv_callsets(sv_dict, cr_pos_dict)
 
     labels = dict()
 
@@ -1466,8 +1467,8 @@ def get_labels(sampleName):
                     # print(elem)
                     if pos in crpos_full:
                         labels[sv_dict_key][chrName].append(elem[0].data)
-                    elif pos in crpos_partial or \
-                            pos in crpos_all_sv[chrName] / crpos_full:
+                    elif pos in crpos_partial: # or \
+                            # pos in crpos_all_sv[chrName] / crpos_full:
                         labels[sv_dict_key][chrName].append('UK')
                     else:
                         labels[sv_dict_key][chrName].append('noSV')
@@ -1577,7 +1578,7 @@ def main():
     # load_labels(sampleName=sampleName)
 
     # for sampleName in ['NA12878', 'Patient1', 'Patient2']:
-    for sampleName in ['NA12878', 'NA24385', 'CHM1', 'CHM13']:
+    for sampleName in ['NA24385', 'CHM1', 'CHM13']:
         get_labels(sampleName)
         # nanosv_vcf_to_bed(sampleName)
 
