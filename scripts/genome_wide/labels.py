@@ -1500,7 +1500,7 @@ def get_labels(sampleName):
     else:
         channel_dir = '.'
 
-    output_dir = '/'.join((channel_dir, sampleName, 'label_npy'))
+    output_dir = '/'.join((channel_dir, sampleName, 'label_npy'+'_win'+str(win_len)))
     create_dir(output_dir)
 
     data_file = '/'.join((output_dir, 'labels.pickle'))
@@ -1515,7 +1515,7 @@ def load_labels(sampleName):
     else:
         channel_dir = ''
 
-    output_dir = '/'.join((channel_dir, sampleName, 'label_npy'))
+    output_dir = '/'.join((channel_dir, sampleName+'_win'+win_len, 'label_npy'))
 
     pickle_file = '/'.join((output_dir, 'labels.pickle.gz'))
     with gzip.GzipFile(pickle_file, "rb") as f:
