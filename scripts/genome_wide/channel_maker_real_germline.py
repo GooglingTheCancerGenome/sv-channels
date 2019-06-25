@@ -216,6 +216,7 @@ def load_clipped_read_positions(sampleName, chrName, candpos):
     channel_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth'
 
     vec_type = 'clipped_read_pos' if candpos == "CR" else 'split_read_pos'
+    min_support = min_cr_support if candpos == "CR" else min_sr_support
 
     print('Loading CR positions for Chr %s' % chrName)
 
@@ -231,7 +232,7 @@ def load_clipped_read_positions(sampleName, chrName, candpos):
             positions, locations = pickle.load(f)
             cpos = positions
 
-    cr_pos = [elem for elem, cnt in cpos.items() if cnt >= min_cr_support]
+    cr_pos = [elem for elem, cnt in cpos.items() if cnt >= min_support]
 
     return cr_pos
 
@@ -1600,7 +1601,6 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
             # assert os.path.isfile(clipped_read_pos_file[chrName])
 
             for sample in sample_list:
-
                 # Check file existence
                 logging.info('Checking file: %s => %s' % (sample, clipped_read_pos_file[chrName]))
                 assert os.path.isfile(prefix_train + sample + '/' + clipped_read_pos_file[chrName])
@@ -1719,7 +1719,6 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
                 # Count the number of clipped read positions with a certain minimum number of clipped reads
                 count_clipped_read_positions(split_pos_cnt[chrName])
-
 
     # Load channel data
     # Dictionaries where to load the channel data
@@ -1891,7 +1890,6 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                     snv_array[sample][snv_field] = dict()
 
                 for direction in ['forward', 'reverse']:
-
                     discordant_coverage_array[sample][direction] = dict()
 
                     clipped_read_distance_array[sample][direction] = dict()
@@ -2045,30 +2043,30 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
 
                 for clipped_arrangement in ['left', 'right', 'D_left', 'D_right', 'I']:
                     vstack_list.append(clipped_reads_array[sample][clipped_arrangement])
-                    vstack_list.append(
-                        get_frequency(clipped_reads_array[sample][clipped_arrangement],
-                                      coverage_array[sample])
-                    )
+                    # vstack_list.append(
+                    #     get_frequency(clipped_reads_array[sample][clipped_arrangement],
+                    #                   coverage_array[sample])
+                    # )
 
                 for mate_position in ['before', 'after']:
                     vstack_list.append(clipped_reads_inversion_array[sample][mate_position])
-                    vstack_list.append(
-                        get_frequency(clipped_reads_inversion_array[sample][mate_position],
-                                      coverage_array[sample])
-                    )
+                    # vstack_list.append(
+                    #     get_frequency(clipped_reads_inversion_array[sample][mate_position],
+                    #                   coverage_array[sample])
+                    # )
                 for mate_position in ['before', 'after']:
                     vstack_list.append(clipped_reads_duplication_array[sample][mate_position])
-                    vstack_list.append(
-                        get_frequency(clipped_reads_duplication_array[sample][mate_position],
-                                      coverage_array[sample])
-                    )
+                    # vstack_list.append(
+                    #     get_frequency(clipped_reads_duplication_array[sample][mate_position],
+                    #                   coverage_array[sample])
+                    # )
 
                 for orientation in ['opposite', 'same']:
                     vstack_list.append(clipped_reads_translocation_array[sample][orientation])
-                    vstack_list.append(
-                        get_frequency(clipped_reads_translocation_array[sample][orientation],
-                                      coverage_array[sample])
-                    )
+                    # vstack_list.append(
+                    #     get_frequency(clipped_reads_translocation_array[sample][orientation],
+                    #                   coverage_array[sample])
+                    # )
 
                 for direction in ['forward', 'reverse']:
                     for clipped_arrangement in ['left', 'right', 'all']:
@@ -2077,18 +2075,18 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                         # vstack_list.append(
                         #     clipped_read_distance_num[sample][direction][clipped_arrangement])
 
-                        # vstack_list.append(
-                        #     clipped_read_distance_median[sample][direction][clipped_arrangement])
-
                         vstack_list.append(
-                            clipped_read_distance_outlier[sample][direction][clipped_arrangement])
+                            clipped_read_distance_median[sample][direction][clipped_arrangement])
+
+                        # vstack_list.append(
+                        #     clipped_read_distance_outlier[sample][direction][clipped_arrangement])
 
                 for direction in ['left', 'right']:
                     vstack_list.append(split_reads_array[sample][direction])
-                    vstack_list.append(
-                        get_frequency(split_reads_array[sample][direction],
-                                      coverage_array[sample])
-                    )
+                    # vstack_list.append(
+                    #     get_frequency(split_reads_array[sample][direction],
+                    #                   coverage_array[sample])
+                    # )
 
                 for direction in ['left', 'right']:
                     # vstack_list.append(split_read_distance_array[sample][direction])
@@ -2104,9 +2102,6 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
                 assert len(one_hot_n) == win_len
                 vstack_list.append(one_hot_n)
 
-            # append the SNV information
-            # vstack_list.append(snv_array)
-
             # logging.info("Shape of channel matrix: %s" % str(ch_vstack.shape))
             ch_vstack = np.vstack(vstack_list)
 
@@ -2119,7 +2114,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
     create_dir(labelDir)
 
     base = os.path.basename(outFile)
-    outputFile = os.path.join(outDir+'_win'+str(win_len), base)
+    outputFile = os.path.join(outDir + '_win' + str(win_len), base)
 
     # Save the list of channel vstacks
     with gzip.GzipFile(outputFile, "w") as f:
@@ -2191,8 +2186,12 @@ def main():
     else:
         chrList = [args.chr]
 
-    channel_maker(ibam=args.bam, chrList=chrList, sampleName=args.sample, SVmode=args.svmode,
-                  trainingMode=args.train, outFile=args.out)
+    channel_maker(ibam=args.bam,
+                  chrList=chrList,
+                  sampleName=args.sample,
+                  SVmode=args.svmode,
+                  trainingMode=args.train,
+                  outFile=args.out)
 
     # for sampleName in ['NA12878']:
     #     clipped_read_positions_to_bed(sampleName, 'CR')
