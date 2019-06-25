@@ -61,7 +61,7 @@ min_sr_support = config["DEFAULT"]["MIN_SR_SUPPORT"]
 
 class SVRecord_generic:
 
-    def __init__(self, record, sv_caller):
+    def __init__(self, record):
 
         if type(record) != pysam.VariantRecord:
             raise TypeError('VCF record is not of type pysam.VariantRecord')
@@ -600,7 +600,7 @@ def read_vcf(sampleName, sv_caller):
 
     # create sv list with SVRecord objects
     for rec in vcf_in.fetch():
-        svrec = SVRecord_generic(rec, sv_caller)
+        svrec = SVRecord_generic(rec)
         sv.append(svrec)
 
     print('SVs read: %d' % len(sv))
@@ -1338,10 +1338,10 @@ def get_labels(sampleName):
             sv_dict['Mills2011_PacBio_Moleculo_Lumpy_GASVPro_DELLY_Pindel'] = read_bed_sv(inbed)
 
         elif sampleName == 'NA24385':
-            sv_dict['sv_tier1'] = read_vcf(sampleName)
+            sv_dict['sv_tier1'] = read_vcf(sampleName, '')
 
         elif sampleName in ['CHM1', 'CHM13']:
-            sv_dict['huddleston2016'] = read_vcf(sampleName)
+            sv_dict['huddleston2016'] = read_vcf(sampleName, '')
 
         return sv_dict
 
