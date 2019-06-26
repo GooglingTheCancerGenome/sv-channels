@@ -2110,11 +2110,14 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
             ch_list.append(ch_vstack)
 
     outDir = os.path.dirname(outFile)
+    outDir = outDir + '_win' + str(win_len)
+    create_dir(outDir)
+
     labelDir = outDir + '/label/'
     create_dir(labelDir)
 
     base = os.path.basename(outFile)
-    outputFile = os.path.join(outDir + '_win' + str(win_len), base)
+    outputFile = os.path.join(outDir, base)
 
     # Save the list of channel vstacks
     with gzip.GzipFile(outputFile, "w") as f:
