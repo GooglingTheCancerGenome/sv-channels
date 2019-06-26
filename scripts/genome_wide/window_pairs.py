@@ -45,7 +45,7 @@ def transposeDataset(X):
 
 def load_labels(sample_name):
     # Load label dictionary
-    labels_file = os.path.join(get_channel_dir(sample_name), sample_name, 'label_npy_win'+win_len,
+    labels_file = os.path.join(get_channel_dir(sample_name), sample_name, 'label_npy_win'+str(win_len),
                                'labels.pickle.gz')
     with gzip.GzipFile(labels_file, "rb") as f:
         labels_dict = np.load(f)
@@ -78,7 +78,8 @@ def load_windows(sample_name, labels_dict):
 
     for i in chr_list:
         logging.info('Loading data for Chr%s' % i)
-        data_file = os.path.join(get_channel_dir(sample_name), sample_name, 'channel_maker_real_germline_win'+win_len,
+        data_file = os.path.join(get_channel_dir(sample_name), sample_name, 'channel_maker_real_germline_win'+\
+                                 str(win_len),
                                  sample_name + '_' + str(i) + '.npy.gz')
         with gzip.GzipFile(data_file, "rb") as f:
             data_mat = np.load(f)
@@ -103,7 +104,7 @@ def load_windows(sample_name, labels_dict):
 
 def save_window_pairs(sample_name, X, y, y_binary, z):
 
-    data_output_file = os.path.join(get_channel_dir(sample_name), '_'.join([sample_name, 'pairs', 'win'+win_len]))
+    data_output_file = os.path.join(get_channel_dir(sample_name), '_'.join([sample_name, 'pairs', 'win'+str(win_len)]))
     np.savez_compressed(data_output_file, X=X)
     np.savez_compressed(data_output_file + '_labels', y=y, y_binary=y_binary, z=z)
     # os.system('gzip -f ' + data_output_file + '.npz')
