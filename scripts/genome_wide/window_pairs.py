@@ -102,7 +102,8 @@ def load_windows(sample_name, labels_dict):
 
 
 def save_window_pairs(sample_name, X, y, y_binary, z):
-    data_output_file = os.path.join(get_channel_dir(sample_name), '_'.join([sample_name, 'pairs']))
+
+    data_output_file = os.path.join(get_channel_dir(sample_name), '_'.join([sample_name, 'pairs', 'win'+win_len]))
     np.savez_compressed(data_output_file, X=X)
     np.savez_compressed(data_output_file + '_labels', y=y, y_binary=y_binary, z=z)
     # os.system('gzip -f ' + data_output_file + '.npz')
