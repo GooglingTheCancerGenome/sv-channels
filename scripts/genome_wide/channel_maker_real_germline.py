@@ -2173,6 +2173,14 @@ def main():
     args = parser.parse_args()
 
     logfilename = args.logfile
+
+    # Create directory for log file for a specific window parameter
+    outDir = os.path.dirname(logfilename)
+    outDir = outDir + '_win' + str(win_len)
+    create_dir(outDir)
+    base = os.path.basename(logfilename)
+    logfilename = os.path.join(outDir, base)
+
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(
         format=FORMAT,
