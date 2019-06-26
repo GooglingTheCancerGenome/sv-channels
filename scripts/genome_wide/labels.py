@@ -1584,7 +1584,8 @@ def main():
     # load_labels(sampleName=sampleName)
 
     # for sampleName in ['NA12878', 'Patient1', 'Patient2']:
-    for sampleName in ['NA24385', 'CHM1', 'CHM13']:
+    # for sampleName in ['NA24385', 'CHM1', 'CHM13']:
+    for sampleName in ['NA12878']:
         get_labels(sampleName)
         # nanosv_vcf_to_bed(sampleName)
 
