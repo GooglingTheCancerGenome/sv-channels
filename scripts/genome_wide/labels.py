@@ -1543,7 +1543,7 @@ def main():
     # parser.add_argument('-b', '--bam', type=str,
     #                     default=inputBAM,
     #                     help="Specify input file (BAM)")
-    parser.add_argument('-l', '--log', type=str, default='labels'+str(win_len)+'.log',
+    parser.add_argument('-l', '--logfile', type=str, default='labels'+str(win_len)+'.log',
                         help="Specify log file")
     parser.add_argument('-s', '--sample', type=str, default='NA12878',
                         help="Specify sample")
