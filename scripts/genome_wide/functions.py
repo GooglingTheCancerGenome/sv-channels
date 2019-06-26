@@ -63,6 +63,7 @@ def get_suppl_aln(read):
     '''
     if len(read.get_tag('SA')) > 0:
         # print(read.get_tag('SA'))
+        # get first supplemental alignment
         supp_aln = read.get_tag('SA').split(';')[0]
         sa_info = supp_aln.split(',')
         # print(supp_aln)

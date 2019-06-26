@@ -9,10 +9,9 @@ import bz2file
 import pickle
 import logging
 from itertools import chain
-import json
+from functions import get_config_file
 
-with open('parameters.json', 'r') as f:
-    config = json.load(f)
+config = get_config_file()
 
 HPC_MODE = config["DEFAULT"]["HPC_MODE"]
 # Window size
