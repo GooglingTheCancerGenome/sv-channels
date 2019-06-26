@@ -1424,7 +1424,9 @@ def get_labels(sampleName):
             print('BED mode')
             chr_list = sv_list.keys()
 
-        for chrName in chr_list:
+        chromosomes_to_consider = [str(s) for s in list(range(1, 23)) + ['X']]
+
+        for chrName in [c for c in chr_list if c in chromosomes_to_consider]:
             # DEBUG
             # for chrName in ['22']:
 
