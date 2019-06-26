@@ -63,6 +63,9 @@ class SVRecord_generic:
 
     def __init__(self, record):
 
+        # For CHM[1|13] SVs
+        svtype_dict = {'deletion': 'DEL', 'insertion': 'INS', 'inversion': 'INV'}
+
         if type(record) != pysam.VariantRecord:
             raise TypeError('VCF record is not of type pysam.VariantRecord')
         # print(record)
@@ -127,6 +130,9 @@ class SVRecord_generic:
                 self.svtype = record.info['SVTYPE']
         else:
             self.svtype = 'BND'
+
+        if self.svtype in svtype_dict.keys():
+            self.svtype = svtype_dict[self.svtype]
 
     @staticmethod
     def stdchrom(chrom):
