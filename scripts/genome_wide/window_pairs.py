@@ -24,7 +24,7 @@ chr_list = list(map(str, np.arange(1, 23)))
 chr_list.append('X')
 
 
-def get_channel_dir(sample_name):
+def get_channel_dir():
     if HPC_MODE:
 
         datapath_prefix = '/hpc/cog_bioinf/ridder/users/lsantuari'
@@ -45,7 +45,7 @@ def transposeDataset(X):
 
 def load_labels(sample_name):
     # Load label dictionary
-    labels_file = os.path.join(get_channel_dir(sample_name), sample_name, 'label_npy_win'+str(win_len),
+    labels_file = os.path.join(get_channel_dir(), sample_name, 'label_npy_win'+str(win_len),
                                'labels.pickle.gz')
     with gzip.GzipFile(labels_file, "rb") as f:
         labels_dict = np.load(f)
@@ -63,7 +63,7 @@ def load_split_read_positions(sample_name):
         logging.info('Loading SR positions for Chr%s' % chrName)
         # Load files
 
-        fn = os.path.join(get_channel_dir(sample_name), sample_name, vec_type, chrName + '_' + vec_type + '.pbz2')
+        fn = os.path.join(get_channel_dir(), sample_name, vec_type, chrName + '_' + vec_type + '.pbz2')
 
         with bz2file.BZ2File(fn, 'rb') as f:
             positions[chrName], locations[chrName] = pickle.load(f)
@@ -72,22 +72,25 @@ def load_split_read_positions(sample_name):
 
 
 def load_windows(sample_name, labels_dict):
+
     training_data = []
     training_labels = defaultdict(list)
     training_id = []
 
+    labels_keys = [d for d in labels_dict.keys() if d != 'id']
+
     for i in chr_list:
         logging.info('Loading data for Chr%s' % i)
-        data_file = os.path.join(get_channel_dir(sample_name), sample_name, 'channel_maker_real_germline_win'+\
+        data_file = os.path.join(get_channel_dir(), sample_name, 'channel_maker_real_germline_win'+\
                                  str(win_len),
                                  sample_name + '_' + str(i) + '.npy.gz')
         with gzip.GzipFile(data_file, "rb") as f:
             data_mat = np.load(f)
-            for label_type in labels_dict.keys():
+            for label_type in labels_keys:
                 assert len(data_mat) == len(labels_dict[label_type][i])
             training_data.extend(data_mat)
         f.close()
-        for label_type in labels_dict.keys():
+        for label_type in labels_keys:
             training_labels[label_type].extend(labels_dict[label_type][i])
         training_id.extend([d for d in labels_dict['id'][i]])
 
@@ -104,14 +107,14 @@ def load_windows(sample_name, labels_dict):
 
 def save_window_pairs(sample_name, X, y, y_binary, z):
 
-    data_output_file = os.path.join(get_channel_dir(sample_name), '_'.join([sample_name, 'pairs', 'win'+str(win_len)]))
+    data_output_file = os.path.join(get_channel_dir(), '_'.join([sample_name, 'pairs', 'win'+str(win_len)]))
     np.savez_compressed(data_output_file, X=X)
     np.savez_compressed(data_output_file + '_labels', y=y, y_binary=y_binary, z=z)
     # os.system('gzip -f ' + data_output_file + '.npz')
 
 
 def load_window_pairs(sample_name):
-    data_output_file = os.path.join(get_channel_dir(sample_name), '_'.join([sample_name, 'pairs']))
+    data_output_file = os.path.join(get_channel_dir(), '_'.join([sample_name, 'pairs']))
 
     with data_output_file + '.npz' as f:
         npzfiles = np.load(f)
