@@ -741,7 +741,7 @@ def get_labels_from_nanosv_vcf(sampleName, win_len):
 
         label_search = [sorted(t[p - win_hlen: p + win_hlen + 1]) for p in cr_pos]
 
-        crpos_full_ci, crpos_partial_ci = get_crpos_win_with_ci_overlap(sv_list_chr, cr_pos)
+        crpos_full_ci, crpos_partial_ci = get_crpos_win_with_ci_overlap(sv_list_chr, cr_pos, win_hlen)
 
         # print('Clipped read positions with complete CI overlap: %s' % crpos_full_ci)
         # print('Clipped read positions with partial CI overlap: %s' % crpos_partial_ci)
@@ -1004,7 +1004,7 @@ def get_labels_from_bed(sampleName, win_len, inbed):
 
         label = [sorted(t[p - win_hlen: p + win_hlen + 1]) for p in cr_pos]
 
-        crpos_full_ci, crpos_partial_ci = get_crpos_win_with_bed_overlap(sv_list_chr, cr_pos)
+        crpos_full_ci, crpos_partial_ci = get_crpos_win_with_bed_overlap(sv_list_chr, cr_pos, win_hlen)
 
         # print('Clipped read positions with complete CI overlap: %s' % crpos_full_ci)
         # print('Clipped read positions with partial CI overlap: %s' % crpos_partial_ci)
@@ -1066,7 +1066,7 @@ def get_labels_from_bed(sampleName, win_len, inbed):
     return labels_list
 
 
-def get_crpos_win_with_ci_overlap(sv_list, cr_pos):
+def get_crpos_win_with_ci_overlap(sv_list, cr_pos, win_hlen):
     '''
 
     :param sv_list: list, list of SVs
@@ -1127,7 +1127,7 @@ def get_crpos_win_with_ci_overlap(sv_list, cr_pos):
     return sorted(list(set(cr_full_overlap))), sorted(list(set(cr_partial_overlap) - set(cr_full_overlap)))
 
 
-def get_crpos_win_with_bed_overlap(sv_list, cr_pos):
+def get_crpos_win_with_bed_overlap(sv_list, cr_pos, win_hlen):
     '''
     :param sv_list: list, list of SV bed intervals
     :param cr_pos: list, list of clipped read positions
@@ -1412,7 +1412,7 @@ def get_labels(sampleName, win_len):
                 print(caller)
                 sv_list_all_sv[caller] = [var for var in sv_dict[caller] if var.chrom == chrName]
                 crpos_full_all_sv_per_caller[caller], crpos_partial_all_sv_per_caller[caller] = \
-                    get_crpos_win_with_ci_overlap(sv_list_all_sv[caller], cr_pos_dict[chrName])
+                    get_crpos_win_with_ci_overlap(sv_list_all_sv[caller], cr_pos_dict[chrName], win_hlen)
 
             crpos_full_all_sv = set()
             crpos_partial_all_sv = set()
@@ -1491,7 +1491,7 @@ def get_labels(sampleName, win_len):
                 sv_list_chr = [var for var in sv_list if var.chrom == chrName]
                 tree = make_tree_from_vcf(sv_list_chr)
 
-                crpos_full, crpos_partial = get_crpos_win_with_ci_overlap(sv_list_chr, cr_pos)
+                crpos_full, crpos_partial = get_crpos_win_with_ci_overlap(sv_list_chr, cr_pos, win_hlen)
 
             # BED file SVs
             else:
@@ -1499,7 +1499,7 @@ def get_labels(sampleName, win_len):
                 sv_list_chr = sv_list[chrName]
                 tree = make_tree_from_bed(sv_list_chr)
 
-                crpos_full, crpos_partial = get_crpos_win_with_bed_overlap(sv_list_chr, cr_pos)
+                crpos_full, crpos_partial = get_crpos_win_with_bed_overlap(sv_list_chr, cr_pos, win_hlen)
 
             # print(f'crpos_full = {crpos_full}')
             # print(f'crpos_partial = {crpos_partial}')
