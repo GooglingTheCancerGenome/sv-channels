@@ -25,6 +25,8 @@ echo ${PRGARG}
 echo ${BAMARG}
 # which chromosome is considered
 echo ${CHRARG}
+# which window is considered
+echo ${WINDOWARG}
 
 echo "Running ${PRGARG} for ${BAMARG} ${CHRARG}"
 
@@ -54,6 +56,7 @@ elif [ ${PRGARG} == 'channel_maker_real_germline' ]; then
 		        --train True \
 		        --svmode ${SVMODEARG} \
                 --out ${OUTARG}"/"${PRGARG}"/"${SAMPLEARG}"_"${CHRARG}".npy.gz" \
+                --window ${WINDOWARG} \
                 --logfile ${OUTARG}"/"${PRGARG}"/"${SAMPLEARG}"_"${CHRARG}".log"
 
 # ChannelMaker for training data

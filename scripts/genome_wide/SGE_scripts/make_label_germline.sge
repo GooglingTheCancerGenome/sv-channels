@@ -14,4 +14,7 @@ echo "Load python"
 # logging
 source activate channel-maker
 
-python "genome_wide/labels.py"
+python "genome_wide/labels.py" \
+    --sample ${SAMPLEARG} \
+    --window ${WINDOWARG}
+

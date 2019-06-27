@@ -33,7 +33,8 @@ SAMPLE_ARRAY=('NA12878' 'NA24385' 'CHM1' 'CHM13')
 # BAM_ARRAY=(${PATIENT1_BAM} ${PATIENT2_BAM})
 # SAMPLE_ARRAY=('PATIENT1' 'PATIENT2')
 
-CHRARRAY=(`seq 1 22` 'X' 'Y' 'MT')
+#CHRARRAY=(`seq 1 22` 'X' 'Y' 'MT')
+CHRARRAY=(`seq 1 22` 'X')
 
 # Run single channel scripts (0) or ChannelMaker (1)
 RUNALL=0
@@ -89,15 +90,20 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
 #	echo "creating directory " $LOGDIR
 #	[ ! -d ${LOGDIR} ] && mkdir -p $LOGDIR
 
+for WINDOW in 200; do
+
 	for CHROMOSOME in ${CHRARRAY[@]}; do
 	#for CHROMOSOME in 1; do
 		OUTDIR=$SAMPLE
 		JOB_NAME=$SAMPLE"_"$CHROMOSOME"_"${PRG}
-		qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=${OUTDIR},SVMODEARG=${SVMODE} \
+		qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=${OUTDIR},SVMODEARG=${SVMODE},\
+		     WINDOWARG=${WINDOW} \
 			-N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_channel.sge
-    	done
+    done
 	#mv ${SAMPLE}"*.err" ${LOGDIR}
 	#mv ${SAMPLE}"*.out" ${LOGDIR}
+
+done
 done
 
 
