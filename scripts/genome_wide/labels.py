@@ -49,9 +49,7 @@ with open('./genome_wide/parameters.json', 'r') as f:
 
 HPC_MODE = config["DEFAULT"]["HPC_MODE"]
 CANDIDATE_POSITIONS = config["DEFAULT"]["CANDIDATE_POSITIONS"]
-# Window size
-win_hlen = config["DEFAULT"]["WIN_HLEN"]
-win_len = config["DEFAULT"]["WIN_HLEN"] * 2
+
 # Only clipped read positions supported by at least min_cr_support clipped reads are considered
 min_cr_support = config["DEFAULT"]["MIN_CR_SUPPORT"]
 min_sr_support = config["DEFAULT"]["MIN_SR_SUPPORT"]
@@ -656,7 +654,7 @@ def read_vcf(sampleName, sv_caller):
     return sv
 
 
-def get_labels_from_nanosv_vcf(sampleName):
+def get_labels_from_nanosv_vcf(sampleName, win_len):
     '''
     This function writes the label files based on the nanosv VCF file information
 
@@ -665,6 +663,8 @@ def get_labels_from_nanosv_vcf(sampleName):
     :param ibam: str, path of the BAM file in input
     :return: None
     '''
+
+    win_hlen = int(win_len / 2)
 
     # Lines to write in the BED file
     lines = []
@@ -963,7 +963,7 @@ def read_bed_sv(inbed):
     return sv_dict
 
 
-def get_labels_from_bed(sampleName, ibam, inbed):
+def get_labels_from_bed(sampleName, win_len, inbed):
     '''
 
     :param sampleName: name of sample considered
@@ -974,6 +974,8 @@ def get_labels_from_bed(sampleName, ibam, inbed):
 
     print('sample = %s' % sampleName)
     print('window = %d' % win_len)
+
+    win_hlen = int(win_len/2)
 
     sv_list = read_bed_sv(inbed)
 
@@ -1277,7 +1279,7 @@ def nanosv_vcf_to_bed(sampleName):
 
 
 # Get labels
-def get_labels(sampleName):
+def get_labels(sampleName, win_len):
 
     print(f'running {sampleName}')
 
@@ -1424,6 +1426,8 @@ def get_labels(sampleName):
         print(f'Finished crpos_overlap_with_sv_callsets')
 
         return crpos_all_sv
+
+    win_hlen = int(win_len / 2)
 
     cr_pos_dict = load_all_clipped_read_positions(sampleName)
 
@@ -1585,10 +1589,12 @@ def main():
     # parser.add_argument('-b', '--bam', type=str,
     #                     default=inputBAM,
     #                     help="Specify input file (BAM)")
-    parser.add_argument('-l', '--logfile', type=str, default='labels'+str(win_len)+'.log',
+    parser.add_argument('-l', '--logfile', type=str, default='labels_win200.log',
                         help="Specify log file")
     parser.add_argument('-s', '--sample', type=str, default='NA12878',
                         help="Specify sample")
+    parser.add_argument('-w', '--window', type=str, default=200,
+                        help="Specify window size")
 
     args = parser.parse_args()
 
@@ -1639,7 +1645,7 @@ def main():
     # for sampleName in ['NA12878', 'Patient1', 'Patient2']:
     # for sampleName in ['NA24385', 'CHM1', 'CHM13']:
     for sampleName in ['NA12878']:
-        get_labels(sampleName)
+        get_labels(sampleName, win_len=args.window)
         # nanosv_vcf_to_bed(sampleName)
 
     # crpos_giab = load_all_clipped_read_positions('NA12878')

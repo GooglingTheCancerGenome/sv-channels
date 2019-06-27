@@ -41,9 +41,7 @@ config = get_config_file()
 
 HPC_MODE = config["DEFAULT"]["HPC_MODE"]
 CANDIDATE_POSITIONS = config["DEFAULT"]["CANDIDATE_POSITIONS"]
-# Window size
-win_hlen = config["DEFAULT"]["WIN_HLEN"]
-win_len = config["DEFAULT"]["WIN_HLEN"] * 2
+
 # Support for clipped/split reads
 min_cr_support = config["DEFAULT"]["MIN_CR_SUPPORT"]
 min_sr_support = config["DEFAULT"]["MIN_SR_SUPPORT"]
@@ -1032,130 +1030,6 @@ def read_bed_sv(sampleName):
     # print(sv_dict)
     return sv_dict
 
-
-def create_labels_bed(sampleName, ibam):
-    print('sample = %s' % sampleName)
-    print('window = %d' % win_len)
-
-    sv_list = read_bed_sv(sampleName)
-    chr_list = sv_list.keys()
-
-    for chrName in chr_list:
-
-        sv_list_chr = sv_list[chrName]
-
-        chrLen = get_chr_len(ibam, chrName)
-
-        # Load CR positions
-        cr_pos = load_clipped_read_positions(sampleName, chrName, CANDIDATE_POSITIONS)
-
-        # Remove positions with windows falling off chromosome boundaries
-        cr_pos = [pos for pos in cr_pos if win_hlen <= pos <= (chrLen - win_hlen)]
-
-        # print(sorted(cr_pos))
-
-        # Using IntervalTree for interval search
-        t = IntervalTree()
-
-        print('# Breakpoints in Chr: %d' % len(sv_list_chr))
-
-        for start, end, lab in sv_list_chr:
-            t[start:end + 1] = lab
-
-        label = [sorted(t[p - win_hlen: p + win_hlen + 1]) for p in cr_pos]
-
-        crpos_full_ci, crpos_partial_ci = get_crpos_win_with_bed_overlap(sv_list_chr, cr_pos)
-        print('Clipped read positions with complete CI overlap: %s' % crpos_full_ci)
-        print('Clipped read positions with partial CI overlap: %s' % crpos_partial_ci)
-        crpos_ci_isec = set(crpos_full_ci) & set(crpos_partial_ci)
-        print('Intersection: %s' % crpos_ci_isec)
-
-        print('# CRPOS in BED: %d' % len([l for l in label if len(l) != 0]))
-
-        count_zero_hits = 0
-        count_multiple_hits = 0
-
-        label_ci_full_overlap = []
-
-        for elem, pos in zip(label, cr_pos):
-            if len(elem) == 1:
-                # print(elem)
-                if pos in crpos_full_ci:
-                    label_ci_full_overlap.append(elem[0].data)
-                elif pos in crpos_partial_ci:
-                    label_ci_full_overlap.append('UK')
-                else:
-                    label_ci_full_overlap.append('noSV')
-            elif len(elem) == 0:
-                count_zero_hits += 1
-                label_ci_full_overlap.append('noSV')
-            elif len(elem) > 1:
-                count_multiple_hits += 1
-                label_ci_full_overlap.append('UK')
-
-        print('CR positions: %d' % len(cr_pos))
-        print('Label length: %d' % len(label))
-        assert len(label_ci_full_overlap) == len(cr_pos)
-
-        print('Label_CI_full_overlap: %s' % Counter(label_ci_full_overlap))
-        print('Zero hits:%d' % count_zero_hits)
-        print('Multiple hits:%d' % count_multiple_hits)
-
-        if not HPC_MODE:
-            channel_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth'
-        else:
-            channel_dir = ''
-
-        output_dir = '/'.join((channel_dir, sampleName, 'label'))
-        create_dir(output_dir)
-
-        # print(output_dir)
-
-        with gzip.GzipFile('/'.join((output_dir, chrName + '_label_ci_full_overlap.npy.gz')), "w") as f:
-            np.save(file=f, arr=label_ci_full_overlap)
-        f.close()
-
-    else:
-        print('Chromosome %s is not in the SV file' % chrName)
-
-
-def get_crpos_win_with_bed_overlap(sv_list, cr_pos):
-    '''
-
-    :param sv_list: list, list of SV bed intervals
-    :param cr_pos: list, list of clipped read positions
-    :return: list, list of clipped read positions whose window completely overlap either the CIPOS interval
-    or the CIEND interval
-    '''
-    # Tree with windows for CR positions
-    t_cr = IntervalTree()
-
-    for pos in cr_pos:
-        t_cr[pos - win_hlen:pos + win_hlen + 1] = pos
-        # t_cr[pos - 100:pos + 100 + 1] = pos
-
-    cr_full_overlap = []
-    cr_partial_overlap = []
-
-    rg_overlap = [sorted(t_cr[start: end + 1]) for start, end, lab in sv_list]
-    # print('Range overlap: %s' % rg_overlap)
-
-    for rg, start, end in zip(rg_overlap,
-                              [start for start, end, lab in sv_list],
-                              [end for start, end, lab in sv_list]):
-        for elem in rg:
-            elem_start, elem_end, elem_data = elem
-            if start >= elem_start and end <= elem_end:
-                cr_full_overlap.append(elem_data)
-            else:
-                cr_partial_overlap.append(elem_data)
-
-    cr_full_overlap = sorted(cr_full_overlap)
-    cr_partial_overlap = sorted(cr_partial_overlap)
-
-    return sorted(list(set(cr_full_overlap))), sorted(list(set(cr_partial_overlap) - set(cr_full_overlap)))
-
-
 # END: BED specific functions
 
 def read_SURVIVOR_merge_VCF(sampleName):
@@ -1454,7 +1328,7 @@ def get_mappability_bigwig():
     return bw
 
 
-def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
+def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile, win_len):
     '''
     This function loads the channels and for each clipped read position with at least min_cr_support clipped reads, it
     creates a vstack with 22 channel vectors (11 for the Tumor and 11 for the Normal sample) of width equal to
@@ -1473,6 +1347,9 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
         idx, = np.where(reads_array != 0)
         frequency_array[idx] = reads_array[idx] / coverage_array[idx]
         return frequency_array
+
+    # Window half length
+    win_hlen = int(win_len/2)
 
     # List where to store the channel vstacks
     ch_list = []
@@ -2170,6 +2047,8 @@ def main():
                         help="Specify if training mode is active")
     parser.add_argument('-l', '--logfile', default='channel_maker.log',
                         help='File in which to write logs.')
+    parser.add_argument('-w', '--window', type=str, default=200,
+                        help="Specify window size")
 
     args = parser.parse_args()
 
@@ -2177,7 +2056,7 @@ def main():
 
     # Create directory for log file for a specific window parameter
     outDir = os.path.dirname(logfilename)
-    outDir = outDir + '_win' + str(win_len)
+    outDir = outDir + '_win' + str(args.window)
     create_dir(outDir)
     base = os.path.basename(logfilename)
     logfilename = os.path.join(outDir, base)
@@ -2203,7 +2082,8 @@ def main():
                   sampleName=args.sample,
                   SVmode=args.svmode,
                   trainingMode=args.train,
-                  outFile=args.out)
+                  outFile=args.out,
+                  win_len=args.window)
 
     # for sampleName in ['NA12878']:
     #     clipped_read_positions_to_bed(sampleName, 'CR')

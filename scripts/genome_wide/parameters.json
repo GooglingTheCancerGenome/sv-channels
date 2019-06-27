@@ -5,7 +5,6 @@
     "READ_LENGTH": 151,
     "MIN_CR_SUPPORT": 2,
     "MIN_SR_SUPPORT": 2,
-    "WIN_HLEN": 100,
     "MIN_MAPQ": 10
   }
 }
