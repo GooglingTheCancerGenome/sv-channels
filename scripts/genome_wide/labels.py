@@ -664,7 +664,7 @@ def get_labels_from_nanosv_vcf(sampleName, win_len):
     :return: None
     '''
 
-    win_hlen = int(win_len) / 2
+    win_hlen = int(int(win_len) / 2)
 
     # Lines to write in the BED file
     lines = []
@@ -975,7 +975,7 @@ def get_labels_from_bed(sampleName, win_len, inbed):
     print('sample = %s' % sampleName)
     print('window = %d' % win_len)
 
-    win_hlen = int(win_len/2)
+    win_hlen = int(int(win_len)/2)
 
     sv_list = read_bed_sv(inbed)
 
@@ -1427,7 +1427,7 @@ def get_labels(sampleName, win_len):
 
         return crpos_all_sv
 
-    win_hlen = int(win_len) / 2
+    win_hlen = int( int(win_len) / 2 )
 
     cr_pos_dict = load_all_clipped_read_positions(sampleName, win_hlen)
 

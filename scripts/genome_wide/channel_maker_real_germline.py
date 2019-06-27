@@ -1349,7 +1349,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile, win_
         return frequency_array
 
     # Window half length
-    win_hlen = int(win_len)/2
+    win_hlen = int(int(win_len)/2)
 
     # List where to store the channel vstacks
     ch_list = []
