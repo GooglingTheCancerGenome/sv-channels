@@ -1814,7 +1814,8 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile):
         else:
             clipped_pos[chrName] = [k for k, v in clipped_pos_cnt[chrName].items() if v >= min_cr_support]
             split_pos[chrName] = [k for k, v in split_pos_cnt[chrName].items() if v >= min_sr_support]
-            clipped_pos[chrName] = sorted(list(set(clipped_pos[chrName]) & set(split_pos[chrName])))
+            # clipped_pos[chrName] = sorted(list(set(clipped_pos[chrName]) & set(split_pos[chrName])))
+            clipped_pos[chrName] = split_pos[chrName]
 
     # print(clipped_pos)
 

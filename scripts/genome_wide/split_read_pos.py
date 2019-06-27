@@ -125,7 +125,7 @@ def get_split_read_positions(ibam, chrName, outFile):
             if read.has_tag('SA'):
                 chr, pos, strand = fun.get_suppl_aln(read)
                 if fun.is_right_clipped(read):
-                    refpos = read.reference_end
+                    refpos = read.reference_end + 1
                     if chr == read.reference_name:
                         split_pos.append(refpos)
                         split_pos.append(pos)
@@ -142,7 +142,7 @@ def get_split_read_positions(ibam, chrName, outFile):
 
             if not read.mate_is_unmapped and not read.is_proper_pair:
 
-                refpos = read.reference_end if not read.is_reverse else read.reference_start
+                refpos = read.reference_end + 1 if not read.is_reverse else read.reference_start
 
                 strand_id = '_'.join([read.reference_name, strand_str[read.is_reverse],
                                       read.next_reference_name, strand_str[read.mate_is_reverse]])
