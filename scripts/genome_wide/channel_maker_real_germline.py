@@ -2083,7 +2083,7 @@ def main():
                   SVmode=args.svmode,
                   trainingMode=args.train,
                   outFile=args.out,
-                  win_len=args.window)
+                  win_len=int(args.window))
 
     # for sampleName in ['NA12878']:
     #     clipped_read_positions_to_bed(sampleName, 'CR')

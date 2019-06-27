@@ -387,7 +387,7 @@ def create_dir(directory):
             raise
 
 
-def load_clipped_read_positions(sampleName, chrName):
+def load_clipped_read_positions(sampleName, chrName, win_hlen):
     def get_filepath(vec_type):
 
         if HPC_MODE:
@@ -434,7 +434,7 @@ def load_clipped_read_positions(sampleName, chrName):
     return cr_pos
 
 
-def load_all_clipped_read_positions(sampleName):
+def load_all_clipped_read_positions(sampleName, win_hlen):
 
     # cr_pos_dict = {}
     # for chrName in chrom_lengths.keys():
@@ -464,7 +464,7 @@ def load_all_clipped_read_positions(sampleName):
         cr_pos_dict = {}
         for chrName in chrom_lengths.keys():
             # for chrName in ['22']:
-            cr_pos_dict[chrName] = load_clipped_read_positions(sampleName, chrName)
+            cr_pos_dict[chrName] = load_clipped_read_positions(sampleName, chrName, win_hlen)
 
         print('Writing candidate positions file...')
         with gzip.GzipFile(cr_pos_file, "wb") as f:
@@ -1429,7 +1429,7 @@ def get_labels(sampleName, win_len):
 
     win_hlen = int(win_len) / 2
 
-    cr_pos_dict = load_all_clipped_read_positions(sampleName)
+    cr_pos_dict = load_all_clipped_read_positions(sampleName, win_hlen)
 
     sv_dict = get_sv_dict()
 
