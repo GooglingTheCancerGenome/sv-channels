@@ -66,12 +66,12 @@ class SVRecord_generic:
 
         if type(record) != pysam.VariantRecord:
             raise TypeError('VCF record is not of type pysam.VariantRecord')
-        # print(record)
+        # logging.info(record)
 
         if record.info['SVTYPE'] == 'BND':
             ct, chr2, pos2, indellen = self.get_bnd_info(record)
         else:
-            # print(record.info['SVTYPE'])
+            # logging.info(record.info['SVTYPE'])
             ct = None
             chr2 = record.chrom
             pos2 = record.stop
@@ -80,7 +80,7 @@ class SVRecord_generic:
             else:
                 indellen = abs(record.stop - record.pos)
 
-        # print(record.info.keys())
+        # logging.info(record.info.keys())
 
         self.id = record.id
         self.chrom = record.chrom.replace('chr', '')
@@ -152,7 +152,7 @@ class SVRecord_generic:
         '''
 
         chpos = pair.split(':')
-        # print(chpos[0])
+        # logging.info(chpos[0])
         chr2 = self.stdchrom(chpos[0])
         pos2 = int(chpos[1])
         assert delim1 == delim2  # '['..'[' or ']'...']'
@@ -229,11 +229,11 @@ class SVRecord_nanosv:
 
         if type(record) != pysam.VariantRecord:
             raise TypeError('VCF record is not of type pysam.VariantRecord')
-        # print(record)
+        # logging.info(record)
 
         ct, chr2, pos2, indellen = self.get_bnd_info(record)
 
-        # print(record.info.keys())
+        # logging.info(record.info.keys())
 
         self.id = record.id
         self.chrom = record.chrom
@@ -271,7 +271,7 @@ class SVRecord_nanosv:
         '''
 
         chpos = pair.split(':')
-        # print(chpos[0])
+        # logging.info(chpos[0])
         chr2 = self.stdchrom(chpos[0])
         pos2 = int(chpos[1])
         assert delim1 == delim2  # '['..'[' or ']'...']'
@@ -401,13 +401,13 @@ def load_clipped_read_positions(sampleName, chrName, win_hlen):
 
     # vec_type = 'clipped_read_pos' if CANDIDATE_POSITIONS == "CR" else 'split_read_pos'
 
-    print('Loading CR positions for Chr%s' % chrName)
+    logging.info('Loading CR positions for Chr%s' % chrName)
     # Load files
 
     with bz2file.BZ2File(get_filepath('clipped_read_pos'), 'rb') as f:
         cpos = pickle.load(f)
 
-    print('Loading SR positions for Chr%s' % chrName)
+    logging.info('Loading SR positions for Chr%s' % chrName)
 
     with bz2file.BZ2File(get_filepath('split_read_pos'), 'rb') as f:
         positions, locations = pickle.load(f)
@@ -416,19 +416,19 @@ def load_clipped_read_positions(sampleName, chrName, win_hlen):
     # Filter by minimum support
     # cr_pos = [elem for elem, cnt in cpos.items() if cnt >= min_cr_support]
 
-    print('Calculating CR positions for min support {}, length={}'.format(min_cr_support, len(cpos)))
+    logging.info('Calculating CR positions for min support {}, length={}'.format(min_cr_support, len(cpos)))
     cr_pos = [k for k, v in cpos.items() if v >= min_cr_support]
-    print('CR positions for min support {}'.format(len(cr_pos)))
-    print('Calculating SR positions for min support {}, length={}'.format(min_sr_support, len(spos)))
+    logging.info('CR positions for min support {}'.format(len(cr_pos)))
+    logging.info('Calculating SR positions for min support {}, length={}'.format(min_sr_support, len(spos)))
     sr_pos = [k for k, v in spos.items() if v >= min_sr_support]
-    print('SR positions for min support {}'.format(len(sr_pos)))
+    logging.info('SR positions for min support {}'.format(len(sr_pos)))
 
-    # print('Calculating CR positions in SR positions')
+    # logging.info('Calculating CR positions in SR positions')
     # cr_pos = sorted(list(set(cr_pos) & set(sr_pos)))
-    # print('Final CR positions={}'.format(len(cr_pos)))
+    # logging.info('Final CR positions={}'.format(len(cr_pos)))
 
     # Remove positions with windows falling off chromosome boundaries
-    # print(f'win_hlen = {win_hlen}, chrom_lengths[{chrName}] = {chrom_lengths[chrName]}')
+    # logging.info(f'win_hlen = {win_hlen}, chrom_lengths[{chrName}] = {chrom_lengths[chrName]}')
     cr_pos = [pos for pos in sr_pos if win_hlen <= pos <= (chrom_lengths[chrName] - win_hlen)]
 
     return cr_pos
@@ -452,7 +452,7 @@ def load_all_clipped_read_positions(sampleName, win_hlen):
 
     if os.path.exists(cr_pos_file):
 
-        print('Loading candidate positions file...')
+        logging.info('Loading candidate positions file...')
         with gzip.GzipFile(cr_pos_file, "rb") as f:
             cr_pos_dict = pickle.load(f)
         f.close()
@@ -466,7 +466,7 @@ def load_all_clipped_read_positions(sampleName, win_hlen):
             # for chrName in ['22']:
             cr_pos_dict[chrName] = load_clipped_read_positions(sampleName, chrName, win_hlen)
 
-        print('Writing candidate positions file...')
+        logging.info('Writing candidate positions file...')
         with gzip.GzipFile(cr_pos_file, "wb") as f:
             pickle.dump(cr_pos_dict, f)
         f.close()
@@ -581,7 +581,7 @@ def read_nanosv_vcf(sampleName):
 
         # How many distinct FILTERs?
         # filter_set = set([f for svrec in sv for f in svrec.filter])
-        # print(filter_set)
+        # logging.info(filter_set)
 
         # How many VCF record with a specific FILTER?
         # filter_list = sorted(filter_set)
@@ -592,7 +592,7 @@ def read_nanosv_vcf(sampleName):
         # s = s.append(pd.Series([len(sv)], index=['Total']))
         # s = s.sort_values()
         # Print pd.Series with stats on FILTERs
-        # print(s)
+        # logging.info(s)
 
         return sv
 
@@ -632,7 +632,7 @@ def read_vcf(sampleName, sv_caller):
             filename = '/Users/lsantuari/Documents/Data/germline/patients/' + \
                        sampleName + '/SV/Filtered/' + sv_caller + '.sym.vcf'
 
-    print('Reading VCF file %s\nfor SV caller %s' % (filename, sv_caller))
+    logging.info('Reading VCF file %s\nfor SV caller %s' % (filename, sv_caller))
     vcf_in = VariantFile(filename, 'r')
 
     sv = []
@@ -642,8 +642,8 @@ def read_vcf(sampleName, sv_caller):
         svrec = SVRecord_generic(rec)
         sv.append(svrec)
 
-    print('SVs read: %d' % len(sv))
-    print(Counter([svrec.svtype for svrec in sv]))
+    logging.info('SVs read: %d' % len(sv))
+    logging.info(Counter([svrec.svtype for svrec in sv]))
 
     # Select good quality (no LowQual, only 'PASS') deletions (DEL)
     sv = [svrec for svrec in sv if svrec.svtype == 'DEL'
@@ -690,16 +690,16 @@ def get_labels_from_nanosv_vcf(sampleName, win_len):
     # list of chromosomes
     chr_list = set([var.chrom for var in sv_list])
 
-    # print('Plotting CI distribution')
+    # logging.info('Plotting CI distribution')
     plot_ci_dist(sv_list, sampleName)
 
-    # print(chr_list)
-    print('Total # of DELs: %d' % len(sv_list))
+    # logging.info(chr_list)
+    logging.info('Total # of DELs: %d' % len(sv_list))
 
     cnt = Counter([sv.chrom for sv in sv_list])
     chr_series = pd.Series([v for v in cnt.values()], index=cnt.keys())
-    # print('# SVs per chromosome:')
-    # print(chr_series)
+    # logging.info('# SVs per chromosome:')
+    # logging.info(chr_series)
 
     assert sum(chr_series) == len(sv_list)
 
@@ -714,12 +714,12 @@ def get_labels_from_nanosv_vcf(sampleName, win_len):
         # Load CR positions
         cr_pos = load_clipped_read_positions(sampleName, chrName)
 
-        # print(sorted(cr_pos))
+        # logging.info(sorted(cr_pos))
 
         # Using IntervalTree for interval search
         t = IntervalTree()
 
-        # print('# SVs in Chr: %d' % len(sv_list_chr))
+        # logging.info('# SVs in Chr: %d' % len(sv_list_chr))
 
         for var in sv_list_chr:
             # cipos[0] and ciend[0] are negative in the VCF file
@@ -730,8 +730,8 @@ def get_labels_from_nanosv_vcf(sampleName, win_len):
             # id_end = '_'.join((var.chrom, str(var.end + var.ciend[0]), str(var.end+var.ciend[1])))
             assert var.start <= var.end, "Start: " + str(var.start) + " End: " + str(var.end)
 
-            # print('var start -> %s:%d CIPOS: (%d, %d)' % (chrName, var.start, var.cipos[0], var.cipos[1]))
-            # print('var end -> %s:%d CIEND: (%d, %d)' % (chrName, var.end, var.ciend[0], var.ciend[1]))
+            # logging.info('var start -> %s:%d CIPOS: (%d, %d)' % (chrName, var.start, var.cipos[0], var.cipos[1]))
+            # logging.info('var end -> %s:%d CIEND: (%d, %d)' % (chrName, var.end, var.ciend[0], var.ciend[1]))
 
             t[var.start + var.cipos[0]:var.start + var.cipos[1] + 1] = id_start
             t[var.end + var.ciend[0]:var.end + var.ciend[1] + 1] = id_end
@@ -743,12 +743,12 @@ def get_labels_from_nanosv_vcf(sampleName, win_len):
 
         crpos_full_ci, crpos_partial_ci = get_crpos_win_with_ci_overlap(sv_list_chr, cr_pos, win_hlen)
 
-        # print('Clipped read positions with complete CI overlap: %s' % crpos_full_ci)
-        # print('Clipped read positions with partial CI overlap: %s' % crpos_partial_ci)
+        # logging.info('Clipped read positions with complete CI overlap: %s' % crpos_full_ci)
+        # logging.info('Clipped read positions with partial CI overlap: %s' % crpos_partial_ci)
         # crpos_ci_isec = set(crpos_full_ci) & set(crpos_partial_ci)
-        # print('Intersection: %s' % crpos_ci_isec)
+        # logging.info('Intersection: %s' % crpos_ci_isec)
 
-        print('# CRPOS in CI: %d' % len([l for l in label_search if len(l) != 0]))
+        logging.info('# CRPOS in CI: %d' % len([l for l in label_search if len(l) != 0]))
 
         count_zero_hits = 0
         count_multiple_hits = 0
@@ -757,7 +757,7 @@ def get_labels_from_nanosv_vcf(sampleName, win_len):
 
         for elem, pos in zip(label_search, cr_pos):
             if len(elem) == 1:
-                # print(elem)
+                # logging.info(elem)
                 if pos in crpos_full_ci:
                     label_ci_full_overlap.append(elem[0].data)
 
@@ -776,19 +776,19 @@ def get_labels_from_nanosv_vcf(sampleName, win_len):
                 label_ci_full_overlap.append('UK')
                 # if pos in crpos_full_ci:
                 #     label_ci_full_overlap.append('Multiple_Full')
-                #     #print('Multiple full: %s -> %s' % ( [d for s,e,d in elem], set([d for s,e,d in elem]) ) )
+                #     #logging.info('Multiple full: %s -> %s' % ( [d for s,e,d in elem], set([d for s,e,d in elem]) ) )
                 #     #for s, e, d in elem:
-                #     #    print('%d -> %d %d %s' % (pos, s, e, d))
+                #     #    logging.info('%d -> %d %d %s' % (pos, s, e, d))
                 # #else:
                 #     #label_ci_full_overlap.append('Multiple_Partial')
 
-        print('CR positions: %d' % len(cr_pos))
-        print('Label length: %d' % len(label_search))
+        logging.info('CR positions: %d' % len(cr_pos))
+        logging.info('Label length: %d' % len(label_search))
         assert len(label_ci_full_overlap) == len(cr_pos)
 
-        print('Label_CI_full_overlap: %s' % Counter(label_ci_full_overlap))
-        print('Zero hits:%d' % count_zero_hits)
-        print('Multiple hits:%d' % count_multiple_hits)
+        logging.info('Label_CI_full_overlap: %s' % Counter(label_ci_full_overlap))
+        logging.info('Zero hits:%d' % count_zero_hits)
+        logging.info('Multiple hits:%d' % count_multiple_hits)
 
         # Write labels for chromosomes
         if not HPC_MODE:
@@ -799,7 +799,7 @@ def get_labels_from_nanosv_vcf(sampleName, win_len):
         output_dir = '/'.join((channel_dir, sampleName, 'label'))
         create_dir(output_dir)
 
-        # print(output_dir)
+        # logging.info(output_dir)
 
         with gzip.GzipFile('/'.join((output_dir, chrName + '_label_ci_full_overlap.npy.gz')), "w") as f:
             np.save(file=f, arr=label_ci_full_overlap)
@@ -883,7 +883,7 @@ def write_sv_without_cr(sampleName, ibam):
 
     bedout.close()
 
-    print('VCF entries with CR on both sides: %d/%d' % (var_with_cr, len(sv_list)))
+    logging.info('VCF entries with CR on both sides: %d/%d' % (var_with_cr, len(sv_list)))
 
 
 def plot_ci_dist(sv_list, sampleName):
@@ -900,7 +900,7 @@ def plot_ci_dist(sv_list, sampleName):
         "ciend": np.array([var.ciend[1] + abs(var.ciend[0]) for var in sv_list])
     })
 
-    print('Max CIPOS:%d, max CIEND:%d' % (max(df['cipos']), max(df['ciend'])))
+    logging.info('Max CIPOS:%d, max CIEND:%d' % (max(df['cipos']), max(df['ciend'])))
 
     output_dir = '/Users/lsantuari/Documents/Data/germline/plots'
     # the histogram of the data
@@ -924,21 +924,21 @@ def get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName):
 
     common_sv = defaultdict(list)
     for sv in sv_sur:
-        # print(sv.supp_vec)
+        # logging.info(sv.supp_vec)
         # 0:Delly, 1:GRIDSS, 2:last_nanosv, 3:Lumpy, 4:Manta
         if sv.supp_vec[2] == '1' and sv.supp_vec[4] == '1':
-            # print(sv.samples.keys())
+            # logging.info(sv.samples.keys())
             svtype = sv.samples.get('NanoSV').get('TY')
             coord = sv.samples.get('NanoSV').get('CO')
             if svtype == 'DEL' and coord != 'NaN':
                 coord_list = re.split('-|_', coord)
                 assert len(coord_list) == 4
                 common_sv[coord_list[0]].append(int(coord_list[1]))
-    # print(common_sv.keys())
+    # logging.info(common_sv.keys())
     sv_nanosv_manta = [sv for sv in sv_nanosv
                        if sv.chrom in common_sv.keys() if sv.start in common_sv[sv.chrom]]
-    # print(common_sv['1'])
-    # print(len(sv_nanosv_manta))
+    # logging.info(common_sv['1'])
+    # logging.info(len(sv_nanosv_manta))
     return sv_nanosv_manta
 
 
@@ -959,7 +959,7 @@ def read_bed_sv(inbed):
             if columns[3][:3] == "DEL":
                 sv_dict[chrom].append((int(columns[1]), int(columns[2]), columns[3]))
 
-    # print(sv_dict)
+    # logging.info(sv_dict)
     return sv_dict
 
 
@@ -972,8 +972,8 @@ def get_labels_from_bed(sampleName, win_len, inbed):
     :return: dictionary with list of labels per chromosome
     '''
 
-    print('sample = %s' % sampleName)
-    print('window = %d' % win_len)
+    logging.info('sample = %s' % sampleName)
+    logging.info('window = %d' % win_len)
 
     win_hlen = int(int(win_len)/2)
 
@@ -992,12 +992,12 @@ def get_labels_from_bed(sampleName, win_len, inbed):
         # Load CR positions
         cr_pos = load_clipped_read_positions(sampleName, chrName)
 
-        # print(sorted(cr_pos))
+        # logging.info(sorted(cr_pos))
 
         # Using IntervalTree for interval search
         t = IntervalTree()
 
-        # print('# Breakpoints in Chr: %d' % len(sv_list_chr))
+        # logging.info('# Breakpoints in Chr: %d' % len(sv_list_chr))
 
         for start, end, lab in sv_list_chr:
             t[start:end + 1] = lab
@@ -1006,14 +1006,14 @@ def get_labels_from_bed(sampleName, win_len, inbed):
 
         crpos_full_ci, crpos_partial_ci = get_crpos_win_with_bed_overlap(sv_list_chr, cr_pos, win_hlen)
 
-        # print('Clipped read positions with complete CI overlap: %s' % crpos_full_ci)
-        # print('Clipped read positions with partial CI overlap: %s' % crpos_partial_ci)
+        # logging.info('Clipped read positions with complete CI overlap: %s' % crpos_full_ci)
+        # logging.info('Clipped read positions with partial CI overlap: %s' % crpos_partial_ci)
 
         crpos_ci_isec = set(crpos_full_ci) & set(crpos_partial_ci)
-        # print('Intersection should be empty: %s' % crpos_ci_isec)
+        # logging.info('Intersection should be empty: %s' % crpos_ci_isec)
         assert len(crpos_ci_isec) == 0
 
-        # print('# CRPOS in BED: %d' % len([l for l in label if len(l) != 0]))
+        # logging.info('# CRPOS in BED: %d' % len([l for l in label if len(l) != 0]))
 
         count_zero_hits = 0
         count_multiple_hits = 0
@@ -1023,7 +1023,7 @@ def get_labels_from_bed(sampleName, win_len, inbed):
         for elem, pos in zip(label, cr_pos):
             # Single match
             if len(elem) == 1:
-                # print(elem)
+                # logging.info(elem)
                 if pos in crpos_full_ci:
                     label_ci_full_overlap.append(elem[0].data)
                 elif pos in crpos_partial_ci:
@@ -1039,13 +1039,13 @@ def get_labels_from_bed(sampleName, win_len, inbed):
                 count_multiple_hits += 1
                 label_ci_full_overlap.append('UK')
 
-        # print('CR positions: %d' % len(cr_pos))
-        # print('Label length: %d' % len(label))
+        # logging.info('CR positions: %d' % len(cr_pos))
+        # logging.info('Label length: %d' % len(label))
         assert len(label_ci_full_overlap) == len(cr_pos)
 
-        # print('Label_CI_full_overlap: %s' % Counter(label_ci_full_overlap))
-        # print('Zero hits:%d' % count_zero_hits)
-        # print('Multiple hits:%d' % count_multiple_hits)
+        # logging.info('Label_CI_full_overlap: %s' % Counter(label_ci_full_overlap))
+        # logging.info('Zero hits:%d' % count_zero_hits)
+        # logging.info('Multiple hits:%d' % count_multiple_hits)
 
         # if not HPC_MODE:
         #     channel_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth'
@@ -1055,7 +1055,7 @@ def get_labels_from_bed(sampleName, win_len, inbed):
         # output_dir = '/'.join((channel_dir, sampleName, 'label'))
         # create_dir(output_dir)
 
-        # print(output_dir)
+        # logging.info(output_dir)
 
         # with gzip.GzipFile('/'.join((output_dir, chrName + '_label_ci_full_overlap.npy.gz')), "w") as f:
         #     np.save(file=f, arr=label_ci_full_overlap)
@@ -1109,10 +1109,10 @@ def get_crpos_win_with_ci_overlap(sv_list, cr_pos, win_hlen):
             for elem in rg:
                 elem_start, elem_end, elem_data = elem
                 if start >= elem_start and end <= elem_end:
-                    # print('CIPOS->Full: %s\t%d\t%d' % (elem, start, end))
+                    # logging.info('CIPOS->Full: %s\t%d\t%d' % (elem, start, end))
                     full.append(elem_data)
                 else:
-                    # print('CIPOS->Partial: %s\t%d\t%d' % (elem, start, end))
+                    # logging.info('CIPOS->Partial: %s\t%d\t%d' % (elem, start, end))
                     partial.append(elem_data)
 
         return partial, full
@@ -1145,8 +1145,8 @@ def get_crpos_win_with_bed_overlap(sv_list, cr_pos, win_hlen):
 
     rg_overlap = [sorted(t_cr[start: end + 1]) for start, end, lab in sv_list]
 
-    # print('Number of SVs:{}'.format(len(sv_list)))
-    # print('Range overlap: %s' % rg_overlap)
+    # logging.info('Number of SVs:{}'.format(len(sv_list)))
+    # logging.info('Range overlap: %s' % rg_overlap)
 
     for rg, start, end in zip(rg_overlap,
                               [start for start, end, lab in sv_list],
@@ -1192,7 +1192,7 @@ def read_SURVIVOR_merge_VCF(sampleName):
     samples_list = list((vcf_in.header.samples))
     samples = samples_list
     # samples = [w.split('_')[0].split('/')[1] for w in samples_list]
-    # print(samples)
+    # logging.info(samples)
 
     sv = []
 
@@ -1200,8 +1200,8 @@ def read_SURVIVOR_merge_VCF(sampleName):
     for rec in vcf_in.fetch():
         # avoid SVs on chromosomes Y and MT
         if rec.chrom not in ['Y', 'MT'] and rec.info['CHR2'] not in ['Y', 'MT']:
-            # print(rec)
-            # print(dir(rec))
+            # logging.info(rec)
+            # logging.info(dir(rec))
             sv.append(SVRecord_SUR(rec))
 
     return sv
@@ -1219,7 +1219,7 @@ def load_NoCR_positions():
     with gzip.GzipFile(no_cr_File, "r") as f:
         no_clipped_read_pos = pickle.load(f)
     f.close()
-    print(list(no_clipped_read_pos))
+    logging.info(list(no_clipped_read_pos))
 
 
 # Methods to save to BED format
@@ -1228,7 +1228,7 @@ def clipped_read_positions_to_bed(sampleName, ibam):
 
     chrlist = list(map(str, range(1, 23)))
     chrlist.extend(['X', 'Y'])
-    # print(chrlist)
+    # logging.info(chrlist)
 
     lines = []
     for chrName in chrlist:
@@ -1281,7 +1281,7 @@ def nanosv_vcf_to_bed(sampleName):
 # Get labels
 def get_labels(sampleName, win_len):
 
-    print(f'running {sampleName}')
+    logging.info(f'running {sampleName}')
 
     def get_win_id(chr, position):
         return {'chromosome': chr, 'position': position}
@@ -1290,7 +1290,7 @@ def get_labels(sampleName, win_len):
 
         # Using IntervalTree for interval search
         t = IntervalTree()
-        # print('# Breakpoints in Chr: %d' % len(sv_list_chr))
+        # logging.info('# Breakpoints in Chr: %d' % len(sv_list_chr))
         for start, end, lab in sv_list:
             t[start:end + 1] = lab
         return t
@@ -1307,8 +1307,8 @@ def get_labels(sampleName, win_len):
 
             assert var.start <= var.end, "Start: " + str(var.start) + " End: " + str(var.end)
 
-            # print('var start -> %s:%d CIPOS: (%d, %d)' % (chrName, var.start, var.cipos[0], var.cipos[1]))
-            # print('var end -> %s:%d CIEND: (%d, %d)' % (chrName, var.end, var.ciend[0], var.ciend[1]))
+            # logging.info('var start -> %s:%d CIPOS: (%d, %d)' % (chrName, var.start, var.cipos[0], var.cipos[1]))
+            # logging.info('var end -> %s:%d CIEND: (%d, %d)' % (chrName, var.end, var.ciend[0], var.ciend[1]))
 
             t[var.start + var.cipos[0]:var.start + var.cipos[1] + 1] = id_start
             t[var.end + var.ciend[0]:var.end + var.ciend[1] + 1] = id_end
@@ -1394,12 +1394,12 @@ def get_labels(sampleName, win_len):
 
     def get_crpos_overlap_with_sv_callsets(sv_dict, cr_pos_dict):
 
-        print(f'Creating crpos_overlap_with_sv_callsets')
+        logging.info(f'Creating crpos_overlap_with_sv_callsets')
         crpos_all_sv = dict()
 
         for chrName in chrom_lengths.keys():
 
-            print(f'Considering Chr{chrName}')
+            logging.info(f'Considering Chr{chrName}')
 
             # Build two sets: crpos_full_all_sv and crpos_partial_all_sv with clipped read positions that
             # fully/partially overlap at least one SV callset of the caller_list_all_sv
@@ -1409,7 +1409,7 @@ def get_labels(sampleName, win_len):
             caller_list_all_sv = ['manta', 'gridss', 'lumpy', 'delly', 'nanosv']
 
             for caller in caller_list_all_sv:
-                print(caller)
+                logging.info(caller)
                 sv_list_all_sv[caller] = [var for var in sv_dict[caller] if var.chrom == chrName]
                 crpos_full_all_sv_per_caller[caller], crpos_partial_all_sv_per_caller[caller] = \
                     get_crpos_win_with_ci_overlap(sv_list_all_sv[caller], cr_pos_dict[chrName], win_hlen)
@@ -1423,7 +1423,7 @@ def get_labels(sampleName, win_len):
 
             crpos_all_sv[chrName] = crpos_full_all_sv | crpos_partial_all_sv
 
-        print(f'Finished crpos_overlap_with_sv_callsets')
+        logging.info(f'Finished crpos_overlap_with_sv_callsets')
 
         return crpos_all_sv
 
@@ -1439,32 +1439,32 @@ def get_labels(sampleName, win_len):
     labels = dict()
 
     # for sv_dict_key in sv_dict.keys():
-    #    print(sv_dict_key)
-    #    print(sv_dict[sv_dict_key])
+    #    logging.info(sv_dict_key)
+    #    logging.info(sv_dict[sv_dict_key])
 
     for sv_dict_key in sv_dict.keys():
         # for sv_dict_key in ['Mills2011_nanosv']:
         # for sv_dict_key in ['Mills2011_PacBio_Moleculo_Lumpy_GASVPro_DELLY_Pindel']:
 
-        print(f'running {sv_dict_key}')
+        logging.info(f'running {sv_dict_key}')
 
         labels[sv_dict_key] = {}
 
         sv_list = sv_dict[sv_dict_key]
 
         if type(sv_list) is list:
-            print('VCF mode')
+            logging.info('VCF mode')
             # Select deletions (DELs)
-            print('%d SVs (all)' % len(sv_list))
+            logging.info('%d SVs (all)' % len(sv_list))
 
             sv_list = [sv for sv in sv_list if sv.svtype == 'DEL']
-            print('%d SVs' % len(sv_list))
+            logging.info('%d SVs' % len(sv_list))
 
             # list of chromosomes
             chr_list = set([var.chrom for var in sv_list])
 
         else:
-            print('BED mode')
+            logging.info('BED mode')
             chr_list = sv_list.keys()
 
         chromosomes_to_consider = [str(s) for s in list(range(1, 23)) + ['X']]
@@ -1473,17 +1473,17 @@ def get_labels(sampleName, win_len):
             # DEBUG
             # for chrName in ['22']:
 
-            print(f'running Chr{chrName}')
+            logging.info(f'running Chr{chrName}')
 
             labels[sv_dict_key][chrName] = []
 
             # Load CR positions, once
             cr_pos = cr_pos_dict[chrName]
 
-            # print('CRPOS:')
-            # print(cr_pos)
+            # logging.info('CRPOS:')
+            # logging.info(cr_pos)
 
-            # print(type(sv_list))
+            # logging.info(type(sv_list))
 
             # VCF file SVs
             if type(sv_list) is list:
@@ -1501,13 +1501,13 @@ def get_labels(sampleName, win_len):
 
                 crpos_full, crpos_partial = get_crpos_win_with_bed_overlap(sv_list_chr, cr_pos, win_hlen)
 
-            # print(f'crpos_full = {crpos_full}')
-            # print(f'crpos_partial = {crpos_partial}')
+            # logging.info(f'crpos_full = {crpos_full}')
+            # logging.info(f'crpos_partial = {crpos_partial}')
 
             label_search = [sorted(tree[p - win_hlen: p + win_hlen + 1]) for p in cr_pos]
 
-            # print(tree)
-            # print(label_search)
+            # logging.info(tree)
+            # logging.info(label_search)
 
             count_zero_hits = 0
             count_multiple_hits = 0
@@ -1515,7 +1515,7 @@ def get_labels(sampleName, win_len):
             for elem, pos in zip(label_search, cr_pos):
 
                 if len(elem) == 1:
-                    # print(elem)
+                    # logging.info(elem)
                     if pos in crpos_full:
                         labels[sv_dict_key][chrName].append(elem[0].data)
                     elif pos in crpos_partial or \
@@ -1535,7 +1535,7 @@ def get_labels(sampleName, win_len):
 
             assert len(labels[sv_dict_key][chrName]) == len(cr_pos)
 
-            print(Counter(labels[sv_dict_key][chrName]))
+            logging.info(Counter(labels[sv_dict_key][chrName]))
 
     # Add window ID
     labels['id'] = {}
@@ -1547,7 +1547,7 @@ def get_labels(sampleName, win_len):
 
     # pp = pprint.PrettyPrinter(depth=6)
     # for key in sv_dict:
-    #     pp.pprint(sv_dict[key])
+    #     pp.plogging.info(sv_dict[key])
 
     if not HPC_MODE:
         channel_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth'
@@ -1558,7 +1558,7 @@ def get_labels(sampleName, win_len):
     create_dir(output_dir)
 
     data_file = '/'.join((output_dir, 'labels.pickle'))
-    # print(output_dir)
+    # logging.info(output_dir)
     pickle.dump(labels, open(data_file, "wb"))
     os.system('gzip -f ' + data_file)
 
@@ -1576,7 +1576,7 @@ def load_labels(sampleName):
         labels = pickle.load(f)
     f.close()
 
-    print(labels['id'])
+    logging.info(labels['id'])
 
 
 def main():
@@ -1620,13 +1620,13 @@ def main():
 
     # Iterate over samples and BED files
     # for sampleName in bed_dict.keys():
-    #     print('Running get_labels for %s' % sampleName)
+    #     logging.info('Running get_labels for %s' % sampleName)
     #     get_labels(sampleName)
     # for bed_file in bed_dict[sampleName].keys():
-    #     print('Processing BED file: %s' % bed_file)
+    #     logging.info('Processing BED file: %s' % bed_file)
     #     labels_list = get_labels_from_bed(sampleName=sampleName, ibam=args.bam, inbed=bed_dict[sampleName][bed_file])
     #     for c in labels_list.keys():
-    #         print('%s -> %s'% (c, Counter(labels_list[c])))
+    #         logging.info('%s -> %s'% (c, Counter(labels_list[c])))
 
     # write_sv_without_cr(sampleName=args.sample, ibam=args.bam)
 
@@ -1652,14 +1652,14 @@ def main():
     # crpos_giab = load_all_clipped_read_positions('NA12878')
     # crpos_ena = load_all_clipped_read_positions('NA12878_ENA')
     #
-    # print(Counter(crpos_giab))
-    # print(Counter(crpos_ena))
+    # logging.info(Counter(crpos_giab))
+    # logging.info(Counter(crpos_ena))
 
     # for chr in crpos_ena.keys():
-    # print(chr)
-    # print(set(crpos_giab[chr])-set(crpos_ena[chr]))
+    # logging.info(chr)
+    # logging.info(set(crpos_giab[chr])-set(crpos_ena[chr]))
 
-    print('Elapsed time making labels = %f' % (time() - t0))
+    logging.info('Elapsed time making labels = %f' % (time() - t0))
 
 
 if __name__ == '__main__':
