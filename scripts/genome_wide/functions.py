@@ -179,6 +179,24 @@ def get_one_hot_sequence(chrname, start, stop, nuc, HPC_MODE):
     return np.array([1 if x.lower() == nuc.lower() else 0 for x in genome['chr' + chrname][start:stop]])
 
 
+def get_one_hot_sequence_by_list(chrname, positions, HPC_MODE):
+
+    genome = get_reference_sequence(HPC_MODE)
+
+    if chrname == 'MT':
+        chrname = 'M'
+
+    whole_chrom = str(genome['chr' + chrname])
+
+    nuc_list = ['A', 'T', 'C', 'G', 'N']
+    res = np.zeros(shape=(len(positions),len(nuc_list)), dtype=np.uint32)
+
+    for i, nuc in enumerate(nuc_list, start=0):
+        res[:,i] = np.array([1 if whole_chrom[pos].lower() == nuc.lower() else 0 for pos in positions])
+
+    return res
+
+
 # From https://github.com/joferkington/oost_paper_code/blob/master/utilities.py
 def is_outlier(points, thresh=3.5):
     """

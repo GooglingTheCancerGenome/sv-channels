@@ -14,9 +14,6 @@ from functions import get_config_file
 config = get_config_file()
 
 HPC_MODE = config["DEFAULT"]["HPC_MODE"]
-# Window size
-win_hlen = config["DEFAULT"]["WIN_HLEN"]
-win_len = config["DEFAULT"]["WIN_HLEN"] * 2
 
 date = '060219'
 
@@ -43,7 +40,7 @@ def transposeDataset(X):
     return np.array(image)
 
 
-def load_labels(sample_name):
+def load_labels(sample_name, win_len):
     # Load label dictionary
     labels_file = os.path.join(get_channel_dir(), sample_name, 'label_npy_win'+str(win_len),
                                'labels.pickle.gz')
@@ -71,7 +68,7 @@ def load_split_read_positions(sample_name):
     return positions, locations
 
 
-def load_windows(sample_name, labels_dict):
+def load_windows(sample_name, labels_dict, win_len):
 
     training_data = []
     training_labels = defaultdict(list)
@@ -105,7 +102,40 @@ def load_windows(sample_name, labels_dict):
     return training_data, training_labels, training_id
 
 
-def save_window_pairs(sample_name, X, y, y_binary, z):
+def load_windows_by_chr(sample_name, labels_dict, chrName, win_len):
+
+    training_data = []
+    training_labels = defaultdict(list)
+    training_id = []
+
+    labels_keys = [d for d in labels_dict.keys() if d != 'id']
+
+    logging.info('Loading data for Chr%s' % chrName)
+    data_file = os.path.join(get_channel_dir(), sample_name, 'channel_maker_real_germline_win'+\
+                             str(win_len),
+                             sample_name + '_' + str(chrName) + '.npy.gz')
+    with gzip.GzipFile(data_file, "rb") as f:
+        data_mat = np.load(f)
+        for label_type in labels_keys:
+            assert len(data_mat) == len(labels_dict[label_type][chrName])
+        training_data.extend(data_mat)
+    f.close()
+    for label_type in labels_keys:
+        training_labels[label_type].extend(labels_dict[label_type][chrName])
+    training_id.extend([d for d in labels_dict['id'][chrName]])
+
+    for k in training_labels.keys():
+        logging.info('Labels: {}'.format(k))
+        logging.info(Counter(training_labels[k]))
+        assert len(training_data) == len(training_labels[k])
+
+    training_data = np.array(training_data)
+    training_id = np.array(training_id)
+
+    return training_data, training_labels, training_id
+
+
+def save_window_pairs(sample_name, X, y, y_binary, z, win_len):
 
     data_output_file = os.path.join(get_channel_dir(), '_'.join([sample_name, 'pairs', 'win'+str(win_len)]))
     np.savez_compressed(data_output_file, X=X)
@@ -133,10 +163,10 @@ def load_window_pairs(sample_name):
     return X, y, y_binary, z
 
 
-def make_window_pairs(sample_name):
+def make_window_pairs(sample_name, win_len):
 
-    labels_dict = load_labels(sample_name)
-    training_data, training_labels, training_id = load_windows(sample_name, labels_dict)
+    labels_dict = load_labels(sample_name, win_len)
+    training_data, training_labels, training_id = load_windows(sample_name, labels_dict, win_len)
 
     positions, locations = load_split_read_positions(sample_name)
     list_of_locations = list(chain.from_iterable(locations.values()))
@@ -208,21 +238,27 @@ def make_window_pairs(sample_name):
         y_binary[k] = to_categorical(y_num)
 
     logging.info('Saving window pairs...')
-    save_window_pairs(sample_name, X, y, y_binary, z)
+    save_window_pairs(sample_name, X, y, y_binary, z, win_len)
 
 
 def main():
+
     # Parse the arguments of the script
     parser = argparse.ArgumentParser(description='Make window pairs')
     parser.add_argument('-s', '--samplename', type=str, default='NA12878',
                         help="Specify sample name")
     parser.add_argument('-l', '--logfile', default='window_pairs.log',
                         help='File in which to write logs.')
+    parser.add_argument('-w', '--window', default=200,
+                        help='File in which to write logs.')
 
     args = parser.parse_args()
 
     # Log file
     logfilename = args.logfile
+    filename, file_extension = os.path.splitext(logfilename)
+    logfilename = filename + '_' + str(args.window) + file_extension
+
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(
         format=FORMAT,

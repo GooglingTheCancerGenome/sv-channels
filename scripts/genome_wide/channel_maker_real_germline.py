@@ -1328,6 +1328,184 @@ def get_mappability_bigwig():
     return bw
 
 
+def load_channels(sample, chr_list):
+
+    prefix = ''
+    channel_names = ['split_read_pos', 'clipped_reads', 'clipped_read_distance',
+                     'coverage', 'split_read_distance', 'snv']
+
+    channel_data = defaultdict(dict)
+
+    for chrom in chr_list:
+        logging.info('Loading data for Chr%s' % chrom)
+        for ch in channel_names:
+            logging.info('Loading data for channel %s' % ch)
+            suffix = '.npy.bz2' if ch == 'coverage' else '.pbz2'
+            if HPC_MODE:
+                filename = os.path.join(prefix, sample, ch, '_'.join([chrom, ch + suffix]))
+            else:
+                filename = ch + suffix
+            assert os.path.isfile(filename)
+
+            logging.info('Reading %s for Chr%s' % (ch, chrom))
+            with bz2file.BZ2File(filename, 'rb') as f:
+                if suffix == '.npy.bz2':
+                    channel_data[chrom][ch] = np.load(f)
+                else:
+                    channel_data[chrom][ch] = pickle.load(f)
+            logging.info('End of reading')
+
+        # unpack clipped_reads
+        channel_data[chrom]['read_quality'], channel_data[chrom]['clipped_reads'], \
+        channel_data[chrom]['clipped_reads_inversion'], channel_data[chrom]['clipped_reads_duplication'], \
+        channel_data[chrom]['clipped_reads_translocation'] = channel_data[chrom]['clipped_reads']
+
+        # unpack split_reads
+        channel_data[chrom]['split_read_distance'], \
+        channel_data[chrom]['split_reads'] = channel_data[chrom]['split_read_distance']
+
+    return channel_data
+
+
+def channel_maker_speedup(chrom, sampleName, outFile, win_len):
+
+    # Window half length
+    win_hlen = int(int(win_len) / 2)
+
+    n_channels = 33
+    bp_padding = 10
+
+    channel_data = load_channels(sampleName, [chrom])
+
+    bw_map = get_mappability_bigwig()
+
+    candidate_pairs_chr = [sv for sv in channel_data[chrom]['split_read_pos']
+                           if sv.tuple[0].chr == sv.tuple[1].chr and sv.tuple[0].chr == chrom]
+
+    channel_windows = np.zeros(shape=(len(candidate_pairs_chr),
+                                      win_len * 2 + bp_padding, n_channels), dtype=np.uint32)
+
+    # dictionary of key choices
+    direction_list = {'clipped_reads': ['left', 'right', 'D_left', 'D_right', 'I'],
+                      'split_reads': ['left', 'right'],
+                      'split_read_distance': ['left', 'right'],
+                      'clipped_reads_inversion': ['before', 'after'],
+                      'clipped_reads_duplication': ['before', 'after'],
+                      'clipped_reads_translocation': ['opposite', 'same'],
+                      'clipped_read_distance': ['forward', 'reverse']
+                      }
+
+    # Consider a single sample
+    # sample_list = sampleName.split('_')
+
+    # for sample in sample_list:
+
+    positions = []
+    for sv in candidate_pairs_chr:
+        bp1, bp2 = sv.tuple
+        positions.extend(list(range(bp1.pos - win_hlen, bp1.pos + win_hlen)) +
+                         list(range(bp2.pos - win_hlen, bp2.pos + win_hlen)))
+    positions = np.array(positions)
+
+    idx = np.arange(win_len)
+    idx2 = np.arange(start=win_len + bp_padding, stop=win_len * 2 + bp_padding)
+    idx = np.concatenate((idx, idx2), axis=0)
+
+    channel_index = 0
+
+    for current_channel in ['coverage', 'read_quality', 'snv'
+                            'clipped_reads', 'split_reads',
+                            'clipped_reads_inversion', 'clipped_reads_duplication',
+                            'clipped_reads_translocation',
+                            'clipped_read_distance', 'split_read_distance']:
+
+        logging.info("Adding channel %s at index %d" % (current_channel, channel_index))
+
+        if current_channel == 'coverage':
+
+            payload = channel_data[chrom][current_channel][positions]
+            payload.shape = channel_windows[:, idx, channel_index:channel_index+2].shape
+            channel_windows[:, idx, channel_index:channel_index+2] = payload
+            channel_index += 3
+
+        elif current_channel == 'read_quality':
+
+            payload = channel_data[chrom][current_channel][positions]
+            payload.shape = channel_windows[:, idx, channel_index].shape
+            channel_windows[:, idx, channel_index] = payload
+            channel_index += 1
+
+        elif current_channel in ['clipped_reads',
+                                 'split_reads',
+                                 'clipped_reads_inversion',
+                                 'clipped_reads_duplication',
+                                 'clipped_reads_translocation']:
+
+            for split_direction in direction_list[current_channel]:
+                channel_pos = set(positions) & set(channel_data[chrom][current_channel][split_direction].keys())
+                payload = [channel_data[chrom][current_channel][split_direction][pos] if pos in channel_pos else 0 \
+                           for pos in positions]
+                payload = np.array(payload)
+                payload.shape = channel_windows[:, idx, channel_index].shape
+                channel_windows[:, idx, channel_index] = payload
+                channel_index += 1
+
+        elif current_channel == 'clipped_read_distance':
+            for split_direction in direction_list[current_channel]:
+                for clipped_arrangement in ['left', 'right', 'all']:
+                    channel_pos = set(positions) & \
+                                  set(channel_data[chrom][current_channel][split_direction][clipped_arrangement].keys())
+                    payload = [statistics.median(
+                        channel_data[chrom][current_channel][split_direction][clipped_arrangement][pos]) \
+                                   if pos in channel_pos else 0 for pos in positions]
+                    payload = np.array(payload)
+                    payload.shape = channel_windows[:, idx, channel_index].shape
+                    channel_windows[:, idx, channel_index] = payload
+                    channel_index += 1
+
+        elif current_channel == 'split_read_distance':
+            for split_direction in direction_list[current_channel]:
+                channel_pos = set(positions) & \
+                              set(channel_data[chrom][current_channel][split_direction].keys())
+                payload = [statistics.median(
+                    channel_data[chrom][current_channel][split_direction][pos]) \
+                               if pos in channel_pos else 0 for pos in positions]
+                payload = np.array(payload)
+                payload.shape = channel_windows[:, idx, channel_index].shape
+                channel_windows[:, idx, channel_index] = payload
+                channel_index += 1
+
+    current_channel = 'mappability'
+    logging.info("Adding channel %s at index %d" % (current_channel, channel_index))
+
+    payload = []
+    for sv in candidate_pairs_chr:
+        bp1, bp2 = sv.tuple
+        payload.extend(bw_map.values(chrom, bp1.pos - win_hlen, bp1.pos + win_hlen) +
+                       bw_map.values(chrom, bp2.pos - win_hlen, bp2.pos + win_hlen))
+    payload = np.array(payload)
+    payload.shape = channel_windows[:, idx, channel_index].shape
+    channel_windows[:, idx, channel_index] = payload
+    channel_index += 1
+
+    current_channel = 'one_hot_encoding'
+    logging.info("Adding channel %s at index %d" % (current_channel, channel_index))
+
+    nuc_list = ['A', 'T', 'C', 'G', 'N']
+
+    payload = get_one_hot_sequence_by_list(chrom, positions, HPC_MODE)
+    payload.shape = channel_windows[:, idx, channel_index:channel_index + len(nuc_list)].shape
+    channel_windows[:, idx, channel_index:channel_index + len(nuc_list)] = payload
+    channel_index += len(nuc_list)
+
+    logging.info("channel_windows shape: %s" % str(channel_windows.shape))
+
+    # Save the list of channel vstacks
+    with gzip.GzipFile(outFile, "wb") as f:
+        np.save(file=f, arr=channel_windows)
+    f.close()
+
+
 def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile, win_len):
     '''
     This function loads the channels and for each clipped read position with at least min_cr_support clipped reads, it
