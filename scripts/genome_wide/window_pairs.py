@@ -267,7 +267,7 @@ def main():
         level=logging.INFO)
 
     t0 = time()
-    make_window_pairs(sample_name=args.samplename)
+    make_window_pairs(sample_name=args.samplename, win_len=args.window)
     tn = (time() - t0)
     logging.info('Time: split read positions on sample %s and label set %s: %f seconds, %f minutes' % (
         args.samplename, args.labeltype, tn, tn / 60))
