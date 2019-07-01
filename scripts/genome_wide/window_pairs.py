@@ -42,7 +42,7 @@ def transposeDataset(X):
 
 def load_labels(sample_name, win_len):
     # Load label dictionary
-    labels_file = os.path.join(get_channel_dir(), sample_name, 'label_npy_win'+str(win_len),
+    labels_file = os.path.join(get_channel_dir(), sample_name, 'label_npy_win' + str(win_len),
                                'labels.pickle.gz')
     with gzip.GzipFile(labels_file, "rb") as f:
         labels_dict = np.load(f)
@@ -69,7 +69,6 @@ def load_split_read_positions(sample_name):
 
 
 def load_windows(sample_name, labels_dict, win_len):
-
     training_data = []
     training_labels = defaultdict(list)
     training_id = []
@@ -78,32 +77,37 @@ def load_windows(sample_name, labels_dict, win_len):
 
     for i in chr_list:
         logging.info('Loading data for Chr%s' % i)
-        data_file = os.path.join(get_channel_dir(), sample_name, 'channel_maker_real_germline_win'+\
+        data_file = os.path.join(get_channel_dir(), sample_name, 'channel_maker_real_germline_win' + \
                                  str(win_len),
                                  sample_name + '_' + str(i) + '.npy.gz')
         with gzip.GzipFile(data_file, "rb") as f:
             data_mat = np.load(f)
             for label_type in labels_keys:
+                logging.info('Data len = {}; Label set = {}; Chr{}, Label length = {}'.format(
+                    len(data_mat),
+                    label_type,
+                    i,
+                    len(labels_dict[label_type][i])
+                ))
                 assert len(data_mat) == len(labels_dict[label_type][i])
-            training_data.extend(data_mat)
-        f.close()
-        for label_type in labels_keys:
-            training_labels[label_type].extend(labels_dict[label_type][i])
-        training_id.extend([d for d in labels_dict['id'][i]])
+                training_data.extend(data_mat)
+                f.close()
+                for label_type in labels_keys:
+                    training_labels[label_type].extend(labels_dict[label_type][i])
+                training_id.extend([d for d in labels_dict['id'][i]])
 
-    for k in training_labels.keys():
-        logging.info('Labels: {}'.format(k))
-        logging.info(Counter(training_labels[k]))
-        assert len(training_data) == len(training_labels[k])
+                for k in training_labels.keys():
+                    logging.info('Labels: {}'.format(k))
+                logging.info(Counter(training_labels[k]))
+                assert len(training_data) == len(training_labels[k])
 
-    training_data = np.array(training_data)
-    training_id = np.array(training_id)
+                training_data = np.array(training_data)
+                training_id = np.array(training_id)
 
     return training_data, training_labels, training_id
 
 
 def load_windows_by_chr(sample_name, labels_dict, chrName, win_len):
-
     training_data = []
     training_labels = defaultdict(list)
     training_id = []
@@ -111,7 +115,7 @@ def load_windows_by_chr(sample_name, labels_dict, chrName, win_len):
     labels_keys = [d for d in labels_dict.keys() if d != 'id']
 
     logging.info('Loading data for Chr%s' % chrName)
-    data_file = os.path.join(get_channel_dir(), sample_name, 'channel_maker_real_germline_win'+\
+    data_file = os.path.join(get_channel_dir(), sample_name, 'channel_maker_real_germline_win' + \
                              str(win_len),
                              sample_name + '_' + str(chrName) + '.npy.gz')
     with gzip.GzipFile(data_file, "rb") as f:
@@ -136,8 +140,7 @@ def load_windows_by_chr(sample_name, labels_dict, chrName, win_len):
 
 
 def save_window_pairs(sample_name, X, y, y_binary, z, win_len):
-
-    data_output_file = os.path.join(get_channel_dir(), '_'.join([sample_name, 'pairs', 'win'+str(win_len)]))
+    data_output_file = os.path.join(get_channel_dir(), '_'.join([sample_name, 'pairs', 'win' + str(win_len)]))
     np.savez_compressed(data_output_file, X=X)
     np.savez_compressed(data_output_file + '_labels', y=y, y_binary=y_binary, z=z)
     # os.system('gzip -f ' + data_output_file + '.npz')
@@ -164,7 +167,6 @@ def load_window_pairs(sample_name):
 
 
 def make_window_pairs(sample_name, win_len):
-
     labels_dict = load_labels(sample_name, win_len)
     training_data, training_labels, training_id = load_windows(sample_name, labels_dict, win_len)
 
@@ -242,7 +244,6 @@ def make_window_pairs(sample_name, win_len):
 
 
 def main():
-
     # Parse the arguments of the script
     parser = argparse.ArgumentParser(description='Make window pairs')
     parser.add_argument('-s', '--samplename', type=str, default='NA12878',
