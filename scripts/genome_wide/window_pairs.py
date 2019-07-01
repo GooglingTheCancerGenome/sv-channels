@@ -87,22 +87,21 @@ def load_windows(sample_name, labels_dict, win_len):
                     len(data_mat),
                     label_type,
                     i,
-                    len(labels_dict[label_type][i])
-                ))
+                    len(labels_dict[label_type][i])))
                 assert len(data_mat) == len(labels_dict[label_type][i])
-                training_data.extend(data_mat)
-                f.close()
-                for label_type in labels_keys:
-                    training_labels[label_type].extend(labels_dict[label_type][i])
-                training_id.extend([d for d in labels_dict['id'][i]])
+            training_data.extend(data_mat)
+        f.close()
+        for label_type in labels_keys:
+            training_labels[label_type].extend(labels_dict[label_type][i])
+        training_id.extend([d for d in labels_dict['id'][i]])
 
-                for k in training_labels.keys():
-                    logging.info('Labels: {}'.format(k))
-                logging.info(Counter(training_labels[k]))
-                assert len(training_data) == len(training_labels[k])
+    for k in training_labels.keys():
+        logging.info('Labels: {}'.format(k))
+        logging.info(Counter(training_labels[k]))
+        assert len(training_data) == len(training_labels[k])
 
-                training_data = np.array(training_data)
-                training_id = np.array(training_id)
+    training_data = np.array(training_data)
+    training_id = np.array(training_id)
 
     return training_data, training_labels, training_id
 
