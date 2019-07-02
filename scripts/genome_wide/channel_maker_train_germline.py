@@ -354,7 +354,7 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                 for clipped_arrangement in ['left', 'right', 'all']:
                     points = np.array(list(chain.from_iterable(
                         clipped_read_distance[sample][chrName][direction][clipped_arrangement].values()
-                    )))
+                    )), dtype=np.uint32)
                     outlier_vec = is_outlier(points)
                     outliers[sample][chrName][direction][clipped_arrangement] = \
                         set(points[np.where(outlier_vec)].flatten())
@@ -527,12 +527,13 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                                                 & outliers[sample][chrName][direction][clipped_arrangement])
 
                     # read quality
-                    read_quality_array[sample] = read_quality[sample][chrName][start_win:end_win]
+                    read_quality_array[sample] = np.array(read_quality[sample][chrName][start_win:end_win],
+                                                          dtype=np.uint8)
 
                     # clipped reads
                     clipped_reads_array[sample] = dict()
                     for split_direction in ['left', 'right', 'D_left', 'D_right', 'I']:
-                        clipped_reads_array[sample][split_direction] = np.zeros(win_len, dtype=np.uint32)
+                        clipped_reads_array[sample][split_direction] = np.zeros(win_len, dtype=np.uint8)
                         for pos in range(start_win, end_win):
                             if pos in clipped_reads[sample][chrName][split_direction].keys():
                                 clipped_reads_array[sample][split_direction][pos - start_win] = \
@@ -541,7 +542,7 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                     # clipped reads inversions
                     clipped_reads_inversion_array[sample] = dict()
                     for mate_position in ['before', 'after']:
-                        clipped_reads_inversion_array[sample][mate_position] = np.zeros(win_len, dtype=np.uint32)
+                        clipped_reads_inversion_array[sample][mate_position] = np.zeros(win_len, dtype=np.uint8)
                         for pos in range(start_win, end_win):
                             if pos in clipped_reads_inversion[sample][chrName][mate_position].keys():
                                 clipped_reads_inversion_array[sample][mate_position][pos - start_win] = \
@@ -550,7 +551,7 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                     # clipped reads duplication
                     clipped_reads_duplication_array[sample] = dict()
                     for mate_position in ['before', 'after']:
-                        clipped_reads_duplication_array[sample][mate_position] = np.zeros(win_len, dtype=np.uint32)
+                        clipped_reads_duplication_array[sample][mate_position] = np.zeros(win_len, dtype=np.uint8)
                         for pos in range(start_win, end_win):
                             if pos in clipped_reads_duplication[sample][chrName][mate_position].keys():
                                 clipped_reads_duplication_array[sample][mate_position][pos - start_win] = \
@@ -559,14 +560,14 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                     # clipped reads translocation
                     clipped_reads_translocation_array[sample] = dict()
                     for orientation in ['opposite', 'same']:
-                        clipped_reads_translocation_array[sample][orientation] = np.zeros(win_len, dtype=np.uint32)
+                        clipped_reads_translocation_array[sample][orientation] = np.zeros(win_len, dtype=np.uint8)
                         for pos in range(start_win, end_win):
                             if pos in clipped_reads_translocation[sample][chrName][orientation].keys():
                                 clipped_reads_translocation_array[sample][orientation][pos - start_win] = \
                                     clipped_reads_translocation[sample][chrName][orientation][pos]
 
                     # coverage
-                    coverage_array[sample] = coverage[sample][chrName][start_win:end_win]
+                    coverage_array[sample] = np.array(coverage[sample][chrName][start_win:end_win], np.uint32)
                     assert len(coverage_array[sample]) == win_len
 
                     # continue from here to modify with [chrName]
@@ -592,7 +593,7 @@ def channel_maker(ibam, chrList, sampleName, trainingMode, SVmode, outFile):
                     # split reads
                     split_reads_array[sample] = dict()
                     for split_direction in ['left', 'right']:
-                        split_reads_array[sample][split_direction] = np.zeros(win_len, dtype=np.uint32)
+                        split_reads_array[sample][split_direction] = np.zeros(win_len, dtype=np.uint8)
                         for pos in range(start_win, end_win):
                             if pos in split_reads[sample][chrName][split_direction].keys():
                                 split_reads_array[sample][split_direction][pos - start_win] = \
