@@ -45,7 +45,7 @@ def load_labels(sample_name, win_len):
     labels_file = os.path.join(get_channel_dir(), sample_name, 'label_npy_win' + str(win_len),
                                'labels.pickle.gz')
     with gzip.GzipFile(labels_file, "rb") as f:
-        labels_dict = np.load(f)
+        labels_dict = pickle.load(f)
     f.close()
     return labels_dict
 
@@ -180,7 +180,7 @@ def make_window_pairs(sample_name, win_len):
         lab_dict[k] = {value['chromosome'] + '_' + str(value['position']): l
                        for value, l in zip(training_id, training_labels[k])}
 
-    padding = np.zeros(shape=(training_data.shape[1], 10), dtype=np.uint32)
+    padding = np.zeros(shape=(training_data.shape[1], 10), dtype=np.uint16)
 
     training_data_pairs = []
     training_labels_pairs = defaultdict(list)
