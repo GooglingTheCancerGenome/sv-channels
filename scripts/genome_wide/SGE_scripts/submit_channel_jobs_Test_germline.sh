@@ -3,6 +3,8 @@
 # This script generate the channel data for the somatic and the germline categories of the Training data.
 # The NoSV category is also added here, but for the moment it is generated using the channel_maker_real_somatic.py script
 
+OUTPATH='/hpc/cog_bioinf/ridder/users/lsantuari/Processed/DeepSV/channel_data/'
+
 #Add path to BAM files
 NA12878_BAM='/hpc/cog_bioinf/diagnostiek/projects/na12878_wgs_trio/GIAB12878/mapping/GIAB12878_dedup.bam'
 NA12892_BAM='/hpc/cog_bioinf/diagnostiek/projects/na12878_wgs_trio/Set4GIAB12892/mapping/Set4GIAB12892_dedup.bam'
@@ -45,7 +47,7 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
 
     SAMPLE=${SAMPLE_ARRAY[$i]}
     BAM=${BAM_ARRAY[$i]}
-    OUTDIR=$SAMPLE
+    OUTDIR=$OUTPATH$SAMPLE
 
 #    LOGDIR=${SAMPLE}"/log"
 #    [ ! -d "$LOGDIR" ] && mkdir -p "$LOGDIR"
@@ -94,10 +96,9 @@ for WINDOW in 200; do
 
 	for CHROMOSOME in ${CHRARRAY[@]}; do
 	#for CHROMOSOME in 1; do
-		OUTDIR=$SAMPLE
+		OUTDIR=$OUTPATH$SAMPLE
 		JOB_NAME=$SAMPLE"_win"$WINDOW"_"$CHROMOSOME"_"${PRG}
-		qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=${OUTDIR},SVMODEARG=${SVMODE},\
-		     WINDOWARG=${WINDOW} \
+		qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=${OUTDIR},SVMODEARG=${SVMODE},WINDOWARG=${WINDOW} \
 			-N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_channel.sge
     done
 	#mv ${SAMPLE}"*.err" ${LOGDIR}

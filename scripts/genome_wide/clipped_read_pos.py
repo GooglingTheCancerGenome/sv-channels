@@ -2,12 +2,12 @@
 import argparse
 import logging
 import os
-import pickle
-import bz2file
+import json
+import gzip
 from collections import Counter
 from time import time
 import pysam
-import functions as fun
+from functions import *
 
 
 def get_clipped_read_positions(ibam, chrName, outFile):
@@ -24,7 +24,7 @@ def get_clipped_read_positions(ibam, chrName, outFile):
     assert os.path.isfile(ibam)
 
     # Minimum read mapping quality to consider
-    config = fun.get_config_file()
+    config = get_config_file()
     minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
 
     # Load the BAM file
@@ -64,17 +64,17 @@ def get_clipped_read_positions(ibam, chrName, outFile):
         # if (not read.is_unmapped) and (not read.mate_is_unmapped) and read.mapping_quality >= minMAPQ:
         if (not read.is_unmapped) and read.mapping_quality >= minMAPQ:
 
-            # if fun.has_indels(read):
+            # if has_indels(read):
             #     # print(read)
             #     dels_start, dels_end, ins = fun.get_indels(read)
             #     dels = dels_start + dels_end + ins
             #     clipped_pos.extend(dels)
 
-            if fun.is_left_clipped(read):
+            if is_left_clipped(read):
                 # read.reference_start is the 1-based start position of the read mapped on the reference genome
                 cpos = read.reference_start
                 clipped_pos.append(cpos)
-            if fun.is_right_clipped(read):
+            if is_right_clipped(read):
                 # read.reference_end is the 0-based end position of the read mapped on the reference genome
                 cpos = read.reference_end + 1
                 clipped_pos.append(cpos)
@@ -87,10 +87,13 @@ def get_clipped_read_positions(ibam, chrName, outFile):
 
     logging.info('Number of unique positions: %d' % len(clipped_pos_cnt))
 
-    # Write the output in pickle format
-    with bz2file.BZ2File(outFile, 'wb') as f:
-        pickle.dump(clipped_pos_cnt, f)
+    # Write
+    with gzip.GzipFile(outFile, 'w') as fout:
+        fout.write(json.dumps(clipped_pos_cnt).encode('utf-8'))
 
+    # to load it:
+    # with gzip.GzipFile(outFile, 'r') as fin:
+    #     clipped_pos_cnt = json.loads(fin.read().decode('utf-8'))
 
 def main():
 
@@ -113,15 +116,23 @@ def main():
                         help="Specify input file (BAM)")
     parser.add_argument('-c', '--chr', type=str, default='17',
                         help="Specify chromosome")
-    parser.add_argument('-o', '--out', type=str, default='clipped_read_pos.pbz2',
+    parser.add_argument('-o', '--out', type=str, default='clipped_read_pos.json.gz',
                         help="Specify output")
+    parser.add_argument('-p', '--outputpath', type=str,
+                        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
+                        help="Specify output path")
     parser.add_argument('-l', '--logfile', default='clipped_read_pos.log',
                         help='File in which to write logs.')
 
     args = parser.parse_args()
 
+    cmd_name = 'clipped_read_pos'
+    output_dir = os.path.join(args.outputpath, cmd_name)
+    create_dir(output_dir)
+    logfilename = os.path.join(output_dir, '_'.join((args.chr, args.logfile)))
+    output_file = os.path.join(output_dir, '_'.join((args.chr, args.out)))
+
     # Log file
-    logfilename = args.logfile
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(
         format=FORMAT,
@@ -130,7 +141,7 @@ def main():
         level=logging.INFO)
 
     t0 = time()
-    get_clipped_read_positions(ibam=args.bam, chrName=args.chr, outFile=args.out)
+    get_clipped_read_positions(ibam=args.bam, chrName=args.chr, outFile=output_file)
     logging.info('Time: clipped read positions on BAM %s and Chr %s: %f' % (args.bam, args.chr, (time() - t0)))
 
 

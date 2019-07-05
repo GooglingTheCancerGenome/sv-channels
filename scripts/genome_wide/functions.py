@@ -2,6 +2,7 @@
 import numpy as np
 import twobitreader as twobit
 import json
+import os, errno
 
 del_min_size = 50
 ins_min_size = 50
@@ -176,7 +177,8 @@ def get_one_hot_sequence(chrname, start, stop, nuc, HPC_MODE):
     if chrname == 'MT':
         chrname = 'M'
 
-    return np.array([1 if x.lower() == nuc.lower() else 0 for x in genome['chr' + chrname][start:stop]])
+    return np.array([1 if x.lower() == nuc.lower() else 0 for x in genome['chr' + chrname][start:stop]],
+                    dtype=np.uint8)
 
 
 def get_one_hot_sequence_by_list(chrname, positions, HPC_MODE):
@@ -231,6 +233,19 @@ def is_outlier(points, thresh=3.5):
 
 def get_config_file():
 
-    with open('./genome_wide/parameters.json', 'r') as f:
+    with open('parameters.json', 'r') as f:
         config = json.load(f)
     return config
+
+
+def create_dir(directory):
+    '''
+    Create a directory if it does not exist. Raises an exception if the directory exists.
+    :param directory: directory to create
+    :return: None
+    '''
+    try:
+        os.makedirs(directory)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise

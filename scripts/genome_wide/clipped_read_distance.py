@@ -129,12 +129,20 @@ def main():
                         help="Specify chromosome")
     parser.add_argument('-o', '--out', type=str, default='clipped_read_distance.pbz2',
                         help="Specify output")
+    parser.add_argument('-p', '--outputpath', type=str,
+                        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
+                        help="Specify output path")
     parser.add_argument('-l', '--logfile', default='clipped_read_distance.log',
                         help='File in which to write logs.')
 
     args = parser.parse_args()
 
-    logfilename = args.logfile
+    cmd_name = 'clipped_read_distance'
+    output_dir = os.path.join(args.outputpath, cmd_name)
+    create_dir(output_dir)
+    logfilename = os.path.join(output_dir, '_'.join((args.chr, args.logfile)))
+    output_file = os.path.join(output_dir, '_'.join((args.chr, args.out)))
+
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(
         format=FORMAT,
@@ -143,7 +151,7 @@ def main():
         level=logging.INFO)
 
     t0 = time()
-    get_clipped_read_distance(ibam=args.bam, chrName=args.chr, outFile=args.out)
+    get_clipped_read_distance(ibam=args.bam, chrName=args.chr, outFile=output_file)
     logging.info('Time: clipped read distance on BAM %s and Chr %s: %f' % (args.bam, args.chr, (time() - t0)))
 
 

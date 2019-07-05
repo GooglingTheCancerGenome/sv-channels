@@ -35,7 +35,8 @@ if [ ${PRGARG} == 'coverage' ]; then
         python "genome_wide/${PRGARG}.py" \
                 --bam ${BAMARG} \
                 --chr ${CHRARG} \
-                --out ${OUTARG}"/"${PRGARG}"/"${CHRARG}"_${PRGARG}.npy.bz2" \
+                --out ${OUTARG}"/"${PRGARG}"/"${CHRARG}"_${PRGARG}.npz" \
+                --outputpath ${OUTARG} \
                 --logfile ${OUTARG}"/"${PRGARG}"/"${CHRARG}"_${PRGARG}.log"
 
 # snv.py will output file with extension '.npz.gz'
@@ -44,6 +45,7 @@ elif [ ${PRGARG} == 'snv' ]; then
                 --bam ${BAMARG} \
                 --chr ${CHRARG} \
                 --out ${OUTARG}"/"${PRGARG}"/"${CHRARG}"_${PRGARG}.npz" \
+                --outputpath ${OUTARG} \
                 --logfile ${OUTARG}"/"${PRGARG}"/"${CHRARG}"_${PRGARG}.log"
 
 # ChannelMaker for real data. Flag 'train' is only used to output the NoSV category for training, that for now it is
@@ -55,7 +57,8 @@ elif [ ${PRGARG} == 'channel_maker_real_germline' ]; then
 		        --sample ${SAMPLEARG} \
 		        --train True \
 		        --svmode ${SVMODEARG} \
-                --out ${OUTARG}"/"${PRGARG}"/"${SAMPLEARG}"_"${CHRARG}".npy.gz" \
+                --out ${OUTARG}"/"${PRGARG}"/"${SAMPLEARG}"_"${CHRARG}".npz" \
+                --outputpath ${OUTARG} \
                 --window ${WINDOWARG} \
                 --logfile ${OUTARG}"/"${PRGARG}"/"${SAMPLEARG}"_"${CHRARG}".log"
 
@@ -75,7 +78,8 @@ else
 	python "genome_wide/${PRGARG}.py" \
                 --bam ${BAMARG} \
                 --chr ${CHRARG} \
-                --out ${OUTARG}"/"${PRGARG}"/"${CHRARG}"_${PRGARG}.pbz2" \
+                --out ${OUTARG}"/"${PRGARG}"/"${CHRARG}"_${PRGARG}.json.gz" \
+                --outputpath ${OUTARG} \
                 --logfile ${OUTARG}"/"${PRGARG}"/"${CHRARG}"_${PRGARG}.log"
 fi
 

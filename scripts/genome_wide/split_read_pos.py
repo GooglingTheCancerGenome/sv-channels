@@ -2,12 +2,12 @@
 import argparse
 import logging
 import os
-import pickle
-import bz2file
+import json
+import gzip
 from collections import Counter, defaultdict
 from time import time
 import pysam
-import functions as fun
+from functions import *
 
 strand_str = {True: '-', False: '+'}
 
@@ -67,7 +67,7 @@ def get_split_read_positions(ibam, chrName, outFile):
     # Check if the BAM file in input exists
     assert os.path.isfile(ibam)
 
-    config = fun.get_config_file()
+    config = get_config_file()
     minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
     min_support = config["DEFAULT"]["MIN_SR_SUPPORT"]
 
@@ -117,14 +117,14 @@ def get_split_read_positions(ibam, chrName, outFile):
         # if (not read.is_unmapped) and (not read.mate_is_unmapped) and read.mapping_quality >= minMAPQ:
         if (not read.is_unmapped) and read.mapping_quality >= minMAPQ:
 
-            if fun.has_indels(read):
+            if has_indels(read):
                 # print(read)
-                dels_start, dels_end, ins = fun.get_indels(read)
+                dels_start, dels_end, ins = get_indels(read)
                 dels = dels_start + dels_end + ins
                 split_pos.extend(dels)
             if read.has_tag('SA'):
-                chr, pos, strand = fun.get_suppl_aln(read)
-                if fun.is_right_clipped(read):
+                chr, pos, strand = get_suppl_aln(read)
+                if is_right_clipped(read):
                     refpos = read.reference_end + 1
                     if chr == read.reference_name:
                         split_pos.append(refpos)
@@ -132,7 +132,7 @@ def get_split_read_positions(ibam, chrName, outFile):
                         split_pos_coord = append_coord(split_pos_coord, chrName, refpos, chr, pos)
                     else:
                         split_pos.append(refpos)
-                elif fun.is_left_clipped(read):
+                elif is_left_clipped(read):
                     refpos = read.reference_start
                     if chr == read.reference_name:
                         pass
@@ -199,16 +199,21 @@ def get_split_read_positions(ibam, chrName, outFile):
     logging.info('Number of unique pair of discordant positions: %d' % len(discordant_reads_coord))
 
     total_reads_cnt = Counter(split_pos + discordant_reads_pos)
-    total_reads_coord = set(split_pos_coord | discordant_reads_coord)
+    total_reads_coord = list(set(split_pos_coord | discordant_reads_coord))
 
     logging.info('Number of unique total positions: %d' % len(
         [p for p, c in total_reads_cnt.items() if c >= min_support])
                  )
     logging.info('Number of unique pair of total positions: %d' % len(total_reads_coord))
 
-    # Write the output in pickle format
-    with bz2file.BZ2File(outFile, 'wb') as f:
-        pickle.dump((total_reads_cnt, total_reads_coord), f)
+    data = (total_reads_cnt, total_reads_coord)
+    # Write
+    with gzip.GzipFile(outFile, 'w') as fout:
+        fout.write(json.dumps(data).encode('utf-8'))
+
+    # to load it:
+    # with gzip.GzipFile(outFile, 'r') as fin:
+    #     total_reads_cnt, total_reads_coord = json.loads(fin.read().decode('utf-8'))
 
 
 def main():
@@ -234,13 +239,21 @@ def main():
                         help="Specify chromosome")
     parser.add_argument('-o', '--out', type=str, default='split_read_pos.pbz2',
                         help="Specify output")
+    parser.add_argument('-p', '--outputpath', type=str,
+                        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
+                        help="Specify output path")
     parser.add_argument('-l', '--logfile', default='split_read_pos.log',
                         help='File in which to write logs.')
 
     args = parser.parse_args()
 
     # Log file
-    logfilename = args.logfile
+    cmd_name = 'split_read_pos'
+    output_dir = os.path.join(args.outputpath, cmd_name)
+    create_dir(output_dir)
+    logfilename = os.path.join(output_dir, '_'.join((args.chr, args.logfile)))
+    output_file = os.path.join(output_dir, '_'.join((args.chr, args.out)))
+
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(
         format=FORMAT,
@@ -249,7 +262,7 @@ def main():
         level=logging.INFO)
 
     t0 = time()
-    get_split_read_positions(ibam=args.bam, chrName=args.chr, outFile=args.out)
+    get_split_read_positions(ibam=args.bam, chrName=args.chr, outFile=output_file)
     logging.info('Time: split read positions on BAM %s and Chr %s: %f' % (args.bam, args.chr, (time() - t0)))
 
 

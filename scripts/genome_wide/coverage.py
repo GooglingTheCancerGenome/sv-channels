@@ -2,12 +2,14 @@
 
 import argparse
 import pysam
-import bz2file
 from time import time
 import logging
 import numpy as np
+import os
+from functions import create_dir, get_config_file
 
-minMAPQ = 30
+config = get_config_file()
+minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
 
 
 def check_read(read):
@@ -82,6 +84,9 @@ def get_coverage(ibam, chrName, outFile):
     # Numpy array to store the coverage
     cov = np.zeros((3, chrLen), dtype=np.uint32)
 
+    read_quality_sum = np.zeros(chrLen, dtype=np.uint32)
+    read_quality_count = np.zeros(chrLen, dtype=np.uint32)
+
     # Log information every n_r base pair positions
     n_r = 10 ** 6
     # print(n_r)
@@ -109,6 +114,12 @@ def get_coverage(ibam, chrName, outFile):
             cov[1, read.reference_start:read.reference_end - 1] += 1
         if check_read_is_proper_paired_reverse(read):
             cov[2, read.reference_start:read.reference_end - 1] += 1
+
+        if not read.is_unmapped and read.mapping_quality >= minMAPQ:
+
+            # add read mapping quality
+            read_quality_sum[read.reference_start:read.reference_end - 1] += read.mapping_quality
+            read_quality_count[read.reference_start:read.reference_end - 1] += 1
 
     # # Iterate over the chromosome positions
     # for i, pile in enumerate(bamfile.pileup(chrName, start_pos, stop_pos, truncate=True), start=1):
@@ -160,14 +171,25 @@ def get_coverage(ibam, chrName, outFile):
     #
     # assert np.all(cov == cov_nofilter)
 
+    read_quality = np.divide(read_quality_sum, read_quality_count, where=read_quality_count!=0)
+    # where there are no reads, use median mapping quality
+    read_quality[np.where(read_quality_count==0)] = np.median(read_quality)
+
+    cov = np.vstack((cov, read_quality))
+    logging.info(cov.shape)
+
     # Save coverage numpy array
-    with bz2file.BZ2File(outFile, 'w') as f:
-        try:
-            np.save(file=f, arr=cov)
-        except MemoryError:
-            logging.info("Out of memory for chr %s and BAM file %s !" % (chrName, ibam))
+    try:
+        np.savez(file=outFile, coverage=cov)
+    except MemoryError:
+        logging.info("Out of memory for chr %s and BAM file %s !" % (chrName, ibam))
+
+    # To load it
+    # cov = np.load(outFile)['coverage']
+
 
 def main():
+
     # Default BAM file for testing
     # On the HPC
     # wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
@@ -184,14 +206,22 @@ def main():
                         help="Specify input file (BAM)")
     parser.add_argument('-c', '--chr', type=str, default='17',
                         help="Specify chromosome")
-    parser.add_argument('-o', '--out', type=str, default='coverage.npy.bz2',
+    parser.add_argument('-o', '--out', type=str, default='coverage.npz',
                         help="Specify output")
+    parser.add_argument('-p', '--outputpath', type=str,
+                        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
+                        help="Specify output path")
     parser.add_argument('-l', '--logfile', default='coverage.log',
                         help='File in which to write logs.')
 
     args = parser.parse_args()
 
-    logfilename = args.logfile
+    cmd_name = 'coverage'
+    output_dir = os.path.join(args.outputpath, cmd_name)
+    create_dir(output_dir)
+    logfilename = os.path.join(output_dir, '_'.join((args.chr, args.logfile)))
+    output_file = os.path.join(output_dir, '_'.join((args.chr, args.out)))
+
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(
         format=FORMAT,
@@ -200,7 +230,7 @@ def main():
         level=logging.INFO)
 
     t0 = time()
-    get_coverage(ibam=args.bam, chrName=args.chr, outFile=args.out)
+    get_coverage(ibam=args.bam, chrName=args.chr, outFile=output_file)
     logging.info('Time: coverage on BAM %s and Chr %s: %f' % (args.bam, args.chr, (time() - t0)))
 
 

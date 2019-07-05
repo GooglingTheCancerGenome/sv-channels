@@ -3,14 +3,14 @@
 import argparse
 import pysam
 import os
-import bz2file
-import pickle
+import gzip
 from time import time
 import numpy as np
 import logging
 from functions import is_clipped, is_left_clipped, is_right_clipped, has_indels,\
-    get_indels, get_reference_sequence, get_config_file
+    get_indels, get_reference_sequence, get_config_file, create_dir
 from collections import defaultdict
+import json
 
 def get_clipped_reads(ibam, chrName, outFile):
     '''
@@ -72,9 +72,6 @@ def get_clipped_reads(ibam, chrName, outFile):
     start_pos = 0
     stop_pos = chrLen
 
-    read_quality_sum = np.zeros(chrLen, dtype=np.uint32)
-    read_quality_count = np.zeros(chrLen, dtype=np.uint32)
-
     # Fetch the reads mapped on the chromosome
     iter = bamfile.fetch(chrName, start_pos, stop_pos)
 
@@ -94,10 +91,6 @@ def get_clipped_reads(ibam, chrName, outFile):
             last_t = time()
 
         if not read.is_unmapped and read.mapping_quality >= minMAPQ:
-
-            # add read mapping quality
-            read_quality_sum[read.reference_start:read.reference_end+2] += read.mapping_quality
-            read_quality_count[read.reference_start:read.reference_end + 2] += 1
 
             if has_indels(read):
 
@@ -190,17 +183,16 @@ def get_clipped_reads(ibam, chrName, outFile):
     #            for pos in clipped_reads_inversion[mate_position].keys() \
     #                 if clipped_reads_inversion[mate_position][pos] != 0])
 
-    read_quality = np.divide(read_quality_sum, read_quality_count, where=read_quality_count!=0)
-    # where there are no reads, use median mapping quality
-    read_quality[np.where(read_quality_count==0)] = np.median(read_quality)
+    # Write clipped reads dictionaries
+    data = (clipped_reads, clipped_reads_inversion,
+             clipped_reads_duplication, clipped_reads_translocation)
+    with gzip.GzipFile(outFile, 'w') as fout:
+        fout.write(json.dumps(data).encode('utf-8'))
 
-    # save clipped reads dictionary
-    with bz2file.BZ2File(outFile, 'wb') as f:
-        pickle.dump(
-            (read_quality, clipped_reads, clipped_reads_inversion,
-             clipped_reads_duplication, clipped_reads_translocation),
-            # clipped_reads,
-            f)
+    # to load it:
+    # with gzip.GzipFile(outFile, 'r') as fin:
+    #     read_quality, clipped_reads, clipped_reads_inversion,
+    #              clipped_reads_duplication, clipped_reads_translocation = json.loads(fin.read().decode('utf-8'))
 
 
 def main():
@@ -221,14 +213,22 @@ def main():
                         help="Specify input file (BAM)")
     parser.add_argument('-c', '--chr', type=str, default='17',
                         help="Specify chromosome")
-    parser.add_argument('-o', '--out', type=str, default='clipped_reads.pbz2',
+    parser.add_argument('-o', '--out', type=str, default='clipped_reads.json.gz',
                         help="Specify output")
+    parser.add_argument('-p', '--outputpath', type=str,
+                        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
+                        help="Specify output path")
     parser.add_argument('-l', '--logfile', default='clipped_reads.log',
                         help='File in which to write logs.')
 
     args = parser.parse_args()
 
-    logfilename = args.logfile
+    cmd_name = 'clipped_reads'
+    output_dir = os.path.join(args.outputpath, cmd_name)
+    create_dir(output_dir)
+    logfilename = os.path.join(output_dir, '_'.join((args.chr, args.logfile)))
+    output_file = os.path.join(output_dir, '_'.join((args.chr, args.out)))
+
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(
         format=FORMAT,
@@ -237,7 +237,7 @@ def main():
         level=logging.INFO)
 
     t0 = time()
-    get_clipped_reads(ibam=args.bam, chrName=args.chr, outFile=args.out)
+    get_clipped_reads(ibam=args.bam, chrName=args.chr, outFile=output_file)
     logging.info('Time: clipped reads on BAM %s and Chr %s: %f' % (args.bam, args.chr, (time() - t0)))
 
 

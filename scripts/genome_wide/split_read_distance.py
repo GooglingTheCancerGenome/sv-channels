@@ -1,8 +1,9 @@
 # Imports
+import os
 import argparse
 import pysam
-import bz2file
-import pickle
+import json
+import gzip
 from time import time
 import logging
 from functions import *
@@ -89,7 +90,7 @@ def get_split_read_distance(ibam, chrName, outFile):
                     if chr == read.reference_name:
                         # print('Right split')
                         # print(str(read))
-                        refpos = read.reference_end
+                        refpos = read.reference_end + 1
                         #if pos not in split_read_distance['right'].keys():
                         #    split_read_distance['right'][pos] = [abs(pos - refpos)]
                         #else:
@@ -106,8 +107,13 @@ def get_split_read_distance(ibam, chrName, outFile):
 
 
     # Save two dictionaries: split_read_distance and split_reads
-    with bz2file.BZ2File(outFile, 'w') as f:
-        pickle.dump((split_read_distance, split_reads), f)
+    data = (split_read_distance, split_reads)
+    with gzip.GzipFile(outFile, 'w') as fout:
+        fout.write(json.dumps(data).encode('utf-8'))
+
+    # to load it:
+    # with gzip.GzipFile(outFile, 'r') as fin:
+    #     split_read_distance, split_reads = json.loads(fin.read().decode('utf-8'))
 
 
 def main():
@@ -126,14 +132,22 @@ def main():
                         help="Specify input file (BAM)")
     parser.add_argument('-c', '--chr', type=str, default='17',
                         help="Specify chromosome")
-    parser.add_argument('-o', '--out', type=str, default='split_read_distance.pbz2',
+    parser.add_argument('-o', '--out', type=str, default='split_read_distance.json.gz',
                         help="Specify output")
+    parser.add_argument('-p', '--outputpath', type=str,
+                        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
+                        help="Specify output path")
     parser.add_argument('-l', '--logfile', default='split_read_distance.log',
                         help='File in which to write logs.')
 
     args = parser.parse_args()
 
-    logfilename = args.logfile
+    cmd_name = 'split_read_distance'
+    output_dir = os.path.join(args.outputpath, cmd_name)
+    create_dir(output_dir)
+    logfilename = os.path.join(output_dir, '_'.join((args.chr, args.logfile)))
+    output_file = os.path.join(output_dir, '_'.join((args.chr, args.out)))
+
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(
         format=FORMAT,
@@ -142,8 +156,8 @@ def main():
         level=logging.INFO)
 
     t0 = time()
-    get_split_read_distance(ibam=args.bam, chrName=args.chr, outFile=args.out)
-    print(time() - t0)
+    get_split_read_distance(ibam=args.bam, chrName=args.chr, outFile=output_file)
+    logging.info('Time: split_read_distance on BAM %s and Chr %s: %f' % (args.bam, args.chr, (time() - t0)))
 
 
 if __name__ == '__main__':
