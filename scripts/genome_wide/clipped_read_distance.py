@@ -6,7 +6,7 @@ import pysam
 import bz2file
 import pickle
 from time import time
-import functions as fun
+from functions import *
 import logging
 from collections import defaultdict
 import os
@@ -26,7 +26,7 @@ def get_clipped_read_distance(ibam, chrName, outFile):
     assert os.path.isfile(ibam)
 
     # minimum read mapping quality to consider
-    config = fun.get_config_file()
+    config = get_config_file()
     minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
 
     # open BAM file
@@ -59,13 +59,13 @@ def get_clipped_read_distance(ibam, chrName, outFile):
             pos = read.reference_start
         clipped_read_distance[direction]['all'][pos].append(dist)
 
-        if fun.is_left_clipped(read):
+        if is_left_clipped(read):
             pos = read.reference_start
             #if pos not in clipped_read_distance[direction]['left'].keys():
             #    clipped_read_distance[direction]['left'][pos] = [dist]
             #else:
             clipped_read_distance[direction]['left'][pos].append(dist)
-        elif fun.is_right_clipped(read):
+        elif is_right_clipped(read):
             pos = read.reference_end + 1
             #if pos not in clipped_read_distance[direction]['right'].keys():
             #    clipped_read_distance[direction]['right'][pos] = [dist]
