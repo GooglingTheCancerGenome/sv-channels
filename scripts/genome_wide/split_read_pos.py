@@ -122,6 +122,12 @@ def get_split_read_positions(ibam, chrName, outFile):
                 dels_start, dels_end, ins = get_indels(read)
                 dels = dels_start + dels_end + ins
                 split_pos.extend(dels)
+
+                for start, end in zip(dels_start, dels_end):
+                    split_pos_coord = append_coord(split_pos_coord, chrName, start, chrName, end)
+                for pos in ins:
+                    split_pos_coord = append_coord(split_pos_coord, chrName, pos, chrName, pos+1)
+
             if read.has_tag('SA'):
                 chr, pos, strand = get_suppl_aln(read)
                 if is_right_clipped(read):
