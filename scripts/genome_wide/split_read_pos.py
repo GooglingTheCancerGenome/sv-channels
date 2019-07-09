@@ -146,7 +146,7 @@ def get_split_read_positions(ibam, chrName, outFile):
                         split_pos.append(refpos)
                         split_pos_coord = append_coord(split_pos_coord, chrName, refpos, chr, pos)
 
-            if not read.mate_is_unmapped and not read.is_proper_pair:
+            if not read.mate_is_unmapped and ( not read.is_proper_pair or is_clipped(read) ):
 
                 refpos = read.reference_end + 1 if not read.is_reverse else read.reference_start
 
