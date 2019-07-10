@@ -80,6 +80,6 @@ else
                 --chr ${CHRARG} \
                 --out ${PRGARG}".json.gz" \
                 --outputpath ${OUTARG} \
-                --logfile ${PRGARG}.log"
+                --logfile ${PRGARG}".log"
 fi
 
