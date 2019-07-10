@@ -32,7 +32,7 @@ echo "Running ${PRGARG} for ${BAMARG} ${CHRARG}"
 
 # coverage.py will output file with extension '.npy.bz2'
 if [ ${PRGARG} == 'coverage' ]; then
-        python "genome_wide/${PRGARG}.py" \
+        python "${PRGARG}.py" \
                 --bam ${BAMARG} \
                 --chr ${CHRARG} \
                 --out ${PRGARG}".npy" \
@@ -41,7 +41,7 @@ if [ ${PRGARG} == 'coverage' ]; then
 
 # snv.py will output file with extension '.npz.gz'
 elif [ ${PRGARG} == 'snv' ]; then
-        python "genome_wide/${PRGARG}.py" \
+        python "${PRGARG}.py" \
                 --bam ${BAMARG} \
                 --chr ${CHRARG} \
                 --out ${PRGARG}".npy" \
@@ -51,7 +51,7 @@ elif [ ${PRGARG} == 'snv' ]; then
 # ChannelMaker for real data. Flag 'train' is only used to output the NoSV category for training, that for now it is
 # not implemented in the channel_make_train.py script
 elif [ ${PRGARG} == 'channel_maker_real_germline' ]; then
-        python "genome_wide/${PRGARG}.py" \
+        python "${PRGARG}.py" \
                 --bam ${BAMARG} \
                 --chr ${CHRARG} \
 		        --sample ${SAMPLEARG} \
@@ -64,7 +64,7 @@ elif [ ${PRGARG} == 'channel_maker_real_germline' ]; then
 
 # ChannelMaker for training data
 elif [ ${PRGARG} == 'channel_maker_train_germline' ]; then
-        python "genome_wide/${PRGARG}.py" \
+        python "${PRGARG}.py" \
                 --bam ${BAMARG} \
                 --chr ${CHRARG} \
                 --sample ${SAMPLEARG} \
@@ -75,10 +75,10 @@ elif [ ${PRGARG} == 'channel_maker_train_germline' ]; then
 
 else
 # generic execution
-	python "genome_wide/${PRGARG}.py" \
+	python "${PRGARG}.py" \
                 --bam ${BAMARG} \
                 --chr ${CHRARG} \
-                --out ${PRGARG}.json.gz" \
+                --out ${PRGARG}".json.gz" \
                 --outputpath ${OUTARG} \
                 --logfile ${PRGARG}.log"
 fi
