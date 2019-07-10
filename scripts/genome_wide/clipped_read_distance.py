@@ -3,8 +3,8 @@
 
 import argparse
 import pysam
-import bz2file
-import pickle
+import json
+import gzip
 from time import time
 from functions import *
 import logging
@@ -106,9 +106,13 @@ def get_clipped_read_distance(ibam, chrName, outFile):
                 elif read.is_reverse and not read.mate_is_reverse and read.reference_start > read.next_reference_start:
                     set_distance('reverse', read, dist)
 
-    # Save clipped read distance dictionary
-    with bz2file.BZ2File(outFile, 'w') as f:
-        pickle.dump(clipped_read_distance, f)
+    # Write clipped read distance dictionaries
+    with gzip.GzipFile(outFile, 'w') as fout:
+        fout.write(json.dumps(clipped_read_distance).encode('utf-8'))
+
+    # to load it:
+    # with gzip.GzipFile(outFile, 'r') as fin:
+    #     clipped_read_distance = json.loads(fin.read().decode('utf-8'))
 
 
 def main():
