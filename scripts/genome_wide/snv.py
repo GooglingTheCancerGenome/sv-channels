@@ -82,109 +82,109 @@ def get_snvs(ibam, chrName, outFile):
     # Record the current time
     last_t = time()
 
-    # for pileupcolumn in bamfile.pileup(chrName, start_pos, stop_pos, stepper='all'):
-    #     # pileupcolumn.set_min_base_quality(0)
-    #     # print("\ncoverage at base %s = %s" %
-    #     #       (pileupcolumn.pos, pileupcolumn.nsegments))
-    #     if 0 < pileupcolumn.nsegments < MAX_PILEUP_BUFFER_SIZE and start_pos <= pileupcolumn.pos <= stop_pos:
-    #         quals = pileupcolumn.get_query_qualities()
-    #         if len(quals) > 0:
-    #             snv_array[snv_dict['BQ'], pileupcolumn.pos] = np.median(pileupcolumn.get_query_qualities())
-    #         # snv_array[snv_dict['nALN'], pileupcolumn.pos] = pileupcolumn.get_num_aligned()
-    #         # snv_array[snv_dict['nSEG'], pileupcolumn.pos] = pileupcolumn.nsegments
-    #         try:
-    #
-    #             query_seq_list = pileupcolumn.get_query_sequences()
-    #             snv_number = get_snv_number(query_seq_list, reference_sequence['chr' + chrName][pileupcolumn.pos])
-    #             snv_array[snv_dict['SNV'], pileupcolumn.pos] = snv_number/pileupcolumn.nsegments \
-    #                 if pileupcolumn.nsegments !=0 else 0
-    #
-    #         except AssertionError as error:
-    #             # Output expected AssertionErrors.
-    #             logging.info(error)
-    #             logging.info('Position {}:{} has {} nsegments'.format(chrName,
-    #                                                                   pileupcolumn.pos,
-    #                                                                   pileupcolumn.nsegments))
-    #             continue
-
-    # Pysam iterator to fetch the reads
-    iter = bamfile.fetch(chrName, start_pos, stop_pos)
-
-    for i, read in enumerate(iter, start=1):
-
-        # Every n_r alignments, write log informations
-        if not i % n_r:
-            # Record the current time
-            now_t = time()
-            # print(type(now_t))
-            logging.info("%d alignments processed (%f alignments / s)" % (
-                i,
-                n_r / (now_t - last_t)))
-            last_t = time()
-
-        if not read.is_unmapped and read.mapping_quality >= minMAPQ:
-
-            # print(read)
-            # print(read.cigartuples)
-            # print(read.mapping_quality)
-            # print(read.query_alignment_qualities)
-            # print('{} == {}'.format(
-            #     len(read.query_alignment_qualities), read.reference_end - read.reference_start))
-
+    for pileupcolumn in bamfile.pileup(chrName, start_pos, stop_pos, stepper='all'):
+        # pileupcolumn.set_min_base_quality(0)
+        # print("\ncoverage at base %s = %s" %
+        #       (pileupcolumn.pos, pileupcolumn.nsegments))
+        if 0 < pileupcolumn.nsegments < MAX_PILEUP_BUFFER_SIZE and start_pos <= pileupcolumn.pos <= stop_pos:
+            quals = pileupcolumn.get_query_qualities()
+            if len(quals) > 0:
+                snv_array[snv_dict['BQ'], pileupcolumn.pos] = np.median(pileupcolumn.get_query_qualities())
+            # snv_array[snv_dict['nALN'], pileupcolumn.pos] = pileupcolumn.get_num_aligned()
+            # snv_array[snv_dict['nSEG'], pileupcolumn.pos] = pileupcolumn.nsegments
             try:
 
-                ref_string = reference_sequence['chr' + chrName][read.reference_start:read.reference_end].upper()
+                query_seq_list = pileupcolumn.get_query_sequences()
+                snv_number = get_snv_number(query_seq_list, reference_sequence['chr' + chrName][pileupcolumn.pos])
+                snv_array[snv_dict['SNV'], pileupcolumn.pos] = snv_number/pileupcolumn.nsegments \
+                    if pileupcolumn.nsegments !=0 else 0
 
-                if len(read.cigartuples) == 1 and read.cigartuples[0][0] == 0:
+            except AssertionError as error:
+                # Output expected AssertionErrors.
+                logging.info(error)
+                logging.info('Position {}:{} has {} nsegments'.format(chrName,
+                                                                      pileupcolumn.pos,
+                                                                      pileupcolumn.nsegments))
+                continue
 
-                    query_string = read.query_alignment_sequence
-                    query_base_qualities = read.query_alignment_qualities
-
-                else:
-
-                    query_string, query_base_qualities, ref_string = correct_for_indels(read, ref_string)
-                    # print(read.query_alignment_sequence)
-                    # print(query_string)
-                    # print(ref_string)
-
-                    snv_idx = [read.reference_start + index for index, (e1, e2) in enumerate(
-                        zip(query_string, ref_string)) if e1 != e2 and (e1 != '-' and e2 != '-')]
-                    # for i in snv_idx:
-                    #     pos = i - read.reference_start
-                    #     print('{} != {}'.format(query_string[pos], ref_string[pos]))
-
-                    snv_array[snv_dict['SNV'], snv_idx] += 1
-
-                snv_array[snv_dict['BQ'], read.reference_start:read.reference_end] += \
-                    np.array(query_base_qualities, dtype=np.uint32)
-                snv_array[snv_dict['RC'], read.reference_start:read.reference_end] += 1
-
-            except:
-
-                print(read)
-                print(read.cigartuples)
-                print(read.mapping_quality)
-                print(read.query_alignment_qualities)
+    # # Pysam iterator to fetch the reads
+    # iter = bamfile.fetch(chrName, start_pos, stop_pos)
+    #
+    # for i, read in enumerate(iter, start=1):
+    #
+    #     # Every n_r alignments, write log informations
+    #     if not i % n_r:
+    #         # Record the current time
+    #         now_t = time()
+    #         # print(type(now_t))
+    #         logging.info("%d alignments processed (%f alignments / s)" % (
+    #             i,
+    #             n_r / (now_t - last_t)))
+    #         last_t = time()
+    #
+    #     if not read.is_unmapped and read.mapping_quality >= minMAPQ:
+    #
+    #         # print(read)
+    #         # print(read.cigartuples)
+    #         # print(read.mapping_quality)
+    #         # print(read.query_alignment_qualities)
+    #         # print('{} == {}'.format(
+    #         #     len(read.query_alignment_qualities), read.reference_end - read.reference_start))
+    #
+    #         try:
+    #
+    #             ref_string = reference_sequence['chr' + chrName][read.reference_start:read.reference_end].upper()
+    #
+    #             if len(read.cigartuples) == 1 and read.cigartuples[0][0] == 0:
+    #
+    #                 query_string = read.query_alignment_sequence
+    #                 query_base_qualities = read.query_alignment_qualities
+    #
+    #             else:
+    #
+    #                 query_string, query_base_qualities, ref_string = correct_for_indels(read, ref_string)
+    #                 # print(read.query_alignment_sequence)
+    #                 # print(query_string)
+    #                 # print(ref_string)
+    #
+    #                 snv_idx = [read.reference_start + index for index, (e1, e2) in enumerate(
+    #                     zip(query_string, ref_string)) if e1 != e2 and e1 != '-' and e2 != '-' ]
+    #                 # for i in snv_idx:
+    #                 #     pos = i - read.reference_start
+    #                 #     print('{} != {}'.format(query_string[pos], ref_string[pos]))
+    #
+    #                 snv_array[snv_dict['SNV'], snv_idx] += 1
+    #
+    #             snv_array[snv_dict['BQ'], read.reference_start:read.reference_end] += \
+    #                 np.array(query_base_qualities, dtype=np.uint32)
+    #             snv_array[snv_dict['RC'], read.reference_start:read.reference_end] += 1
+    #
+    #         except:
+    #
+    #             print(read)
+    #             print(read.cigartuples)
+    #             print(read.mapping_quality)
+    #             print(read.query_alignment_qualities)
 
             # print(cnt)
             # for k in cnt.keys():
             #     if k in snv_list and k.upper() != reference_sequence['chr' + chrName][pileupcolumn.pos]:
             #         snv_array[snv_dict[k], pileupcolumn.pos] = cnt[k]
 
-    # Close the BAM file
-    bamfile.close()
-
-    snv_array = np.vstack(
-        (
-            np.divide(snv_array[snv_dict['SNV']], snv_array[snv_dict['RC']],
-                      where=snv_array[snv_dict['RC']] != 0),
-            np.divide(snv_array[snv_dict['BQ']], snv_array[snv_dict['RC']],
-                      where=snv_array[snv_dict['RC']] != 0)
-        )
-    )
+    # # Close the BAM file
+    # bamfile.close()
+    #
+    # snv_array = np.vstack(
+    #     (
+    #         np.divide(snv_array[snv_dict['SNV']], snv_array[snv_dict['RC']],
+    #                   where=snv_array[snv_dict['RC']] != 0),
+    #         np.divide(snv_array[snv_dict['BQ']], snv_array[snv_dict['RC']],
+    #                   where=snv_array[snv_dict['RC']] != 0)
+    #     )
+    # )
 
     # Write the output
-    np.savez(outFile, snv_array=snv_array)
+    np.save(file=outFile, arr=snv_array)
     # os.system('gzip -f ' + outFile)
 
 
@@ -208,7 +208,7 @@ def main():
                         help="Specify input file (BAM)")
     parser.add_argument('-c', '--chr', type=str, default='17',
                         help="Specify chromosome")
-    parser.add_argument('-o', '--out', type=str, default='snv.npz',
+    parser.add_argument('-o', '--out', type=str, default='snv.npy',
                         help="Specify output")
     parser.add_argument('-p', '--outputpath', type=str,
                         default='/Users/lsantuari/Documents/Processed/channel_maker_output',

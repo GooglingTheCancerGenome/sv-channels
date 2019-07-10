@@ -180,7 +180,7 @@ def get_coverage(ibam, chrName, outFile):
 
     # Save coverage numpy array
     try:
-        np.savez(file=outFile, coverage=cov)
+        np.save(file=outFile, arr=cov)
     except MemoryError:
         logging.info("Out of memory for chr %s and BAM file %s !" % (chrName, ibam))
 
@@ -206,7 +206,7 @@ def main():
                         help="Specify input file (BAM)")
     parser.add_argument('-c', '--chr', type=str, default='17',
                         help="Specify chromosome")
-    parser.add_argument('-o', '--out', type=str, default='coverage.npz',
+    parser.add_argument('-o', '--out', type=str, default='coverage.npy',
                         help="Specify output")
     parser.add_argument('-p', '--outputpath', type=str,
                         default='/Users/lsantuari/Documents/Processed/channel_maker_output',
