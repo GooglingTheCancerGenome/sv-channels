@@ -78,9 +78,9 @@ elif [ ${PRGARG} == 'chr_array' ]; then
                 --bam ${BAMARG} \
                 --chr ${CHRARG} \
                 --sample ${SAMPLEARG} \
-                --out ${OUTARG}"/"${PRGARG}"/"$SAMPLEARG"_"${CHRARG}".hdf5" \
+                --out ${SAMPLEARG}"_"${CHRARG}".hdf5" \
                 --outputpath ${OUTARG} \
-                --logfile ${OUTARG}"/"${PRGARG}"/"$SAMPLEARG"_"${CHRARG}".log"
+                --logfile ${SAMPLEARG}"_"${CHRARG}".log"
 
 else
 # generic execution
