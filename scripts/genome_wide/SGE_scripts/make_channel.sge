@@ -79,6 +79,7 @@ elif [ ${PRGARG} == 'chr_array' ]; then
                 --chr ${CHRARG} \
                 --sample ${SAMPLEARG} \
                 --out ${OUTARG}"/"${PRGARG}"/"$SAMPLEARG"_"${CHRARG}".hdf5" \
+                --outputpath ${OUTARG} \
                 --logfile ${OUTARG}"/"${PRGARG}"/"$SAMPLEARG"_"${CHRARG}".log"
 
 else
