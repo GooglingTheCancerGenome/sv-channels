@@ -1,6 +1,6 @@
 {
   "DEFAULT": {
-    "HPC_MODE": true,
+    "HPC_MODE": false,
     "CANDIDATE_POSITIONS" : "SR_CR",
     "READ_LENGTH": 151,
     "MIN_CR_SUPPORT": 2,

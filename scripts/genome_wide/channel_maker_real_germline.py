@@ -5,7 +5,7 @@ import pysam
 import statistics
 from pysam import VariantFile
 from collections import Counter
-from intervaltree import Interval, IntervalTree
+from intervaltree import IntervalTree
 from collections import defaultdict
 import numpy as np
 import argparse
@@ -17,9 +17,8 @@ from time import time
 import logging
 import csv
 import pandas as pd
-# from plotnine import *
 import pyBigWig
-from functions import get_one_hot_sequence, is_outlier, get_config_file
+from functions import get_one_hot_sequence, is_outlier, get_config_file, create_dir
 from itertools import chain
 import json
 
@@ -197,19 +196,6 @@ def get_chr_len(ibam, chrName):
     return chrLen
 
 
-def create_dir(directory):
-    '''
-    Create a directory if it does not exist. Raises an exception if the directory exists.
-    :param directory: directory to create
-    :return: None
-    '''
-    try:
-        os.makedirs(directory)
-    except OSError as e:
-        if e.errno != errno.EEXIST:
-            raise
-
-
 def load_clipped_read_positions(sampleName, chrName, candpos):
     channel_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth'
 
@@ -223,11 +209,12 @@ def load_clipped_read_positions(sampleName, chrName, candpos):
         fn = '/'.join((sampleName, vec_type, chrName + '_' + vec_type + '.pbz2'))
     else:
         fn = '/'.join((channel_dir, sampleName, vec_type, chrName + '_' + vec_type + '.pbz2'))
-    with bz2file.BZ2File(fn, 'rb') as f:
+
+    with gzip.GzipFile(fn, 'r') as fin:
         if candpos == "CR":
-            cpos = pickle.load(f)
+            cpos = json.loads(fin.read().decode('utf-8'))
         else:
-            positions, locations = pickle.load(f)
+            positions, locations = json.loads(fin.read().decode('utf-8'))
             cpos = positions
 
     cr_pos = [elem for elem, cnt in cpos.items() if cnt >= min_support]
@@ -1030,6 +1017,7 @@ def read_bed_sv(sampleName):
     # print(sv_dict)
     return sv_dict
 
+
 # END: BED specific functions
 
 def read_SURVIVOR_merge_VCF(sampleName):
@@ -1329,7 +1317,6 @@ def get_mappability_bigwig():
 
 
 def load_channels(sample, chr_list):
-
     prefix = ''
     channel_names = ['split_read_pos', 'clipped_reads', 'clipped_read_distance',
                      'coverage', 'split_read_distance', 'snv']
@@ -1368,7 +1355,6 @@ def load_channels(sample, chr_list):
 
 
 def channel_maker_speedup(chrom, sampleName, outFile, win_len):
-
     # Window half length
     win_hlen = int(int(win_len) / 2)
 
@@ -1414,7 +1400,7 @@ def channel_maker_speedup(chrom, sampleName, outFile, win_len):
     channel_index = 0
 
     for current_channel in ['coverage', 'read_quality', 'snv'
-                            'clipped_reads', 'split_reads',
+                                                        'clipped_reads', 'split_reads',
                             'clipped_reads_inversion', 'clipped_reads_duplication',
                             'clipped_reads_translocation',
                             'clipped_read_distance', 'split_read_distance']:
@@ -1424,8 +1410,8 @@ def channel_maker_speedup(chrom, sampleName, outFile, win_len):
         if current_channel == 'coverage':
 
             payload = channel_data[chrom][current_channel][positions]
-            payload.shape = channel_windows[:, idx, channel_index:channel_index+2].shape
-            channel_windows[:, idx, channel_index:channel_index+2] = payload
+            payload.shape = channel_windows[:, idx, channel_index:channel_index + 2].shape
+            channel_windows[:, idx, channel_index:channel_index + 2] = payload
             channel_index += 3
 
         elif current_channel == 'read_quality':
@@ -1527,7 +1513,7 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile, win_
         return frequency_array
 
     # Window half length
-    win_hlen = int(int(win_len)/2)
+    win_hlen = int(int(win_len) / 2)
 
     # List where to store the channel vstacks
     ch_list = []
@@ -1641,15 +1627,15 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile, win_
             split_read_pos_file[chrName] = vec_type + '/' + chrName + '_' + vec_type + '.pbz2'
 
             # File with the clipped read distances, output of the clipped_read_distance script
-            clipped_read_distance_file[chrName] = 'clipped_read_distance/' + chrName + '_clipped_read_distance.pbz2'
+            clipped_read_distance_file[chrName] = 'clipped_read_distance/' + chrName + '_clipped_read_distance.json.gz'
             # File with the clipped reads, output of the clipped_reads script
-            clipped_reads_file[chrName] = 'clipped_reads/' + chrName + '_clipped_reads.pbz2'
+            clipped_reads_file[chrName] = 'clipped_reads/' + chrName + '_clipped_reads.json.gz'
             # File with the coverage array, output of the coverage script
-            coverage_file[chrName] = 'coverage/' + chrName + '_coverage.npy.bz2'
+            coverage_file[chrName] = 'coverage/' + chrName + '_coverage.npz'
             # File with the split reads and split read distance, output of the split_read_distance script
-            split_read_distance_file[chrName] = 'split_read_distance/' + chrName + '_split_read_distance.pbz2'
+            split_read_distance_file[chrName] = 'split_read_distance/' + chrName + '_split_read_distance.json.gz'
             # File with SNV information, output of the snv script
-            snv_file[chrName] = 'snv/' + chrName + '_snv.npz.gz'
+            snv_file[chrName] = 'snv/' + chrName + '_snv.npz'
 
             # Check file existence
             # print('Checking file: %s' % clipped_read_pos_file[chrName])
@@ -1831,14 +1817,15 @@ def channel_maker(ibam, chrList, sampleName, SVmode, trainingMode, outFile, win_
 
             logging.info('Reading coverage')
             with bz2file.BZ2File(prefix + coverage_file[chrName], 'rb') as f:
-                coverage[sample][chrName] = np.load(file=f)
+                coverage[sample][chrName] = np.load(f)['coverage']
             logging.info(
                 'End of reading, coverage length: %d out of %d' %
                 (len(coverage[sample][chrName]), chrLen[chrName]))
 
             logging.info('Reading split read distances')
-            with bz2file.BZ2File(prefix + split_read_distance_file[chrName], 'rb') as f:
-                split_read_distance[sample][chrName], split_reads[sample][chrName] = pickle.load(f)
+            with gzip.GzipFile(prefix + split_read_distance_file[chrName], 'r') as fin:
+                split_read_distance[sample][chrName], \
+                    split_reads[sample][chrName] = json.loads(fin.read().decode('utf-8'))
             logging.info('End of reading')
 
             logging.info('Reading SNVs')
@@ -2215,6 +2202,9 @@ def main():
                         help="Specify input file (BAM)")
     parser.add_argument('-c', '--chr', type=str, default='17',
                         help="Specify chromosome")
+    parser.add_argument('-p', '--outputpath', type=str,
+                        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
+                        help="Specify output")
     parser.add_argument('-o', '--out', type=str, default='channel_maker.npy.gz',
                         help="Specify output")
     parser.add_argument('-s', '--sample', type=str, default='T1',
@@ -2233,8 +2223,8 @@ def main():
     logfilename = args.logfile
 
     # Create directory for log file for a specific window parameter
-    outDir = os.path.dirname(logfilename)
-    outDir = outDir + '_win' + str(args.window)
+    outDir = args.outputpath
+    outDir = outDir + 'win' + str(args.window)
     create_dir(outDir)
     base = os.path.basename(logfilename)
     logfilename = os.path.join(outDir, base)
@@ -2261,6 +2251,7 @@ def main():
                   SVmode=args.svmode,
                   trainingMode=args.train,
                   outFile=args.out,
+                  outPath=outDir,
                   win_len=int(args.window))
 
     # for sampleName in ['NA12878']:

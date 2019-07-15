@@ -243,7 +243,7 @@ def main():
                         help="Specify input file (BAM)")
     parser.add_argument('-c', '--chr', type=str, default='17',
                         help="Specify chromosome")
-    parser.add_argument('-o', '--out', type=str, default='split_read_pos.pbz2',
+    parser.add_argument('-o', '--out', type=str, default='split_read_pos.json.gz',
                         help="Specify output")
     parser.add_argument('-p', '--outputpath', type=str,
                         default='/Users/lsantuari/Documents/Processed/channel_maker_output',

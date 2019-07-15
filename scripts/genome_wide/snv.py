@@ -74,7 +74,7 @@ def get_snvs(ibam, chrName, outFile):
 
     # snv_list = ['BQ', 'nALN', 'nSEG', 'A', 'a', 'C', 'c', 'G', 'g', 'T', 't']
     snv_list = ['BQ', 'SNV', 'RC']
-    snv_array = np.zeros(shape=(len(snv_list), stop_pos + 1), dtype=np.uint32)
+    snv_array = np.zeros(shape=(len(snv_list), stop_pos), dtype=np.uint32)
     snv_dict = {v: n for n, v in enumerate(snv_list)}
     # print(snv_dict)
     # Print every n_r alignments processed

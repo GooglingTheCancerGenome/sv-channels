@@ -107,5 +107,24 @@ for WINDOW in 200; do
 done
 done
 
+elif [ $RUNALL == 2 ]; then
+
+PRG='chr_array'
+
+for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
+
+	SAMPLE=${SAMPLE_ARRAY[$i]}
+	BAM=${BAM_ARRAY[$i]}
+
+	for CHROMOSOME in ${CHRARRAY[@]}; do
+	#for CHROMOSOME in 1; do
+
+		OUTDIR=$OUTPATH$SAMPLE
+		JOB_NAME=$SAMPLE"_"$CHROMOSOME"_"${PRG}
+		qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=${OUTDIR} \
+			-N $JOB_NAME -o $OUTDIR"/"$JOB_NAME".out" -e $OUTDIR"/"$JOB_NAME".err" make_channel.sge
+    done
+
+done
 
 fi

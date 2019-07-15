@@ -73,6 +73,14 @@ elif [ ${PRGARG} == 'channel_maker_train_germline' ]; then
                 --out ${OUTARG}"/"${PRGARG}"/"$SAMPLEARG".npy.gz" \
                 --logfile ${OUTARG}"/"${PRGARG}"/"${CHRARG}"_${PRGARG}.log"
 
+elif [ ${PRGARG} == 'chr_array' ]; then
+        python "${PRGARG}.py" \
+                --bam ${BAMARG} \
+                --chr ${CHRARG} \
+                --sample ${SAMPLEARG} \
+                --out ${OUTARG}"/"${PRGARG}"/"$SAMPLEARG"_"${CHRARG}".hdf5" \
+                --logfile ${OUTARG}"/"${PRGARG}"/"$SAMPLEARG"_"${CHRARG}".log"
+
 else
 # generic execution
 	python "${PRGARG}.py" \
