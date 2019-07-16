@@ -16,6 +16,7 @@ NA24385_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/GiaB/HG002_NA24385_
 
 CHM1_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/CHM1/bam/CHM1/mapping/CHM1_dedup.bam"
 CHM13_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/CHM13/bam/CHM13/mapping/CHM13_dedup.bam"
+CHM1_CHM13_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/CHM1_CHM13/bam/CHM1_CHM13_dedup.bam"
 
 #BAM_ARRAY=(${NA12878_BAM} ${NA12892_BAM} ${NA12891_BAM} ${PATIENT1_BAM} ${PATIENT2_BAM})
 #SAMPLE_ARRAY=('NA12878' 'NA12892' 'NA12891' 'PATIENT1' 'PATIENT2')
@@ -29,11 +30,14 @@ CHM13_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/CHM13/bam/CHM13/m
 #BAM_ARRAY=(${CHM1_BAM} ${CHM13_BAM})
 #SAMPLE_ARRAY=('CHM1' 'CHM13')
 
-BAM_ARRAY=(${NA12878_BAM} ${NA24385_BAM} ${CHM1_BAM} ${CHM13_BAM})
-SAMPLE_ARRAY=('NA12878' 'NA24385' 'CHM1' 'CHM13')
+#BAM_ARRAY=(${NA12878_BAM} ${NA24385_BAM} ${CHM1_BAM} ${CHM13_BAM})
+#SAMPLE_ARRAY=('NA12878' 'NA24385' 'CHM1' 'CHM13')
 
 # BAM_ARRAY=(${PATIENT1_BAM} ${PATIENT2_BAM})
 # SAMPLE_ARRAY=('PATIENT1' 'PATIENT2')
+
+BAM_ARRAY=(${NA24385_BAM} ${CHM1_CHM13_BAM})
+SAMPLE_ARRAY=('NA24385', 'CHM1_CHM13')
 
 #CHRARRAY=(`seq 1 22` 'X' 'Y' 'MT')
 CHRARRAY=(`seq 1 22` 'X')
