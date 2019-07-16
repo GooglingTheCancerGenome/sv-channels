@@ -17,5 +17,7 @@ source activate channel-maker
 python "genome_wide/labels.py" \
     --sample ${SAMPLEARG} \
     --window ${WINDOWARG} \
-    --logfile ${SAMPLEARG}"_labels_"${WINDOWARG}".log"
+    --outputpath ${OUTARG} \
+    --out "labels_win"${WINDOWARG}".json.gz" \
+    --logfile ${SAMPLEARG}"_labels_win"${WINDOWARG}".log"
 
