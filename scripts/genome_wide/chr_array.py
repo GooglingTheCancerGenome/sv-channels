@@ -235,8 +235,8 @@ def create_hdf5(sampleName, ibam, chrom, outDir):
     logging.info("Writing HDF5...")
 
     with h5py.File(outfile, 'w') as f:
-        f.create_dataset('chr' + chrom, data=chr_array,
-                         compression="gzip", compression_opts=4)
+        f.create_dataset('chr' + chrom, data=chr_array)
+                         #compression="gzip", compression_opts=4)
 
 def main():
     '''
