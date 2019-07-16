@@ -298,7 +298,7 @@ def main():
     create_hdf5(sampleName=args.sample,
                 ibam=args.bam,
                 chrom=args.chr,
-                outDir=args.outputpath
+                outDir=output_dir
                 )
 
     # inspect_windows(outFile=args.out)
