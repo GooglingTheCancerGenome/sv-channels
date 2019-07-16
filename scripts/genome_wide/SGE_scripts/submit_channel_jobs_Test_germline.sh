@@ -60,7 +60,7 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
     #for CHROMOSOME in '1'; do
         for PRG in clipped_read_pos split_read_pos coverage clipped_read_distance clipped_reads split_read_distance snv; do
 	#for PRG in snv; do
-            JOB_NAME=$OUTPATH$SAMPLE"/"${PRG}"/"$SAMPLE"_"$CHROMOSOME"_"${PRG}
+            JOB_NAME=$SAMPLE"_"$CHROMOSOME"_"${PRG}
 
             qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=$OUTDIR \
             	-N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_channel.sge
@@ -101,7 +101,7 @@ for WINDOW in 200; do
 	for CHROMOSOME in ${CHRARRAY[@]}; do
 	#for CHROMOSOME in 1; do
 		OUTDIR=$OUTPATH$SAMPLE
-		JOB_NAME=$OUTPATH$SAMPLE"/"${PRG}"/"$SAMPLE"_win"$WINDOW"_"$CHROMOSOME"_"${PRG}
+		JOB_NAME=$SAMPLE"_win"$WINDOW"_"$CHROMOSOME"_"${PRG}
 		qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=${OUTDIR},SVMODEARG=${SVMODE},WINDOWARG=${WINDOW} \
 			-N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_channel.sge
     done
@@ -124,7 +124,7 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
 	#for CHROMOSOME in 1; do
 
 		OUTDIR=$OUTPATH$SAMPLE
-		JOB_NAME=$OUTPATH$SAMPLE"/"${PRG}"/"$SAMPLE"_"$CHROMOSOME"_"${PRG}
+		JOB_NAME=$SAMPLE"_"$CHROMOSOME"_"${PRG}
 		qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=${OUTDIR} \
 			-N $JOB_NAME -o $OUTDIR"/"$JOB_NAME".out" -e $OUTDIR"/"$JOB_NAME".err" make_channel.sge
     done
