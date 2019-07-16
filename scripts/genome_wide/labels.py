@@ -44,7 +44,7 @@ chrom_lengths = {'1': 249250621, '2': 243199373, '3': 198022430, '4': 191154276,
 __bpRE__ = None
 __symbolicRE__ = None
 
-with open('./genome_wide/parameters.json', 'r') as f:
+with open('parameters.json', 'r') as f:
     config = json.load(f)
 
 HPC_MODE = config["DEFAULT"]["HPC_MODE"]
@@ -394,33 +394,34 @@ def load_clipped_read_positions(sampleName, chrName, win_hlen):
             channel_dir = ''
             fn = os.path.join(channel_dir, sampleName, vec_type, chrName + '_' + vec_type + '.pbz2')
         else:
-            channel_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth'
-            fn = '/'.join((channel_dir, sampleName, vec_type, chrName + '_' + vec_type + '.pbz2'))
+            channel_dir = '/Users/lsantuari/Documents/Processed/channel_maker_output'
+            fn = '/'.join((channel_dir, sampleName, vec_type, chrName + '_' + vec_type + '.json.gz'))
 
         return fn
 
     # vec_type = 'clipped_read_pos' if CANDIDATE_POSITIONS == "CR" else 'split_read_pos'
 
-    logging.info('Loading CR positions for Chr%s' % chrName)
+    logging.info('Loading SR positions for Chr%s' % chrName)
     # Load files
 
-    with bz2file.BZ2File(get_filepath('clipped_read_pos'), 'rb') as f:
-        cpos = pickle.load(f)
+    # with bz2file.BZ2File(get_filepath('clipped_read_pos'), 'rb') as f:
+    #     cpos = pickle.load(f)
 
     logging.info('Loading SR positions for Chr%s' % chrName)
 
-    with bz2file.BZ2File(get_filepath('split_read_pos'), 'rb') as f:
-        positions, locations = pickle.load(f)
+    with gzip.GzipFile(get_filepath('split_read_pos'), 'rb') as fin:
+        positions, locations = json.loads(fin.read().decode('utf-8'))
         spos = positions
 
     # Filter by minimum support
     # cr_pos = [elem for elem, cnt in cpos.items() if cnt >= min_cr_support]
 
-    logging.info('Calculating CR positions for min support {}, length={}'.format(min_cr_support, len(cpos)))
-    cr_pos = [k for k, v in cpos.items() if v >= min_cr_support]
-    logging.info('CR positions for min support {}'.format(len(cr_pos)))
+    # logging.info('Calculating CR positions for min support {}, length={}'.format(min_cr_support, len(cpos)))
+    # cr_pos = [k for k, v in cpos.items() if v >= min_cr_support]
+    # logging.info('CR positions for min support {}'.format(len(cr_pos)))
+
     logging.info('Calculating SR positions for min support {}, length={}'.format(min_sr_support, len(spos)))
-    sr_pos = [k for k, v in spos.items() if v >= min_sr_support]
+    sr_pos = [int(k) for k, v in spos.items() if v >= min_sr_support]
     logging.info('SR positions for min support {}'.format(len(sr_pos)))
 
     # logging.info('Calculating CR positions in SR positions')
@@ -428,14 +429,14 @@ def load_clipped_read_positions(sampleName, chrName, win_hlen):
     # logging.info('Final CR positions={}'.format(len(cr_pos)))
 
     # Remove positions with windows falling off chromosome boundaries
-    # logging.info(f'win_hlen = {win_hlen}, chrom_lengths[{chrName}] = {chrom_lengths[chrName]}')
+    logging.info(f'win_hlen = {win_hlen}, chrom_lengths[{chrName}] = {chrom_lengths[chrName]}')
+    logging.info(f'pos = {sr_pos[0]}')
     cr_pos = [pos for pos in sr_pos if win_hlen <= pos <= (chrom_lengths[chrName] - win_hlen)]
 
     return cr_pos
 
 
 def load_all_clipped_read_positions(sampleName, win_hlen):
-
     # cr_pos_dict = {}
     # for chrName in chrom_lengths.keys():
     #     # for chrName in ['22']:
@@ -448,27 +449,29 @@ def load_all_clipped_read_positions(sampleName, win_hlen):
     else:
         output_dir = sampleName
 
-    cr_pos_file = os.path.join(output_dir, 'candidate_positions_'+sampleName+'.pkz')
+    cr_pos_file = os.path.join(output_dir, 'candidate_positions_' + sampleName + '.json.gz')
 
     if os.path.exists(cr_pos_file):
 
         logging.info('Loading candidate positions file...')
-        with gzip.GzipFile(cr_pos_file, "rb") as f:
-            cr_pos_dict = pickle.load(f)
-        f.close()
+
+        with gzip.GzipFile(cr_pos_file, 'rb') as fin:
+            cr_pos_dict = json.loads(fin.read().decode('utf-8'))
+        fin.close()
 
         return cr_pos_dict
 
     else:
 
         cr_pos_dict = {}
-        for chrName in chrom_lengths.keys():
-            # for chrName in ['22']:
+        # for chrName in chrom_lengths.keys():
+        for chrName in ['17']:
             cr_pos_dict[chrName] = load_clipped_read_positions(sampleName, chrName, win_hlen)
 
         logging.info('Writing candidate positions file...')
-        with gzip.GzipFile(cr_pos_file, "wb") as f:
-            pickle.dump(cr_pos_dict, f)
+
+        with gzip.GzipFile(cr_pos_file, 'wb') as f:
+            f.write(json.dumps(cr_pos_dict).encode('utf-8'))
         f.close()
 
         return cr_pos_dict
@@ -619,7 +622,7 @@ def read_vcf(sampleName, sv_caller):
 
         elif sampleName in ['CHM1', 'CHM13']:
             filename = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/Huddleston2016/',
-                                    'structural_variants/',sampleName+'_SVs.annotated.vcf.gz')
+                                    'structural_variants/', sampleName + '_SVs.annotated.vcf.gz')
         else:
             filename = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Data_for_labels',
                                     sampleName, 'VCF', sv_caller + '.sym.vcf')
@@ -975,7 +978,7 @@ def get_labels_from_bed(sampleName, win_len, inbed):
     logging.info('sample = %s' % sampleName)
     logging.info('window = %d' % win_len)
 
-    win_hlen = int(int(win_len)/2)
+    win_hlen = int(int(win_len) / 2)
 
     sv_list = read_bed_sv(inbed)
 
@@ -1225,7 +1228,6 @@ def load_NoCR_positions():
 # Methods to save to BED format
 
 def clipped_read_positions_to_bed(sampleName, ibam):
-
     chrlist = list(map(str, range(1, 23)))
     chrlist.extend(['X', 'Y'])
     # logging.info(chrlist)
@@ -1279,8 +1281,7 @@ def nanosv_vcf_to_bed(sampleName):
 
 
 # Get labels
-def get_labels(sampleName, win_len):
-
+def get_labels(sampleName, win_len, outFile, outDir):
     logging.info(f'running {sampleName}')
 
     def get_win_id(chr, position):
@@ -1390,6 +1391,12 @@ def get_labels(sampleName, win_len):
         elif sampleName in ['CHM1', 'CHM13']:
             sv_dict['huddleston2016'] = read_vcf(sampleName, '')
 
+        elif sampleName == 'T1':
+            inbed_path = hpc_path if HPC_MODE else \
+                os.path.join('/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/SV')
+            inbed = os.path.join(inbed_path, 'chr17B_T.for_label.bed')
+            sv_dict['INDEL'] = read_bed_sv(inbed)
+
         return sv_dict
 
     def get_crpos_overlap_with_sv_callsets(sv_dict, cr_pos_dict):
@@ -1427,14 +1434,14 @@ def get_labels(sampleName, win_len):
 
         return crpos_all_sv
 
-    win_hlen = int( int(win_len) / 2 )
+    win_hlen = int(int(win_len) / 2)
 
     cr_pos_dict = load_all_clipped_read_positions(sampleName, win_hlen)
 
     sv_dict = get_sv_dict()
 
     # Get overlap of candidate positions with all SV breakpoints (all 4 SV callers)
-    crpos_all_sv = get_crpos_overlap_with_sv_callsets(sv_dict, cr_pos_dict)
+    # crpos_all_sv = get_crpos_overlap_with_sv_callsets(sv_dict, cr_pos_dict)
 
     labels = dict()
 
@@ -1518,8 +1525,8 @@ def get_labels(sampleName, win_len):
                     # logging.info(elem)
                     if pos in crpos_full:
                         labels[sv_dict_key][chrName].append(elem[0].data)
-                    elif pos in crpos_partial or \
-                            pos in crpos_all_sv[chrName] / crpos_full:
+                    elif pos in crpos_partial:  # or \
+                        # pos in crpos_all_sv[chrName] / crpos_full:
                         labels[sv_dict_key][chrName].append('UK')
                     else:
                         labels[sv_dict_key][chrName].append('noSV')
@@ -1549,31 +1556,22 @@ def get_labels(sampleName, win_len):
     # for key in sv_dict:
     #     pp.plogging.info(sv_dict[key])
 
-    if not HPC_MODE:
-        channel_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth'
-    else:
-        channel_dir = '.'
-
-    output_dir = '/'.join((channel_dir, sampleName, 'label_npy'+'_win'+str(win_len)))
+    output_dir = '/'.join((outDir, sampleName, 'labels' + '_win' + str(win_len)))
     create_dir(output_dir)
 
-    data_file = '/'.join((output_dir, 'labels.pickle'))
+    data_file = '/'.join((output_dir, outFile))
     # logging.info(output_dir)
-    pickle.dump(labels, open(data_file, "wb"))
-    os.system('gzip -f ' + data_file)
+    with gzip.GzipFile(data_file, 'wb') as fout:
+        fout.write(json.dumps(labels).encode('utf-8'))
 
 
-def load_labels(sampleName):
-    if not HPC_MODE:
-        channel_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth'
-    else:
-        channel_dir = ''
+def load_labels(sampleName, outDir, outFile):
 
-    output_dir = '/'.join((channel_dir, sampleName+'_win'+win_len, 'label_npy'))
+    output_dir = '/'.join((outDir, sampleName + '_win' + win_len, 'label_npy'))
 
-    pickle_file = '/'.join((output_dir, 'labels.pickle.gz'))
-    with gzip.GzipFile(pickle_file, "rb") as f:
-        labels = pickle.load(f)
+    json_file = '/'.join((output_dir, outFile))
+    with gzip.GzipFile(json_file, 'wb') as f:
+        labels = json.loads(f.read().decode('utf-8'))
     f.close()
 
     logging.info(labels['id'])
@@ -1591,10 +1589,15 @@ def main():
     #                     help="Specify input file (BAM)")
     parser.add_argument('-l', '--logfile', type=str, default='labels_win200.log',
                         help="Specify log file")
-    parser.add_argument('-s', '--sample', type=str, default='NA12878',
+    parser.add_argument('-s', '--sample', type=str, default='T1',
                         help="Specify sample")
     parser.add_argument('-w', '--window', type=str, default=200,
                         help="Specify window size")
+    parser.add_argument('-o', '--out', type=str, default='labels.json.gz',
+                        help="Specify output")
+    parser.add_argument('-p', '--outputpath', type=str,
+                        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
+                        help="Specify output path")
 
     args = parser.parse_args()
 
@@ -1646,8 +1649,11 @@ def main():
     # for sampleName in ['NA24385', 'CHM1', 'CHM13']:
     # for sampleName in ['NA12878']:
 
-    get_labels(sampleName=args.sample, win_len=args.window)
-
+    get_labels(sampleName=args.sample,
+               win_len=args.window,
+               outFile=args.out,
+               outDir=args.outputpath,
+               )
 
     # crpos_giab = load_all_clipped_read_positions('NA12878')
     # crpos_ena = load_all_clipped_read_positions('NA12878_ENA')

@@ -48,18 +48,21 @@ def create_model(dim_length, dim_channels, class_number):
     outputdim = class_number  # number of classes
 
     weightinit = 'lecun_uniform'  # weight initialization
+
     model = Sequential()
     model.add(
         BatchNormalization(
             input_shape=(
                 dim_length,
                 dim_channels)))
+
     for filter_number in filters:
         model.add(Convolution1D(filter_number, kernel_size=kernel_size, padding='same',
                                 kernel_regularizer=l2(regularization_rate),
                                 kernel_initializer=weightinit))
         model.add(BatchNormalization())
         model.add(Activation('relu'))
+
     model.add(Flatten())
     model.add(Dropout(drp_out1))
     model.add(Dense(units=fc_hidden_nodes,

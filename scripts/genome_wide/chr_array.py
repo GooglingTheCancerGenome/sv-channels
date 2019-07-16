@@ -276,8 +276,8 @@ def main():
     cmd_name = 'window_maker'
     output_dir = os.path.join(args.outputpath, args.sample, cmd_name)
     create_dir(output_dir)
-    logfilename = os.path.join(output_dir, '_'.join((args.chr, args.logfile)))
-    output_file = os.path.join(output_dir, '_'.join((args.chr, args.out)))
+    logfilename = os.path.join(output_dir, args.logfile)
+    # output_file = os.path.join(output_dir, args.out)
 
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(
