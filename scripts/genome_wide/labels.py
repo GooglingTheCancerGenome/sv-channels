@@ -1556,18 +1556,18 @@ def get_labels(sampleName, win_len, outFile, outDir):
     # for key in sv_dict:
     #     pp.plogging.info(sv_dict[key])
 
-    output_dir = '/'.join((outDir, sampleName, 'labels' + '_win' + str(win_len)))
+    output_dir = os.path.join(outDir, sampleName, 'labels' + '_win' + str(win_len))
     create_dir(output_dir)
 
-    data_file = '/'.join((output_dir, outFile))
+    data_file = os.path.join(output_dir, outFile)
     # logging.info(output_dir)
     with gzip.GzipFile(data_file, 'wb') as fout:
         fout.write(json.dumps(labels).encode('utf-8'))
 
 
-def load_labels(sampleName, outDir, outFile):
+def load_labels(sampleName, outDir, outFile, win_len):
 
-    output_dir = '/'.join((outDir, sampleName + '_win' + win_len, 'label_npy'))
+    output_dir = os.path.join(outDir, sampleName + '_win' + str(win_len), 'label_npy')
 
     json_file = '/'.join((output_dir, outFile))
     with gzip.GzipFile(json_file, 'wb') as f:
@@ -1602,7 +1602,12 @@ def main():
     args = parser.parse_args()
 
     # Log file
-    logfilename = args.logfile
+    cmd_name = 'split_read_pos'
+    output_dir = os.path.join(args.outputpath, cmd_name)
+    create_dir(output_dir)
+    logfilename = os.path.join(output_dir, args.logfile)
+    output_file = os.path.join(output_dir, args.out)
+
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(
         format=FORMAT,
