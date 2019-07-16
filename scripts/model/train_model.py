@@ -80,6 +80,22 @@ def create_model(dim_length, dim_channels, class_number):
 
 def train():
 
+    def load_chr_array():
+
+        chrlist = list(map(str, range(1, 23)))
+        chrlist.extend(['X'])
+        chr_array = dict()
+
+        for c in chrlist:
+
+            chrname = 'chr'+c
+            hdf5_file = os.path.join(channel_data_dir, 'T1_'+c+'.hdf5')
+            f = h5py.File(hdf5_file)
+            d = f[chrname]
+            chr_array[c] = da.from_array(d, chunks=("auto", -1))
+
+        return chr_array
+
     # Parameters
     params = {'dim': 410,
               'batch_size': 2048,
@@ -88,15 +104,11 @@ def train():
               'shuffle': True}
 
     data_id = get_candidate_positions()
+    chr_array = load_chr_array()
 
     # channel_data_dir = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/DeepSV/channel_data/NA12878/'
     channel_data_dir = '/Users/lsantuari/Documents/Processed/channel_maker_output'
 
-    hdf5_file = os.path.join(channel_data_dir, 'T1_17_uncompressed.hdf5')
-    f = h5py.File(hdf5_file)
-    d = f['chr17']
-    chr_array = dict()
-    chr_array['chr17'] = da.from_array(d, chunks=("auto", -1))
 
     # Datasets
     partition = {'train': data_id[:7000000], 'validation': data_id[7000000:]}

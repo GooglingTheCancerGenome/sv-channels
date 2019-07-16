@@ -59,15 +59,15 @@ class DataGenerator(keras.utils.Sequence):
             pos2 = int(pos2)
 
             if chr1 == chr2 and chr1 == '17' and \
-                    100 < pos1 < self.chr_array['chr'+chr1].shape[0] - 100 and \
-                    100 < pos2 < self.chr_array['chr'+chr2].shape[0] - 100:
+                    100 < pos1 < self.chr_array[chr1].shape[0] - 100 and \
+                    100 < pos2 < self.chr_array[chr2].shape[0] - 100:
                 # print(X[i,].shape)
 
                 X[i,] = np.concatenate(
                     (
-                        np.array(self.chr_array['chr'+chr1][pos1 - 100:pos1 + 100, :]),
-                        np.zeros(shape=(10, self.chr_array['chr'+chr1].shape[1]), dtype=np.float32),
-                        np.array(self.chr_array['chr'+chr2][pos2 - 100:pos2 + 100, :])
+                        np.array(self.chr_array[chr1][pos1 - 100:pos1 + 100, :]),
+                        np.zeros(shape=(10, self.chr_array[chr1].shape[1]), dtype=np.float32),
+                        np.array(self.chr_array[chr2][pos2 - 100:pos2 + 100, :])
                     ),
                     axis=0)
 
