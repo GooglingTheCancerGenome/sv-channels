@@ -139,7 +139,7 @@ def load_channels(sample, chr_list, outDir):
     return channel_data
 
 
-def create_hdf5(sampleName, ibam, chrom, outDir):
+def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
 
     chrlen = get_chr_len(ibam, chrom)
     n_channels = 34
@@ -230,7 +230,7 @@ def create_hdf5(sampleName, ibam, chrom, outDir):
 
     logging.info("chr_array shape: %s" % str(chr_array.shape))
 
-    outfile = os.path.join(outDir, sampleName + '_' + chrom + '.hdf5')
+    outfile = os.path.join(outDir, sampleName, cmd_name, sampleName + '_' + chrom + '.hdf5')
 
     logging.info("Writing HDF5...")
 
@@ -273,7 +273,7 @@ def main():
 
     args = parser.parse_args()
 
-    cmd_name = 'window_maker'
+    cmd_name = 'chr_array'
     output_dir = os.path.join(args.outputpath, args.sample, cmd_name)
     create_dir(output_dir)
     logfilename = os.path.join(output_dir, args.logfile)
@@ -298,7 +298,8 @@ def main():
     create_hdf5(sampleName=args.sample,
                 ibam=args.bam,
                 chrom=args.chr,
-                outDir=output_dir
+                outDir=args.outputpath,
+                cmd_name=cmd_name
                 )
 
     # inspect_windows(outFile=args.out)
