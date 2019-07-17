@@ -3,7 +3,7 @@
 #$ -l h_rt=12:00:00
 #$ -l h_vmem=12G
 #$ -q all.q
-#$ -wd /hpc/cog_bioinf/ridder/users/lsantuari/Git/DeepSV_runs/060219/CNN/scripts
+#$ -wd /hpc/cog_bioinf/ridder/users/lsantuari/Git/DeepSV_runs/060219/CNN/scripts/genome_wide
 
 echo "Load python"
 # conda environment with required Python packages:
@@ -17,5 +17,5 @@ source activate channel-maker
 # which sample is considered
 echo ${SAMPLEARG}
 
-python "genome_wide/labels_oc.py" \
+python "labels_oc.py" \
 	--sample ${SAMPLEARG}
