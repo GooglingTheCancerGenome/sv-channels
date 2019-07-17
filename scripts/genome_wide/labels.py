@@ -387,16 +387,10 @@ def create_dir(directory):
             raise
 
 
-def load_clipped_read_positions(sampleName, chrName, win_hlen):
+def load_clipped_read_positions(sampleName, chrName, win_hlen, channel_dir):
+
     def get_filepath(vec_type):
-
-        if HPC_MODE:
-            channel_dir = ''
-            fn = os.path.join(channel_dir, sampleName, vec_type, chrName + '_' + vec_type + '.pbz2')
-        else:
-            channel_dir = '/Users/lsantuari/Documents/Processed/channel_maker_output'
-            fn = '/'.join((channel_dir, sampleName, vec_type, chrName + '_' + vec_type + '.json.gz'))
-
+        fn = os.path.join(channel_dir, sampleName, vec_type, chrName + '_' + vec_type + '.json.gz')
         return fn
 
     # vec_type = 'clipped_read_pos' if CANDIDATE_POSITIONS == "CR" else 'split_read_pos'
@@ -436,18 +430,13 @@ def load_clipped_read_positions(sampleName, chrName, win_hlen):
     return cr_pos
 
 
-def load_all_clipped_read_positions(sampleName, win_hlen):
+def load_all_clipped_read_positions(sampleName, win_hlen, output_dir):
     # cr_pos_dict = {}
     # for chrName in chrom_lengths.keys():
     #     # for chrName in ['22']:
     #     cr_pos_dict[chrName] = load_clipped_read_positions(sampleName, chrName)
     #
     # return cr_pos_dict
-
-    if not HPC_MODE:
-        output_dir = '.'
-    else:
-        output_dir = sampleName
 
     cr_pos_file = os.path.join(output_dir, 'candidate_positions_' + sampleName + '.json.gz')
 
@@ -466,7 +455,7 @@ def load_all_clipped_read_positions(sampleName, win_hlen):
         cr_pos_dict = {}
         # for chrName in chrom_lengths.keys():
         for chrName in ['17']:
-            cr_pos_dict[chrName] = load_clipped_read_positions(sampleName, chrName, win_hlen)
+            cr_pos_dict[chrName] = load_clipped_read_positions(sampleName, chrName, win_hlen, output_dir)
 
         logging.info('Writing candidate positions file...')
 
@@ -1436,7 +1425,7 @@ def get_labels(sampleName, win_len, outFile, outDir):
 
     win_hlen = int(int(win_len) / 2)
 
-    cr_pos_dict = load_all_clipped_read_positions(sampleName, win_hlen)
+    cr_pos_dict = load_all_clipped_read_positions(sampleName, win_hlen, outDir)
 
     sv_dict = get_sv_dict()
 
