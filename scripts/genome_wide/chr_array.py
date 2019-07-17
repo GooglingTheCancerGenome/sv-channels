@@ -21,7 +21,7 @@ HPC_MODE = config["DEFAULT"]["HPC_MODE"]
 
 def get_chr_len(ibam, chrName):
     # check if the BAM file exists
-    assert os.path.isfile(ibam)
+    assert os.path.isfile(ibam), ibam+" file not existent!"
     # open the BAM file
     bamfile = pysam.AlignmentFile(ibam, "rb")
 
@@ -87,7 +87,7 @@ def get_mappability_bigwig():
 
 def load_bam(ibam):
     # check if the BAM file exists
-    assert os.path.isfile(ibam)
+    assert os.path.isfile(ibam), ibam+" file not existent!"
     # open the BAM file
     return pysam.AlignmentFile(ibam, "rb")
 
@@ -115,7 +115,7 @@ def load_channels(sample, chr_list, outDir):
             logging.info('Loading data for channel %s' % ch)
             suffix = '.npy' if ch in ['snv', 'coverage'] else '.json.gz'
             filename = os.path.join(outDir, sample, ch, '_'.join([chrom, ch + suffix]))
-            assert os.path.isfile(filename), print(filename + ' does not exists!')
+            assert os.path.isfile(filename), filename + " does not exists!"
 
             logging.info('Reading %s for Chr%s' % (ch, chrom))
 
