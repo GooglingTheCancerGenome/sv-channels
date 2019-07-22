@@ -2,7 +2,10 @@
 import numpy as np
 import twobitreader as twobit
 import json
+import gzip
+import logging
 import os, errno
+import pysam
 
 del_min_size = 50
 ins_min_size = 50
@@ -249,3 +252,80 @@ def create_dir(directory):
     except OSError as e:
         if e.errno != errno.EEXIST:
             raise
+
+def get_chr_list():
+
+    # chrlist = [str(c) for c in list(np.arange(1,23))]
+    # chrlist.append('X')
+    # return chrlist
+    return ['22']
+
+def get_chr_len_dict(ibam):
+
+    # check if the BAM file exists
+    assert os.path.isfile(ibam)
+    # open the BAM file
+    bamfile = pysam.AlignmentFile(ibam, "rb")
+
+    # Extract chromosome length from the BAM header
+    header_dict = bamfile.header
+    chr_dict = {i['SN']: i['LN'] for i in header_dict['SQ']}
+
+    return chr_dict
+
+
+def load_clipped_read_positions(sampleName, chrName, chr_dict, win_hlen, channel_dir):
+
+    def get_filepath(vec_type):
+        fn = os.path.join(channel_dir, sampleName, vec_type, chrName + '_' + vec_type + '.json.gz')
+        return fn
+
+    logging.info('Loading SR positions for Chr%s' % chrName)
+
+    with gzip.GzipFile(get_filepath('split_read_pos'), 'rb') as fin:
+        positions, locations = json.loads(fin.read().decode('utf-8'))
+
+    # print(locations)
+    locations = [(chr1, pos1, chr2, pos2) for chr1, pos1, chr2, pos2 in locations
+                 if win_hlen <= pos1 <= (chr_dict[chr1] - win_hlen) and
+                 win_hlen <= pos2 <= (chr_dict[chr2] - win_hlen)
+                 ]
+
+    logging.info('{} positions'.format(len(locations)))
+
+    return locations
+
+
+def load_all_clipped_read_positions(sampleName, win_hlen, chr_dict, output_dir):
+
+    cr_pos_file = os.path.join(output_dir, sampleName, 'candidate_positions_' + sampleName + '.json.gz')
+
+    if os.path.exists(cr_pos_file):
+
+        logging.info('Loading existing candidate positions file...')
+
+        with gzip.GzipFile(cr_pos_file, 'rb') as fin:
+            cpos_list = json.loads(fin.read().decode('utf-8'))
+        fin.close()
+
+        return cpos_list
+
+    else:
+
+        cpos_list = []
+
+        chrlist = get_chr_list()
+        chr_list = chrlist if sampleName != 'T1' else ['17']
+        for chrName in chr_list:
+            cpos_list.extend(
+                load_clipped_read_positions(sampleName, chrName, chr_dict,
+                                            win_hlen, output_dir)
+                               )
+
+        logging.info('Writing candidate positions file...')
+
+        with gzip.GzipFile(cr_pos_file, 'wb') as f:
+            f.write(json.dumps(cpos_list).encode('utf-8'))
+        f.close()
+
+        return cpos_list
