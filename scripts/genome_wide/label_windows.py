@@ -23,6 +23,7 @@ HPC_MODE = config["DEFAULT"]["HPC_MODE"]
 
 
 def read_bedpe(inbedpe):
+
     # Check file existence
     assert os.path.isfile(inbedpe), inbedpe + ' not found!'
     # Dictionary with chromosome keys to store SVs
@@ -47,7 +48,63 @@ def read_bedpe(inbedpe):
     return sv_list
 
 
-def overlap(sv_list, cpos_list, win_hlen):
+def read_survivor_simsv_output(insur):
+
+    # Check file existence
+    assert os.path.isfile(insur), insur + ' not found!'
+    # Dictionary with chromosome keys to store SVs
+    sv_list = []
+
+    with(open(insur, 'r')) as bed:
+        for line in bed:
+            columns = line.rstrip().split("\t")
+            chrom1, pos1_start, pos1_end = str(columns[0]), int(columns[1])-1, int(columns[1])
+            chrom2, pos2_start, pos2_end = str(columns[2]), int(columns[3])-1, int(columns[3])
+            svtype = columns[4]
+
+            if svtype == "DEL":
+                sv_list.append((
+                    chrom1, pos1_start, pos1_end,
+                    chrom2, pos2_start, pos2_end,
+                    svtype
+                ))
+
+    logging.info('{} SVs'.format(len(sv_list)))
+
+    return sv_list
+
+
+def filter_survivor_output(insur, sv_id_list, outDir):
+
+    # Check file existence
+    assert os.path.isfile(insur), insur + ' not found!'
+
+    logging.info('{} SVs to filter out'.format(len(sv_id_list)))
+    lines_to_keep = []
+
+    with(open(insur, 'r')) as bed:
+        for line in bed:
+            columns = line.rstrip().split("\t")
+            chrom1, pos1_start, pos1_end = str(columns[0]), int(columns[1])-1, int(columns[1])
+            chrom2, pos2_start, pos2_end = str(columns[2]), int(columns[3])-1, int(columns[3])
+            svtype = columns[4]
+
+            sv_id = '_'.join((svtype, chrom1, str(pos1_start), chrom2, str(pos2_start)))
+
+            if svtype == "DEL" and sv_id not in sv_id_list:
+                lines_to_keep.append(line)
+
+    fileout = os.path.join(outDir, 'uncaptured_SVs.sur')
+    logging.info('Writing {}'.format(fileout))
+
+    with(open(fileout, 'w')) as fout:
+        for line in lines_to_keep:
+            fout.write(line)
+
+    logging.info('{} SVs written'.format(len(lines_to_keep)))
+
+
+def overlap(sv_list, cpos_list, win_hlen, ground_truth, outDir):
     '''
 
     :param sv_list: list, list of SVs
@@ -150,17 +207,40 @@ def overlap(sv_list, cpos_list, win_hlen):
                 #     )
                 # )
                 sv_covered.add(lu_start_elem_svid)
-                labels[pos_id] = lu_start_elem_data
+                labels[pos_id] = lu_start_elem_svtype
 
-        else:
+            else:
+                labels[pos_id] = 'UK_single_partial'
+
+        elif l1 > 1 or l2 > 1:
+
+            lu_start_set = set()
+
+            for s in lu_start:
+                lu_start_elem_start, lu_start_elem_end, lu_start_elem_data = s
+                lu_start_elem_svtype, lu_start_elem_svid = lu_start_elem_data
+                lu_start_set.add(lu_start_elem_svid)
+
+            for s in lu_end:
+                lu_start_elem_start, lu_start_elem_end, lu_start_elem_data = s
+                lu_start_elem_svtype, lu_start_elem_svid = lu_start_elem_data
+                lu_start_set.add(lu_start_elem_svid)
+
+            labels[pos_id] = 'UK_multiple_on_either_windows'
+
+        elif l1 == 0 and l1 == l2:
             # logging.info('CPOS->Partial: %s\t%d\t%d' % (elem, start, end))
-            labels[pos_id] = 'noSV'
+            labels[pos_id] = 'noDEL'
+        else:
+            labels[pos_id] = 'UK_other'
 
     logging.info(Counter(labels.values()))
-
+    sv_coverage = int(len(sv_covered)/len(sv_list)*100)
     logging.info('SV coverage: {}/{}={}%'.format(len(sv_covered),
                                                  len(sv_list),
-                                                 len(sv_covered)/len(sv_list)*100))
+                                                 sv_coverage))
+
+    filter_survivor_output(ground_truth, sv_covered, outDir)
 
     return labels
 
@@ -194,7 +274,7 @@ def get_labels(ibam, sampleName, win_len, ground_truth, outFile, outDir):
                 trees_start['chr' + var.chrom][var.start + var.cipos[0]:var.start + var.cipos[1] + 1] = id_start
                 trees_end['chr' + var.chrom2][var.end + var.ciend[0]:var.end + var.ciend[1] + 1] = id_end
 
-        elif file_ext == 'BEDPE':
+        elif file_ext in ['BEDPE', 'SUR']:
 
             for sv in sv_list:
                 chrom1, pos1_start, pos1_end, chrom2, pos2_start, pos2_end, svtype = sv
@@ -249,7 +329,11 @@ def get_labels(ibam, sampleName, win_len, ground_truth, outFile, outDir):
 
     cpos_list = load_all_clipped_read_positions(sampleName, win_hlen, chr_dict, outDir)
 
-    sv_list = read_bedpe(ground_truth)
+    filename, file_extension = os.path.splitext(ground_truth)
+    if file_extension == '.bedpe':
+        sv_list = read_bedpe(ground_truth)
+    elif file_extension == '.sur':
+        sv_list = read_survivor_simsv_output(ground_truth)
 
     # Get overlap of candidate positions with all SV breakpoints (all 4 SV callers)
     # crpos_all_sv = get_crpos_overlap_with_sv_callsets(sv_dict, cr_pos_dict)
@@ -257,7 +341,7 @@ def get_labels(ibam, sampleName, win_len, ground_truth, outFile, outDir):
     # filename, file_extension = os.path.splitext(ground_truth)
     # trees_start, trees_end = make_gtrees_from_truth_set(sv_list, file_extension.upper())
 
-    labels = overlap(sv_list, cpos_list, win_hlen)
+    labels = overlap(sv_list, cpos_list, win_hlen, ground_truth, outDir)
 
     with gzip.GzipFile(outFile, 'wb') as fout:
         fout.write(json.dumps(labels).encode('utf-8'))
@@ -276,15 +360,17 @@ def main():
     parser.add_argument('-b', '--bam', type=str,
                         default=inputBAM,
                         help="Specify input file (BAM)")
-    parser.add_argument('-l', '--logfile', type=str, default='labels_win200.log',
+    parser.add_argument('-l', '--logfile', type=str, default='labels.log',
                         help="Specify log file")
-    parser.add_argument('-s', '--sample', type=str, default='NA12878',
+    parser.add_argument('-s', '--sample', type=str, default='T1',
                         help="Specify sample")
     parser.add_argument('-w', '--window', type=str, default=200,
                         help="Specify window size")
     parser.add_argument('-gt', '--ground_truth', type=str,
-                        default=os.path.join('/Users/lsantuari/Documents/Data/svclassify',
-                                             'Personalis_1000_Genomes_deduplicated_deletions.bedpe'),
+                        default=os.path.join('/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data',
+                                             'run_test_INDEL/SV/chr17_INDEL.sur'),
+                        #default=os.path.join('/Users/lsantuari/Documents/Data/svclassify',
+                        #                     'Personalis_1000_Genomes_deduplicated_deletions.bedpe'),
                         help="Specify ground truth VCF/BEDPE file")
     parser.add_argument('-o', '--out', type=str, default='labels.json.gz',
                         help="Specify output")
