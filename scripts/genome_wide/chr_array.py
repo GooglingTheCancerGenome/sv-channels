@@ -13,6 +13,7 @@ import numpy as np
 import pyBigWig
 import pysam
 import h5py
+import dask.array as da
 from functions import *
 
 config = get_config_file()
@@ -230,13 +231,14 @@ def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
 
     logging.info("chr_array shape: %s" % str(chr_array.shape))
 
+    dask_array = da.from_array(chr_array, chunks=("auto", -1))
+
     outfile = os.path.join(outDir, sampleName, cmd_name, sampleName + '_' + chrom + '.hdf5')
 
     logging.info("Writing HDF5...")
 
-    with h5py.File(outfile, 'w') as f:
-        f.create_dataset('chr' + chrom, data=chr_array)
-                         #compression="gzip", compression_opts=4)
+    da.to_hdf5(outfile, '/'+'chr' + chrom, dask_array) #, compression='lzf', shuffle=False)
+
 
 def main():
     '''
