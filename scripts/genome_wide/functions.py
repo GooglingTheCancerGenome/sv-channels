@@ -6,6 +6,8 @@ import gzip
 import logging
 import os, errno
 import pysam
+import os
+from itertools import groupby
 
 del_min_size = 50
 ins_min_size = 50
@@ -65,7 +67,24 @@ def get_suppl_aln(read):
     :return: a tuple with chromosome and start position of the first supplementary alignment. None if there are no
     supplementary alignments.
     '''
+
+    def query_len(cigar_string):
+        """
+        Given a CIGAR string, return the number of bases consumed from the
+        query sequence.
+        """
+        read_consuming_ops = ("M", "D", "N", "=", "X")
+        result = 0
+        cig_iter = groupby(cigar_string, lambda chr: chr.isdigit())
+        for _, length_digits in cig_iter:
+            length = int(''.join(length_digits))
+            op = next(next(cig_iter)[1])
+            if op in read_consuming_ops:
+                result += length
+        return result
+
     if len(read.get_tag('SA')) > 0:
+
         # print(read.get_tag('SA'))
         # get first supplemental alignment
         supp_aln = read.get_tag('SA').split(';')[0]
@@ -75,6 +94,11 @@ def get_suppl_aln(read):
         chr_sa = sa_info[0]
         start_sa = int(sa_info[1])
         strand_sa = sa_info[2]
+        cigar_sa = sa_info[3]
+
+        # print('{} {} {}'.format(chr_sa, start_sa, strand_sa))
+        start_sa -= 1
+
         return chr_sa, start_sa, strand_sa
     else:
         return None
@@ -236,7 +260,8 @@ def is_outlier(points, thresh=3.5):
 
 def get_config_file():
 
-    with open('parameters.json', 'r') as f:
+    with open(os.path.join(
+    os.path.dirname(__file__), 'parameters.json'), 'r') as f:
         config = json.load(f)
     return config
 

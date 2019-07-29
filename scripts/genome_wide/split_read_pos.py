@@ -101,6 +101,11 @@ def get_split_read_positions(ibam, chrName, outFile):
     # Record the current time
     last_t = time()
 
+    n_indels = 0
+    n_split = 0
+    n_discordant = 0
+    max_cigar_del = 0
+
     for i, read in enumerate(iter, start=1):
 
         # Every n_r alignments, write log informations
@@ -119,22 +124,34 @@ def get_split_read_positions(ibam, chrName, outFile):
 
             if has_indels(read):
                 # print(read)
+
                 dels_start, dels_end, ins = get_indels(read)
                 dels = dels_start + dels_end + ins
                 split_pos.extend(dels)
 
                 for start, end in zip(dels_start, dels_end):
+
+                    n_indels += 1
+
+                    # Calculate DEL size and find largest DEL size encoded by CIGAR 'D' character
+                    del_size = end - start
+                    if del_size > max_cigar_del:
+                        max_cigar_del = del_size
+
                     split_pos_coord = append_coord(split_pos_coord, chrName, start, chrName, end)
                 for pos in ins:
+                    n_indels += 1
                     split_pos_coord = append_coord(split_pos_coord, chrName, pos, chrName, pos+1)
 
             if read.has_tag('SA'):
+                n_split += 1
                 chr, pos, strand = get_suppl_aln(read)
                 if is_right_clipped(read):
-                    refpos = read.reference_end + 1
+                    refpos = read.reference_end
                     if chr == read.reference_name:
                         split_pos.append(refpos)
                         split_pos.append(pos)
+                        # print('{}:{}-{}'.format(chrName, refpos, pos))
                         split_pos_coord = append_coord(split_pos_coord, chrName, refpos, chr, pos)
                     else:
                         split_pos.append(refpos)
@@ -144,45 +161,46 @@ def get_split_read_positions(ibam, chrName, outFile):
                         pass
                     else:
                         split_pos.append(refpos)
+                        # print('{}:{}-{}'.format(chrName, refpos, pos))
                         split_pos_coord = append_coord(split_pos_coord, chrName, refpos, chr, pos)
 
-            if not read.mate_is_unmapped and ( not read.is_proper_pair or is_clipped(read) ):
-
-                refpos = read.reference_end + 1 if not read.is_reverse else read.reference_start
-
-                strand_id = '_'.join([read.reference_name, strand_str[read.is_reverse],
-                                      read.next_reference_name, strand_str[read.mate_is_reverse]])
-
-                if strand_id in reads_in_cluster.keys():
-
-                    chr1, pos1, chr2, pos2, cnt, read_ref = reads_in_cluster[strand_id]
-
-                    if overlap(read, read_ref):
-
-                        if (not read.is_reverse and refpos > pos1) or \
-                                (read.is_reverse and refpos < pos1):
-                            pos1 = refpos
-
-                        if (read.next_reference_start > pos2 and not read.mate_is_reverse) or \
-                                (read.next_reference_start < pos2 and read.mate_is_reverse):
-                            pos2 = read.next_reference_start
-
-                        cnt += 1
-                        # print('Adding %s_%d_%s_%d_%d' % (chr1, pos1, chr2, pos2, cnt))
-                        reads_in_cluster[strand_id] = (chr1, pos1, chr2, pos2, cnt, read)
-
-                else:
-                    reads_in_cluster[strand_id] = (read.reference_name, refpos,
-                                                   read.next_reference_name, read.next_reference_start, 1, read)
-            else:
-
-                for strand_id in reads_in_cluster.keys():
-                    chr1, pos1, chr2, pos2, cnt, read = reads_in_cluster[strand_id]
-                    if cnt >= min_support:
-                        discordant_reads_pos.extend([pos1]*cnt)
-                        discordant_reads_coord = append_coord(discordant_reads_coord, chr1, pos1, chr2, pos2)
-
-                reads_in_cluster = defaultdict()
+            # if not read.mate_is_unmapped and ( not read.is_proper_pair or is_clipped(read) ):
+            #     n_discordant += 1
+            #     refpos = read.reference_end + 1 if not read.is_reverse else read.reference_start
+            #
+            #     strand_id = '_'.join([read.reference_name, strand_str[read.is_reverse],
+            #                           read.next_reference_name, strand_str[read.mate_is_reverse]])
+            #
+            #     if strand_id in reads_in_cluster.keys():
+            #
+            #         chr1, pos1, chr2, pos2, cnt, read_ref = reads_in_cluster[strand_id]
+            #
+            #         if overlap(read, read_ref):
+            #
+            #             if (not read.is_reverse and refpos > pos1) or \
+            #                     (read.is_reverse and refpos < pos1):
+            #                 pos1 = refpos
+            #
+            #             if (read.next_reference_start > pos2 and not read.mate_is_reverse) or \
+            #                     (read.next_reference_start < pos2 and read.mate_is_reverse):
+            #                 pos2 = read.next_reference_start
+            #
+            #             cnt += 1
+            #             # print('Adding %s_%d_%s_%d_%d' % (chr1, pos1, chr2, pos2, cnt))
+            #             reads_in_cluster[strand_id] = (chr1, pos1, chr2, pos2, cnt, read)
+            #
+            #     else:
+            #         reads_in_cluster[strand_id] = (read.reference_name, refpos,
+            #                                        read.next_reference_name, read.next_reference_start, 1, read)
+            # else:
+            #
+            #     for strand_id in reads_in_cluster.keys():
+            #         chr1, pos1, chr2, pos2, cnt, read = reads_in_cluster[strand_id]
+            #         if cnt >= min_support:
+            #             discordant_reads_pos.extend([pos1]*cnt)
+            #             discordant_reads_coord = append_coord(discordant_reads_coord, chr1, pos1, chr2, pos2)
+            #
+            #     reads_in_cluster = defaultdict()
 
     # Close the BAM file
     bamfile.close()
@@ -190,6 +208,12 @@ def get_split_read_positions(ibam, chrName, outFile):
     # Count the number of split reads per position
     split_pos_cnt = Counter(split_pos)
     split_pos_coord = set(split_pos_coord)
+
+    logging.info('Largest CIGAR "D" DEL={}'.format(max_cigar_del))
+
+    logging.info('INDELs={}, split_reads={}, discordant_reads={}'.format(n_indels,
+                                                                         n_split,
+                                                                         n_discordant))
 
     logging.info('Number of unique split read positions: %d' % len(
         [p for p, c in split_pos_cnt.items() if c >= min_support])
@@ -205,14 +229,22 @@ def get_split_read_positions(ibam, chrName, outFile):
     logging.info('Number of unique pair of discordant positions: %d' % len(discordant_reads_coord))
 
     total_reads_cnt = Counter(split_pos + discordant_reads_pos)
+
     total_reads_coord = list(set(split_pos_coord | discordant_reads_coord))
 
-    logging.info('Number of unique total positions: %d' % len(
-        [p for p, c in total_reads_cnt.items() if c >= min_support])
-                 )
+    positions_with_min_support = [p for p, c in total_reads_cnt.items() if c >= min_support]
+    logging.info('Number of positions with min %d support: %d' % (min_support, len(positions_with_min_support)))
     logging.info('Number of unique pair of total positions: %d' % len(total_reads_coord))
 
-    data = (total_reads_cnt, total_reads_coord)
+    positions_with_min_support_set = set(positions_with_min_support)
+    total_reads_coord_min_support = [(chr1, pos1, chr2, pos2) for chr1, pos1, chr2, pos2
+                                     in total_reads_coord
+                                     if pos1 in positions_with_min_support_set or
+                                     pos2 in positions_with_min_support_set]
+
+    logging.info('Number of total pairs of positions with min support: %d' % len(total_reads_coord_min_support))
+
+    data = (positions_with_min_support, total_reads_coord_min_support)
     # Write
     with gzip.GzipFile(outFile, 'w') as fout:
         fout.write(json.dumps(data).encode('utf-8'))
