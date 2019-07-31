@@ -6,11 +6,8 @@
 OUTPATH='/hpc/cog_bioinf/ridder/users/lsantuari/Processed/DeepSV/channel_data/'
 
 #Add path to BAM files
-NA12878_BAM='/hpc/cog_bioinf/diagnostiek/projects/na12878_wgs_trio/GIAB12878/mapping/GIAB12878_dedup.bam'
-NA12892_BAM='/hpc/cog_bioinf/diagnostiek/projects/na12878_wgs_trio/Set4GIAB12892/mapping/Set4GIAB12892_dedup.bam'
-NA12891_BAM='/hpc/cog_bioinf/diagnostiek/projects/na12878_wgs_trio/Set4GIAB12891/mapping/Set4GIAB12891_dedup.bam'
-PATIENT1_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CretuStancu2017/Patient1/Patient1.bam"
-PATIENT2_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CretuStancu2017/Patient2/Patient2.bam"
+# NA12878_BAM='/hpc/cog_bioinf/diagnostiek/projects/na12878_wgs_trio/GIAB12878/mapping/GIAB12878_dedup.bam'
+NA12878_BAM="/hpc/cog_bioinf/ridder/users/akuzniar/NA12878/bam/RMNISTHS_30xdownsample.bam"
 
 NA24385_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/GiaB/HG002_NA24385_son/NIST_Illumina_2x250bps/bam/NA24385/mapping/NA24385_dedup.bam"
 
@@ -21,8 +18,8 @@ CHM1_CHM13_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/CHM1_CHM13/b
 #BAM_ARRAY=(${NA12878_BAM} ${NA12892_BAM} ${NA12891_BAM} ${PATIENT1_BAM} ${PATIENT2_BAM})
 #SAMPLE_ARRAY=('NA12878' 'NA12892' 'NA12891' 'PATIENT1' 'PATIENT2')
 
-#BAM_ARRAY=(${NA12878_BAM})
-#SAMPLE_ARRAY=('NA12878')
+BAM_ARRAY=(${NA12878_BAM})
+SAMPLE_ARRAY=('NA12878')
 
 #BAM_ARRAY=(${NA24385_BAM})
 #SAMPLE_ARRAY=('NA24385')
@@ -36,8 +33,8 @@ CHM1_CHM13_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/CHM1_CHM13/b
 # BAM_ARRAY=(${PATIENT1_BAM} ${PATIENT2_BAM})
 # SAMPLE_ARRAY=('PATIENT1' 'PATIENT2')
 
-BAM_ARRAY=(${NA24385_BAM} ${CHM1_CHM13_BAM})
-SAMPLE_ARRAY=('NA24385' 'CHM1_CHM13')
+#BAM_ARRAY=(${NA24385_BAM} ${CHM1_CHM13_BAM})
+#SAMPLE_ARRAY=('NA24385' 'CHM1_CHM13')
 
 #CHRARRAY=(`seq 1 22` 'X' 'Y' 'MT')
 CHRARRAY=(`seq 1 22` 'X')
