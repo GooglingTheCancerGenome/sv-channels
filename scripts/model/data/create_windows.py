@@ -116,7 +116,8 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
                     n_r / (now_t - last_t)))
                 last_t = time()
 
-            windows.append(get_window_by_id(win_id, chr_array, padding, int(win/2)))
+            win_hlen = int(int(win)/2)
+            windows.append(get_window_by_id(win_id, chr_array, padding, win_hlen))
 
         dask_array = da.stack(windows, axis=0)
 
