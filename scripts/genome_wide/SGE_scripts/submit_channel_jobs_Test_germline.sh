@@ -117,6 +117,9 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
 	SAMPLE=${SAMPLE_ARRAY[$i]}
 	BAM=${BAM_ARRAY[$i]}
 
+    OUTPUTDIR=${$OUTPATH}"/"$SAMPLE"/"$PRG
+    [ ! -d $OUTPUTDIR ] && mkdir -p $OUTPUTDIR
+
 	for CHROMOSOME in ${CHRARRAY[@]}; do
 	#for CHROMOSOME in 1; do
 
