@@ -14,12 +14,45 @@ from time import time
 import json
 import logging
 from functions import *
-import label_classes
+from label_classes import SVRecord
 
 with open('parameters.json', 'r') as f:
     config = json.load(f)
 
 HPC_MODE = config["DEFAULT"]["HPC_MODE"]
+
+
+def read_vcf(invcf):
+
+    # Check file existence
+    assert os.path.isfile(invcf), invcf + ' not found!'
+    # Dictionary with chromosome keys to store SVs
+    sv_list = []
+
+    vcf_in = VariantFile(invcf, 'r')
+    for rec in vcf_in.fetch():
+
+        var = SVRecord(rec)
+
+        chrom1 = var.chrom
+        pos1_start = var.start + var.cipos[0]
+        pos1_end = var.start + var.cipos[1] + 1
+
+        chrom2 = var.chrom2
+        pos2_start = var.end + var.ciend[0]
+        pos2_end = var.end + var.ciend[1] + 1
+        svtype = var.svtype
+
+        if svtype == "DEL":
+            sv_list.append((
+                chrom1, pos1_start, pos1_end,
+                chrom2, pos2_start, pos2_end,
+                svtype
+            ))
+
+    logging.info('{} SVs'.format(len(sv_list)))
+
+    return sv_list
 
 
 def read_bedpe(inbedpe):
@@ -237,6 +270,7 @@ def overlap(sv_list, cpos_list, win_hlen, ground_truth, outDir):
                     sv_covered.add(lu_start_elem_svid)
                     labels[pos_id] = lu_start_elem_svtype
                 else:
+                    sv_covered.add(lu_start_elem_svid)
                     labels[pos_id] = 'UK_overlap_not_matching'
             else:
                 labels[pos_id] = 'UK_single_partial'
@@ -244,6 +278,7 @@ def overlap(sv_list, cpos_list, win_hlen, ground_truth, outDir):
         elif l1 > 1 or l2 > 1:
 
             lu_start_set = set()
+            lu_end_set = set()
 
             for s in lu_start:
                 lu_start_elem_start, lu_start_elem_end, lu_start_elem_data = s
@@ -251,10 +286,11 @@ def overlap(sv_list, cpos_list, win_hlen, ground_truth, outDir):
                 lu_start_set.add(lu_start_elem_svid)
 
             for s in lu_end:
-                lu_start_elem_start, lu_start_elem_end, lu_start_elem_data = s
-                lu_start_elem_svtype, lu_start_elem_svid = lu_start_elem_data
-                lu_start_set.add(lu_start_elem_svid)
+                lu_end_elem_start, lu_end_elem_end, lu_end_elem_data = s
+                lu_end_elem_svtype, lu_end_elem_svid = lu_end_elem_data
+                lu_end_set.add(lu_end_elem_svid)
 
+            sv_covered = sv_covered | (lu_start_set & lu_end_set)
             labels[pos_id] = 'UK_multiple_on_either_windows'
 
         elif l1 == 0 and l1 == l2:
@@ -374,6 +410,8 @@ def get_labels(ibam, sampleName, win_len, ground_truth, outFile, outDir):
         sv_list = read_bedpe(ground_truth)
     elif file_extension == '.sur':
         sv_list = read_survivor_simsv_output(ground_truth)
+    elif file_extension == '.vcf' or file_extension == '.gz':
+        sv_list = read_vcf(ground_truth)
 
     # Get overlap of candidate positions with all SV breakpoints (all 4 SV callers)
     # crpos_all_sv = get_crpos_overlap_with_sv_callsets(sv_dict, cr_pos_dict)
@@ -402,15 +440,17 @@ def main():
                         help="Specify input file (BAM)")
     parser.add_argument('-l', '--logfile', type=str, default='labels.log',
                         help="Specify log file")
-    parser.add_argument('-s', '--sample', type=str, default='T1',
+    parser.add_argument('-s', '--sample', type=str, default='NA24385',
                         help="Specify sample")
     parser.add_argument('-w', '--window', type=str, default=200,
                         help="Specify window size")
     parser.add_argument('-gt', '--ground_truth', type=str,
-                        default=os.path.join('/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data',
-                                            'run_test_INDEL/SV/chr17_INDEL.sur'),
+                        default=os.path.join('/Users/lsantuari/Documents/Data/germline/NA24385',
+                                            'NIST_SVs_Integration_v0.6/processed/HG002_SVs_Tier1_v0.6.PASS.vcf.gz'),
                         # default=os.path.join('/Users/lsantuari/Documents/Data/svclassify',
-                        #                      'Personalis_1000_Genomes_deduplicated_deletions.bedpe'),
+                        #                       'Personalis_1000_Genomes_deduplicated_deletions.bedpe'),
+                        # default=os.path.join('/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data',
+                        #                      'run_test_INDEL/SV/chr17_INDEL.sur'),
                         help="Specify ground truth VCF/BEDPE file")
     parser.add_argument('-o', '--out', type=str, default='labels.json.gz',
                         help="Specify output")

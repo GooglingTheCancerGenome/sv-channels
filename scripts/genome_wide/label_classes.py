@@ -11,7 +11,7 @@ class SVRecord:
         # For CHM[1|13] SVs
         svtype_dict = {'deletion': 'DEL', 'insertion': 'INS', 'inversion': 'INV'}
 
-        if type(record) != pysam.VariantRecord:
+        if type(record) != VariantRecord:
             raise TypeError('VCF record is not of type pysam.VariantRecord')
         # logging.info(record)
 
