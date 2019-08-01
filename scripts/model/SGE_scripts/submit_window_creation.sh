@@ -47,17 +47,15 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
 	SAMPLE=${SAMPLE_ARRAY[$i]}
 	BAM=${BAM_ARRAY[$i]}
 
-    for MODE in training set; do
-    for WINDOW in 200; do
+    for MODE in "training" "set"; do
 
-	    for CHROMOSOME in ${CHRARRAY[@]}; do
-	    #for CHROMOSOME in 1; do
+        for WINDOW in 200; do
+
 		    OUTDIR=$OUTPATH
-		    JOB_NAME=$SAMPLE"_win"$WINDOW"_"$CHROMOSOME"_"${PRG}
+		    JOB_NAME=$SAMPLE"_win"$WINDOW"_"$MODE"_"${PRG}
 		    qsub -v SAMPLEARG=$SAMPLE,BAMARG=$BAM,PRGARG=${PRG},OUTARG=${OUTDIR},MODEARG=${MODE},WINDOWARG=${WINDOW} \
 			    -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_windows.sge
-    done
-    done
 
-done
+        done
+    done
 done

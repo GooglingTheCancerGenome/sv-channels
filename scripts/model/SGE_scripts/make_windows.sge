@@ -17,7 +17,7 @@ source activate channel-maker
 python ${PRGARG}".py" \
 	--sample ${SAMPLEARG} \
 	--outputpath ${OUTARG} \
-	--logfile ${PRGARG}".log" \
+	--logfile ${PRGARG}"_"${MODEARG}".log" \
 	--window ${WINDOWARG} \
 	--mode ${MODEARG} \
 	--bam ${BAMARG}
