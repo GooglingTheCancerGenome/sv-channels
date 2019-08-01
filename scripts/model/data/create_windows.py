@@ -140,6 +140,8 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
     padding = da.zeros(shape=(10, n_channels), dtype=np.float32)
     padding = da.from_array(padding)
 
+    n_r = 10 ** 4
+
     if mode == 'training':
 
         positive_labels, negative_labels = split_labels(labels)
@@ -148,18 +150,22 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
 
         for dataset_name, labs in labs_dict.items():
 
-            n_r = 10 ** 5
+            if dataset_name == "positive":
 
-            num_batches = int(len(labs) / n_r)
+                write_windows(padding, outfile_dir, labs, dataset_name, 0)
 
-            for j in np.arange(num_batches + 1):
+            else:
 
-                lw = j * n_r
-                up = min((j + 1) * n_r, len(labels))
-                # print('{}:{}'.format(lw, up))
-                batch_labels = get_range(labs, lw, up)
+                num_batches = int(len(labs) / n_r)
 
-                write_windows(padding, outfile_dir, batch_labels, dataset_name, j)
+                for j in np.arange(num_batches + 1):
+
+                    lw = j * n_r
+                    up = min((j + 1) * n_r, len(labels))
+                    # print('{}:{}'.format(lw, up))
+                    batch_labels = get_range(labs, lw, up)
+
+                    write_windows(padding, outfile_dir, batch_labels, dataset_name, j)
 
     elif mode == 'test':
 
