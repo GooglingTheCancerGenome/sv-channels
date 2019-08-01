@@ -183,6 +183,7 @@ def get_coverage(ibam, chrName, outFile):
         np.save(file=outFile, arr=cov)
     except MemoryError:
         logging.info("Out of memory for chr %s and BAM file %s !" % (chrName, ibam))
+    os.system('gzip -f ' + outFile)
 
     # To load it
     # cov = np.load(outFile)['coverage']

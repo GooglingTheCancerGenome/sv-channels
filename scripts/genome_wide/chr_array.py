@@ -12,7 +12,6 @@ from time import time
 import numpy as np
 import pyBigWig
 import pysam
-import h5py
 import dask.array as da
 from functions import *
 
@@ -22,7 +21,7 @@ HPC_MODE = config["DEFAULT"]["HPC_MODE"]
 
 def get_chr_len(ibam, chrName):
     # check if the BAM file exists
-    assert os.path.isfile(ibam), ibam+" file not existent!"
+    assert os.path.isfile(ibam), ibam + " file not existent!"
     # open the BAM file
     bamfile = pysam.AlignmentFile(ibam, "rb")
 
@@ -47,7 +46,6 @@ def create_dir(directory):
 
 
 def load_candidate_positions(datadir, sampleName, chrom1, chrom2):
-
     vec_type = 'split_read_pos'
 
     print('Loading candidate positions for Chr%s to Chr%s' % (chrom1, chrom2))
@@ -88,7 +86,7 @@ def get_mappability_bigwig():
 
 def load_bam(ibam):
     # check if the BAM file exists
-    assert os.path.isfile(ibam), ibam+" file not existent!"
+    assert os.path.isfile(ibam), ibam + " file not existent!"
     # open the BAM file
     return pysam.AlignmentFile(ibam, "rb")
 
@@ -114,14 +112,15 @@ def load_channels(sample, chr_list, outDir):
         for ch in channel_names:
 
             logging.info('Loading data for channel %s' % ch)
-            suffix = '.npy' if ch in ['snv', 'coverage'] else '.json.gz'
+            suffix = '.npy.gz' if ch in ['snv', 'coverage'] else '.json.gz'
             filename = os.path.join(outDir, sample, ch, '_'.join([chrom, ch + suffix]))
             assert os.path.isfile(filename), filename + " does not exists!"
 
             logging.info('Reading %s for Chr%s' % (ch, chrom))
 
-            if suffix == '.npy':
-                channel_data[chrom][ch] = np.load(filename)
+            if suffix == '.npy.gz':
+                with gzip.GzipFile(filename, 'r') as fin:
+                    channel_data[chrom][ch] = np.load(fin)
                 channel_data[chrom][ch] = np.swapaxes(channel_data[chrom][ch], 0, 1)
             else:
                 with gzip.GzipFile(filename, 'r') as fin:
@@ -141,7 +140,6 @@ def load_channels(sample, chr_list, outDir):
 
 
 def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
-
     chrlen = get_chr_len(ibam, chrom)
     n_channels = 34
 
@@ -152,7 +150,7 @@ def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
 
     # dictionary of key choices
     direction_list = {'clipped_reads': ['left', 'right', 'D_left', 'D_right', 'I'],
-                       'split_reads': ['left', 'right'],
+                      'split_reads': ['left', 'right'],
                       'split_read_distance': ['left', 'right'],
                       'clipped_reads_inversion': ['before', 'after'],
                       'clipped_reads_duplication': ['before', 'after'],
@@ -183,34 +181,82 @@ def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
                                  'clipped_reads_translocation']:
 
             for split_direction in direction_list[current_channel]:
-                chr_array[:, channel_index] = np.array([
-                    channel_data[chrom][current_channel][split_direction][pos]
-                    if pos in channel_data[chrom][current_channel][
-                        split_direction].keys() else 0 for pos in np.arange(chrlen)
-                ])
+
+                if len(channel_data[chrom][current_channel][split_direction]) > 0:
+
+                    # print(split_direction)
+                    idx = np.array(
+                        list(
+                            map(
+                                int,
+                                channel_data[chrom][current_channel][split_direction].keys()
+                                )
+                        )
+                    )
+
+                    vals = np.array(
+                        list(
+                            channel_data[chrom][current_channel][split_direction].values()
+                        )
+                    )
+
+                    chr_array[idx, channel_index] = vals
+
                 channel_index += 1
                 del channel_data[chrom][current_channel][split_direction]
 
         elif current_channel == 'clipped_read_distance':
             for split_direction in direction_list[current_channel]:
                 for clipped_arrangement in ['left', 'right', 'all']:
-                    chr_array[:, channel_index] = np.array([
-                        statistics.median(channel_data[chrom][
-                                              current_channel][split_direction][clipped_arrangement][pos])
-                        if pos in channel_data[chrom][current_channel][
-                            split_direction].keys() else 0 for pos in np.arange(chrlen)
-                    ])
+
+                    idx = np.array(
+                        list(
+                            map(
+                                int,
+                                channel_data[chrom][current_channel][split_direction][
+                                    clipped_arrangement].keys()
+                            )
+                        )
+                    )
+                    vals = np.array(
+                        list(
+                            map(
+                                statistics.median,
+                                             channel_data[chrom][current_channel][split_direction][
+                                                 clipped_arrangement].values()
+                            )
+                        )
+                    )
+
+                    chr_array[idx, channel_index] = vals
+
                     channel_index += 1
                     del channel_data[chrom][current_channel][split_direction][clipped_arrangement]
 
         elif current_channel == 'split_read_distance':
             for split_direction in direction_list[current_channel]:
-                chr_array[:, channel_index] = np.array([
-                    statistics.median(channel_data[chrom][
-                                          current_channel][split_direction][pos])
-                    if pos in channel_data[chrom][current_channel][
-                        split_direction].keys() else 0 for pos in np.arange(chrlen)
-                ])
+
+                idx = np.array(
+                    list(
+                        map(
+                            int,
+                            channel_data[chrom][
+                                          current_channel][split_direction].keys()
+                        )
+                    )
+                )
+                vals = np.array(
+                    list(
+                        map(
+                            statistics.median,
+                                         channel_data[chrom][
+                                             current_channel][split_direction].values()
+                        )
+                    )
+                )
+
+                chr_array[idx, channel_index] = vals
+
                 channel_index += 1
                 del channel_data[chrom][current_channel][split_direction]
 
@@ -237,7 +283,7 @@ def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
 
     logging.info("Writing HDF5...")
 
-    da.to_hdf5(outfile, '/'+'chr' + chrom, dask_array) #, compression='lzf', shuffle=False)
+    da.to_hdf5(outfile, '/' + 'chr' + chrom, dask_array)  # , compression='lzf', shuffle=False)
 
 
 def main():
@@ -289,13 +335,6 @@ def main():
         level=logging.INFO)
 
     t0 = time()
-
-    # channel_maker(chrom1=args.chr1,
-    #               chrom2=args.chr2,
-    #               win_len=int(args.window),
-    #               sampleName=args.sample,
-    #               outFile=output_file,
-    #               outDir=args.outputpath)
 
     create_hdf5(sampleName=args.sample,
                 ibam=args.bam,

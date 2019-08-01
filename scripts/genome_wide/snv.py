@@ -186,7 +186,7 @@ def get_snvs(ibam, chrName, outFile):
     # Write the output
     snv_array = np.delete(snv_array, 2, 0)
     np.save(file=outFile, arr=snv_array)
-    # os.system('gzip -f ' + outFile)
+    os.system('gzip -f ' + outFile)
 
 
 def main():
