@@ -30,9 +30,9 @@ def create_dir(directory):
 
 def get_chr_list():
 
-    # chrlist = list(map(str, range(1, 23)))
-    # chrlist.extend(['X'])
-    chrlist = ['17']
+    chrlist = list(map(str, range(1, 23)))
+    chrlist.extend(['X'])
+    #chrlist = ['17']
 
     return chrlist
 
@@ -78,16 +78,16 @@ def split_labels(labels):
     return p, n
 
 
-def get_window_by_id(win_id, chr_array, padding):
+def get_window_by_id(win_id, chr_array, padding, win_hlen):
 
     chr1, pos1, chr2, pos2 = win_id.split('_')
     pos1 = int(pos1)
     pos2 = int(pos2)
 
     dask_arrays = list()
-    dask_arrays.append(chr_array[chr1][pos1 - 100:pos1 + 100, :])
+    dask_arrays.append(chr_array[chr1][pos1 - win_hlen:pos1 + win_hlen, :])
     dask_arrays.append(padding)
-    dask_arrays.append(chr_array[chr2][pos2 - 100:pos2 + 100, :])
+    dask_arrays.append(chr_array[chr2][pos2 - win_hlen:pos2 + win_hlen, :])
     return da.concatenate(dask_arrays, axis=0)
 
 
@@ -116,7 +116,7 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
                     n_r / (now_t - last_t)))
                 last_t = time()
 
-            windows.append(get_window_by_id(win_id, chr_array, padding))
+            windows.append(get_window_by_id(win_id, chr_array, padding, int(win/2)))
 
         dask_array = da.stack(windows, axis=0)
 
