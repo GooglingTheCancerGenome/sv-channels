@@ -29,9 +29,9 @@ def create_dir(directory):
 
 
 def get_chr_list():
-    # chrlist = list(map(str, range(1, 23)))
-    # chrlist.extend(['X'])
-    chrlist = ['17']
+    chrlist = list(map(str, range(1, 23)))
+    chrlist.extend(['X'])
+    # chrlist = ['17']
 
     return chrlist
 
@@ -115,25 +115,30 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
     dask_arrays_win1 = list()
     dask_arrays_win2 = list()
 
+    logging.info('Creating dask_arrays_win1 and dask_arrays_win2...')
     for chr1, pos1, chr2, pos2 in map(unfold_win_id, labels.keys()):
         dask_arrays_win1.append(chr_array[chr1][pos1 - win_hlen:pos1 + win_hlen, :])
         dask_arrays_win2.append(chr_array[chr2][pos2 - win_hlen:pos2 + win_hlen, :])
 
     padding = da.zeros(shape=(len(labels.keys()), padding_len, n_channels), dtype=np.float32)
     dask_array = list()
+    logging.info('Stacking dask_arrays_win1...')
     dask_array.append(da.stack(dask_arrays_win1, axis=0))
     dask_array.append(padding)
+    logging.info('Stacking dask_arrays_win2...')
     dask_array.append(da.stack(dask_arrays_win2, axis=0))
+    logging.info('Concatenating...')
     dask_array = da.concatenate(dask_array, axis=1)
+    logging.info('Rechunking...')
     dask_array = dask_array.rechunk({0: 'auto', 1: -1, 2: -1})
-    print(dask_array)
 
     outfile = os.path.join(outfile_dir, 'windows')
 
+    logging.info('Writing to HDF5...')
     da.to_hdf5(outfile + '.hdf5',
                {'/data': dask_array},
                compression='lzf')
-
+    logging.info('Writing labels to JSON...')
     with gzip.GzipFile(outfile + '_labels.json.gz', 'wb') as fout:
         fout.write(json.dumps(labels).encode('utf-8'))
 
