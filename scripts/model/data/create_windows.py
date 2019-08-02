@@ -30,9 +30,9 @@ def create_dir(directory):
 
 def get_chr_list():
 
-    #chrlist = list(map(str, range(1, 23)))
-    #chrlist.extend(['X'])
-    chrlist = ['17']
+    chrlist = list(map(str, range(1, 23)))
+    chrlist.extend(['X'])
+    #chrlist = ['17']
 
     return chrlist
 
