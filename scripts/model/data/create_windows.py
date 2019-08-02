@@ -115,7 +115,7 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
     dask_arrays_win1 = list()
     dask_arrays_win2 = list()
 
-    n_r = 10 ** 4
+    n_r = 10 ** 5
     # print(n_r)
     last_t = time()
     i = 1
@@ -153,8 +153,8 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
 
     logging.info('Writing to HDF5...')
     da.to_hdf5(outfile + '.hdf5',
-               {'/data': dask_array},
-               compression='lzf')
+               {'/data': dask_array})
+    # compression='lzf')
     logging.info('Writing labels to JSON...')
     with gzip.GzipFile(outfile + '_labels.json.gz', 'wb') as fout:
         fout.write(json.dumps(labels).encode('utf-8'))
