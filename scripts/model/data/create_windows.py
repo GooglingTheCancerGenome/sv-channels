@@ -32,7 +32,7 @@ def get_chr_list():
 
     chrlist = list(map(str, range(1, 23)))
     chrlist.extend(['X'])
-    #chrlist = ['17']
+    # chrlist = ['17']
 
     return chrlist
 
@@ -121,12 +121,14 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
 
         dask_array = da.stack(windows, axis=0)
 
-        outfile = os.path.join(outfile_dir, dataset_name+'_'+str(batch_num)+'.hdf5')
+        outfile = os.path.join(outfile_dir, dataset_name+'_'+str(batch_num))
 
-        da.to_hdf5(outfile,
-                   {'/data': dask_array,
-                    '/labels': labels},
+        da.to_hdf5(outfile+'.hdf5',
+                   {'/data': dask_array},
                    compression='lzf')
+
+        with gzip.GzipFile(outfile+'_labels.json.gz', 'wb') as fout:
+            fout.write(json.dumps(labels).encode('utf-8'))
 
         # np.savez_compressed(outfile,
         #                     data=np.array(dask_array),
