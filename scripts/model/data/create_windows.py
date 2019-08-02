@@ -115,10 +115,27 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
     dask_arrays_win1 = list()
     dask_arrays_win2 = list()
 
+    n_r = 10 ** 4
+    # print(n_r)
+    last_t = time()
+    i = 1
+
     logging.info('Creating dask_arrays_win1 and dask_arrays_win2...')
     for chr1, pos1, chr2, pos2 in map(unfold_win_id, labels.keys()):
+
+        if not i % n_r:
+            # Record the current time
+            now_t = time()
+            # print(type(now_t))
+            logging.info("%d window pairs processed (%f window pairs / s)" % (
+                i,
+                n_r / (now_t - last_t)))
+            last_t = time()
+
         dask_arrays_win1.append(chr_array[chr1][pos1 - win_hlen:pos1 + win_hlen, :])
         dask_arrays_win2.append(chr_array[chr2][pos2 - win_hlen:pos2 + win_hlen, :])
+        i += 1
+
 
     padding = da.zeros(shape=(len(labels.keys()), padding_len, n_channels), dtype=np.float32)
     dask_array = list()
