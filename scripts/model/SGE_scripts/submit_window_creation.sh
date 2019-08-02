@@ -47,7 +47,7 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
 	SAMPLE=${SAMPLE_ARRAY[$i]}
 	BAM=${BAM_ARRAY[$i]}
 
-    for MODE in "training" "set"; do
+    for MODE in "training"; do
 
         for WINDOW in 200; do
 

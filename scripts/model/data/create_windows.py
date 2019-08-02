@@ -12,7 +12,7 @@ import itertools
 
 
 def get_range(dictionary, begin, end):
-    return dict(itertools.islice(dictionary.items(), begin, end+1))
+    return dict(itertools.islice(dictionary.items(), begin, end + 1))
 
 
 def create_dir(directory):
@@ -29,25 +29,22 @@ def create_dir(directory):
 
 
 def get_chr_list():
-
-    chrlist = list(map(str, range(1, 23)))
-    chrlist.extend(['X'])
-    # chrlist = ['17']
+    # chrlist = list(map(str, range(1, 23)))
+    # chrlist.extend(['X'])
+    chrlist = ['17']
 
     return chrlist
 
 
 def load_chr_array(channel_data_dir, sampleName):
-
     chrlist = get_chr_list()
     chr_array = dict()
 
     for c in chrlist:
-
         chrname = '/chr' + c
         hdf5_file = os.path.join(channel_data_dir, sampleName, 'chr_array', sampleName + '_' + c + '.hdf5')
         logging.info('Loading file: {}'.format(hdf5_file))
-        assert os.path.exists(hdf5_file), hdf5_file+' not found'
+        assert os.path.exists(hdf5_file), hdf5_file + ' not found'
         f = h5py.File(hdf5_file)
         d = f[chrname]
         chr_array[c] = da.from_array(d, chunks=("auto", -1))
@@ -56,8 +53,7 @@ def load_chr_array(channel_data_dir, sampleName):
 
 
 def get_labels(channel_data_dir, sampleName, win):
-
-    label_file = os.path.join(channel_data_dir, sampleName, 'labels_win'+str(win), 'labels.json.gz')
+    label_file = os.path.join(channel_data_dir, sampleName, 'labels_win' + str(win), 'labels.json.gz')
 
     with gzip.GzipFile(label_file, 'r') as fin:
         labels = json.loads(fin.read().decode('utf-8'))
@@ -66,7 +62,6 @@ def get_labels(channel_data_dir, sampleName, win):
 
 
 def split_labels(labels):
-
     p = {}
     n = {}
     for k, v in labels.items():
@@ -78,8 +73,14 @@ def split_labels(labels):
     return p, n
 
 
-def get_window_by_id(win_id, chr_array, padding, win_hlen):
+def unfold_win_id(win_id):
+    chr1, pos1, chr2, pos2 = win_id.split('_')
+    pos1 = int(pos1)
+    pos2 = int(pos2)
+    return chr1, pos1, chr2, pos2
 
+
+def get_window_by_id(win_id, chr_array, padding, win_hlen):
     chr1, pos1, chr2, pos2 = win_id.split('_')
     pos1 = int(pos1)
     pos2 = int(pos2)
@@ -97,43 +98,6 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
         chr1, pos1, chr2, pos2 = win_id.split('_')
         return chr1 == chr2
 
-    def write_windows(padding, outfile_dir, labels, dataset_name, batch_num):
-
-        logging.info('Writing windows for: {}, batch {}'.format(dataset_name, batch_num))
-
-        # Generate data
-        windows = []
-
-        # Log info every n_r windows
-
-        for i, win_id in enumerate(labels, start=1):
-
-            if not i % n_r:
-                now_t = time()
-                # print(type(now_t))
-                logging.info("%d windows processed (%f positions / s)" % (
-                    i,
-                    n_r / (now_t - last_t)))
-                last_t = time()
-
-            win_hlen = int(int(win)/2)
-            windows.append(get_window_by_id(win_id, chr_array, padding, win_hlen))
-
-        dask_array = da.stack(windows, axis=0)
-
-        outfile = os.path.join(outfile_dir, dataset_name+'_'+str(batch_num))
-
-        da.to_hdf5(outfile+'.hdf5',
-                   {'/data': dask_array},
-                   compression='lzf')
-
-        with gzip.GzipFile(outfile+'_labels.json.gz', 'wb') as fout:
-            fout.write(json.dumps(labels).encode('utf-8'))
-
-        # np.savez_compressed(outfile,
-        #                     data=np.array(dask_array),
-        #                     labels=labels)
-
     outfile_dir = os.path.join(outDir, sampleName, cmd_name)
 
     chr_array = load_chr_array(outDir, sampleName)
@@ -145,52 +109,36 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
 
     logging.info('{} labels found: {}'.format(len(labels), Counter(labels.values())))
 
-    padding = da.zeros(shape=(10, n_channels), dtype=np.float32)
-    padding = da.from_array(padding)
+    padding_len = 10
+    win_hlen = int(int(win) / 2)
 
-    n_r = 10 ** 4
+    dask_arrays_win1 = list()
+    dask_arrays_win2 = list()
 
-    if mode == 'training':
+    for chr1, pos1, chr2, pos2 in map(unfold_win_id, labels.keys()):
+        dask_arrays_win1.append(chr_array[chr1][pos1 - win_hlen:pos1 + win_hlen, :])
+        dask_arrays_win2.append(chr_array[chr2][pos2 - win_hlen:pos2 + win_hlen, :])
 
-        positive_labels, negative_labels = split_labels(labels)
+    padding = da.zeros(shape=(len(labels.keys()), padding_len, n_channels), dtype=np.float32)
+    dask_array = list()
+    dask_array.append(da.stack(dask_arrays_win1, axis=0))
+    dask_array.append(padding)
+    dask_array.append(da.stack(dask_arrays_win2, axis=0))
+    dask_array = da.concatenate(dask_array, axis=1)
+    dask_array = dask_array.rechunk({0: 'auto', 1: -1, 2: -1})
+    print(dask_array)
 
-        labs_dict = {"positive": positive_labels, "negative": negative_labels}
+    outfile = os.path.join(outfile_dir, 'windows')
 
-        for dataset_name, labs in labs_dict.items():
+    da.to_hdf5(outfile + '.hdf5',
+               {'/data': dask_array},
+               compression='lzf')
 
-            if dataset_name == "positive":
+    with gzip.GzipFile(outfile + '_labels.json.gz', 'wb') as fout:
+        fout.write(json.dumps(labels).encode('utf-8'))
 
-                write_windows(padding, outfile_dir, labs, dataset_name, 0)
-
-            else:
-
-                num_batches = int(len(labs) / n_r)
-
-                for j in np.arange(num_batches + 1):
-
-                    lw = j * n_r
-                    up = min((j + 1) * n_r, len(labels))
-                    # print('{}:{}'.format(lw, up))
-                    batch_labels = get_range(labs, lw, up)
-
-                    write_windows(padding, outfile_dir, batch_labels, dataset_name, j)
-
-    elif mode == 'test':
-
-        n_r = 10 ** 5
-
-        num_batches = int(len(labels) / n_r)
-
-        for j in np.arange(num_batches + 1):
-
-            lw = j * n_r
-            up = min((j + 1) * n_r, len(labels))
-            # print('{}:{}'.format(lw, up))
-            batch_labels = get_range(labels, lw, up)
-            write_windows(padding, outfile_dir, batch_labels, 'test', j)
 
 def main():
-
     '''
     Main function for parsing the input arguments and calling the function to create windows
     :return: None
