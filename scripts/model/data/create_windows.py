@@ -9,10 +9,11 @@ import gzip
 import numpy as np
 from collections import Counter
 import itertools
+# import sparse
 
 
 def get_range(dictionary, begin, end):
-    return dict(itertools.islice(dictionary.items(), begin, end + 1))
+    return dict(itertools.islice(dictionary.items(), begin, end))
 
 
 def create_dir(directory):
@@ -29,9 +30,9 @@ def create_dir(directory):
 
 
 def get_chr_list():
-    chrlist = list(map(str, range(1, 23)))
-    chrlist.extend(['X'])
-    # chrlist = ['17']
+    #chrlist = list(map(str, range(1, 23)))
+    #chrlist.extend(['X'])
+    chrlist = ['17']
 
     return chrlist
 
@@ -48,10 +49,12 @@ def load_chr_array(channel_data_dir, sampleName):
         f = h5py.File(hdf5_file)
         d = f[chrname]
         logging.info('Chunks: {}'.format(d.chunks))
-        if d.chunks == None:
-            chr_array[c] = da.from_array(d, chunks=(100000, None))
+
+        if d.chunks is None:
+            chr_array[c] = da.from_array(d, chunks=(1000000, None))
         else:
             chr_array[c] = da.from_array(d, chunks=d.chunks)
+        # chr_array[c] = chr_array[c].map_blocks(sparse.COO)
 
     return chr_array
 
@@ -107,6 +110,7 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
     chr_array = load_chr_array(outDir, sampleName)
     n_channels = chr_array['17'].shape[1]
     labels = get_labels(outDir, sampleName, win)
+    labels = get_range(labels, 0, 10000)
 
     if sampleName == 'T1':
         labels = {k: v for k, v in labels.items() if same_chr_in_winid(k)}
@@ -136,8 +140,10 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
                 n_r / (now_t - last_t)))
             last_t = time()
 
-        dask_arrays_win1.append(chr_array[chr1][pos1 - win_hlen:pos1 + win_hlen, :])
-        dask_arrays_win2.append(chr_array[chr2][pos2 - win_hlen:pos2 + win_hlen, :])
+        d = chr_array[chr1][pos1 - win_hlen:pos1 + win_hlen, :]
+        dask_arrays_win1.append(d)
+        d = chr_array[chr2][pos2 - win_hlen:pos2 + win_hlen, :]
+        dask_arrays_win2.append(d)
         i += 1
 
     padding = da.zeros(shape=(len(labels.keys()), padding_len, n_channels), dtype=np.float32)
@@ -149,8 +155,8 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
     dask_array.append(da.stack(dask_arrays_win2, axis=0))
     logging.info('Concatenating...')
     dask_array = da.concatenate(dask_array, axis=1)
-    logging.info('Rechunking...')
-    dask_array = dask_array.rechunk({0: 'auto', 1: None, 2: None})
+    # logging.info('Rechunking...')
+    # dask_array = dask_array.rechunk({0: 'auto', 1: None, 2: None})
 
     outfile = os.path.join(outfile_dir, 'windows')
 
