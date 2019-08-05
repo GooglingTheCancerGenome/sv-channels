@@ -48,7 +48,10 @@ def load_chr_array(channel_data_dir, sampleName):
         f = h5py.File(hdf5_file)
         d = f[chrname]
         logging.info('Chunks: {}'.format(d.chunks))
-        chr_array[c] = da.from_array(d, chunks=(100000, None))
+        if d.chunks == None:
+            chr_array[c] = da.from_array(d, chunks=(100000, None))
+        else:
+            chr_array[c] = da.from_array(d, chunks=d.chunks)
 
     return chr_array
 
