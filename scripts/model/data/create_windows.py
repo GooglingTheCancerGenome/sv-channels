@@ -169,13 +169,15 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
         logging.info('Concatenating...')
         dask_array = da.concatenate(dask_array, axis=1)
         # logging.info('Rechunking...')
-        dask_array = dask_array.rechunk({0:10 , 1: None, 2: None})
+        # dask_array = dask_array.rechunk({0: 'auto', 1: None, 2: None})
 
         outfile = os.path.join(outfile_dir, labs_name)
 
-        logging.info('Writing to HDF5...')
-        da.to_hdf5(outfile + '.hdf5',
-                   '/data', dask_array)
+        logging.info('Writing to npz...')
+        np.savez_compressed(file=outfile,
+                            data=dask_array.compute())
+        # da.to_hdf5(outfile + '.hdf5',
+        #            '/data', dask_array)
         # compression='lzf')
         logging.info('Writing labels to JSON...')
         with gzip.GzipFile(outfile + '_labels.json.gz', 'wb') as fout:
