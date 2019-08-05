@@ -47,7 +47,9 @@ def load_chr_array(channel_data_dir, sampleName):
         assert os.path.exists(hdf5_file), hdf5_file + ' not found'
         f = h5py.File(hdf5_file)
         d = f[chrname]
-        chr_array[c] = da.from_array(d, chunks=("auto", -1))
+        logging.info('Chunks: {}'.format(d.chunks))
+        #chr_array[c] = da.from_array(d, chunks=("auto", -1))
+        chr_array[c] = da.from_array(d, chunks=d.chunks)
 
     return chr_array
 
@@ -135,7 +137,6 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
         dask_arrays_win1.append(chr_array[chr1][pos1 - win_hlen:pos1 + win_hlen, :])
         dask_arrays_win2.append(chr_array[chr2][pos2 - win_hlen:pos2 + win_hlen, :])
         i += 1
-
 
     padding = da.zeros(shape=(len(labels.keys()), padding_len, n_channels), dtype=np.float32)
     dask_array = list()
