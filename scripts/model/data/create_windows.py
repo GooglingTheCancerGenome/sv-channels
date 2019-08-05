@@ -48,8 +48,7 @@ def load_chr_array(channel_data_dir, sampleName):
         f = h5py.File(hdf5_file)
         d = f[chrname]
         logging.info('Chunks: {}'.format(d.chunks))
-        #chr_array[c] = da.from_array(d, chunks=("auto", -1))
-        chr_array[c] = da.from_array(d, chunks=d.chunks)
+        chr_array[c] = da.from_array(d, chunks=(100000, None))
 
     return chr_array
 
@@ -148,7 +147,7 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
     logging.info('Concatenating...')
     dask_array = da.concatenate(dask_array, axis=1)
     logging.info('Rechunking...')
-    dask_array = dask_array.rechunk({0: 'auto', 1: -1, 2: -1})
+    dask_array = dask_array.rechunk({0: 'auto', 1: None, 2: None})
 
     outfile = os.path.join(outfile_dir, 'windows')
 
