@@ -11,9 +11,9 @@ NA12878_BAM="/hpc/cog_bioinf/ridder/users/akuzniar/NA12878/bam/RMNISTHS_30xdowns
 
 NA24385_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/GiaB/HG002_NA24385_son/NIST_Illumina_2x250bps/bam/NA24385/mapping/NA24385_dedup.bam"
 
-CHM1_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/CHM1/bam/CHM1/mapping/CHM1_dedup.bam"
-CHM13_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/CHM13/bam/CHM13/mapping/CHM13_dedup.bam"
-CHM1_CHM13_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/CHM1_CHM13/bam/CHM1_CHM13_dedup.bam"
+CHM1_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/CHM1/bam_GRCh38/CHM1/mapping/CHM1_dedup.bam"
+CHM13_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/CHM13/bam_GRCh38/CHM13/mapping/CHM13_dedup.bam"
+CHM1_CHM13_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/CHM1_CHM13/bam_GRCh38/CHM1_CHM13_dedup.bam"
 
 #BAM_ARRAY=(${NA12878_BAM} ${NA12892_BAM} ${NA12891_BAM} ${PATIENT1_BAM} ${PATIENT2_BAM})
 #SAMPLE_ARRAY=('NA12878' 'NA12892' 'NA12891' 'PATIENT1' 'PATIENT2')
@@ -117,7 +117,7 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
 	SAMPLE=${SAMPLE_ARRAY[$i]}
 	BAM=${BAM_ARRAY[$i]}
 
-    OUTPUTDIR=${$OUTPATH}"/"$SAMPLE"/"$PRG
+    OUTPUTDIR=${OUTPATH}"/"$SAMPLE"/"$PRG
     [ ! -d $OUTPUTDIR ] && mkdir -p $OUTPUTDIR
 
 	for CHROMOSOME in ${CHRARRAY[@]}; do
