@@ -122,9 +122,9 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
 
     labels_positive = {k: v for k, v in labels.items() if v == 'DEL'}
     labels_negative = {k: v for k, v in labels.items() if v == 'noDEL'}
-    labels_negative = get_range(labels, 0, len(labels_positive.keys()))
+    labels_negative = get_range(labels_negative, 0, len(labels_positive.keys()))
     labels_set = {'positive': labels_positive, 'negative': labels_negative}
-    #labels_set = {'negative': labels_negative}
+    # labels_set = {'negative': labels_negative}
 
     padding_len = 10
     win_hlen = int(int(win) / 2)
@@ -173,12 +173,15 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
 
         outfile = os.path.join(outfile_dir, labs_name)
 
-        logging.info('Writing to npz...')
-        np.savez_compressed(file=outfile,
-                            data=dask_array.compute())
+        logging.info('Writing...')
+        # np.savez_compressed(file=outfile,
+        #                     data=dask_array.compute())
         # da.to_hdf5(outfile + '.hdf5',
         #            '/data', dask_array)
         # compression='lzf')
+
+        dask_array.to_hdf5(outfile+'.hdf5', '/data')
+
         logging.info('Writing labels to JSON...')
         with gzip.GzipFile(outfile + '_labels.json.gz', 'wb') as fout:
             fout.write(json.dumps(labs).encode('utf-8'))
