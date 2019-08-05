@@ -122,8 +122,9 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
 
     labels_positive = {k: v for k, v in labels.items() if v == 'DEL'}
     labels_negative = {k: v for k, v in labels.items() if v == 'noDEL'}
-    labels_negative = get_range(labels, 0, len(labels_negative.keys()))
+    labels_negative = get_range(labels, 0, len(labels_positive.keys()))
     labels_set = {'positive': labels_positive, 'negative': labels_negative}
+    #labels_set = {'negative': labels_negative}
 
     padding_len = 10
     win_hlen = int(int(win) / 2)
@@ -168,7 +169,7 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
         logging.info('Concatenating...')
         dask_array = da.concatenate(dask_array, axis=1)
         # logging.info('Rechunking...')
-        # dask_array = dask_array.rechunk({0: 'auto', 1: None, 2: None})
+        dask_array = dask_array.rechunk({0:10 , 1: None, 2: None})
 
         outfile = os.path.join(outfile_dir, labs_name)
 
