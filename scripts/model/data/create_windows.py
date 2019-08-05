@@ -29,16 +29,19 @@ def create_dir(directory):
             raise
 
 
-def get_chr_list():
-    #chrlist = list(map(str, range(1, 23)))
-    #chrlist.extend(['X'])
-    chrlist = ['17']
+def get_chr_list(sampleName):
+
+    if sampleName == 'T1':
+        chrlist = ['17']
+    else:
+        chrlist = list(map(str, range(1, 23)))
+        chrlist.extend(['X'])
 
     return chrlist
 
 
 def load_chr_array(channel_data_dir, sampleName):
-    chrlist = get_chr_list()
+    chrlist = get_chr_list(sampleName)
     chr_array = dict()
 
     for c in chrlist:
@@ -110,63 +113,72 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
     chr_array = load_chr_array(outDir, sampleName)
     n_channels = chr_array['17'].shape[1]
     labels = get_labels(outDir, sampleName, win)
-    labels = get_range(labels, 0, 10000)
+    # labels = get_range(labels, 0, 10000)
 
     if sampleName == 'T1':
         labels = {k: v for k, v in labels.items() if same_chr_in_winid(k)}
 
     logging.info('{} labels found: {}'.format(len(labels), Counter(labels.values())))
 
+    labels_positive = {k: v for k, v in labels.items() if v == 'DEL'}
+    labels_negative = {k: v for k, v in labels.items() if v == 'noDEL'}
+    labels_negative = get_range(labels, 0, len(labels_negative.keys()))
+    labels_set = {'positive': labels_positive, 'negative': labels_negative}
+
     padding_len = 10
     win_hlen = int(int(win) / 2)
 
-    dask_arrays_win1 = list()
-    dask_arrays_win2 = list()
+    for labs_name, labs in labels_set.items():
 
-    n_r = 10 ** 5
-    # print(n_r)
-    last_t = time()
-    i = 1
+        logging.info('Creating {}...'.format(labs_name))
 
-    logging.info('Creating dask_arrays_win1 and dask_arrays_win2...')
-    for chr1, pos1, chr2, pos2 in map(unfold_win_id, labels.keys()):
+        dask_arrays_win1 = list()
+        dask_arrays_win2 = list()
 
-        if not i % n_r:
-            # Record the current time
-            now_t = time()
-            # print(type(now_t))
-            logging.info("%d window pairs processed (%f window pairs / s)" % (
-                i,
-                n_r / (now_t - last_t)))
-            last_t = time()
+        n_r = 10 ** 5
+        # print(n_r)
+        last_t = time()
+        i = 1
 
-        d = chr_array[chr1][pos1 - win_hlen:pos1 + win_hlen, :]
-        dask_arrays_win1.append(d)
-        d = chr_array[chr2][pos2 - win_hlen:pos2 + win_hlen, :]
-        dask_arrays_win2.append(d)
-        i += 1
+        logging.info('Creating dask_arrays_win1 and dask_arrays_win2...')
+        for chr1, pos1, chr2, pos2 in map(unfold_win_id, labs.keys()):
 
-    padding = da.zeros(shape=(len(labels.keys()), padding_len, n_channels), dtype=np.float32)
-    dask_array = list()
-    logging.info('Stacking dask_arrays_win1...')
-    dask_array.append(da.stack(dask_arrays_win1, axis=0))
-    dask_array.append(padding)
-    logging.info('Stacking dask_arrays_win2...')
-    dask_array.append(da.stack(dask_arrays_win2, axis=0))
-    logging.info('Concatenating...')
-    dask_array = da.concatenate(dask_array, axis=1)
-    # logging.info('Rechunking...')
-    # dask_array = dask_array.rechunk({0: 'auto', 1: None, 2: None})
+            if not i % n_r:
+                # Record the current time
+                now_t = time()
+                # print(type(now_t))
+                logging.info("%d window pairs processed (%f window pairs / s)" % (
+                    i,
+                    n_r / (now_t - last_t)))
+                last_t = time()
 
-    outfile = os.path.join(outfile_dir, 'windows')
+            d = chr_array[chr1][pos1 - win_hlen:pos1 + win_hlen, :]
+            dask_arrays_win1.append(d)
+            d = chr_array[chr2][pos2 - win_hlen:pos2 + win_hlen, :]
+            dask_arrays_win2.append(d)
+            i += 1
 
-    logging.info('Writing to HDF5...')
-    da.to_hdf5(outfile + '.hdf5',
-               {'/data': dask_array})
-    # compression='lzf')
-    logging.info('Writing labels to JSON...')
-    with gzip.GzipFile(outfile + '_labels.json.gz', 'wb') as fout:
-        fout.write(json.dumps(labels).encode('utf-8'))
+        padding = da.zeros(shape=(len(labs.keys()), padding_len, n_channels), dtype=np.float32)
+        dask_array = list()
+        logging.info('Stacking dask_arrays_win1...')
+        dask_array.append(da.stack(dask_arrays_win1, axis=0))
+        dask_array.append(padding)
+        logging.info('Stacking dask_arrays_win2...')
+        dask_array.append(da.stack(dask_arrays_win2, axis=0))
+        logging.info('Concatenating...')
+        dask_array = da.concatenate(dask_array, axis=1)
+        # logging.info('Rechunking...')
+        # dask_array = dask_array.rechunk({0: 'auto', 1: None, 2: None})
+
+        outfile = os.path.join(outfile_dir, labs_name)
+
+        logging.info('Writing to HDF5...')
+        da.to_hdf5(outfile + '.hdf5',
+                   '/data', dask_array)
+        # compression='lzf')
+        logging.info('Writing labels to JSON...')
+        with gzip.GzipFile(outfile + '_labels.json.gz', 'wb') as fout:
+            fout.write(json.dumps(labs).encode('utf-8'))
 
 
 def main():
