@@ -120,11 +120,17 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
 
     logging.info('{} labels found: {}'.format(len(labels), Counter(labels.values())))
 
-    labels_positive = {k: v for k, v in labels.items() if v == 'DEL'}
-    labels_negative = {k: v for k, v in labels.items() if v == 'noDEL'}
-    labels_negative = get_range(labels_negative, 0, len(labels_positive.keys()))
-    labels_set = {'positive': labels_positive, 'negative': labels_negative}
-    # labels_set = {'negative': labels_negative}
+    if mode == 'training':
+
+        labels_positive = {k: v for k, v in labels.items() if v == 'DEL'}
+        labels_negative = {k: v for k, v in labels.items() if v == 'noDEL'}
+        labels_negative = get_range(labels_negative, 0, len(labels_positive.keys()))
+        labels_set = {'positive': labels_positive, 'negative': labels_negative}
+        # labels_set = {'negative': labels_negative}
+
+    elif mode == 'test':
+
+        labels_set = {'test': labels}
 
     padding_len = 10
     win_hlen = int(int(win) / 2)
