@@ -12,6 +12,7 @@ from time import time
 import numpy as np
 import pyBigWig
 import pysam
+import bcolz
 import dask.array as da
 from functions import *
 
@@ -80,7 +81,7 @@ def count_clipped_read_positions(cpos_cnt):
 def get_mappability_bigwig():
     mappability_file = os.path.join("/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/Mappability",
                                     REF_GENOME, REF_GENOME+".151mer.bw") if HPC_MODE \
-        else os.path.join("/Users/lsantuari/Documents/Data/GEM", REF_GENOME, REF_GENOME+".151mer.bw")
+        else os.path.join("/Users/lsantuari/Documents/Data/GEM", REF_GENOME+".151mer.bw")
     bw = pyBigWig.open(mappability_file)
 
     return bw
@@ -142,8 +143,9 @@ def load_channels(sample, chr_list, outDir):
 
 
 def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
+
     chrlen = get_chr_len(ibam, chrom)
-    n_channels = 33
+    n_channels = 34
 
     channel_data = load_channels(sampleName, [chrom], outDir)
     chr_array = np.zeros(shape=(chrlen, n_channels), dtype=np.float32)
@@ -171,7 +173,11 @@ def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
 
         if current_channel == 'coverage' or current_channel == 'snv':
 
+            if current_channel == 'snv' and channel_data[chrom][current_channel].shape[1] == 2:
+                np.delete(channel_data[chrom][current_channel], 2, 0)
+
             ch_num = channel_data[chrom][current_channel].shape[1]
+
             chr_array[:, channel_index:channel_index + ch_num] = channel_data[chrom][current_channel][:chrlen, :]
             channel_index += ch_num
             del channel_data[chrom][current_channel]
@@ -274,18 +280,21 @@ def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
     nuc_list = ['A', 'T', 'C', 'G', 'N']
 
     chr_array[:, channel_index:channel_index + len(nuc_list)] = get_one_hot_sequence_by_list(
-        chrom, list(np.arange(chrlen)), HPC_MODE)
+        chrom, list(np.arange(chrlen)), HPC_MODE, REF_GENOME)
     channel_index += len(nuc_list)
 
     logging.info("chr_array shape: %s" % str(chr_array.shape))
 
-    dask_array = da.from_array(chr_array, chunks=("auto", -1))
+    # dask_array = da.from_array(chr_array, chunks=("auto", -1))
+    # outfile = os.path.join(outDir, sampleName, cmd_name, sampleName + '_' + chrom + '.hdf5')
+    # logging.info("Writing HDF5...")
+    # da.to_hdf5(outfile, '/' + 'chr' + chrom, dask_array)  # , compression='lzf', shuffle=False)
 
-    outfile = os.path.join(outDir, sampleName, cmd_name, sampleName + '_' + chrom + '.hdf5')
+    outfile = os.path.join(outDir, sampleName, cmd_name, sampleName + '_' + chrom + '_carray')
+    logging.info("Writing carray...")
+    a = bcolz.carray(chr_array, rootdir=outfile, mode='w')
+    a.flush()
 
-    logging.info("Writing HDF5...")
-
-    da.to_hdf5(outfile, '/' + 'chr' + chrom, dask_array)  # , compression='lzf', shuffle=False)
 
 
 def main():
