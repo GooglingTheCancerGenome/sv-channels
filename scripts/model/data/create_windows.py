@@ -10,6 +10,7 @@ import numpy as np
 from collections import Counter
 import itertools
 # import sparse
+import bcolz
 
 
 def get_range(dictionary, begin, end):
@@ -187,13 +188,17 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
         # compression='lzf')
         # dask_array.to_hdf5(outfile + '.hdf5', '/data')
 
-        f = h5py.File(outfile+'.hdf5')
-        d = f.require_dataset('/data', shape=dask_array.shape, dtype=dask_array.dtype)
-        da.store(dask_array, d)
+        # f = h5py.File(outfile+'.hdf5')
+        # d = f.require_dataset('/data', shape=dask_array.shape, dtype=dask_array.dtype)
+        # da.store(dask_array, d)
 
-        logging.info('Writing labels to JSON...')
-        with gzip.GzipFile(outfile + '_labels.json.gz', 'wb') as fout:
-            fout.write(json.dumps(labs).encode('utf-8'))
+        a = bcolz.carray(dask_array, rootdir=outfile+'_carray', mode='w')
+        a.attrs['labels'] = labs
+        a.flush()
+
+        # logging.info('Writing labels to JSON...')
+        # with gzip.GzipFile(outfile + '_labels.json.gz', 'wb') as fout:
+        #     fout.write(json.dumps(labs).encode('utf-8'))
 
 
 def main():
