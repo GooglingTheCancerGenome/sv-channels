@@ -8,6 +8,7 @@ import os, errno
 import pysam
 import os
 from itertools import groupby
+from collections import Counter
 
 del_min_size = 50
 ins_min_size = 50
@@ -15,6 +16,10 @@ ins_min_size = 50
 '''
 Generic functions used in the channel scripts
 '''
+
+config = get_config_file()
+HPC_MODE = config["DEFAULT"]["HPC_MODE"]
+REF_GENOME = config["DEFAULT"]["REF_GENOME"]
 
 # Return if a read is clipped on the left
 def is_left_clipped(read):
@@ -170,11 +175,13 @@ def get_read_mate(read, bamfile):
 def get_reference_sequence(HPC_MODE):
 
     if HPC_MODE:
-        # Path on the HPC of the 2bit version of the human reference genome (hg19)
-        genome = twobit.TwoBitFile('/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/genomes/hg19.2bit')
+        # Path on the HPC of the 2bit version of the human reference genome
+        genome = twobit.TwoBitFile(os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/genomes',
+                                                REF_GENOME+'.2bit'))
     else:
-        # Path on the local machine of the 2bit version of the human reference genome (hg19)
-        genome = twobit.TwoBitFile('/Users/lsantuari/Documents/Data/GiaB/reference/hg19.2bit')
+        # Path on the local machine of the 2bit version of the human reference genome
+        genome = twobit.TwoBitFile(os.path.join('/Users/lsantuari/Documents/Data/GiaB/reference',
+                                                REF_GENOME+'.2bit'))
 
     return genome
 
@@ -278,12 +285,14 @@ def create_dir(directory):
         if e.errno != errno.EEXIST:
             raise
 
+
 def get_chr_list():
 
-    # chrlist = [str(c) for c in list(np.arange(1,23))]
-    # chrlist.append('X')
-    # return chrlist
-    return ['22']
+    chrlist = [str(c) for c in list(np.arange(1,23))]
+    chrlist.append('X')
+    return chrlist
+    #return ['22']
+
 
 def get_chr_len_dict(ibam):
 
@@ -310,11 +319,26 @@ def load_clipped_read_positions(sampleName, chrName, chr_dict, win_hlen, channel
     with gzip.GzipFile(get_filepath('split_read_pos'), 'rb') as fin:
         positions, locations = json.loads(fin.read().decode('utf-8'))
 
+    with gzip.GzipFile(get_filepath('clipped_read_pos'), 'rb') as fin:
+        positions_cr = json.loads(fin.read().decode('utf-8'))
+
     # print(locations)
     locations = [(chr1, pos1, chr2, pos2) for chr1, pos1, chr2, pos2 in locations
-                 if win_hlen <= pos1 <= (chr_dict[chr1] - win_hlen) and
+                 if chr1 in chr_dict.keys() and chr2 in chr_dict.keys() and
+                 win_hlen <= pos1 <= (chr_dict[chr1] - win_hlen) and
                  win_hlen <= pos2 <= (chr_dict[chr2] - win_hlen)
                  ]
+
+    positions_cr_l = set([int(k)+1 for k, v in positions_cr.items() if v >= 3])
+    positions_cr_r = set([int(k)-1 for k, v in positions_cr.items() if v >= 3])
+    positions_cr = positions_cr_l | positions_cr_r
+
+    # for pos in positions_cr:
+    #     print('{}:{}'.format(chrName, pos))
+
+    # print(positions_cr)
+    locations = [(chr1, pos1, chr2, pos2) for chr1, pos1, chr2, pos2 in locations
+                 if (chr1 == chrName and pos1 in positions_cr) or (chr2 == chrName and pos2 in positions_cr)]
 
     logging.info('{} positions'.format(len(locations)))
 
@@ -341,13 +365,15 @@ def load_all_clipped_read_positions(sampleName, win_hlen, chr_dict, output_dir):
 
         chrlist = get_chr_list()
         chr_list = chrlist if sampleName != 'T1' else ['17']
-        for chrName in chr_list:
-            cpos_list.extend(
-                load_clipped_read_positions(sampleName, chrName, chr_dict,
-                                            win_hlen, output_dir)
-                               )
 
-        logging.info('Writing candidate positions file...')
+        for chrName in chr_list:
+            logging.info('Loading candidate positions for Chr{}'.format(chrName))
+            cpos = load_clipped_read_positions(sampleName, chrName, chr_dict,
+                                               win_hlen, output_dir)
+            cpos_list.extend(cpos)
+            logging.info('Candidate positions for Chr{}: {}'.format(chrName, len(cpos)))
+
+        logging.info('Writing candidate positions file {}'.format(cr_pos_file))
 
         with gzip.GzipFile(cr_pos_file, 'wb') as f:
             f.write(json.dumps(cpos_list).encode('utf-8'))

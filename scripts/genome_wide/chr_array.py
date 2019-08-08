@@ -17,6 +17,7 @@ from functions import *
 
 config = get_config_file()
 HPC_MODE = config["DEFAULT"]["HPC_MODE"]
+REF_GENOME = config["DEFAULT"]["REF_GENOME"]
 
 
 def get_chr_len(ibam, chrName):
@@ -77,8 +78,9 @@ def count_clipped_read_positions(cpos_cnt):
 
 
 def get_mappability_bigwig():
-    mappability_file = "/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/Mappability/GRCh37.151mer.bw" if HPC_MODE \
-        else "/Users/lsantuari/Documents/Data/GEM/GRCh37.151mer.bw"
+    mappability_file = os.path.join("/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/Mappability",
+                                    REF_GENOME, REF_GENOME+".151mer.bw") if HPC_MODE \
+        else os.path.join("/Users/lsantuari/Documents/Data/GEM", REF_GENOME, REF_GENOME+".151mer.bw")
     bw = pyBigWig.open(mappability_file)
 
     return bw
@@ -141,7 +143,7 @@ def load_channels(sample, chr_list, outDir):
 
 def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
     chrlen = get_chr_len(ibam, chrom)
-    n_channels = 34
+    n_channels = 33
 
     channel_data = load_channels(sampleName, [chrom], outDir)
     chr_array = np.zeros(shape=(chrlen, n_channels), dtype=np.float32)
