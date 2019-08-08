@@ -185,8 +185,11 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
         # da.to_hdf5(outfile + '.hdf5',
         #            '/data', dask_array)
         # compression='lzf')
+        # dask_array.to_hdf5(outfile + '.hdf5', '/data')
 
-        dask_array.to_hdf5(outfile+'.hdf5', '/data')
+        f = h5py.File(outfile+'.hdf5')
+        d = f.require_dataset('/data', shape=dask_array.shape, dtype=dask_array.dtype)
+        da.store(dask_array, d)
 
         logging.info('Writing labels to JSON...')
         with gzip.GzipFile(outfile + '_labels.json.gz', 'wb') as fout:
