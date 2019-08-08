@@ -99,7 +99,8 @@ def get_snvs(ibam, chrName, outFile):
             try:
 
                 query_seq_list = pileupcolumn.get_query_sequences()
-                snv_number = get_snv_number(query_seq_list, reference_sequence['chr' + chrName][pileupcolumn.pos])
+                chrName_2bit = chrName if REF_GENOME == 'GRCh38' else 'chr' + chrName
+                snv_number = get_snv_number(query_seq_list, reference_sequence[chrName_2bit][pileupcolumn.pos])
                 snv_array[snv_dict['SNV'], pileupcolumn.pos] = snv_number/pileupcolumn.nsegments \
                     if pileupcolumn.nsegments !=0 else 0
 
