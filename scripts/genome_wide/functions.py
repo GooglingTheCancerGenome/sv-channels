@@ -17,10 +17,6 @@ ins_min_size = 50
 Generic functions used in the channel scripts
 '''
 
-config = get_config_file()
-HPC_MODE = config["DEFAULT"]["HPC_MODE"]
-REF_GENOME = config["DEFAULT"]["REF_GENOME"]
-
 # Return if a read is clipped on the left
 def is_left_clipped(read):
     '''
@@ -172,7 +168,7 @@ def get_read_mate(read, bamfile):
     return None
 
 
-def get_reference_sequence(HPC_MODE):
+def get_reference_sequence(HPC_MODE, REF_GENOME):
 
     if HPC_MODE:
         # Path on the HPC of the 2bit version of the human reference genome
@@ -198,9 +194,9 @@ def is_flanked_by_n(chrname, pos, HPC_MODE):
 
 #Return a one-hot encoding for the chromosome region chr:start-stop
 # with Ns encoded as 1 and other chromosomes encoded as 0
-def get_one_hot_sequence(chrname, start, stop, nuc, HPC_MODE):
+def get_one_hot_sequence(chrname, start, stop, nuc, HPC_MODE, REF_GENOME):
 
-    genome = get_reference_sequence(HPC_MODE)
+    genome = get_reference_sequence(HPC_MODE, REF_GENOME)
 
     #ltrdict = {'a': 1, 'c': 2, 'g': 3, 't': 4, 'n': 0}
 

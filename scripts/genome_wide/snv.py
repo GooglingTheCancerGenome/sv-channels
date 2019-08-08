@@ -12,6 +12,8 @@ import twobitreader as twobit
 config = get_config_file()
 
 HPC_MODE = config["DEFAULT"]["HPC_MODE"]
+REF_GENOME = config["DEFAULT"]["REF_GENOME"]
+
 MAX_PILEUP_BUFFER_SIZE = 8000
 minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
 
@@ -20,10 +22,12 @@ def get_snvs(ibam, chrName, outFile):
     def get_2bit_genome():
         if HPC_MODE:
             # Path on the HPC of the 2bit version of the human reference genome (hg19)
-            genome = twobit.TwoBitFile('/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/genomes/hg19.2bit')
+            genome = twobit.TwoBitFile(os.path.join('/hpc/cog_bioinf/ridder/users',
+                                                    'lsantuari/Datasets/genomes', REF_GENOME+'.2bit'))
         else:
             # Path on the local machine of the 2bit version of the human reference genome (hg19)
-            genome = twobit.TwoBitFile('/Users/lsantuari/Documents/Data/GiaB/reference/hg19.2bit')
+            genome = twobit.TwoBitFile(os.path.join('/Users/lsantuari/Documents',
+                                                    'Data/GiaB/reference', REF_GENOME+'.2bit'))
         return genome
 
     def get_snv_number(query_seq_list, reference_base):
