@@ -142,7 +142,7 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
         outfile = os.path.join(outfile_dir, labs_name)
 
         bcolz_array = bcolz.carray(bcolz.zeros(shape=(0,
-                                                      win*2+padding_len,
+                                                      int(win)*2+padding_len,
                                                       n_channels
                                                       ),
                                                dtype=np.float32),
