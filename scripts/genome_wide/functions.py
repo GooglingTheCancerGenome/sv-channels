@@ -182,9 +182,9 @@ def get_reference_sequence(HPC_MODE, REF_GENOME):
     return genome
 
 
-def is_flanked_by_n(chrname, pos, HPC_MODE):
+def is_flanked_by_n(chrname, pos, HPC_MODE, REF_GENOME):
 
-    genome = get_reference_sequence(HPC_MODE)
+    genome = get_reference_sequence(HPC_MODE, REF_GENOME)
 
     if "N" in genome['chr' + chrname][pos-1:pos+1].upper():
         return True
@@ -211,9 +211,9 @@ def get_one_hot_sequence(chrname, start, stop, nuc, HPC_MODE, REF_GENOME):
                     dtype=np.uint8)
 
 
-def get_one_hot_sequence_by_list(chrname, positions, HPC_MODE):
+def get_one_hot_sequence_by_list(chrname, positions, HPC_MODE, REF_GENOME):
 
-    genome = get_reference_sequence(HPC_MODE)
+    genome = get_reference_sequence(HPC_MODE, REF_GENOME)
 
     if chrname == 'MT':
         chrname = 'M'
