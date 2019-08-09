@@ -144,7 +144,7 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
                                                       ),
                                                dtype=np.float32),
                                    mode='w',
-                                   rootdir=outfile + '_win' + win + '_carray')
+                                   rootdir=outfile + '_win' + str(win) + '_carray')
 
         padding = bcolz.zeros(shape=(padding_len, n_channels), dtype=np.float32)
 
