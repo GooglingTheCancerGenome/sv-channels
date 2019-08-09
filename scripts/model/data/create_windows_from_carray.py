@@ -131,16 +131,28 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
 
         logging.info('Creating {}...'.format(labs_name))
 
-        dask_arrays_win1 = list()
-        dask_arrays_win2 = list()
-
         n_r = 10 ** 5
         # print(n_r)
         last_t = time()
         i = 1
 
+        labs_keys = list(labs.keys())
+        labs_keys = labs_keys*20
+
+        outfile = os.path.join(outfile_dir, labs_name)
+
+        bcolz_array = bcolz.carray(bcolz.zeros(shape=(0,
+                                                      win*2+padding_len,
+                                                      n_channels
+                                                      ),
+                                               dtype=np.float32),
+                                   mode='w',
+                                   rootdir=outfile + '_carray')
+
+        padding = bcolz.zeros(shape=(padding_len, n_channels), dtype=np.float32)
+
         logging.info('Creating dask_arrays_win1 and dask_arrays_win2...')
-        for chr1, pos1, chr2, pos2 in map(unfold_win_id, labs.keys()):
+        for chr1, pos1, chr2, pos2 in map(unfold_win_id, labs_keys):
 
             if not i % n_r:
                 # Record the current time
@@ -151,45 +163,21 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
                     n_r / (now_t - last_t)))
                 last_t = time()
 
+            dask_array = list()
             d = chr_array[chr1][pos1 - win_hlen:pos1 + win_hlen, :]
-            dask_arrays_win1.append(d)
+            dask_array.append(d)
+            dask_array.append(padding)
             d = chr_array[chr2][pos2 - win_hlen:pos2 + win_hlen, :]
-            dask_arrays_win2.append(d)
+            dask_array.append(d)
+            dask_array = np.concatenate(dask_array, axis=0)
+            # print(type(dask_array))
+            bcolz_array.append(dask_array)
             i += 1
 
-        padding = da.zeros(shape=(len(labs.keys()), padding_len, n_channels), dtype=np.float32)
-        dask_array = list()
-        logging.info('Stacking dask_arrays_win1...')
-        dask_array.append(da.stack(dask_arrays_win1, axis=0))
-        dask_array.append(padding)
-        logging.info('Stacking dask_arrays_win2...')
-        dask_array.append(da.stack(dask_arrays_win2, axis=0))
-        logging.info('Concatenating...')
-        dask_array = da.concatenate(dask_array, axis=1)
-        # logging.info('Rechunking...')
-        # dask_array = dask_array.rechunk({0: 'auto', 1: None, 2: None})
-
-        outfile = os.path.join(outfile_dir, labs_name)
-
-        logging.info('Writing...')
-        # np.savez_compressed(file=outfile,
-        #                     data=dask_array.compute())
-        # da.to_hdf5(outfile + '.hdf5',
-        #            '/data', dask_array)
-        # compression='lzf')
-        # dask_array.to_hdf5(outfile + '.hdf5', '/data')
-
-        # f = h5py.File(outfile+'.hdf5')
-        # d = f.require_dataset('/data', shape=dask_array.shape, dtype=dask_array.dtype)
-        # da.store(dask_array, d)
-
-        a = bcolz.carray(dask_array, rootdir=outfile+'_carray', mode='w')
-        a.attrs['labels'] = labs
-        a.flush()
-
-        # logging.info('Writing labels to JSON...')
-        # with gzip.GzipFile(outfile + '_labels.json.gz', 'wb') as fout:
-        #     fout.write(json.dumps(labs).encode('utf-8'))
+        # bcolz_array.append(dask_array)
+        bcolz_array.attrs['labels'] = labs
+        bcolz_array.flush()
+        logging.info(bcolz_array.shape)
 
 
 def main():
@@ -220,7 +208,7 @@ def main():
                         help='File in which to write logs.')
     parser.add_argument('-w', '--window', type=str, default=200,
                         help="Specify window size")
-    parser.add_argument('-m', '--mode', type=str, default='training',
+    parser.add_argument('-m', '--mode', type=str, default='test',
                         help="training/test mode")
 
     args = parser.parse_args()
