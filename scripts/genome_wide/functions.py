@@ -207,7 +207,9 @@ def get_one_hot_sequence(chrname, start, stop, nuc, HPC_MODE, REF_GENOME):
     if chrname == 'MT':
         chrname = 'M'
 
-    return np.array([1 if x.lower() == nuc.lower() else 0 for x in genome['chr' + chrname][start:stop]],
+    chrname = chrname if REF_GENOME == 'GRCh38' else 'chr' + chrname
+
+    return np.array([1 if x.lower() == nuc.lower() else 0 for x in genome[chrname][start:stop]],
                     dtype=np.uint8)
 
 
@@ -218,7 +220,7 @@ def get_one_hot_sequence_by_list(chrname, positions, HPC_MODE, REF_GENOME):
     if chrname == 'MT':
         chrname = 'M'
 
-    whole_chrom = str(genome['chr' + chrname])
+    whole_chrom = str(genome[chrname]) if REF_GENOME == 'GRCh38' else str(genome['chr' + chrname])
 
     nuc_list = ['A', 'T', 'C', 'G', 'N']
     res = np.zeros(shape=(len(positions),len(nuc_list)), dtype=np.uint32)
