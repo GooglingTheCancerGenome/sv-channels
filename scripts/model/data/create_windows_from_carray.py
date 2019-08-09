@@ -136,9 +136,6 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
         last_t = time()
         i = 1
 
-        labs_keys = list(labs.keys())
-        labs_keys = labs_keys*20
-
         outfile = os.path.join(outfile_dir, labs_name)
 
         bcolz_array = bcolz.carray(bcolz.zeros(shape=(0,
@@ -152,7 +149,7 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
         padding = bcolz.zeros(shape=(padding_len, n_channels), dtype=np.float32)
 
         logging.info('Creating dask_arrays_win1 and dask_arrays_win2...')
-        for chr1, pos1, chr2, pos2 in map(unfold_win_id, labs_keys):
+        for chr1, pos1, chr2, pos2 in map(unfold_win_id, labs.keys()):
 
             if not i % n_r:
                 # Record the current time
