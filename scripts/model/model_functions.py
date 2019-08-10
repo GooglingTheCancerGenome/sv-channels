@@ -60,7 +60,7 @@ def create_model(X, y_binary):
 def train_model(model, xtrain, ytrain, xval, yval):
 
     train_set_size = xtrain.shape[0]
-    nr_epochs = 10
+    nr_epochs = 5
 
     histories, val_accuracies, val_losses = find_architecture.train_models_on_samples(xtrain, ytrain,
                                                                                       xval, yval,
@@ -83,13 +83,13 @@ def train_model(model, xtrain, ytrain, xval, yval):
 
 
 def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
-                   results, cv_iter, output, mapclasses):
+                   results, cv_iter, output, mapclasses, output_dir):
 
     def write_bed_wrong_predictions(predicted, y_index, win_ids_test, class_labels):
 
         #print(class_labels)
 
-        outdir = os.path.join(date, 'predictions')
+        outdir = os.path.join(output_dir, 'predictions')
         create_dir(outdir)
 
         outfile = os.path.join(outdir, output + '_wrong_predictions_' + str(int(cv_iter) + 1) + '.bedpe')
@@ -118,7 +118,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
 
         # print(class_labels)
 
-        outdir = os.path.join(date, 'predictions')
+        outdir = os.path.join(output_dir, 'predictions')
         create_dir(outdir)
 
         outfile = os.path.join(outdir, output + '_DEL_predicted_' + str(int(cv_iter) + 1) + '.bedpe')
@@ -154,7 +154,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
     probs = model.predict_proba(X_test, batch_size=1000, verbose=False)
 
     # save model
-    outdir = os.path.join(date, 'models')
+    outdir = os.path.join(output_dir, 'models')
     create_dir(outdir)
     model.save(os.path.join(outdir, '{0}_model_{1}.hdf5'.format(output, str(int(cv_iter) + 1))))
 
@@ -169,7 +169,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
     write_bed_predictions(predicted, y_index, win_ids_test, class_labels)
 
     # print(y_index)
-    outdir = os.path.join(date, 'confusion_matrix')
+    outdir = os.path.join(output_dir, 'confusion_matrix')
     create_dir(outdir)
 
     confusion_matrix = pd.crosstab(pd.Series(y_index), pd.Series(predicted))
@@ -212,14 +212,14 @@ def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
     }, ignore_index=True)
 
     plot_precision_recall(cv_iter, mapclasses,
-                          precision, recall, average_precision, output)
+                          precision, recall, average_precision, output, output_dir)
 
     return results, (average_precision, precision, recall, thresholds, f1_score_metric)
 
 
-def plot_precision_recall(cv_iter, mapclasses, precision, recall, average_precision, output):
+def plot_precision_recall(cv_iter, mapclasses, precision, recall, average_precision, output, output_dir):
 
-    outdir = os.path.join(date, 'plots')
+    outdir = os.path.join(output_dir, 'plots')
     create_dir(outdir)
 
     from itertools import cycle

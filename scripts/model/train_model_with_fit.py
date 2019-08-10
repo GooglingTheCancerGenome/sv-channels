@@ -7,6 +7,9 @@ import matplotlib.pyplot as plt
 import json
 import gzip
 import pandas as pd
+import logging
+from time import time
+import argparse
 
 from keras.models import Sequential
 from keras.layers import Dense, Activation, Convolution1D, Lambda, \
@@ -131,16 +134,25 @@ def data(channel_dir, sampleName):
 
     # class_dict = {'positive': 'DEL', 'negative': 'noDEL'}
 
-    for label_type in ['positive', 'negative']:
-        fn = os.path.join(channel_dir, 'windows', label_type + '.hdf5')
-        d = h5py.File(fn)
+    #for label_type in ['positive', 'negative']:
 
-        fn = os.path.join(channel_dir, 'windows', label_type + '_labels.json.gz')
+        # fn = os.path.join(channel_dir, 'windows', label_type + '.hdf5')
+        # d = h5py.File(fn)
+        #
+        # fn = os.path.join(channel_dir, 'windows', label_type + '_labels.json.gz')
+        #
+        # with gzip.GzipFile(fn, 'r') as fin:
+        #     labels = json.loads(fin.read().decode('utf-8'))
 
-        with gzip.GzipFile(fn, 'r') as fin:
-            labels = json.loads(fin.read().decode('utf-8'))
+    for label_type in ['test']:
 
-        numpy_array.append(d['data'])
+        carray_file = os.path.join(channel_dir, sampleName,
+                                   'windows', label_type + '_win200_carray')
+        logging.info('Loading file: {}'.format(carray_file))
+        assert os.path.exists(carray_file), carray_file + ' not found'
+        X = bcolz.open(rootdir=carray_file)
+
+        labels = X.attrs['labels']
         y.extend(labels.values())
         win_ids.extend(labels.keys())
 
@@ -162,8 +174,8 @@ def data(channel_dir, sampleName):
         #     y.extend(list(map(lambda i: labs[i], rnd_idx)))
         #     win_ids.extend(list(map(lambda i: labs_keys[i], rnd_idx)))
 
-    X = np.concatenate(numpy_array, axis=0)
-    X = X[:, :, np.array([0,7,8,26,27])]
+    #X = np.concatenate(numpy_array, axis=0)
+    #X = X[:, :, np.array([0,1,2,7,8,26,27])]
     # X = np.delete(X,33,2)
     print(X.shape)
     print(Counter(y))
@@ -245,7 +257,7 @@ def train(channel_data_dir, sampleName):
               'batch_size': batch_size,
               'epochs': epochs,
               'n_classes': 2,
-              'n_channels': 34,
+              'n_channels': 33,
               'shuffle': True}
 
     # Datasets
@@ -297,45 +309,87 @@ def train(channel_data_dir, sampleName):
     return model, history, X_train.shape[0], X_test.shape[0]
 
 
-def main():
+def train_and_test_model(sampleName_training, sampleName_test, outDir):
 
     HPC_MODE = get_hpc_flag()
 
-    sampleName_training = 'NA12878'
-    sampleName_test = 'NA24385'
-
     # channel_data_dir =
-    channel_data_dir = \
-        os.path.join('/Users/lsantuari/Documents/Processed/channel_maker_output', sampleName_training) if not HPC_MODE else \
-            os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/DeepSV/channel_data', sampleName_training)
+    channel_data_dir_training = \
+        os.path.join('/Users/lsantuari/Documents/Processed/channel_maker_output',
+                     sampleName_training) if not HPC_MODE else \
+            os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/DeepSV/channel_data',
+                         sampleName_training)
 
     model_fn = 'model_'+sampleName_training+'.hdf5'
     if os.path.exists(model_fn):
         model = load_model(model_fn)
     else:
-        model, history, train_set_size, validation_set_size = train(channel_data_dir, sampleName_training)
+        model, history, train_set_size, validation_set_size = train(channel_data_dir_training, sampleName_training)
         model.save(model_fn)
 
     results = pd.DataFrame()
 
-    channel_data_dir = \
-        os.path.join('/Users/lsantuari/Documents/Processed/channel_maker_output', sampleName_test) if not HPC_MODE else \
-            os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/DeepSV/channel_data', sampleName_test)
+    channel_data_dir_test = \
+        os.path.join('/Users/lsantuari/Documents/Processed/channel_maker_output',
+                     sampleName_test) if not HPC_MODE else \
+            os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/DeepSV/channel_data',
+                         sampleName_test)
 
-    X_test, y_test, win_ids_test = data(channel_data_dir, sampleName_test)
+    X_test, y_test, win_ids_test = data(channel_data_dir_test, sampleName_test)
     ytest_binary = to_categorical(y_test, num_classes=2)
     # print(win_ids_test[0])
 
     mapclasses = {'DEL': 0, 'noDEL': 1}
 
     intermediate_results, metrics = evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
-                                                   results, 1, 'results', mapclasses)
+                                                   results, 1, 'results', mapclasses, outDir)
 
     results = results.append(intermediate_results)
 
-    results.to_csv('results.csv', sep='\t')
+    results.to_csv(os.path.join(outDir, 'results.csv'), sep='\t')
 
     # get_channel_labels()
+
+
+def main():
+
+    parser = argparse.ArgumentParser(description='Train and test model')
+    parser.add_argument('-p', '--outputpath', type=str,
+                        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
+                        help="Specify output path")
+    parser.add_argument('-t', '--training_sample', type=str, default='NA12878',
+                        help="Specify training sample")
+    parser.add_argument('-x', '--test_sample', type=str, default='NA24385',
+                        help="Specify training sample")
+    parser.add_argument('-l', '--logfile', default='windows.log',
+                        help='File in which to write logs.')
+    parser.add_argument('-m', '--mode', type=str, default='training',
+                        help="training/test mode")
+
+    args = parser.parse_args()
+
+    cmd_name = 'cnn'
+    output_dir = os.path.join(args.outputpath, args.sample, cmd_name)
+    create_dir(output_dir)
+    logfilename = os.path.join(output_dir, args.logfile)
+    # output_file = os.path.join(output_dir, args.out)
+
+    FORMAT = '%(asctime)s %(message)s'
+    logging.basicConfig(
+        format=FORMAT,
+        filename=logfilename,
+        filemode='w',
+        level=logging.INFO)
+
+    t0 = time()
+
+    train_and_test_model(sampleName_training=args.training_sample,
+                         sampleName_test=args.test_sample,
+                         outDir=output_dir
+                         )
+
+    # print('Elapsed time channel_maker_real on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))
+    logging.info('Elapsed time training and testing = %f seconds' % (time() - t0))
 
 
 if __name__ == '__main__':
