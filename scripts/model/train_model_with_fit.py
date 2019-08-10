@@ -369,7 +369,7 @@ def main():
     args = parser.parse_args()
 
     cmd_name = 'cnn'
-    output_dir = os.path.join(args.outputpath, args.sample, cmd_name)
+    output_dir = os.path.join(args.outputpath, args.training_sample, cmd_name)
     create_dir(output_dir)
     logfilename = os.path.join(output_dir, args.logfile)
     # output_file = os.path.join(output_dir, args.out)
