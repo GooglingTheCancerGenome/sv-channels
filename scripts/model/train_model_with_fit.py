@@ -179,10 +179,8 @@ def data(channel_dir, sampleName):
     #X = X[:, :, np.array([0,1,2,7,8,26,27])]
     # X = np.delete(X,33,2)
 
-
-
-    print(X.shape)
-    print(Counter(y))
+    logging.info((X.shape)
+    logging.info((Counter(y))
 
     my_classes = {'DEL': 0, 'noDEL': 1, 'UK_other': 2, 'UK_single_partial': 3, 'UK_multiple_on_either_windows': 4}
     # my_classes = {'DEL': 0, 'noDEL': 1}
