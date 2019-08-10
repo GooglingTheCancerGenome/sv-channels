@@ -146,7 +146,7 @@ def data(channel_dir, sampleName):
 
     for label_type in ['test']:
 
-        carray_file = os.path.join(channel_dir, sampleName,
+        carray_file = os.path.join(channel_dir,
                                    'windows', label_type + '_win200_carray')
         logging.info('Loading file: {}'.format(carray_file))
         assert os.path.exists(carray_file), carray_file + ' not found'
