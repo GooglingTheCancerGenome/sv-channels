@@ -10,6 +10,7 @@ import pandas as pd
 import logging
 from time import time
 import argparse
+import bcolz
 
 from keras.models import Sequential
 from keras.layers import Dense, Activation, Convolution1D, Lambda, \
