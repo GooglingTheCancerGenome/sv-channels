@@ -1,3 +1,4 @@
+import sys
 import dask.array as da
 import h5py
 import os
@@ -12,6 +13,23 @@ from keras.layers import Dense, Activation, Convolution1D, Lambda, \
     Reshape, LSTM, Dropout, TimeDistributed, BatchNormalization
 from keras.regularizers import l2
 from keras.optimizers import Adam
+
+
+# def get_labels():
+
+def get_hpc_flag():
+
+    fileDir = os.path.dirname(os.path.abspath(__file__))
+    parentDir = os.path.dirname(fileDir)
+    newPath = os.path.join(parentDir, 'genome_wide')
+    sys.path.append(newPath)
+
+    from functions import *
+
+    config = get_config_file()
+    HPC_MODE = config["DEFAULT"]["HPC_MODE"]
+
+    return HPC_MODE
 
 
 def get_candidate_positions():
@@ -29,7 +47,7 @@ def get_candidate_positions():
         candpos_list.extend(candpos[k])
 
     data_id = ['_'.join((chr1, str(pos1), chr2, str(pos2))) for chr1, pos1, chr2, pos2 in candpos_list if
-                   chr1 == chr2 and chr1 == '17']
+                   chr1 == chr2 and chr1 == '17']*23
 
     return data_id
 
@@ -81,40 +99,57 @@ def create_model(dim_length, dim_channels, class_number):
     return model
 
 
-def train():
+def train(sampleName):
 
-    def load_chr_array():
+    def load_chr_array(channel_data_dir):
 
-        chrlist = list(map(str, range(1, 23)))
-        chrlist.extend(['X'])
+        #chrlist = list(map(str, range(1, 23)))
+        #chrlist.extend(['X'])
+        chrlist = ['17']
         chr_array = dict()
 
         for c in chrlist:
 
-            chrname = 'chr'+c
+            chrname = '/chr'+c
             hdf5_file = os.path.join(channel_data_dir, 'T1_'+c+'.hdf5')
             f = h5py.File(hdf5_file)
             d = f[chrname]
+            # chr_array[c] = da.from_array(d, chunks=("auto", -1))
             chr_array[c] = da.from_array(d, chunks=("auto", -1))
 
         return chr_array
 
+    win_len = 200
+    padding_len = 10
+
+    dim = win_len*2+padding_len
+    batch_size = 64
+
     # Parameters
-    params = {'dim': 410,
-              'batch_size': 2048,
+    params = {'dim': dim,
+              'batch_size': batch_size,
               'n_classes': 2,
               'n_channels': 34,
               'shuffle': True}
 
-    data_id = get_candidate_positions()
-    chr_array = load_chr_array()
+    HPC_MODE = get_hpc_flag()
 
-    # channel_data_dir = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/DeepSV/channel_data/NA12878/'
-    channel_data_dir = '/Users/lsantuari/Documents/Processed/channel_maker_output'
 
+
+    # channel_data_dir =
+    channel_data_dir = \
+        os.path.join('/Users/lsantuari/Documents/Processed/channel_maker_output', sampleName) if HPC_MODE else \
+        os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/DeepSV/channel_data', sampleName)
+
+    chr_array = load_chr_array(channel_data_dir)
+    data_id = get_candidate_positions(channel_data_dir)
 
     # Datasets
-    partition = {'train': data_id[:7000000], 'validation': data_id[7000000:]}
+    train_index = int(len(data_id)*0.7)
+    partition = {'train': data_id[:train_index], 'validation': data_id[train_index:]}
+
+    # Load labels
+    # Generating random labels for testing
     labels = {k: i for k, i in zip(data_id, np.random.randint(2, size=len(data_id)))}
 
     # Generators
@@ -127,11 +162,13 @@ def train():
     # Train model on dataset
     model.fit_generator(generator=training_generator,
                         validation_data=validation_generator,
-                        max_queue_size=2000,
-                        epochs= 50,
-                        workers=1,  # I don't see multi workers can have any performance benefit without multi threading
-                        use_multiprocessing=False,  # HDF5Matrix cannot support multi-threads
+                        #max_queue_size=2000,
+                        epochs= 2,
+                        workers=batch_size,  # I don't see multi workers can have any performance benefit without multi threading
+                        use_multiprocessing=True,  # HDF5Matrix cannot support multi-threads
+                        verbose=1
                         )
+
 
 def main():
 
