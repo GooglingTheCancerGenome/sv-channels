@@ -272,15 +272,18 @@ def train(sampleName):
 
     channel_data_dir = get_data_dir(sampleName)
 
-    win_len = 200
-    padding_len = 10
+    # win_len = 200
+    # padding_len = 10
+    # dim = win_len * 2 + padding_len
 
-    dim = win_len * 2 + padding_len
-    batch_size = 1
+    batch_size = 32
     epochs = 20
 
     # Datasets
     X, y, win_ids = data(sampleName)
+
+    X = np.array(X)
+    y = np.array(y)
 
     # Parameters
     params = {'dim': X.shape[1],
@@ -329,7 +332,7 @@ def train(sampleName):
                         epochs=params['epochs'],
                         shuffle=True,
                         class_weight=class_weights,
-                        verbose=1,
+                        verbose=0,
                         callbacks=[tbCallBack]
                         )
 
