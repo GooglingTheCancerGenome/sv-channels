@@ -216,6 +216,7 @@ def data(sampleName):
     # y = y[new_indices]
     # win_ids = win_ids[new_indices]
 
+    print('Data for {} loaded'.format(sampleName))
     return X, y, win_ids
 
 
@@ -318,6 +319,7 @@ def train(sampleName):
     #                              X_test, y_test_binary, class_weights)
 
     # Design model
+    print('Creating model...')
     model = create_model(params['dim'], params['n_channels'], params['n_classes'])
 
     tbCallBack = TensorBoard(log_dir=os.path.join(channel_data_dir, 'Graph'),
@@ -325,6 +327,7 @@ def train(sampleName):
                              write_graph=True,
                              write_images=True)
 
+    print('Fitting model...')
     # Train model on dataset
     history = model.fit(X, y_train_binary,
                         validation_split=params['val_split'],
