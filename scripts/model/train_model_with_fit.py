@@ -28,6 +28,7 @@ from collections import Counter
 
 from model_functions import create_model, train_model, evaluate_model, create_dir
 
+mapclasses = {'DEL': 0, 'noDEL': 1, 'UK_other': 2, 'UK_single_partial': 3, 'UK_multiple_on_either_windows': 4}
 
 def get_channel_labels():
     # Fill labels for legend
@@ -144,6 +145,8 @@ def get_data_dir(sampleName):
 
 def data(sampleName):
 
+    print('Loading data for {}...'.format(sampleName))
+
     channel_dir = get_data_dir(sampleName)
 
     y = []
@@ -199,9 +202,10 @@ def data(sampleName):
     logging.info(X.shape)
     logging.info(Counter(y))
 
-    my_classes = {'DEL': 0, 'noDEL': 1, 'UK_other': 2, 'UK_single_partial': 3, 'UK_multiple_on_either_windows': 4}
-    # my_classes = {'DEL': 0, 'noDEL': 1}
-    y = np.array([my_classes[i] for i in y])
+    # mapclasses = {'DEL': 0, 'noDEL': 1, 'UK_other': 2, 'UK_single_partial': 3, 'UK_multiple_on_either_windows': 4}
+    # mapclasses = {'DEL': 0, 'noDEL': 1}
+
+    y = np.array([mapclasses[i] for i in y])
     win_ids = np.array(win_ids)
 
     # Shuffle arrays
@@ -215,53 +219,53 @@ def data(sampleName):
     return X, y, win_ids
 
 
-# def create_model(dim_length, dim_channels, class_number):
-#
-#     layers = 2
-#     filters = [4] * layers
-#     fc_hidden_nodes = 6
-#     learning_rate = 4
-#     regularization_rate = 1
-#     kernel_size = 7
-#     drp_out1 = 0
-#     drp_out2 = 0
-#
-#     outputdim = class_number  # number of classes
-#
-#     weightinit = 'lecun_uniform'  # weight initialization
-#
-#     model = Sequential()
-#     model.add(
-#         BatchNormalization(
-#             input_shape=(
-#                 dim_length,
-#                 dim_channels)))
-#
-#     for filter_number in filters:
-#         # model.add(MaxPooling1D(pool_size=5, strides=None, padding='same'))
-#
-#         model.add(Convolution1D(filter_number, kernel_size=kernel_size, padding='same',
-#                                 kernel_regularizer=l2(regularization_rate),
-#                                 kernel_initializer=weightinit))
-#         model.add(BatchNormalization())
-#         model.add(Activation('relu'))
-#
-#     model.add(Flatten())
-#     model.add(Dropout(drp_out1))
-#     model.add(Dense(units=fc_hidden_nodes,
-#                     kernel_regularizer=l2(regularization_rate),
-#                     kernel_initializer=weightinit))  # Fully connected layer
-#     model.add(Activation('relu'))  # Relu activation
-#     model.add(Dropout(drp_out2))
-#     model.add(Dense(units=outputdim, kernel_initializer=weightinit))
-#     model.add(BatchNormalization())
-#     model.add(Activation("softmax"))  # Final classification layer
-#
-#     model.compile(loss='categorical_crossentropy',
-#                   optimizer=Adam(lr=learning_rate),
-#                   metrics=['accuracy'])
-#
-#     return model
+def create_model(dim_length, dim_channels, class_number):
+
+    layers = 2
+    filters = [4] * layers
+    fc_hidden_nodes = 6
+    learning_rate = 4
+    regularization_rate = 1
+    kernel_size = 7
+    drp_out1 = 0
+    drp_out2 = 0
+
+    outputdim = class_number  # number of classes
+
+    weightinit = 'lecun_uniform'  # weight initialization
+
+    model = Sequential()
+    model.add(
+        BatchNormalization(
+            input_shape=(
+                dim_length,
+                dim_channels)))
+
+    for filter_number in filters:
+        # model.add(MaxPooling1D(pool_size=5, strides=None, padding='same'))
+
+        model.add(Convolution1D(filter_number, kernel_size=kernel_size, padding='same',
+                                kernel_regularizer=l2(regularization_rate),
+                                kernel_initializer=weightinit))
+        model.add(BatchNormalization())
+        model.add(Activation('relu'))
+
+    model.add(Flatten())
+    model.add(Dropout(drp_out1))
+    model.add(Dense(units=fc_hidden_nodes,
+                    kernel_regularizer=l2(regularization_rate),
+                    kernel_initializer=weightinit))  # Fully connected layer
+    model.add(Activation('relu'))  # Relu activation
+    model.add(Dropout(drp_out2))
+    model.add(Dense(units=outputdim, kernel_initializer=weightinit))
+    model.add(BatchNormalization())
+    model.add(Activation("softmax"))  # Final classification layer
+
+    model.compile(loss='categorical_crossentropy',
+                  optimizer=Adam(lr=learning_rate),
+                  metrics=['accuracy'])
+
+    return model
 
 
 def train(sampleName):
@@ -275,16 +279,17 @@ def train(sampleName):
     batch_size = 1
     epochs = 20
 
-    # Parameters
-    params = {'dim': dim,
-              'batch_size': batch_size,
-              'epochs': epochs,
-              'n_classes': 2,
-              'n_channels': 33,
-              'shuffle': True}
-
     # Datasets
     X, y, win_ids = data(sampleName)
+
+    # Parameters
+    params = {'dim': X.shape[1],
+              'batch_size': batch_size,
+              'epochs': epochs,
+              'val_split': 0.2,
+              'n_classes': len(mapclasses.keys()),
+              'n_channels': X.shape[2],
+              'shuffle': True}
 
     plots_dir = os.path.join(channel_data_dir, 'plots_'+sampleName)
     create_dir(plots_dir)
@@ -293,63 +298,62 @@ def train(sampleName):
     #     plot_channels(plots_dir, window, y[i], win_ids[i])
 
     # split into train/validation sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y,
-                                                        test_size=0.3, random_state=2,
-                                                        stratify=y,
-                                                        shuffle=True)
+    # X_train, X_test, y_train, y_test = train_test_split(X, y,
+    #                                                     test_size=0.3, random_state=2,
+    #                                                     stratify=y,
+    #                                                     shuffle=True)
 
-    y_train_binary = to_categorical(y_train, num_classes=2)
-    y_test_binary = to_categorical(y_test, num_classes=2)
+    y_train_binary = to_categorical(y, num_classes=params['n_classes'])
 
-    c = dict(Counter(y_train))
+    c = dict(Counter(y))
     total_labels = sum(c.values())
     class_weights = {k: v / total_labels for k, v in c.items()}
 
-    model = create_model(X_train, y_train_binary)
+    # model = create_model(X, y_train_binary)
 
-    history, model = train_model(model, X_train, y_train_binary,
-                                 X_test, y_test_binary)
+    # history, model = train_model(model, X_train, y_train_binary,
+    #                              X_test, y_test_binary, class_weights)
 
-    # # Design model
-    # model = create_model(params['dim'], params['n_channels'], params['n_classes'])
-    #
-    # tbCallBack = TensorBoard(log_dir=os.path.join(channel_data_dir, 'Graph'),
-    #                          histogram_freq=0,
-    #                          write_graph=True,
-    #                          write_images=True)
-    #
-    # # Train model on dataset
-    # history = model.fit(X_train, y_train_binary,
-    #                     validation_split=0.2,
-    #                     batch_size=params['batch_size'],
-    #                     epochs=params['epochs'],
-    #                     shuffle=True,
-    #                     # class_weight=class_weights,
-    #                     verbose=1,
-    #                     callbacks=[tbCallBack]
-    #                     )
-    #
-    return model, history, X_train.shape[0], X_test.shape[0]
+    # Design model
+    model = create_model(params['dim'], params['n_channels'], params['n_classes'])
+
+    tbCallBack = TensorBoard(log_dir=os.path.join(channel_data_dir, 'Graph'),
+                             histogram_freq=0,
+                             write_graph=True,
+                             write_images=True)
+
+    # Train model on dataset
+    history = model.fit(X, y_train_binary,
+                        validation_split=params['val_split'],
+                        batch_size=params['batch_size'],
+                        epochs=params['epochs'],
+                        shuffle=True,
+                        class_weight=class_weights,
+                        verbose=1,
+                        callbacks=[tbCallBack]
+                        )
+
+    return model, history, X.shape[0], int(X.shape[0]*params['val_split'])
 
 
 def train_and_test_model(sampleName_training, sampleName_test, outDir):
 
-    model_fn = 'model_'+sampleName_training+'.hdf5'
+    model_fn = os.path.join(outDir, 'model_'+sampleName_training+'.hdf5')
     if os.path.exists(model_fn):
+        print('Model {} found. Loading model...'.format(model_fn))
         model = load_model(model_fn)
     else:
+        print('Training model on {}...'.format(sampleName_training))
         model, history, train_set_size, validation_set_size = train(sampleName_training)
         model.save(model_fn)
 
     results = pd.DataFrame()
 
-
-
     X_test, y_test, win_ids_test = data(sampleName_test)
     ytest_binary = to_categorical(y_test, num_classes=2)
     # print(win_ids_test[0])
 
-    mapclasses = {'DEL': 0, 'noDEL': 1}
+    # mapclasses = {'DEL': 0, 'noDEL': 1}
 
     intermediate_results, metrics = evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
                                                    results, 1, 'results', mapclasses, outDir)
