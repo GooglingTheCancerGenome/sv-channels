@@ -369,12 +369,16 @@ def train_and_test_model(sampleName_training, sampleName_test, outDir):
 
     # mapclasses = {'DEL': 0, 'noDEL': 1}
 
+    outDit_eval = os.path.join(outDir,
+                               'train_'+sampleName_training+'_test_'+sampleName_test)
+
     intermediate_results, metrics = evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
-                                                   results, 1, 'results', mapclasses, outDir)
+                                                   results, 1, 'results', mapclasses, outDit_eval)
 
     results = results.append(intermediate_results)
 
-    results.to_csv(os.path.join(outDir, 'results.csv'), sep='\t')
+    results.to_csv(os.path.join(outDir,
+                                'train_'+sampleName_training+'_test_'+sampleName_test+'_results.csv'), sep='\t')
 
     # get_channel_labels()
 
