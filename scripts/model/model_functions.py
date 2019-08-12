@@ -151,7 +151,7 @@ def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
     # print(y_binarized)
     # print(n_classes)
 
-    probs = model.predict_proba(X_test, batch_size=1000, verbose=False)
+    probs = model.predict_proba(X_test, batch_size=10000, verbose=True)
 
     # save model
     outdir = os.path.join(output_dir, 'models')

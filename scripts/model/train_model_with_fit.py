@@ -20,7 +20,7 @@ from keras.regularizers import l2
 from keras.optimizers import Adam
 from keras.utils import to_categorical
 
-from keras.callbacks import TensorBoard
+from keras.callbacks import TensorBoard, EarlyStopping
 from keras.models import load_model
 
 from sklearn.model_selection import train_test_split
@@ -28,7 +28,14 @@ from collections import Counter
 
 from model_functions import create_model, train_model, evaluate_model, create_dir
 
+import tensorflow as tf
+
+gpu_options = tf.GPUOptions(allow_growth=True)
+sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+tf.keras.backend.set_session(sess)
+
 mapclasses = {'DEL': 0, 'noDEL': 1, 'UK_other': 2, 'UK_single_partial': 3, 'UK_multiple_on_either_windows': 4}
+
 
 def get_channel_labels():
     # Fill labels for legend
@@ -277,7 +284,7 @@ def train(sampleName):
     # padding_len = 10
     # dim = win_len * 2 + padding_len
 
-    batch_size = 32
+    batch_size = 256
     epochs = 20
 
     # Datasets
@@ -322,6 +329,7 @@ def train(sampleName):
     print('Creating model...')
     model = create_model(params['dim'], params['n_channels'], params['n_classes'])
 
+    esCallback = EarlyStopping(monitor='val_loss', patience=0, verbose=1, mode='auto')
     tbCallBack = TensorBoard(log_dir=os.path.join(channel_data_dir, 'Graph'),
                              histogram_freq=0,
                              write_graph=True,
@@ -335,8 +343,8 @@ def train(sampleName):
                         epochs=params['epochs'],
                         shuffle=True,
                         class_weight=class_weights,
-                        verbose=0,
-                        callbacks=[tbCallBack]
+                        verbose=2,
+                        callbacks=[tbCallBack, esCallback]
                         )
 
     return model, history, X.shape[0], int(X.shape[0]*params['val_split'])
@@ -356,7 +364,7 @@ def train_and_test_model(sampleName_training, sampleName_test, outDir):
     results = pd.DataFrame()
 
     X_test, y_test, win_ids_test = data(sampleName_test)
-    ytest_binary = to_categorical(y_test, num_classes=2)
+    ytest_binary = to_categorical(y_test, num_classes=len(mapclasses.keys()))
     # print(win_ids_test[0])
 
     # mapclasses = {'DEL': 0, 'noDEL': 1}
