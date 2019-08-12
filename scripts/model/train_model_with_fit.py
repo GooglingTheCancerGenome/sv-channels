@@ -113,6 +113,7 @@ def plot_channels(outDir, X, z, l):
 
 
 def get_hpc_flag():
+
     fileDir = os.path.dirname(os.path.abspath(__file__))
     parentDir = os.path.dirname(fileDir)
     newPath = os.path.join(parentDir, 'genome_wide')
@@ -128,9 +129,25 @@ def get_hpc_flag():
     return HPC_MODE
 
 
-def data(channel_dir, sampleName):
+def get_data_dir(sampleName):
+
+    HPC_MODE = get_hpc_flag()
+
+    channel_dir = \
+        os.path.join('/Users/lsantuari/Documents/Processed/channel_maker_output',
+                     sampleName) if not HPC_MODE else \
+            os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/DeepSV/channel_data',
+                         sampleName)
+
+    return channel_dir
+
+
+def data(sampleName):
+
+    channel_dir = get_data_dir(sampleName)
+
     y = []
-    numpy_array = []
+    # numpy_array = []
     win_ids = []
 
     # class_dict = {'positive': 'DEL', 'negative': 'noDEL'}
@@ -247,7 +264,10 @@ def data(channel_dir, sampleName):
 #     return model
 
 
-def train(channel_data_dir, sampleName):
+def train(sampleName):
+
+    channel_data_dir = get_data_dir(sampleName)
+
     win_len = 200
     padding_len = 10
 
@@ -264,7 +284,7 @@ def train(channel_data_dir, sampleName):
               'shuffle': True}
 
     # Datasets
-    X, y, win_ids = data(channel_data_dir, sampleName)
+    X, y, win_ids = data(sampleName)
 
     plots_dir = os.path.join(channel_data_dir, 'plots_'+sampleName)
     create_dir(plots_dir)
@@ -314,31 +334,18 @@ def train(channel_data_dir, sampleName):
 
 def train_and_test_model(sampleName_training, sampleName_test, outDir):
 
-    HPC_MODE = get_hpc_flag()
-
-    # channel_data_dir =
-    channel_data_dir_training = \
-        os.path.join('/Users/lsantuari/Documents/Processed/channel_maker_output',
-                     sampleName_training) if not HPC_MODE else \
-            os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/DeepSV/channel_data',
-                         sampleName_training)
-
     model_fn = 'model_'+sampleName_training+'.hdf5'
     if os.path.exists(model_fn):
         model = load_model(model_fn)
     else:
-        model, history, train_set_size, validation_set_size = train(channel_data_dir_training, sampleName_training)
+        model, history, train_set_size, validation_set_size = train(sampleName_training)
         model.save(model_fn)
 
     results = pd.DataFrame()
 
-    channel_data_dir_test = \
-        os.path.join('/Users/lsantuari/Documents/Processed/channel_maker_output',
-                     sampleName_test) if not HPC_MODE else \
-            os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/DeepSV/channel_data',
-                         sampleName_test)
 
-    X_test, y_test, win_ids_test = data(channel_data_dir_test, sampleName_test)
+
+    X_test, y_test, win_ids_test = data(sampleName_test)
     ytest_binary = to_categorical(y_test, num_classes=2)
     # print(win_ids_test[0])
 
@@ -383,6 +390,7 @@ def main():
         filename=logfilename,
         filemode='w',
         level=logging.INFO)
+    print('Writing log file to {}'.format(logfilename))
 
     t0 = time()
 
