@@ -33,7 +33,11 @@ from model_functions import create_model, train_model, evaluate_model, create_di
 import tensorflow as tf
 
 gpu_options = tf.GPUOptions(allow_growth=True)
-sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options,
+                                        intra_op_parallelism_threads=0,
+                                        inter_op_parallelism_threads=0,
+                                        allow_soft_placement=True
+                                        ))
 tf.compat.v1.keras.backend.set_session(sess)
 
 mapclasses = {'DEL': 0, 'noDEL': 1, 'UK_other': 2, 'UK_single_partial': 3, 'UK_multiple_on_either_windows': 4}
