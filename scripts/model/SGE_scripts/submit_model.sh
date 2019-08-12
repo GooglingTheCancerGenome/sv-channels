@@ -18,11 +18,20 @@ CHM1_CHM13_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/CHM1_CHM13/b
 #BAM_ARRAY=(${NA12878_BAM} ${NA12892_BAM} ${NA12891_BAM} ${PATIENT1_BAM} ${PATIENT2_BAM})
 #SAMPLE_ARRAY=('NA12878' 'NA12892' 'NA12891' 'PATIENT1' 'PATIENT2')
 
-#BAM_ARRAY=(${NA12878_BAM})
-#SAMPLE_ARRAY=('NA12878')
+#BAM_ARRAY=(${NA24385_BAM})
+#SAMPLE_ARRAY=('NA24385')
 
 BAM_ARRAY=(${NA12878_BAM} ${NA24385_BAM} ${CHM1_CHM13_BAM})
 SAMPLE_ARRAY=('NA12878' 'NA24385' 'CHM1_CHM13')
+
+#BAM_ARRAY=(${NA12878_BAM} ${NA24385_BAM})
+#SAMPLE_ARRAY=('NA12878' 'NA24385')
+
+#BAM_ARRAY=(${CHM1_CHM13_BAM})
+#SAMPLE_ARRAY=('CHM1_CHM13')
+
+#BAM_ARRAY=(${NA12878_BAM} ${NA24385_BAM} ${CHM1_CHM13_BAM})
+#SAMPLE_ARRAY=('NA12878' 'NA24385' 'CHM1_CHM13')
 
 #BAM_ARRAY=(${CHM1_BAM} ${CHM13_BAM})
 #SAMPLE_ARRAY=('CHM1' 'CHM13')
@@ -39,23 +48,28 @@ SAMPLE_ARRAY=('NA12878' 'NA24385' 'CHM1_CHM13')
 #CHRARRAY=(`seq 1 22` 'X' 'Y' 'MT')
 #CHRARRAY=(`seq 1 22` 'X')
 
-PRG='create_windows'
+PRG='train_model_with_fit'
 
 for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
 #for i in 0; do
+	TRAINING_SAMPLE=${SAMPLE_ARRAY[$i]}
+	
+	for (( j=0; j<${#SAMPLE_ARRAY[@]}; j++)); do
 
-	SAMPLE=${SAMPLE_ARRAY[$i]}
-	BAM=${BAM_ARRAY[$i]}
+        TEST_SAMPLE=${SAMPLE_ARRAY[$j]}
+	
+	if [ $TRAINING_SAMPLE != $TEST_SAMPLE ]; then
+    		for MODE in "test"; do
 
-    for MODE in "training" "test"; do
+        		for WINDOW in 200; do
 
-        for WINDOW in 200; do
+		    	OUTDIR=$OUTPATH
+		    	JOB_NAME=$TRAINING_SAMPLE"_"$TEST_SAMPLE"_win"$WINDOW"_"$MODE"_"${PRG}
+		    	qsub -v TRAINING_SAMPLE_ARG=$TRAINING_SAMPLE,TEST_SAMPLE_ARG=$TEST_SAMPLE,BAMARG=$BAM,PRGARG=${PRG},OUTARG=${OUTDIR},MODEARG=${MODE},WINDOWARG=${WINDOW} \
+				    -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" train_model.sge
 
-		    OUTDIR=$OUTPATH
-		    JOB_NAME=$SAMPLE"_win"$WINDOW"_"$MODE"_"${PRG}
-		    qsub -v SAMPLEARG=$SAMPLE,BAMARG=$BAM,PRGARG=${PRG},OUTARG=${OUTDIR},MODEARG=${MODE},WINDOWARG=${WINDOW} \
-			    -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_windows.sge
-
-        done
-    done
+        		done
+    		done
+	fi
+	done
 done
