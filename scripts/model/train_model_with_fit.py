@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 import sys
 import dask.array as da
 import h5py
@@ -32,7 +34,7 @@ import tensorflow as tf
 
 gpu_options = tf.GPUOptions(allow_growth=True)
 sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
-tf.keras.backend.set_session(sess)
+tf.compat.v1.keras.backend.set_session(sess)
 
 mapclasses = {'DEL': 0, 'noDEL': 1, 'UK_other': 2, 'UK_single_partial': 3, 'UK_multiple_on_either_windows': 4}
 
@@ -152,7 +154,7 @@ def get_data_dir(sampleName):
 
 def data(sampleName):
 
-    print('Loading data for {}...'.format(sampleName))
+    logging.info('Loading data for {}...'.format(sampleName))
 
     channel_dir = get_data_dir(sampleName)
 
@@ -223,7 +225,7 @@ def data(sampleName):
     # y = y[new_indices]
     # win_ids = win_ids[new_indices]
 
-    print('Data for {} loaded'.format(sampleName))
+    logging.info('Data for {} loaded'.format(sampleName))
     return X, y, win_ids
 
 
@@ -272,6 +274,13 @@ def create_model(dim_length, dim_channels, class_number):
     model.compile(loss='categorical_crossentropy',
                   optimizer=Adam(lr=learning_rate),
                   metrics=['accuracy'])
+
+    i = 0
+    for model, params, model_types in [model]:
+        logging.info('model ' + str(i))
+        i = i + 1
+        logging.info(params)
+        logging.info(model.summary())
 
     return model
 
@@ -326,7 +335,7 @@ def train(sampleName):
     #                              X_test, y_test_binary, class_weights)
 
     # Design model
-    print('Creating model...')
+    logging.info('Creating model...')
     model = create_model(params['dim'], params['n_channels'], params['n_classes'])
 
     esCallback = EarlyStopping(monitor='val_loss', patience=0, verbose=1, mode='auto')
@@ -335,7 +344,7 @@ def train(sampleName):
                              write_graph=True,
                              write_images=True)
 
-    print('Fitting model...')
+    logging.info('Fitting model...')
     # Train model on dataset
     history = model.fit(X, y_train_binary,
                         validation_split=params['val_split'],
@@ -412,6 +421,7 @@ def main():
         filename=logfilename,
         filemode='w',
         level=logging.INFO)
+
     print('Writing log file to {}'.format(logfilename))
 
     t0 = time()
