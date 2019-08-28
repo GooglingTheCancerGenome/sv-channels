@@ -84,13 +84,13 @@ def get_split_read_distance(ibam, chrName, outFile):
                 if is_right_clipped(read):
                     # print('Right clipped')
                     # print(read)
+                    refpos = read.reference_end + 1
                     chr, pos, strand = get_suppl_aln(read)
                     # print('%s:%d-%s' % (chr, pos, strand))
                     # The read and the supplementary alignment are on the same chromosome
                     if chr == read.reference_name:
                         # print('Right split')
                         # print(str(read))
-                        refpos = read.reference_end + 1
                         #if pos not in split_read_distance['right'].keys():
                         #    split_read_distance['right'][pos] = [abs(pos - refpos)]
                         #else:
@@ -104,6 +104,16 @@ def get_split_read_distance(ibam, chrName, outFile):
                         # print('Adding for right at %d position' % refpos)
                         split_reads['right'][refpos] += 1
                         split_reads['left'][pos] += 1
+                    else:
+                        split_reads['right'][refpos] += 1
+
+                elif is_left_clipped(read):
+                    refpos = read.reference_start
+                    chr, pos, strand = get_suppl_aln(read)
+                    if chr != read.reference_name and strand:
+                        # print(read)
+                        # print('left=>{}:{} right=>{}:{}'.format(chr, str(pos), read.reference_name, str(refpos)))
+                        split_reads['right'][refpos] += 1
 
 
     # Save two dictionaries: split_read_distance and split_reads

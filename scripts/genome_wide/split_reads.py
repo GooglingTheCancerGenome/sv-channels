@@ -80,6 +80,15 @@ def get_split_read_positions(ibam, outFile):
     # List to store the split read positions
     split_pos_coord = []
 
+    split_reads = dict()
+    split_read_distance = dict()
+    for chrom in chr_list:
+        split_reads[chrom] = dict()
+        split_read_distance[chrom] = dict()
+        for split_direction in ['left', 'right']:
+            split_reads[chrom][split_direction] = defaultdict(int)
+            split_read_distance[chrom][split_direction] = defaultdict(list)
+
     right_split_pos = defaultdict(list, {k: [] for k in chr_list})
     left_split_pos = defaultdict(list, {k: [] for k in chr_list})
 
@@ -175,6 +184,14 @@ def get_split_read_positions(ibam, outFile):
                                                            chr_SA, left_split_pos_by_query[read.query_name])
                             right_split_pos[read.reference_name].append(read.reference_end)
                             left_split_pos[chr_SA].append(pos_SA)
+
+                            split_reads[read.reference_name]['right'][read.reference_end] += 1
+                            split_reads[chr_SA]['left'][pos_SA] += 1
+
+                            if read.reference_name == chr_SA:
+                                dist = abs(read.reference_end - pos_SA)
+                                split_read_distance[read.reference_name]['right'][read.reference_end].append(dist)
+                                split_read_distance[chr_SA]['left'][pos_SA].append(dist)
                             n_split += 1
 
                 if (read.query_name, pos_SA) in rs_mate_set[read.next_reference_name]:
@@ -196,6 +213,15 @@ def get_split_read_positions(ibam, outFile):
                                                            chr_SA, right_split_pos_by_query[read.query_name])
                             left_split_pos[read.reference_name].append(read.reference_end)
                             right_split_pos[chr_SA].append(pos_SA)
+
+                            split_reads[read.reference_name]['left'][read.reference_end] += 1
+                            split_reads[chr_SA]['right'][pos_SA] += 1
+
+                            if read.reference_name == chr_SA:
+                                dist = abs(read.reference_end - pos_SA)
+                                split_read_distance[read.reference_name]['left'][read.reference_end].append(dist)
+                                split_read_distance[chr_SA]['right'][pos_SA].append(dist)
+
                             n_split += 1
 
                 if is_right_clipped(read):
@@ -329,7 +355,8 @@ def get_split_read_positions(ibam, outFile):
 
     logging.info('Number of total pairs of positions with min support: %d' % len(total_reads_coord_min_support))
 
-    data = (positions_with_min_support_ls, positions_with_min_support_rs, total_reads_coord_min_support)
+    data = (positions_with_min_support_ls, positions_with_min_support_rs, total_reads_coord_min_support,
+            split_reads, split_read_distance)
     # Write
     with gzip.GzipFile(outFile, 'w') as fout:
         fout.write(json.dumps(data).encode('utf-8'))
@@ -358,12 +385,12 @@ def main():
     parser.add_argument('-b', '--bam', type=str,
                         default=inputBAM,
                         help="Specify input file (BAM)")
-    parser.add_argument('-o', '--out', type=str, default='split_read_pos.json.gz',
+    parser.add_argument('-o', '--out', type=str, default='split_reads.json.gz',
                         help="Specify output")
     parser.add_argument('-p', '--outputpath', type=str,
                         default='/Users/lsantuari/Documents/Processed/channel_maker_output',
                         help="Specify output path")
-    parser.add_argument('-l', '--logfile', default='split_read_pos.log',
+    parser.add_argument('-l', '--logfile', default='split_reads.log',
                         help='File in which to write logs.')
 
     args = parser.parse_args()
