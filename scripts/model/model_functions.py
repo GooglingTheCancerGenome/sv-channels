@@ -163,6 +163,7 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test,
     # print(predicted)
     # true
     y_index = ytest_binary.argmax(axis=1)
+    # print(y_index)
 
     # write predictions
     write_bed_wrong_predictions(predicted, y_index, win_ids_test, class_labels)
@@ -192,7 +193,7 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test,
         precision[k], recall[k], thresholds[k] = precision_recall_curve(ytest_binary[:, i],
                                                                         probs[:, i])
         average_precision[k] = average_precision_score(ytest_binary[:, i], probs[:, i], average="weighted")
-        f1_score_metric[k] = f1_score(y_index, predicted, average=None)[i]
+        # f1_score_metric[k] = f1_score(y_index, predicted, average=None)[i]
 
     # A "micro-average": quantifying score on all classes jointly
     precision["micro"], recall["micro"], _ = precision_recall_curve(ytest_binary.ravel(),
@@ -202,13 +203,13 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test,
     print('Average precision score, weighted over all classes: {0:0.2f}'
           .format(average_precision["weighted"]))
 
-    f1_score_metric["weighted"] = f1_score(y_index, predicted, average="weighted")
+    # f1_score_metric["weighted"] = f1_score(y_index, predicted, average="weighted")
 
     results = results.append({
         "run": str(cv_iter + 1),
         "test_set_size": X_test.shape[0],
-        "average_precision_score": average_precision["weighted"],
-        "f1_score": f1_score_metric["weighted"]
+        "average_precision_score": average_precision["weighted"]
+        # "f1_score": f1_score_metric["weighted"]
     }, ignore_index=True)
 
     plot_precision_recall(cv_iter, mapclasses,

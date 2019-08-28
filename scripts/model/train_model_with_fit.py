@@ -157,6 +157,19 @@ def get_data_dir(sampleName):
 
 
 def data(sampleName):
+
+    def filter_labels(X, y, win_ids):
+
+        # print(y)
+        keep = [i for i, v in enumerate(y) if v in [mapclasses["DEL"], mapclasses["noDEL"]]]
+        # print(keep)
+        X = X[keep]
+        y = y[keep]
+        win_ids = win_ids[keep]
+
+        print(Counter(y))
+        return X, y, win_ids
+
     logging.info('Loading data for {}...'.format(sampleName))
 
     channel_dir = get_data_dir(sampleName)
@@ -228,10 +241,31 @@ def data(sampleName):
     # win_ids = win_ids[new_indices]
 
     logging.info('Data for {} loaded'.format(sampleName))
+
+    X, y, win_ids = filter_labels(X, y, win_ids)
+
     return X, y, win_ids
 
 
+def train_and_test_data(sampleName):
+
+    # Datasets
+    X, y, win_ids = data(sampleName)
+
+    X = np.array(X)
+    y = np.array(y)
+
+    # split into train/validation sets
+    X_train, X_test, y_train, y_test, win_ids_train, win_ids_test = train_test_split(X, y, win_ids,
+                                                                                     test_size=0.3, random_state=2,
+                                                                                     stratify=y,
+                                                                                     shuffle=True)
+
+    return X_train, X_test, y_train, y_test, win_ids_train, win_ids_test
+
+
 def create_model(dim_length, dim_channels, class_number):
+
     layers = 2
     filters = [4] * layers
     fc_hidden_nodes = 6
@@ -286,30 +320,13 @@ def create_model(dim_length, dim_channels, class_number):
     return model
 
 
-def train(sampleName):
+def train(sampleName, params, X_train, y_train,  y_train_binary):
+
     channel_data_dir = get_data_dir(sampleName)
 
     # win_len = 200
     # padding_len = 10
     # dim = win_len * 2 + padding_len
-
-    batch_size = 256
-    epochs = 20
-
-    # Datasets
-    X, y, win_ids = data(sampleName)
-
-    X = np.array(X)
-    y = np.array(y)
-
-    # Parameters
-    params = {'dim': X.shape[1],
-              'batch_size': batch_size,
-              'epochs': epochs,
-              'val_split': 0.2,
-              'n_classes': len(mapclasses.keys()),
-              'n_channels': X.shape[2],
-              'shuffle': True}
 
     plots_dir = os.path.join(channel_data_dir, 'plots_' + sampleName)
     create_dir(plots_dir)
@@ -317,19 +334,36 @@ def train(sampleName):
     # for i, window in enumerate(X):
     #     plot_channels(plots_dir, window, y[i], win_ids[i])
 
-    # split into train/validation sets
-    X_train, X_test, y_train, y_test, win_ids_train, win_ids_test = train_test_split(X, y, win_ids,
-                                                                                     test_size=0.3, random_state=2,
-                                                                                     stratify=y,
-                                                                                     shuffle=True)
-
-    y_train_binary = to_categorical(y_train, num_classes=params['n_classes'])
-    y_test_binary = to_categorical(y_test, num_classes=params['n_classes'])
-
     class_weights = class_weight.compute_class_weight('balanced',
                                                       np.unique(y_train),
                                                       y_train)
     class_weights = dict(enumerate(class_weights))
+
+    # Balancing dataset
+    sampling = 'oversample'
+
+    cnt_lab = Counter(y_train)
+    max_v = max([v for k, v in cnt_lab.items()])
+    print(cnt_lab)
+    print('Maximum number of labels = ' + str(max_v))
+
+    data_balanced = []
+    labels_balanced = []
+
+    for l in cnt_lab.keys():
+        # print(l)
+        iw = np.where(y_train == l)
+        ii = np.random.choice(a=iw[0], size=max_v, replace=True) if sampling == 'oversample' else iw[0][:min_v]
+        data_balanced.extend(X_train[ii])
+        labels_balanced.extend(y_train[ii])
+
+    print(Counter(labels_balanced))
+
+    X_train = np.array(data_balanced)
+    y_train = np.array(labels_balanced)
+    y_train_binary = to_categorical(y_train, num_classes=params['n_classes'])
+
+    # End balancing
 
     # model = create_model(X, y_train_binary)
 
@@ -353,26 +387,47 @@ def train(sampleName):
                         batch_size=params['batch_size'],
                         epochs=params['epochs'],
                         shuffle=True,
-                        class_weight=class_weights,
-                        verbose=2,
+                        # class_weight=class_weights,
+                        verbose=1,
                         callbacks=[tbCallBack, esCallback]
                         )
 
-    return model, history, X.shape[0], int(X.shape[0] * params['val_split']), X_test, y_test_binary, win_ids_test
+    return model, history, X_train.shape[0], int(X_train.shape[0] * params['val_split'])
 
 
 def train_and_test_model(sampleName_training, sampleName_test, outDir):
+
+    X_train, X_test, y_train, y_test, win_ids_train, win_ids_test = train_and_test_data(sampleName_training)
+
+    batch_size = 256
+    epochs = 20
+
+    # Parameters
+    params = {'dim': X_train.shape[1],
+              'batch_size': batch_size,
+              'epochs': epochs,
+              'val_split': 0.2,
+              'n_classes': len(mapclasses.keys()),
+              'n_channels': X_train.shape[2],
+              'shuffle': True}
+
+    y_train_binary = to_categorical(y_train, num_classes=params['n_classes'])
+    y_test_binary = to_categorical(y_test, num_classes=params['n_classes'])
+
     model_fn = os.path.join(outDir, 'model_' + sampleName_training + '.hdf5')
-    # if os.path.exists(model_fn):
-    #     print('Model {} found. Loading model...'.format(model_fn))
-    #     model = load_model(model_fn)
-    # else:
 
-    print('Training model on {}...'.format(sampleName_training))
-    model, history, train_set_size, validation_set_size,\
-        X_test, y_test_binary, win_ids_test = train(sampleName_training)
+    if os.path.exists(model_fn):
 
-    model.save(model_fn)
+        print('Model {} found. Loading model...'.format(model_fn))
+        model = load_model(model_fn)
+
+    else:
+
+        print('Training model on {}...'.format(sampleName_training))
+        model, history, train_set_size, validation_set_size = train(sampleName_training,
+                                                                    params, X_train, y_train, y_train_binary)
+
+        model.save(model_fn)
 
     results = pd.DataFrame()
 
