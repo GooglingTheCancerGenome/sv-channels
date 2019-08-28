@@ -82,7 +82,7 @@ def train_model(model, xtrain, ytrain, xval, yval):
     return history, best_model
 
 
-def evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
+def evaluate_model(model, X_test, ytest_binary, win_ids_test,
                    results, cv_iter, output, mapclasses, output_dir):
 
     def write_bed_wrong_predictions(predicted, y_index, win_ids_test, class_labels):

@@ -14,6 +14,8 @@ from time import time
 import argparse
 import bcolz
 
+from sklearn.utils import class_weight
+
 from keras.models import Sequential
 from keras.layers import Dense, Activation, Convolution1D, Lambda, \
     Convolution2D, Flatten, \
@@ -32,12 +34,12 @@ from model_functions import create_model, train_model, evaluate_model, create_di
 
 import tensorflow as tf
 
-gpu_options = tf.GPUOptions(allow_growth=True)
-sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options,
-                                        intra_op_parallelism_threads=0,
-                                        inter_op_parallelism_threads=0,
-                                        allow_soft_placement=True
-                                        ))
+gpu_options = tf.compat.v1.GPUOptions(allow_growth=True)
+sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=gpu_options,
+                                                            intra_op_parallelism_threads=0,
+                                                            inter_op_parallelism_threads=0,
+                                                            allow_soft_placement=True
+                                                            ))
 tf.compat.v1.keras.backend.set_session(sess)
 
 mapclasses = {'DEL': 0, 'noDEL': 1, 'UK_other': 2, 'UK_single_partial': 3, 'UK_multiple_on_either_windows': 4}
@@ -127,7 +129,6 @@ def plot_channels(outDir, X, z, l):
 
 
 def get_hpc_flag():
-
     fileDir = os.path.dirname(os.path.abspath(__file__))
     parentDir = os.path.dirname(fileDir)
     newPath = os.path.join(parentDir, 'genome_wide')
@@ -144,7 +145,6 @@ def get_hpc_flag():
 
 
 def get_data_dir(sampleName):
-
     HPC_MODE = get_hpc_flag()
 
     channel_dir = \
@@ -157,7 +157,6 @@ def get_data_dir(sampleName):
 
 
 def data(sampleName):
-
     logging.info('Loading data for {}...'.format(sampleName))
 
     channel_dir = get_data_dir(sampleName)
@@ -168,18 +167,17 @@ def data(sampleName):
 
     # class_dict = {'positive': 'DEL', 'negative': 'noDEL'}
 
-    #for label_type in ['positive', 'negative']:
+    # for label_type in ['positive', 'negative']:
 
-        # fn = os.path.join(channel_dir, 'windows', label_type + '.hdf5')
-        # d = h5py.File(fn)
-        #
-        # fn = os.path.join(channel_dir, 'windows', label_type + '_labels.json.gz')
-        #
-        # with gzip.GzipFile(fn, 'r') as fin:
-        #     labels = json.loads(fin.read().decode('utf-8'))
+    # fn = os.path.join(channel_dir, 'windows', label_type + '.hdf5')
+    # d = h5py.File(fn)
+    #
+    # fn = os.path.join(channel_dir, 'windows', label_type + '_labels.json.gz')
+    #
+    # with gzip.GzipFile(fn, 'r') as fin:
+    #     labels = json.loads(fin.read().decode('utf-8'))
 
     for label_type in ['test']:
-
         carray_file = os.path.join(channel_dir,
                                    'windows', label_type + '_win200_carray')
         logging.info('Loading file: {}'.format(carray_file))
@@ -208,8 +206,8 @@ def data(sampleName):
         #     y.extend(list(map(lambda i: labs[i], rnd_idx)))
         #     win_ids.extend(list(map(lambda i: labs_keys[i], rnd_idx)))
 
-    #X = np.concatenate(numpy_array, axis=0)
-    #X = X[:, :, np.array([0,1,2,7,8,26,27])]
+    # X = np.concatenate(numpy_array, axis=0)
+    # X = X[:, :, np.array([0,1,2,7,8,26,27])]
     # X = np.delete(X,33,2)
 
     logging.info(X.shape)
@@ -234,7 +232,6 @@ def data(sampleName):
 
 
 def create_model(dim_length, dim_channels, class_number):
-
     layers = 2
     filters = [4] * layers
     fc_hidden_nodes = 6
@@ -279,18 +276,17 @@ def create_model(dim_length, dim_channels, class_number):
                   optimizer=Adam(lr=learning_rate),
                   metrics=['accuracy'])
 
-    i = 0
-    for model, params, model_types in [model]:
-        logging.info('model ' + str(i))
-        i = i + 1
-        logging.info(params)
-        logging.info(model.summary())
+    # i = 0
+    # for model, params, model_types in [model]:
+    #     logging.info('model ' + str(i))
+    #     i = i + 1
+    #     logging.info(params)
+    #     logging.info(model.summary())
 
     return model
 
 
 def train(sampleName):
-
     channel_data_dir = get_data_dir(sampleName)
 
     # win_len = 200
@@ -315,23 +311,25 @@ def train(sampleName):
               'n_channels': X.shape[2],
               'shuffle': True}
 
-    plots_dir = os.path.join(channel_data_dir, 'plots_'+sampleName)
+    plots_dir = os.path.join(channel_data_dir, 'plots_' + sampleName)
     create_dir(plots_dir)
 
     # for i, window in enumerate(X):
     #     plot_channels(plots_dir, window, y[i], win_ids[i])
 
     # split into train/validation sets
-    # X_train, X_test, y_train, y_test = train_test_split(X, y,
-    #                                                     test_size=0.3, random_state=2,
-    #                                                     stratify=y,
-    #                                                     shuffle=True)
+    X_train, X_test, y_train, y_test, win_ids_train, win_ids_test = train_test_split(X, y, win_ids,
+                                                                                     test_size=0.3, random_state=2,
+                                                                                     stratify=y,
+                                                                                     shuffle=True)
 
-    y_train_binary = to_categorical(y, num_classes=params['n_classes'])
+    y_train_binary = to_categorical(y_train, num_classes=params['n_classes'])
+    y_test_binary = to_categorical(y_test, num_classes=params['n_classes'])
 
-    c = dict(Counter(y))
-    total_labels = sum(c.values())
-    class_weights = {k: v / total_labels for k, v in c.items()}
+    class_weights = class_weight.compute_class_weight('balanced',
+                                                      np.unique(y_train),
+                                                      y_train)
+    class_weights = dict(enumerate(class_weights))
 
     # model = create_model(X, y_train_binary)
 
@@ -350,7 +348,7 @@ def train(sampleName):
 
     logging.info('Fitting model...')
     # Train model on dataset
-    history = model.fit(X, y_train_binary,
+    history = model.fit(X_train, y_train_binary,
                         validation_split=params['val_split'],
                         batch_size=params['batch_size'],
                         epochs=params['epochs'],
@@ -360,51 +358,55 @@ def train(sampleName):
                         callbacks=[tbCallBack, esCallback]
                         )
 
-    return model, history, X.shape[0], int(X.shape[0]*params['val_split'])
+    return model, history, X.shape[0], int(X.shape[0] * params['val_split']), X_test, y_test_binary, win_ids_test
 
 
 def train_and_test_model(sampleName_training, sampleName_test, outDir):
+    model_fn = os.path.join(outDir, 'model_' + sampleName_training + '.hdf5')
+    # if os.path.exists(model_fn):
+    #     print('Model {} found. Loading model...'.format(model_fn))
+    #     model = load_model(model_fn)
+    # else:
 
-    model_fn = os.path.join(outDir, 'model_'+sampleName_training+'.hdf5')
-    if os.path.exists(model_fn):
-        print('Model {} found. Loading model...'.format(model_fn))
-        model = load_model(model_fn)
-    else:
-        print('Training model on {}...'.format(sampleName_training))
-        model, history, train_set_size, validation_set_size = train(sampleName_training)
-        model.save(model_fn)
+    print('Training model on {}...'.format(sampleName_training))
+    model, history, train_set_size, validation_set_size,\
+        X_test, y_test_binary, win_ids_test = train(sampleName_training)
+
+    model.save(model_fn)
 
     results = pd.DataFrame()
 
-    X_test, y_test, win_ids_test = data(sampleName_test)
-    ytest_binary = to_categorical(y_test, num_classes=len(mapclasses.keys()))
+    # X_test, y_test, win_ids_test = data(sampleName_test)
+    # ytest_binary = to_categorical(y_test, num_classes=len(mapclasses.keys()))
     # print(win_ids_test[0])
 
     # mapclasses = {'DEL': 0, 'noDEL': 1}
 
     outDit_eval = os.path.join(outDir,
-                               'train_'+sampleName_training+'_test_'+sampleName_test)
+                               'train_' + sampleName_training + '_test_' + sampleName_test)
 
-    intermediate_results, metrics = evaluate_model(model, X_test, y_test, ytest_binary, win_ids_test,
+    # intermediate_results, metrics = evaluate_model(model, X_test, ytest_binary, win_ids_test,
+    #                                                results, 1, 'results', mapclasses, outDit_eval)
+
+    intermediate_results, metrics = evaluate_model(model, X_test, y_test_binary, win_ids_test,
                                                    results, 1, 'results', mapclasses, outDit_eval)
 
     results = results.append(intermediate_results)
 
     results.to_csv(os.path.join(outDir,
-                                'train_'+sampleName_training+'_test_'+sampleName_test+'_results.csv'), sep='\t')
+                                'train_' + sampleName_training + '_test_' + sampleName_test + '_results.csv'), sep='\t')
 
     # get_channel_labels()
 
 
 def main():
-
     parser = argparse.ArgumentParser(description='Train and test model')
     parser.add_argument('-p', '--outputpath', type=str,
                         default='/Users/lsantuari/Documents/Processed/channel_maker_output',
                         help="Specify output path")
     parser.add_argument('-t', '--training_sample', type=str, default='NA12878',
                         help="Specify training sample")
-    parser.add_argument('-x', '--test_sample', type=str, default='NA24385',
+    parser.add_argument('-x', '--test_sample', type=str, default='NA12878',
                         help="Specify training sample")
     parser.add_argument('-l', '--logfile', default='windows.log',
                         help='File in which to write logs.')
