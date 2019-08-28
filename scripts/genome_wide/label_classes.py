@@ -1,10 +1,15 @@
 from pysam import VariantRecord
+import re
 
 # Classes
 
+__bpRE__ = None
+__symbolicRE__ = None
+
+
 class SVRecord:
 
-    def __init__(self, record):
+    def __init__(self, record, svcaller):
 
         ci_slop = 0
 
@@ -23,9 +28,9 @@ class SVRecord:
             chr2 = record.chrom
             pos2 = record.stop
             if 'SVLEN' in record.info.keys():
-                indellen = record.info['SVLEN']
+                self.indellen = record.info['SVLEN']
             else:
-                indellen = abs(record.stop - record.pos)
+                self.indellen = abs(record.stop - record.pos)
 
         # logging.info(record.info.keys())
 
@@ -35,6 +40,9 @@ class SVRecord:
         self.chrom2 = chr2.replace('chr', '')
         self.end = pos2
         self.alt = record.alts[0]
+        self.insLen = len(self.alt)
+        self.svLen = self.end - self.start + 1 if self.chrom == self.chrom2 else None
+        self.ct = ct
 
         # CIPOS
         if 'CIPOS' in record.info.keys():
@@ -57,7 +65,24 @@ class SVRecord:
             self.ciend = (-ci_slop, ci_slop)
 
         self.filter = record.filter
-        self.svtype = record.info['SVTYPE']
+
+        # set SVTYPE
+        if svcaller is None:
+
+            self.svtype = record.info['SVTYPE']
+
+        else:
+
+            if self.chrom != self.chrom2:
+                self.svtype = 'BP'
+            elif self.insLen >= abs(self.svLen) * 0.7:
+                self.svtype = 'INS'
+            elif self.ct in ['5to5', '3to3']:
+                self.svtype = 'INV'
+            elif (self.start < self.end) != (ct in ['5to3', '3to5']):
+                self.svtype = 'DEL'
+            else:
+                self.svtype = record.info['SVTYPE']
 
     @staticmethod
     def stdchrom(chrom):
@@ -133,3 +158,15 @@ class SVRecord:
                                                         resultBP.group(2), resultBP.group(3), resultBP.group(4),
                                                         resultBP.group(5))
         return (ct, chr2, pos2, indellen)
+
+
+def setupREs():
+    '''
+    Function of the mergevcf tool by Jonathan Dursi (Simpson Lab)
+    URL: https://github.com/ljdursi/mergevcf
+    '''
+    global __symbolicRE__
+    global __bpRE__
+    if __symbolicRE__ is None or __bpRE__ is None:
+        __symbolicRE__ = re.compile(r'.*<([A-Z:]+)>.*')
+        __bpRE__ = re.compile(r'([ACGTNactgn\.]*)([\[\]])([a-zA-Z0-9\.]+:\d+)([\[\]])([ACGTNacgtn\.]*)')

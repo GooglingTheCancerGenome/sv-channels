@@ -22,6 +22,15 @@ with open('parameters.json', 'r') as f:
 HPC_MODE = config["DEFAULT"]["HPC_MODE"]
 
 
+def get_chr_list():
+
+    chrlist = list(map(str, range(1, 23)))
+    chrlist.extend(['X'])
+    #chrlist = ['17']
+
+    return chrlist
+
+
 def read_vcf(invcf):
 
     # Check file existence
@@ -32,7 +41,7 @@ def read_vcf(invcf):
     vcf_in = VariantFile(invcf, 'r')
     for rec in vcf_in.fetch():
 
-        var = SVRecord(rec)
+        var = SVRecord(rec, None)
 
         chrom1 = var.chrom
         pos1_start = var.start + var.cipos[0]
@@ -265,13 +274,13 @@ def overlap(sv_list, cpos_list, win_hlen, ground_truth, outDir):
                 #         lu_end_elem_start, lu_end_elem_end, lu_end_elem_data
                 #     )
                 # )
-                if pos1 in np.arange(lu_start_elem_start-2, lu_start_elem_end+2) and \
-                        pos2 in np.arange(lu_end_elem_start-2, lu_end_elem_end+2):
-                    sv_covered.add(lu_start_elem_svid)
-                    labels[pos_id] = lu_start_elem_svtype
-                else:
-                    sv_covered.add(lu_start_elem_svid)
-                    labels[pos_id] = 'UK_overlap_not_matching'
+                # if pos1 in np.arange(lu_start_elem_start-2, lu_start_elem_end+2) and \
+                #         pos2 in np.arange(lu_end_elem_start-2, lu_end_elem_end+2):
+                sv_covered.add(lu_start_elem_svid)
+                labels[pos_id] = lu_start_elem_svtype
+                # else:
+                #     sv_covered.add(lu_start_elem_svid)
+                #     labels[pos_id] = 'UK_overlap_not_matching'
             else:
                 labels[pos_id] = 'UK_single_partial'
 
@@ -396,13 +405,15 @@ def get_labels(ibam, sampleName, win_len, ground_truth, outFile, outDir):
     win_hlen = int(int(win_len) / 2)
     # get chromosome lengths
     chr_dict = get_chr_len_dict(ibam)
+    chrlist = get_chr_list()
 
     cpos_list = load_all_clipped_read_positions(sampleName, win_hlen, chr_dict, outDir)
 
     # Keep only positions that can be used to create windows
     chr_len_dict = get_chr_len_dict(ibam)
     cpos_list = [(chrom1, pos1, chrom2, pos2) for chrom1, pos1, chrom2, pos2 in cpos_list
-                 if win_hlen <= pos1 <= chr_len_dict[chrom1] - win_hlen and
+                 if chrom1 in chrlist and chrom2 in chrlist and
+                 win_hlen <= pos1 <= chr_len_dict[chrom1] - win_hlen and
                  win_hlen <= pos2 <= chr_len_dict[chrom2] - win_hlen]
 
     filename, file_extension = os.path.splitext(ground_truth)
@@ -446,9 +457,11 @@ def main():
                         help="Specify window size")
     parser.add_argument('-gt', '--ground_truth', type=str,
                         default=os.path.join('/Users/lsantuari/Documents/Data/germline/NA24385',
-                                            'NIST_SVs_Integration_v0.6/processed/HG002_SVs_Tier1_v0.6.PASS.vcf.gz'),
+                                             'NIST_SVs_Integration_v0.6/processed/HG002_SVs_Tier1_v0.6.PASS.vcf.gz'),
+                        # default=os.path.join('/Users/lsantuari/Documents/Data/germline/CHM/Huddleston2016',
+                        #                     'structural_variants/CHM1_CHM13_pseudodiploid_SVs.vcf.gz'),
                         # default=os.path.join('/Users/lsantuari/Documents/Data/svclassify',
-                        #                       'Personalis_1000_Genomes_deduplicated_deletions.bedpe'),
+                        #                     'Personalis_1000_Genomes_deduplicated_deletions.bedpe'),
                         # default=os.path.join('/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data',
                         #                      'run_test_INDEL/SV/chr17_INDEL.sur'),
                         help="Specify ground truth VCF/BEDPE file")
