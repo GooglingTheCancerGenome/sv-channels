@@ -31,7 +31,7 @@ def create_dir(directory):
             raise
 
 
-def create_model(X, y_binary):
+def create_model_with_mcfly(X, y_binary):
 
     models = modelgen.generate_models(X.shape,
                                       y_binary.shape[1],
@@ -57,7 +57,7 @@ def create_model(X, y_binary):
     return models
 
 
-def train_model(model, xtrain, ytrain, xval, yval):
+def train_model_with_mcfly(model, xtrain, ytrain, xval, yval):
 
     train_set_size = xtrain.shape[0]
     nr_epochs = 5
@@ -76,7 +76,6 @@ def train_model(model, xtrain, ytrain, xval, yval):
                              epochs=nr_epochs,
                              validation_data=(xval, yval),
                              verbose=True,
-                             # sample_weight=sample_weights,
                              shuffle=True)
 
     return history, best_model

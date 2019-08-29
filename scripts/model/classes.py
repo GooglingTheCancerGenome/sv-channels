@@ -1,12 +1,13 @@
 import numpy as np
 import keras
+import dask.array as da
 
 
 class DataGenerator(keras.utils.Sequence):
     'Generates data for Keras'
 
-    def __init__(self, chr_array, list_IDs, labels, batch_size=32, dim=410, n_channels=34,
-                 n_classes=2, shuffle=True):
+    def __init__(self, chr_array, list_IDs, labels, batch_size, dim, n_channels,
+                 n_classes, shuffle=True):
         'Initialization'
         self.dim = dim
         self.batch_size = batch_size
@@ -44,10 +45,13 @@ class DataGenerator(keras.utils.Sequence):
     def __data_generation(self, list_IDs_temp):
         'Generates data containing batch_size samples'  # X : (n_samples, *dim, n_channels)
         # Initialization
-        X = np.zeros((self.batch_size, self.dim, self.n_channels))
+        X = np.zeros((self.batch_size, self.dim, self.n_channels), dtype=np.float32)
         y = np.zeros((self.batch_size), dtype=int)
 
         assert len(list_IDs_temp) > 0
+
+        padding = da.zeros(shape=(10, self.n_channels), dtype=np.float32)
+        padding = da.from_array(padding)
 
         # Generate data
         for i, ID in enumerate(list_IDs_temp):
@@ -63,13 +67,11 @@ class DataGenerator(keras.utils.Sequence):
                     100 < pos2 < self.chr_array[chr2].shape[0] - 100:
                 # print(X[i,].shape)
 
-                X[i,] = np.concatenate(
-                    (
-                        np.array(self.chr_array[chr1][pos1 - 100:pos1 + 100, :]),
-                        np.zeros(shape=(10, self.chr_array[chr1].shape[1]), dtype=np.float32),
-                        np.array(self.chr_array[chr2][pos2 - 100:pos2 + 100, :])
-                    ),
-                    axis=0)
+                dask_arrays = []
+                dask_arrays.append(self.chr_array[chr1][pos1 - 100:pos1 + 100, :])
+                dask_arrays.append(padding)
+                dask_arrays.append(self.chr_array[chr2][pos2 - 100:pos2 + 100, :])
+                X[i,] = da.concatenate(dask_arrays, axis=0)
 
                 # Store class
                 y[i] = self.labels[ID]
@@ -77,6 +79,7 @@ class DataGenerator(keras.utils.Sequence):
                 # print(Counter(y))
         # print(X)
         # print(y)
+
         assert np.array_equal(X, np.zeros((self.batch_size, self.dim, self.n_channels))) != True
 
         return X, keras.utils.to_categorical(y, num_classes=self.n_classes)

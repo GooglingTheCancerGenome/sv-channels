@@ -30,7 +30,7 @@ from keras.models import load_model
 from sklearn.model_selection import train_test_split
 from collections import Counter
 
-from model_functions import create_model, train_model, evaluate_model, create_dir
+from model_functions import create_model_with_mcfly, train_model_with_mcfly, evaluate_model, create_dir
 
 import tensorflow as tf
 
@@ -42,7 +42,9 @@ sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=gpu_opti
                                                             ))
 tf.compat.v1.keras.backend.set_session(sess)
 
-mapclasses = {'DEL': 0, 'noDEL': 1, 'UK_other': 2, 'UK_single_partial': 3, 'UK_multiple_on_either_windows': 4}
+mapclasses_all = {'DEL': 0, 'noDEL': 1, 'UK_other': 2, 'UK_single_partial': 3, 'UK_multiple_on_either_windows': 4}
+mapclasses_pair = {'DEL': 0, 'noDEL': 1}
+mapclasses = {'DEL_start': 0, 'DEL_end': 1, 'noDEL': 2}
 
 
 def get_channel_labels():
@@ -96,7 +98,9 @@ def get_channel_labels():
 
 
 def plot_channels(outDir, X, z, l):
-    title_plot = str(z) + '_' + str(l)
+    mapclasses_rev = {v: k for k, v in mapclasses.items()}
+
+    title_plot = mapclasses_rev[z] + '_' + str(l)
     print('Plotting %s' % title_plot)
 
     number_channels = X.shape[1]
@@ -105,9 +109,9 @@ def plot_channels(outDir, X, z, l):
     # print(len(label))
 
     fig = plt.figure(figsize=(6, 4))
-    fig.suptitle(str(z) + ' ' + l, fontsize=20)
+    fig.suptitle(mapclasses_rev[z] + ' ' + l, fontsize=20)
 
-    for j in range(number_channels - 1, -1, -1):
+    for j in range(number_channels):  # - 1, -1, -1):
 
         if sum(X[:, j]) != 0:
             X_win = (X[:, j] - min(X[:, j])) / max(X[:, j])
@@ -116,6 +120,7 @@ def plot_channels(outDir, X, z, l):
 
         Z = [x + j + 1 for x in X_win]
         plt.plot(Z, label=label[j], linewidth=0.9)
+        plt.fill_between(Z, 0, interpolate=True)
         plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., prop={'size': 5})
         plt.yticks(range(0, len(label) + 1, 1))
         plt.tick_params(axis='both', which='major', labelsize=5)
@@ -124,8 +129,8 @@ def plot_channels(outDir, X, z, l):
 
     plt.savefig(os.path.join(outDir, title_plot + '.png'),
                 format='png', dpi=300, bbox_inches='tight')
-    # plt.show()
-    plt.close()
+    plt.show()
+    # plt.close()
 
 
 def get_hpc_flag():
@@ -159,9 +164,8 @@ def get_data_dir(sampleName):
 def data(sampleName):
 
     def filter_labels(X, y, win_ids):
-
         # print(y)
-        keep = [i for i, v in enumerate(y) if v in [mapclasses["DEL"], mapclasses["noDEL"]]]
+        keep = np.array([i for i, v in enumerate(y) if v in ['DEL', 'noDEL']])
         # print(keep)
         X = X[keep]
         y = y[keep]
@@ -220,7 +224,8 @@ def data(sampleName):
         #     win_ids.extend(list(map(lambda i: labs_keys[i], rnd_idx)))
 
     # X = np.concatenate(numpy_array, axis=0)
-    # X = X[:, :, np.array([0,1,2,7,8,26,27])]
+    # X = X[:, :, np.array([0,6,7,8,9,25,26])]
+    X = X[:, :, np.array([0, 6, 7])]
     # X = np.delete(X,33,2)
 
     logging.info(X.shape)
@@ -228,6 +233,16 @@ def data(sampleName):
 
     # mapclasses = {'DEL': 0, 'noDEL': 1, 'UK_other': 2, 'UK_single_partial': 3, 'UK_multiple_on_either_windows': 4}
     # mapclasses = {'DEL': 0, 'noDEL': 1}
+
+    X, y, win_ids = filter_labels(X, y, win_ids)
+
+    X = np.stack([X[:, :200, :], X[:, 210:, :]], axis=0)
+    y = list(map(lambda x: x + '_start' if x == 'DEL' else x, y))
+    y.extend(
+        list(map(lambda x: x + '_end' if x == 'DEL' else x, y))
+    )
+    print(Counter(y))
+    win_ids = win_ids + win_ids
 
     y = np.array([mapclasses[i] for i in y])
     win_ids = np.array(win_ids)
@@ -242,13 +257,12 @@ def data(sampleName):
 
     logging.info('Data for {} loaded'.format(sampleName))
 
-    X, y, win_ids = filter_labels(X, y, win_ids)
+    print(X.shape)
 
     return X, y, win_ids
 
 
 def train_and_test_data(sampleName):
-
     # Datasets
     X, y, win_ids = data(sampleName)
 
@@ -265,6 +279,14 @@ def train_and_test_data(sampleName):
 
 
 def create_model(dim_length, dim_channels, class_number):
+    # layers = 2
+    # filters = [4] * layers
+    # fc_hidden_nodes = 6
+    # learning_rate = 4
+    # regularization_rate = 1
+    # kernel_size = 7
+    # drp_out1 = 0
+    # drp_out2 = 0
 
     layers = 2
     filters = [4] * layers
@@ -320,19 +342,12 @@ def create_model(dim_length, dim_channels, class_number):
     return model
 
 
-def train(sampleName, params, X_train, y_train,  y_train_binary):
-
+def train(sampleName, params, X_train, y_train, y_train_binary):
     channel_data_dir = get_data_dir(sampleName)
 
     # win_len = 200
     # padding_len = 10
     # dim = win_len * 2 + padding_len
-
-    plots_dir = os.path.join(channel_data_dir, 'plots_' + sampleName)
-    create_dir(plots_dir)
-
-    # for i, window in enumerate(X):
-    #     plot_channels(plots_dir, window, y[i], win_ids[i])
 
     class_weights = class_weight.compute_class_weight('balanced',
                                                       np.unique(y_train),
@@ -340,11 +355,15 @@ def train(sampleName, params, X_train, y_train,  y_train_binary):
     class_weights = dict(enumerate(class_weights))
 
     # Balancing dataset
-    sampling = 'oversample'
+    sampling = 'undersample'
 
     cnt_lab = Counter(y_train)
+
+    min_v = min([v for k, v in cnt_lab.items()])
     max_v = max([v for k, v in cnt_lab.items()])
+
     print(cnt_lab)
+    print('Minimum number of labels = ' + str(min_v))
     print('Maximum number of labels = ' + str(max_v))
 
     data_balanced = []
@@ -353,7 +372,12 @@ def train(sampleName, params, X_train, y_train,  y_train_binary):
     for l in cnt_lab.keys():
         # print(l)
         iw = np.where(y_train == l)
-        ii = np.random.choice(a=iw[0], size=max_v, replace=True) if sampling == 'oversample' else iw[0][:min_v]
+
+        if sampling == 'oversample':
+            ii = np.random.choice(a=iw[0], size=max_v, replace=True)
+        elif sampling == 'undersample':
+            ii = np.random.choice(a=iw[0], size=min_v, replace=False)
+
         data_balanced.extend(X_train[ii])
         labels_balanced.extend(y_train[ii])
 
@@ -361,43 +385,64 @@ def train(sampleName, params, X_train, y_train,  y_train_binary):
 
     X_train = np.array(data_balanced)
     y_train = np.array(labels_balanced)
-    y_train_binary = to_categorical(y_train, num_classes=params['n_classes'])
+    # y_train_binary = to_categorical(y_train, num_classes=params['n_classes'])
 
     # End balancing
 
-    # model = create_model(X, y_train_binary)
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train,
+                                                      test_size=0.3,
+                                                      random_state=2,
+                                                      stratify=y_train,
+                                                      shuffle=True)
 
-    # history, model = train_model(model, X_train, y_train_binary,
-    #                              X_test, y_test_binary, class_weights)
+    y_train_binary = to_categorical(y_train, num_classes=params['n_classes'])
+    y_val_binary = to_categorical(y_val, num_classes=params['n_classes'])
+
+    model = create_model_with_mcfly(X_train, y_train_binary)
+
+    history, model = train_model_with_mcfly(model, X_train, y_train_binary,
+                                            X_val, y_val_binary)
 
     # Design model
-    logging.info('Creating model...')
-    model = create_model(params['dim'], params['n_channels'], params['n_classes'])
-
-    esCallback = EarlyStopping(monitor='val_loss', patience=0, verbose=1, mode='auto')
-    tbCallBack = TensorBoard(log_dir=os.path.join(channel_data_dir, 'Graph'),
-                             histogram_freq=0,
-                             write_graph=True,
-                             write_images=True)
-
-    logging.info('Fitting model...')
-    # Train model on dataset
-    history = model.fit(X_train, y_train_binary,
-                        validation_split=params['val_split'],
-                        batch_size=params['batch_size'],
-                        epochs=params['epochs'],
-                        shuffle=True,
-                        # class_weight=class_weights,
-                        verbose=1,
-                        callbacks=[tbCallBack, esCallback]
-                        )
+    # logging.info('Creating model...')
+    # model = create_model(params['dim'], params['n_channels'], params['n_classes'])
+    #
+    # esCallback = EarlyStopping(monitor='val_loss', patience=0, verbose=1, mode='auto')
+    # tbCallBack = TensorBoard(log_dir=os.path.join(channel_data_dir, 'Graph'),
+    #                          histogram_freq=0,
+    #                          write_graph=True,
+    #                          write_images=True)
+    #
+    # logging.info('Fitting model...')
+    # # Train model on dataset
+    # history = model.fit(X_train, y_train_binary,
+    #                     validation_split=params['val_split'],
+    #                     batch_size=params['batch_size'],
+    #                     epochs=params['epochs'],
+    #                     shuffle=True,
+    #                     class_weight=class_weights,
+    #                     verbose=1,
+    #                     callbacks=[esCallback]
+    #                     )
 
     return model, history, X_train.shape[0], int(X_train.shape[0] * params['val_split'])
 
 
 def train_and_test_model(sampleName_training, sampleName_test, outDir):
-
     X_train, X_test, y_train, y_test, win_ids_train, win_ids_test = train_and_test_data(sampleName_training)
+
+    channel_data_dir = get_data_dir(sampleName_training)
+    plots_dir = os.path.join(channel_data_dir, 'plots_' + sampleName_training)
+    create_dir(plots_dir)
+
+    idx_positive = [i for i, v in enumerate(y_train) if v == mapclasses['DEL']]
+    idx_negative = [i for i, v in enumerate(y_train) if v == mapclasses['noDEL']]
+
+    # for i in idx_positive[:10]:
+    #     plot_channels(plots_dir, X_train[i], y_train[i], win_ids_train[i])
+    #
+    # for i in idx_negative[:10]:
+    #     plot_channels(plots_dir, X_train[i], y_train[i], win_ids_train[i])
 
     batch_size = 256
     epochs = 20
@@ -486,6 +531,8 @@ def main():
     print('Writing log file to {}'.format(logfilename))
 
     t0 = time()
+
+    # get_channel_labels()
 
     train_and_test_model(sampleName_training=args.training_sample,
                          sampleName_test=args.test_sample,
