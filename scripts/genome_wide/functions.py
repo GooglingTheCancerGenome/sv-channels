@@ -287,9 +287,9 @@ def create_dir(directory):
 def get_chr_list():
 
     chrlist = [str(c) for c in list(np.arange(1,23))]
-    chrlist.append('X')
+    chrlist.extend(['X', 'Y'])
+
     return chrlist
-    #return ['22']
 
 
 def get_chr_len_dict(ibam):
