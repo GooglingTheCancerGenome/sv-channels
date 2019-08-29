@@ -37,7 +37,8 @@ SAMPLE_ARRAY=('NA12878')
 #SAMPLE_ARRAY=('NA24385' 'CHM1_CHM13')
 
 #CHRARRAY=(`seq 1 22` 'X' 'Y' 'MT')
-CHRARRAY=(`seq 1 22` 'X')
+#CHRARRAY=(`seq 1 22` 'X' 'Y')
+CHRARRAY=('Y')
 
 # Run single channel scripts (0) or ChannelMaker (1)
 RUNALL=0
@@ -51,7 +52,7 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
     OUTDIR=$OUTPATH$SAMPLE
 
     for PRG in clipped_read_pos clipped_reads split_reads; do
-        JOB_NAME=$SAMPLE"_"$CHROMOSOME"_"${PRG}
+        JOB_NAME=$SAMPLE"_"${PRG}
 
         qsub -v SAMPLEARG=$SAMPLE,BAMARG=$BAM,PRGARG=${PRG},OUTARG=$OUTDIR \
             -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_channel.sge
