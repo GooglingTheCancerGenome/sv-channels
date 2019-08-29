@@ -396,7 +396,7 @@ def main():
     args = parser.parse_args()
 
     # Log file
-    cmd_name = 'split_read_pos'
+    cmd_name = 'split_reads'
     output_dir = os.path.join(args.outputpath, cmd_name)
     create_dir(output_dir)
     logfilename = os.path.join(output_dir, args.logfile)

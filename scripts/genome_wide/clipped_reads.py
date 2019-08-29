@@ -13,6 +13,7 @@ from collections import defaultdict
 import json
 from functions import *
 
+
 def get_clipped_reads(ibam, outFile):
     '''
 
@@ -85,116 +86,117 @@ def get_clipped_reads(ibam, outFile):
     last_t = time()
     # print(type(last_t))
     for i, read in enumerate(iter, start=1):
+        if read.reference_name in chr_list:
 
-        if not i % n_r:
-            now_t = time()
-            # print(type(now_t))
-            logging.info("%d alignments processed (%f alignments / s)" % (
-                i,
-                n_r / (now_t - last_t)))
-            last_t = time()
+            if not i % n_r:
+                now_t = time()
+                # print(type(now_t))
+                logging.info("%d alignments processed (%f alignments / s)" % (
+                    i,
+                    n_r / (now_t - last_t)))
+                last_t = time()
 
-        if not read.is_unmapped and read.mapping_quality >= minMAPQ:
+            if not read.is_unmapped and read.mapping_quality >= minMAPQ:
 
-            if has_indels(read):
+                if has_indels(read):
 
-                dels_start, dels_end, ins = get_indels(read)
+                    dels_start, dels_end, ins = get_indels(read)
 
-                for del_pos in dels_start:
-                    clipped_reads[read.reference_name]['D_left'][del_pos] += 1
-                for del_pos in dels_end:
-                    clipped_reads[read.reference_name]['D_right'][del_pos] += 1
-                for ins_pos in ins:
-                    clipped_reads[read.reference_name]['I'][ins_pos] += 1
+                    for del_pos in dels_start:
+                        clipped_reads[read.reference_name]['D_left'][del_pos] += 1
+                    for del_pos in dels_end:
+                        clipped_reads[read.reference_name]['D_right'][del_pos] += 1
+                    for ins_pos in ins:
+                        clipped_reads[read.reference_name]['I'][ins_pos] += 1
 
-        # Both read and mate should be mapped, with mapping quality greater than minMAPQ
-        if not read.is_unmapped and not read.mate_is_unmapped and read.mapping_quality >= minMAPQ:
+            # Both read and mate should be mapped, with mapping quality greater than minMAPQ
+            if not read.is_unmapped and not read.mate_is_unmapped and read.mapping_quality >= minMAPQ:
 
-            if is_left_clipped(read):
-                ref_pos = read.reference_start + 1
-            elif is_right_clipped(read):
-                ref_pos = read.reference_end
+                if is_left_clipped(read):
+                    ref_pos = read.reference_start + 1
+                elif is_right_clipped(read):
+                    ref_pos = read.reference_end
 
-            if read.reference_name == read.next_reference_name:
+                if read.reference_name == read.next_reference_name:
 
-                if read.is_reverse != read.mate_is_reverse:
+                    if read.is_reverse != read.mate_is_reverse:
 
-                    # Read is left-clipped
-                    if is_left_clipped(read):
-                        # print(str(read))
-                        # print('Clipped at the start: %s -> %s' % (str(read.cigarstring), str(read.cigartuples)))
-                        # print('Pos:%d, clipped_pos:%d' % (read.reference_start, read.get_reference_positions()[0]))
-                        # print('start:'+str(read.get_reference_positions()[0])+'=='+str(read.reference_start))
-                        #if ref_pos not in clipped_reads['left'].keys():
-                        #    clipped_reads['left'][ref_pos] = 1
-                        #else:
-                        clipped_reads[read.reference_name]['left'][ref_pos] += 1
+                        # Read is left-clipped
+                        if is_left_clipped(read):
+                            # print(str(read))
+                            # print('Clipped at the start: %s -> %s' % (str(read.cigarstring), str(read.cigartuples)))
+                            # print('Pos:%d, clipped_pos:%d' % (read.reference_start, read.get_reference_positions()[0]))
+                            # print('start:'+str(read.get_reference_positions()[0])+'=='+str(read.reference_start))
+                            #if ref_pos not in clipped_reads['left'].keys():
+                            #    clipped_reads['left'][ref_pos] = 1
+                            #else:
+                            clipped_reads[read.reference_name]['left'][ref_pos] += 1
 
-                        # DUPlication, channel 2
-                        # Read is mapped on the Reverse strand and mate is mapped on the Forward strand
-                        if read.is_reverse and not read.mate_is_reverse \
-                            and read.reference_start < read.next_reference_start: # Mate is mapped after read
-                                clipped_reads_duplication[read.reference_name]['after'][ref_pos] += 1
+                            # DUPlication, channel 2
+                            # Read is mapped on the Reverse strand and mate is mapped on the Forward strand
+                            if read.is_reverse and not read.mate_is_reverse \
+                                and read.reference_start < read.next_reference_start: # Mate is mapped after read
+                                    clipped_reads_duplication[read.reference_name]['after'][ref_pos] += 1
 
-                    # Read is right-clipped
-                    elif is_right_clipped(read):
-                        # print('Clipped at the end: %s -> %s' % (str(read.cigarstring), str(read.cigartuples)))
-                        # print('Pos:%d, clipped_pos:%d' %(read.reference_end, read.get_reference_positions()[-1]))
-                        # print('end: '+str(read.get_reference_positions()[-1]) + '==' + str(read.reference_end))
-                        #if ref_pos not in clipped_reads['right'].keys():
-                        #    clipped_reads['right'][ref_pos] = 1
-                        #else:
-                        clipped_reads[read.reference_name]['right'][ref_pos] += 1
+                        # Read is right-clipped
+                        elif is_right_clipped(read):
+                            # print('Clipped at the end: %s -> %s' % (str(read.cigarstring), str(read.cigartuples)))
+                            # print('Pos:%d, clipped_pos:%d' %(read.reference_end, read.get_reference_positions()[-1]))
+                            # print('end: '+str(read.get_reference_positions()[-1]) + '==' + str(read.reference_end))
+                            #if ref_pos not in clipped_reads['right'].keys():
+                            #    clipped_reads['right'][ref_pos] = 1
+                            #else:
+                            clipped_reads[read.reference_name]['right'][ref_pos] += 1
 
-                        # DUPlication, channel 1
-                        # Read is mapped on the Forward strand and mate is mapped on the Reverse strand
-                        if not read.is_reverse and read.mate_is_reverse:
+                            # DUPlication, channel 1
+                            # Read is mapped on the Forward strand and mate is mapped on the Reverse strand
+                            if not read.is_reverse and read.mate_is_reverse:
+                                # Mate is mapped before read
+                                if read.reference_start > read.next_reference_start:
+                                    clipped_reads_duplication[read.reference_name]['before'][ref_pos] += 1
+
+                        # The following if statement takes care of the inversion channels
+                        # Read and mate are mapped on the same strand: either Forward-Forward or Reverse-Reverse
+
+                    elif read.is_reverse == read.mate_is_reverse:
+                        if is_clipped(read):
                             # Mate is mapped before read
                             if read.reference_start > read.next_reference_start:
-                                clipped_reads_duplication[read.reference_name]['before'][ref_pos] += 1
+                                #if ref_pos not in clipped_reads_inversion['before'].keys():
+                                #    clipped_reads_inversion['before'][ref_pos] = 1
+                                #else:
+                                #print('Before')
+                                #print(read)
+                                # print('{}:Inversion before at {}:{}'.format(
+                                #     read.query_name,
+                                #     read.reference_name, ref_pos))
+                                clipped_reads_inversion[read.reference_name]['before'][ref_pos] += 1
+                            # Mate is mapped after read
+                            else:
+                                #if ref_pos not in clipped_reads_inversion['after'].keys():
+                                #    clipped_reads_inversion['after'][ref_pos] = 1
+                                #else:
+                                #print('After')
+                                #print(read)
+                                # print('{}:Inversion after at {}:{}'.format(
+                                #     read.query_name,
+                                #     read.reference_name, ref_pos))
+                                clipped_reads_inversion[read.reference_name]['after'][ref_pos] += 1
 
-                    # The following if statement takes care of the inversion channels
-                    # Read and mate are mapped on the same strand: either Forward-Forward or Reverse-Reverse
-
-                elif read.is_reverse == read.mate_is_reverse:
+                else:
                     if is_clipped(read):
-                        # Mate is mapped before read
-                        if read.reference_start > read.next_reference_start:
-                            #if ref_pos not in clipped_reads_inversion['before'].keys():
-                            #    clipped_reads_inversion['before'][ref_pos] = 1
-                            #else:
-                            #print('Before')
-                            #print(read)
-                            # print('{}:Inversion before at {}:{}'.format(
+                        if read.is_reverse != read.mate_is_reverse:
+                            # print('{}:Translocation opposite at {}:{}->{}:{}'.format(
                             #     read.query_name,
-                            #     read.reference_name, ref_pos))
-                            clipped_reads_inversion[read.reference_name]['before'][ref_pos] += 1
-                        # Mate is mapped after read
+                            #     read.reference_name, ref_pos,
+                            #     read.next_reference_name, read.next_reference_start))
+                            clipped_reads_translocation[read.reference_name]['opposite'][ref_pos] += 1
                         else:
-                            #if ref_pos not in clipped_reads_inversion['after'].keys():
-                            #    clipped_reads_inversion['after'][ref_pos] = 1
-                            #else:
-                            #print('After')
-                            #print(read)
-                            # print('{}:Inversion after at {}:{}'.format(
+                            # print('{}:Translocation same at {}:{}->{}:{}'.format(
                             #     read.query_name,
-                            #     read.reference_name, ref_pos))
-                            clipped_reads_inversion[read.reference_name]['after'][ref_pos] += 1
-
-            else:
-                if is_clipped(read):
-                    if read.is_reverse != read.mate_is_reverse:
-                        # print('{}:Translocation opposite at {}:{}->{}:{}'.format(
-                        #     read.query_name,
-                        #     read.reference_name, ref_pos,
-                        #     read.next_reference_name, read.next_reference_start))
-                        clipped_reads_translocation[read.reference_name]['opposite'][ref_pos] += 1
-                    else:
-                        # print('{}:Translocation same at {}:{}->{}:{}'.format(
-                        #     read.query_name,
-                        #     read.reference_name, ref_pos,
-                        #     read.next_reference_name, read.next_reference_start))
-                        clipped_reads_translocation[read.reference_name]['same'][ref_pos] += 1
+                            #     read.reference_name, ref_pos,
+                            #     read.next_reference_name, read.next_reference_start))
+                            clipped_reads_translocation[read.reference_name]['same'][ref_pos] += 1
 
 
     # for mate_position in ['after', 'before']:
