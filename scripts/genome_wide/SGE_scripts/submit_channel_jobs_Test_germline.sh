@@ -72,7 +72,7 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
 
     for CHROMOSOME in ${CHRARRAY[@]}; do
     #for CHROMOSOME in '1'; do
-        for PRG in clipped_read_pos split_read_pos coverage clipped_read_distance clipped_reads split_read_distance snv; do
+        for PRG in coverage snv clipped_read_distance; do
 	#for PRG in snv; do
             JOB_NAME=$SAMPLE"_"$CHROMOSOME"_"${PRG}
 
