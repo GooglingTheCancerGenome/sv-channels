@@ -43,8 +43,8 @@ sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=gpu_opti
 tf.compat.v1.keras.backend.set_session(sess)
 
 mapclasses_all = {'DEL': 0, 'noDEL': 1, 'UK_other': 2, 'UK_single_partial': 3, 'UK_multiple_on_either_windows': 4}
-mapclasses_pair = {'DEL': 0, 'noDEL': 1}
-mapclasses = {'DEL_start': 0, 'DEL_end': 1, 'noDEL': 2}
+mapclasses = {'DEL': 0, 'noDEL': 1}
+# mapclasses = {'DEL_start': 0, 'DEL_end': 1, 'noDEL': 2}
 
 
 def get_channel_labels():
@@ -165,11 +165,12 @@ def data(sampleName):
 
     def filter_labels(X, y, win_ids):
         # print(y)
-        keep = np.array([i for i, v in enumerate(y) if v in ['DEL', 'noDEL']])
+        keep = [i for i, v in enumerate(y) if v in ['DEL', 'noDEL']]
         # print(keep)
-        X = X[keep]
-        y = y[keep]
-        win_ids = win_ids[keep]
+        X = X[np.array(keep)]
+        # print(y)
+        y = [y[i] for i in keep]
+        win_ids = [win_ids[i] for i in keep]
 
         print(Counter(y))
         return X, y, win_ids
@@ -224,8 +225,8 @@ def data(sampleName):
         #     win_ids.extend(list(map(lambda i: labs_keys[i], rnd_idx)))
 
     # X = np.concatenate(numpy_array, axis=0)
-    # X = X[:, :, np.array([0,6,7,8,9,25,26])]
-    X = X[:, :, np.array([0, 6, 7])]
+    X = X[:, :, np.array([0,6,7,8,9,25,26])]
+    # X = X[:, :, np.array([0, 6, 7])]
     # X = np.delete(X,33,2)
 
     logging.info(X.shape)
@@ -236,13 +237,13 @@ def data(sampleName):
 
     X, y, win_ids = filter_labels(X, y, win_ids)
 
-    X = np.stack([X[:, :200, :], X[:, 210:, :]], axis=0)
-    y = list(map(lambda x: x + '_start' if x == 'DEL' else x, y))
-    y.extend(
-        list(map(lambda x: x + '_end' if x == 'DEL' else x, y))
-    )
-    print(Counter(y))
-    win_ids = win_ids + win_ids
+    # X = np.stack([X[:, :200, :], X[:, 210:, :]], axis=0)
+    # y = list(map(lambda x: x + '_start' if x == 'DEL' else x, y))
+    # y.extend(
+    #     list(map(lambda x: x + '_end' if x == 'DEL' else x, y))
+    # )
+    # print(Counter(y))
+    # win_ids = win_ids + win_ids
 
     y = np.array([mapclasses[i] for i in y])
     win_ids = np.array(win_ids)
@@ -291,8 +292,8 @@ def create_model(dim_length, dim_channels, class_number):
     layers = 2
     filters = [4] * layers
     fc_hidden_nodes = 6
-    learning_rate = 4
-    regularization_rate = 1
+    learning_rate = 0.0001
+    regularization_rate = 0.1
     kernel_size = 7
     drp_out1 = 0
     drp_out2 = 0
@@ -343,6 +344,7 @@ def create_model(dim_length, dim_channels, class_number):
 
 
 def train(sampleName, params, X_train, y_train, y_train_binary):
+
     channel_data_dir = get_data_dir(sampleName)
 
     # win_len = 200
@@ -355,7 +357,7 @@ def train(sampleName, params, X_train, y_train, y_train_binary):
     class_weights = dict(enumerate(class_weights))
 
     # Balancing dataset
-    sampling = 'undersample'
+    sampling = 'oversample'
 
     cnt_lab = Counter(y_train)
 
@@ -385,50 +387,51 @@ def train(sampleName, params, X_train, y_train, y_train_binary):
 
     X_train = np.array(data_balanced)
     y_train = np.array(labels_balanced)
-    # y_train_binary = to_categorical(y_train, num_classes=params['n_classes'])
+    y_train_binary = to_categorical(y_train, num_classes=params['n_classes'])
 
     # End balancing
 
-    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train,
-                                                      test_size=0.3,
-                                                      random_state=2,
-                                                      stratify=y_train,
-                                                      shuffle=True)
-
-    y_train_binary = to_categorical(y_train, num_classes=params['n_classes'])
-    y_val_binary = to_categorical(y_val, num_classes=params['n_classes'])
-
-    model = create_model_with_mcfly(X_train, y_train_binary)
-
-    history, model = train_model_with_mcfly(model, X_train, y_train_binary,
-                                            X_val, y_val_binary)
+    # X_train, X_val, y_train, y_val = train_test_split(X_train, y_train,
+    #                                                   test_size=0.3,
+    #                                                   random_state=2,
+    #                                                   stratify=y_train,
+    #                                                   shuffle=True)
+    #
+    # y_train_binary = to_categorical(y_train, num_classes=params['n_classes'])
+    # y_val_binary = to_categorical(y_val, num_classes=params['n_classes'])
+    #
+    # model = create_model_with_mcfly(X_train, y_train_binary)
+    #
+    # history, model = train_model_with_mcfly(model, X_train, y_train_binary,
+    #                                         X_val, y_val_binary)
 
     # Design model
-    # logging.info('Creating model...')
-    # model = create_model(params['dim'], params['n_channels'], params['n_classes'])
-    #
-    # esCallback = EarlyStopping(monitor='val_loss', patience=0, verbose=1, mode='auto')
-    # tbCallBack = TensorBoard(log_dir=os.path.join(channel_data_dir, 'Graph'),
-    #                          histogram_freq=0,
-    #                          write_graph=True,
-    #                          write_images=True)
-    #
-    # logging.info('Fitting model...')
-    # # Train model on dataset
-    # history = model.fit(X_train, y_train_binary,
-    #                     validation_split=params['val_split'],
-    #                     batch_size=params['batch_size'],
-    #                     epochs=params['epochs'],
-    #                     shuffle=True,
-    #                     class_weight=class_weights,
-    #                     verbose=1,
-    #                     callbacks=[esCallback]
-    #                     )
+    logging.info('Creating model...')
+    model = create_model(params['dim'], params['n_channels'], params['n_classes'])
+
+    esCallback = EarlyStopping(monitor='val_loss', patience=0, verbose=1, mode='auto')
+    tbCallBack = TensorBoard(log_dir=os.path.join(channel_data_dir, 'Graph'),
+                             histogram_freq=0,
+                             write_graph=True,
+                             write_images=True)
+
+    logging.info('Fitting model...')
+    # Train model on dataset
+    history = model.fit(X_train, y_train_binary,
+                        validation_split=params['val_split'],
+                        batch_size=params['batch_size'],
+                        epochs=params['epochs'],
+                        shuffle=True,
+                        # class_weight=class_weights,
+                        verbose=1,
+                        callbacks=[esCallback]
+                        )
 
     return model, history, X_train.shape[0], int(X_train.shape[0] * params['val_split'])
 
 
 def train_and_test_model(sampleName_training, sampleName_test, outDir):
+
     X_train, X_test, y_train, y_test, win_ids_train, win_ids_test = train_and_test_data(sampleName_training)
 
     channel_data_dir = get_data_dir(sampleName_training)
@@ -500,13 +503,14 @@ def train_and_test_model(sampleName_training, sampleName_test, outDir):
 
 
 def main():
+
     parser = argparse.ArgumentParser(description='Train and test model')
     parser.add_argument('-p', '--outputpath', type=str,
                         default='/Users/lsantuari/Documents/Processed/channel_maker_output',
                         help="Specify output path")
-    parser.add_argument('-t', '--training_sample', type=str, default='NA12878',
+    parser.add_argument('-t', '--training_sample', type=str, default='T1',
                         help="Specify training sample")
-    parser.add_argument('-x', '--test_sample', type=str, default='NA12878',
+    parser.add_argument('-x', '--test_sample', type=str, default='T1',
                         help="Specify training sample")
     parser.add_argument('-l', '--logfile', default='windows.log',
                         help='File in which to write logs.')
