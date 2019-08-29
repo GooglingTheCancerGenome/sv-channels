@@ -77,7 +77,7 @@ def get_snvs(ibam, chrName, outFile):
     reference_sequence = get_2bit_genome()
 
     # snv_list = ['BQ', 'nALN', 'nSEG', 'A', 'a', 'C', 'c', 'G', 'g', 'T', 't']
-    snv_list = ['BQ', 'SNV', 'RC']
+    snv_list = ['BQ', 'SNV']
     snv_array = np.zeros(shape=(len(snv_list), stop_pos), dtype=np.uint32)
     snv_dict = {v: n for n, v in enumerate(snv_list)}
     # print(snv_dict)
@@ -102,7 +102,7 @@ def get_snvs(ibam, chrName, outFile):
                 chrName_2bit = chrName if REF_GENOME == 'GRCh38' else 'chr' + chrName
                 snv_number = get_snv_number(query_seq_list, reference_sequence[chrName_2bit][pileupcolumn.pos])
                 snv_array[snv_dict['SNV'], pileupcolumn.pos] = snv_number/pileupcolumn.nsegments \
-                    if pileupcolumn.nsegments !=0 else 0
+                    if pileupcolumn.nsegments != 0 else 0
 
             except AssertionError as error:
                 # Output expected AssertionErrors.
@@ -189,7 +189,7 @@ def get_snvs(ibam, chrName, outFile):
     # )
 
     # Write the output
-    snv_array = np.delete(snv_array, 2, 0)
+    # snv_array = np.delete(snv_array, 2, 0)
     np.save(file=outFile, arr=snv_array)
     os.system('gzip -f ' + outFile)
 
