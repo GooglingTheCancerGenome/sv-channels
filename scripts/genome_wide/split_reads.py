@@ -117,160 +117,161 @@ def get_split_read_positions(ibam, outFile):
     max_cigar_del = 0
 
     for i, read in enumerate(iter, start=1):
+        if read.reference_name in chr_list:
 
-        # Every n_r alignments, write log informations
-        if not i % n_r:
-            # Record the current time
-            now_t = time()
-            # print(type(now_t))
-            logging.info("%d alignments processed (%f alignments / s)" % (
-                i,
-                n_r / (now_t - last_t)))
-            last_t = time()
+            # Every n_r alignments, write log informations
+            if not i % n_r:
+                # Record the current time
+                now_t = time()
+                # print(type(now_t))
+                logging.info("%d alignments processed (%f alignments / s)" % (
+                    i,
+                    n_r / (now_t - last_t)))
+                last_t = time()
 
-        # Both read and mate should be mapped, read should have a minimum mapping quality
-        # if (not read.is_unmapped) and (not read.mate_is_unmapped) and read.mapping_quality >= minMAPQ:
-        if (not read.is_unmapped) and read.mapping_quality >= minMAPQ:
+            # Both read and mate should be mapped, read should have a minimum mapping quality
+            # if (not read.is_unmapped) and (not read.mate_is_unmapped) and read.mapping_quality >= minMAPQ:
+            if (not read.is_unmapped) and read.mapping_quality >= minMAPQ:
 
-            if has_indels(read):
-                # print(read)
+                if has_indels(read):
+                    # print(read)
 
-                dels_start, dels_end, ins = get_indels(read)
-                # dels = dels_start + dels_end + ins
-                left_split_pos[read.reference_name].extend(dels_end)
-                right_split_pos[read.reference_name].extend(dels_start + ins)
+                    dels_start, dels_end, ins = get_indels(read)
+                    # dels = dels_start + dels_end + ins
+                    left_split_pos[read.reference_name].extend(dels_end)
+                    right_split_pos[read.reference_name].extend(dels_start + ins)
 
-                for start, end in zip(dels_start, dels_end):
+                    for start, end in zip(dels_start, dels_end):
 
-                    n_indels += 1
+                        n_indels += 1
 
-                    # Calculate DEL size and find largest DEL size encoded by CIGAR 'D' character
-                    del_size = end - start
-                    if del_size > max_cigar_del:
-                        max_cigar_del = del_size
+                        # Calculate DEL size and find largest DEL size encoded by CIGAR 'D' character
+                        del_size = end - start
+                        if del_size > max_cigar_del:
+                            max_cigar_del = del_size
 
-                    split_pos_coord = append_coord(split_pos_coord, read.reference_name,
-                                                   start, read.reference_name, end)
-                for pos in ins:
-                    n_indels += 1
-                    split_pos_coord = append_coord(split_pos_coord, read.reference_name,
-                                                   pos, read.reference_name, pos + 1)
+                        split_pos_coord = append_coord(split_pos_coord, read.reference_name,
+                                                       start, read.reference_name, end)
+                    for pos in ins:
+                        n_indels += 1
+                        split_pos_coord = append_coord(split_pos_coord, read.reference_name,
+                                                       pos, read.reference_name, pos + 1)
 
-            if read.has_tag('SA'):
+                if read.has_tag('SA'):
 
-                chr_SA, pos_SA, strand_SA = get_suppl_aln(read)
+                    chr_SA, pos_SA, strand_SA = get_suppl_aln(read)
 
-                if is_right_clipped(read):
-                    pos = read.reference_end
-                elif is_left_clipped(read):
-                    pos = read.reference_start + 1
+                    if is_right_clipped(read):
+                        pos = read.reference_end
+                    elif is_left_clipped(read):
+                        pos = read.reference_start + 1
 
-                if (read.query_name, pos_SA) in ls_mate_set[read.next_reference_name]:
-                    if read.query_name in left_split_pos_by_query.keys():
-                        if not (read.reference_name == chr_SA and
-                                pos == left_split_pos_by_query[read.query_name]):
-                            # assert is_left_clipped(read)
-                            # print('R split {} at position {}:{} to {}:{}'.format(
-                            #     read.query_name,
-                            #     read.reference_name,
-                            #     pos,
-                            #     chr_SA,
-                            #     left_split_pos_by_query[read.query_name]
-                            #     ))
-                            left_split_pos[read.next_reference_name].append(left_split_pos_by_query[read.query_name])
-                            split_pos_coord = append_coord(split_pos_coord,
-                                                           read.reference_name,
-                                                           pos,
-                                                           chr_SA, left_split_pos_by_query[read.query_name])
-                            right_split_pos[read.reference_name].append(read.reference_end)
-                            left_split_pos[chr_SA].append(pos_SA)
+                    if (read.query_name, pos_SA) in ls_mate_set[read.next_reference_name]:
+                        if read.query_name in left_split_pos_by_query.keys():
+                            if not (read.reference_name == chr_SA and
+                                    pos == left_split_pos_by_query[read.query_name]):
+                                # assert is_left_clipped(read)
+                                # print('R split {} at position {}:{} to {}:{}'.format(
+                                #     read.query_name,
+                                #     read.reference_name,
+                                #     pos,
+                                #     chr_SA,
+                                #     left_split_pos_by_query[read.query_name]
+                                #     ))
+                                left_split_pos[read.next_reference_name].append(left_split_pos_by_query[read.query_name])
+                                split_pos_coord = append_coord(split_pos_coord,
+                                                               read.reference_name,
+                                                               pos,
+                                                               chr_SA, left_split_pos_by_query[read.query_name])
+                                right_split_pos[read.reference_name].append(read.reference_end)
+                                left_split_pos[chr_SA].append(pos_SA)
 
-                            split_reads[read.reference_name]['right'][read.reference_end] += 1
-                            split_reads[chr_SA]['left'][pos_SA] += 1
+                                split_reads[read.reference_name]['right'][read.reference_end] += 1
+                                split_reads[chr_SA]['left'][pos_SA] += 1
 
-                            if read.reference_name == chr_SA:
-                                dist = abs(read.reference_end - pos_SA)
-                                split_read_distance[read.reference_name]['right'][read.reference_end].append(dist)
-                                split_read_distance[chr_SA]['left'][pos_SA].append(dist)
-                            n_split += 1
+                                if read.reference_name == chr_SA:
+                                    dist = abs(read.reference_end - pos_SA)
+                                    split_read_distance[read.reference_name]['right'][read.reference_end].append(dist)
+                                    split_read_distance[chr_SA]['left'][pos_SA].append(dist)
+                                n_split += 1
 
-                if (read.query_name, pos_SA) in rs_mate_set[read.next_reference_name]:
-                    if read.query_name in right_split_pos_by_query.keys():
-                        if not (read.reference_name == chr_SA and
-                                pos == right_split_pos_by_query[read.query_name]):
-                            # assert is_right_clipped(read)
-                            # print('L split {} at position {}:{} to {}:{}'.format(
-                            #     read.query_name,
-                            #     read.reference_name,
-                            #     pos,
-                            #     chr_SA,
-                            #     right_split_pos_by_query[read.query_name]
-                            #     ))
-                            right_split_pos[read.next_reference_name].append(right_split_pos_by_query[read.query_name])
-                            split_pos_coord = append_coord(split_pos_coord,
-                                                           read.reference_name,
-                                                           pos,
-                                                           chr_SA, right_split_pos_by_query[read.query_name])
-                            left_split_pos[read.reference_name].append(read.reference_end)
-                            right_split_pos[chr_SA].append(pos_SA)
+                    if (read.query_name, pos_SA) in rs_mate_set[read.next_reference_name]:
+                        if read.query_name in right_split_pos_by_query.keys():
+                            if not (read.reference_name == chr_SA and
+                                    pos == right_split_pos_by_query[read.query_name]):
+                                # assert is_right_clipped(read)
+                                # print('L split {} at position {}:{} to {}:{}'.format(
+                                #     read.query_name,
+                                #     read.reference_name,
+                                #     pos,
+                                #     chr_SA,
+                                #     right_split_pos_by_query[read.query_name]
+                                #     ))
+                                right_split_pos[read.next_reference_name].append(right_split_pos_by_query[read.query_name])
+                                split_pos_coord = append_coord(split_pos_coord,
+                                                               read.reference_name,
+                                                               pos,
+                                                               chr_SA, right_split_pos_by_query[read.query_name])
+                                left_split_pos[read.reference_name].append(read.reference_end)
+                                right_split_pos[chr_SA].append(pos_SA)
 
-                            split_reads[read.reference_name]['left'][read.reference_end] += 1
-                            split_reads[chr_SA]['right'][pos_SA] += 1
+                                split_reads[read.reference_name]['left'][read.reference_end] += 1
+                                split_reads[chr_SA]['right'][pos_SA] += 1
 
-                            if read.reference_name == chr_SA:
-                                dist = abs(read.reference_end - pos_SA)
-                                split_read_distance[read.reference_name]['left'][read.reference_end].append(dist)
-                                split_read_distance[chr_SA]['right'][pos_SA].append(dist)
+                                if read.reference_name == chr_SA:
+                                    dist = abs(read.reference_end - pos_SA)
+                                    split_read_distance[read.reference_name]['left'][read.reference_end].append(dist)
+                                    split_read_distance[chr_SA]['right'][pos_SA].append(dist)
 
-                            n_split += 1
+                                n_split += 1
 
-                if is_right_clipped(read):
+                    if is_right_clipped(read):
 
-                    right_split_pos_by_query[read.query_name] = read.reference_end
-                    rs_mate_set[read.reference_name].add((read.query_name, read.reference_start))
+                        right_split_pos_by_query[read.query_name] = read.reference_end
+                        rs_mate_set[read.reference_name].add((read.query_name, read.reference_start))
 
-                elif is_left_clipped(read):
+                    elif is_left_clipped(read):
 
-                    left_split_pos_by_query[read.query_name] = read.reference_start + 1
-                    ls_mate_set[read.reference_name].add((read.query_name, read.reference_start))
+                        left_split_pos_by_query[read.query_name] = read.reference_start + 1
+                        ls_mate_set[read.reference_name].add((read.query_name, read.reference_start))
 
-            # if not read.mate_is_unmapped and ( not read.is_proper_pair or is_clipped(read) ):
-            #     n_discordant += 1
-            #     refpos = read.reference_end + 1 if not read.is_reverse else read.reference_start
-            #
-            #     strand_id = '_'.join([read.reference_name, strand_str[read.is_reverse],
-            #                           read.next_reference_name, strand_str[read.mate_is_reverse]])
-            #
-            #     if strand_id in reads_in_cluster.keys():
-            #
-            #         chr1, pos1, chr2, pos2, cnt, read_ref = reads_in_cluster[strand_id]
-            #
-            #         if overlap(read, read_ref):
-            #
-            #             if (not read.is_reverse and refpos > pos1) or \
-            #                     (read.is_reverse and refpos < pos1):
-            #                 pos1 = refpos
-            #
-            #             if (read.next_reference_start > pos2 and not read.mate_is_reverse) or \
-            #                     (read.next_reference_start < pos2 and read.mate_is_reverse):
-            #                 pos2 = read.next_reference_start
-            #
-            #             cnt += 1
-            #             # print('Adding %s_%d_%s_%d_%d' % (chr1, pos1, chr2, pos2, cnt))
-            #             reads_in_cluster[strand_id] = (chr1, pos1, chr2, pos2, cnt, read)
-            #
-            #     else:
-            #         reads_in_cluster[strand_id] = (read.reference_name, refpos,
-            #                                        read.next_reference_name, read.next_reference_start, 1, read)
-            # else:
-            #
-            #     for strand_id in reads_in_cluster.keys():
-            #         chr1, pos1, chr2, pos2, cnt, read = reads_in_cluster[strand_id]
-            #         if cnt >= min_support:
-            #             discordant_reads_pos.extend([pos1]*cnt)
-            #             discordant_reads_coord = append_coord(discordant_reads_coord, chr1, pos1, chr2, pos2)
-            #
-            #     reads_in_cluster = defaultdict()
+                # if not read.mate_is_unmapped and ( not read.is_proper_pair or is_clipped(read) ):
+                #     n_discordant += 1
+                #     refpos = read.reference_end + 1 if not read.is_reverse else read.reference_start
+                #
+                #     strand_id = '_'.join([read.reference_name, strand_str[read.is_reverse],
+                #                           read.next_reference_name, strand_str[read.mate_is_reverse]])
+                #
+                #     if strand_id in reads_in_cluster.keys():
+                #
+                #         chr1, pos1, chr2, pos2, cnt, read_ref = reads_in_cluster[strand_id]
+                #
+                #         if overlap(read, read_ref):
+                #
+                #             if (not read.is_reverse and refpos > pos1) or \
+                #                     (read.is_reverse and refpos < pos1):
+                #                 pos1 = refpos
+                #
+                #             if (read.next_reference_start > pos2 and not read.mate_is_reverse) or \
+                #                     (read.next_reference_start < pos2 and read.mate_is_reverse):
+                #                 pos2 = read.next_reference_start
+                #
+                #             cnt += 1
+                #             # print('Adding %s_%d_%s_%d_%d' % (chr1, pos1, chr2, pos2, cnt))
+                #             reads_in_cluster[strand_id] = (chr1, pos1, chr2, pos2, cnt, read)
+                #
+                #     else:
+                #         reads_in_cluster[strand_id] = (read.reference_name, refpos,
+                #                                        read.next_reference_name, read.next_reference_start, 1, read)
+                # else:
+                #
+                #     for strand_id in reads_in_cluster.keys():
+                #         chr1, pos1, chr2, pos2, cnt, read = reads_in_cluster[strand_id]
+                #         if cnt >= min_support:
+                #             discordant_reads_pos.extend([pos1]*cnt)
+                #             discordant_reads_coord = append_coord(discordant_reads_coord, chr1, pos1, chr2, pos2)
+                #
+                #     reads_in_cluster = defaultdict()
 
     # Close the BAM file
     bamfile.close()
