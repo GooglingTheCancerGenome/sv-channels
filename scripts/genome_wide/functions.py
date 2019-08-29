@@ -17,6 +17,7 @@ ins_min_size = 50
 Generic functions used in the channel scripts
 '''
 
+
 # Return if a read is clipped on the left
 def is_left_clipped(read):
     '''
@@ -107,7 +108,6 @@ def get_suppl_aln(read):
 
 # Return start and end position of deletions and insertions
 def get_indels(read):
-
     dels_start = []
     dels_end = []
     ins = []
@@ -116,11 +116,11 @@ def get_indels(read):
         for ct in read.cigartuples:
             # D is 2, I is 1
             if ct[0] == 2 and ct[1] >= del_min_size:
-                #dels.append(('D', pos, pos+ct[0]))
+                # dels.append(('D', pos, pos+ct[0]))
                 dels_start.append(pos)
                 dels_end.append(pos + ct[1])
             if ct[0] == 1 and ct[1] >= ins_min_size:
-                #ins.append(('I', pos, pos+ct[0]))
+                # ins.append(('I', pos, pos+ct[0]))
                 ins.append(pos)
             pos = pos + ct[1]
 
@@ -128,11 +128,10 @@ def get_indels(read):
 
 
 def has_indels(read):
-
     if read.cigartuples is not None:
         cigar_set = set([ct[0] for ct in read.cigartuples])
         # D is 2, I is 1
-        if len(set([1,2]) & cigar_set) > 0:
+        if len(set([1, 2]) & cigar_set) > 0:
             return True
         else:
             return False
@@ -169,40 +168,37 @@ def get_read_mate(read, bamfile):
 
 
 def get_reference_sequence(HPC_MODE, REF_GENOME):
-
     if HPC_MODE:
         # Path on the HPC of the 2bit version of the human reference genome
         genome = twobit.TwoBitFile(os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/genomes',
-                                                REF_GENOME+'.2bit'))
+                                                REF_GENOME + '.2bit'))
     else:
         # Path on the local machine of the 2bit version of the human reference genome
         genome = twobit.TwoBitFile(os.path.join('/Users/lsantuari/Documents/Data/GiaB/reference',
-                                                REF_GENOME+'.2bit'))
+                                                REF_GENOME + '.2bit'))
 
     return genome
 
 
 def is_flanked_by_n(chrname, pos, HPC_MODE, REF_GENOME):
-
     genome = get_reference_sequence(HPC_MODE, REF_GENOME)
 
-    if "N" in genome['chr' + chrname][pos-1:pos+1].upper():
+    if "N" in genome['chr' + chrname][pos - 1:pos + 1].upper():
         return True
     else:
         return False
 
 
-#Return a one-hot encoding for the chromosome region chr:start-stop
+# Return a one-hot encoding for the chromosome region chr:start-stop
 # with Ns encoded as 1 and other chromosomes encoded as 0
 def get_one_hot_sequence(chrname, start, stop, nuc, HPC_MODE, REF_GENOME):
-
     genome = get_reference_sequence(HPC_MODE, REF_GENOME)
 
-    #ltrdict = {'a': 1, 'c': 2, 'g': 3, 't': 4, 'n': 0}
+    # ltrdict = {'a': 1, 'c': 2, 'g': 3, 't': 4, 'n': 0}
 
     # N one-hot
-    #ltrdict = {'a': 0, 'c': 0, 'g': 0, 't': 0, 'n': 1}
-    #return np.array([ltrdict[x.lower()] for x in genome['chr'+chrname][start:stop]])
+    # ltrdict = {'a': 0, 'c': 0, 'g': 0, 't': 0, 'n': 1}
+    # return np.array([ltrdict[x.lower()] for x in genome['chr'+chrname][start:stop]])
 
     if chrname == 'MT':
         chrname = 'M'
@@ -214,7 +210,6 @@ def get_one_hot_sequence(chrname, start, stop, nuc, HPC_MODE, REF_GENOME):
 
 
 def get_one_hot_sequence_by_list(chrname, positions, HPC_MODE, REF_GENOME):
-
     genome = get_reference_sequence(HPC_MODE, REF_GENOME)
 
     if chrname == 'MT':
@@ -223,10 +218,10 @@ def get_one_hot_sequence_by_list(chrname, positions, HPC_MODE, REF_GENOME):
     whole_chrom = str(genome[chrname]) if REF_GENOME == 'GRCh38' else str(genome['chr' + chrname])
 
     nuc_list = ['A', 'T', 'C', 'G', 'N']
-    res = np.zeros(shape=(len(positions),len(nuc_list)), dtype=np.uint32)
+    res = np.zeros(shape=(len(positions), len(nuc_list)), dtype=np.uint32)
 
     for i, nuc in enumerate(nuc_list, start=0):
-        res[:,i] = np.array([1 if whole_chrom[pos].lower() == nuc.lower() else 0 for pos in positions])
+        res[:, i] = np.array([1 if whole_chrom[pos].lower() == nuc.lower() else 0 for pos in positions])
 
     return res
 
@@ -252,9 +247,9 @@ def is_outlier(points, thresh=3.5):
         Statistical Techniques, Edward F. Mykytka, Ph.D., Editor.
     """
     if len(points.shape) == 1:
-        points = points[:,None]
+        points = points[:, None]
     median = np.median(points, axis=0)
-    diff = np.sum((points - median)**2, axis=-1)
+    diff = np.sum((points - median) ** 2, axis=-1)
     diff = np.sqrt(diff)
     med_abs_deviation = np.median(diff)
 
@@ -264,9 +259,8 @@ def is_outlier(points, thresh=3.5):
 
 
 def get_config_file():
-
     with open(os.path.join(
-    os.path.dirname(__file__), 'parameters.json'), 'r') as f:
+            os.path.dirname(__file__), 'parameters.json'), 'r') as f:
         config = json.load(f)
     return config
 
@@ -285,15 +279,13 @@ def create_dir(directory):
 
 
 def get_chr_list():
-
-    chrlist = [str(c) for c in list(np.arange(1,23))]
+    chrlist = [str(c) for c in list(np.arange(1, 23))]
     chrlist.extend(['X', 'Y'])
 
     return chrlist
 
 
 def get_chr_len_dict(ibam):
-
     chr_list = get_chr_list()
     # check if the BAM file exists
     assert os.path.isfile(ibam)
@@ -308,8 +300,7 @@ def get_chr_len_dict(ibam):
     return chr_dict
 
 
-def load_clipped_read_positions(sampleName, chrName, chr_dict, win_hlen, channel_dir):
-
+def load_clipped_read_positions_by_chr(sampleName, chrName, chr_dict, win_hlen, channel_dir):
     def get_filepath(vec_type):
         fn = os.path.join(channel_dir, sampleName, vec_type, chrName + '_' + vec_type + '.json.gz')
         return fn
@@ -329,8 +320,8 @@ def load_clipped_read_positions(sampleName, chrName, chr_dict, win_hlen, channel
                  win_hlen <= pos2 <= (chr_dict[chr2] - win_hlen)
                  ]
 
-    positions_cr_l = set([int(k)+1 for k, v in positions_cr.items() if v >= 3])
-    positions_cr_r = set([int(k)-1 for k, v in positions_cr.items() if v >= 3])
+    positions_cr_l = set([int(k) + 1 for k, v in positions_cr.items() if v >= 3])
+    positions_cr_r = set([int(k) - 1 for k, v in positions_cr.items() if v >= 3])
     positions_cr = positions_cr_l | positions_cr_r
 
     # for pos in positions_cr:
@@ -345,8 +336,7 @@ def load_clipped_read_positions(sampleName, chrName, chr_dict, win_hlen, channel
     return locations
 
 
-def load_all_clipped_read_positions(sampleName, win_hlen, chr_dict, output_dir):
-
+def load_all_clipped_read_positions_by_chr(sampleName, win_hlen, chr_dict, output_dir):
     cr_pos_file = os.path.join(output_dir, sampleName, 'candidate_positions_' + sampleName + '.json.gz')
 
     if os.path.exists(cr_pos_file):
@@ -372,6 +362,83 @@ def load_all_clipped_read_positions(sampleName, win_hlen, chr_dict, output_dir):
                                                win_hlen, output_dir)
             cpos_list.extend(cpos)
             logging.info('Candidate positions for Chr{}: {}'.format(chrName, len(cpos)))
+
+        logging.info('Writing candidate positions file {}'.format(cr_pos_file))
+
+        with gzip.GzipFile(cr_pos_file, 'wb') as f:
+            f.write(json.dumps(cpos_list).encode('utf-8'))
+        f.close()
+
+        return cpos_list
+
+
+def load_all_clipped_read_positions(sampleName, win_hlen, chr_dict, output_dir):
+    cr_pos_file = os.path.join(output_dir, sampleName, 'candidate_positions_' + sampleName + '.json.gz')
+
+    if os.path.exists(cr_pos_file):
+
+        logging.info('Loading existing candidate positions file...')
+
+        with gzip.GzipFile(cr_pos_file, 'rb') as fin:
+            cpos_list = json.loads(fin.read().decode('utf-8'))
+        fin.close()
+
+        return cpos_list
+
+    else:
+
+        def get_filepath(vec_type):
+            fn = os.path.join(output_dir, sampleName, vec_type, vec_type + '.json.gz')
+            return fn
+
+        logging.info('Loading SR positions')
+
+        chrlist = get_chr_list()
+        chr_list = chrlist if sampleName != 'T1' else ['17']
+
+        with gzip.GzipFile(get_filepath('split_reads'), 'rb') as fin:
+            positions_with_min_support_ls, positions_with_min_support_rs, total_reads_coord_min_support, \
+            split_reads, split_read_distance = json.loads(fin.read().decode('utf-8'))
+
+        with gzip.GzipFile(get_filepath('clipped_read_pos'), 'rb') as fin:
+            left_clipped_pos_cnt, right_clipped_pos_cnt = json.loads(fin.read().decode('utf-8'))
+
+        # print(locations)
+        locations = dict()
+        positions_cr = dict()
+
+        for chrom in chr_list:
+            locations[chrom] = [(chr1, pos1, chr2, pos2) for chr1, pos1, chr2, pos2 in total_reads_coord_min_support
+                                if chr1 in chr_dict.keys() and chr2 in chr_dict.keys() and
+                                win_hlen <= pos1 <= (chr_dict[chr1] - win_hlen) and
+                                win_hlen <= pos2 <= (chr_dict[chr2] - win_hlen)
+                                ]
+            if chrom in left_clipped_pos_cnt.keys():
+                positions_cr_l = set([int(k) for k, v in left_clipped_pos_cnt[chrom].items() if v >= 2])
+            else:
+                positions_cr_l = set()
+            if chrom in right_clipped_pos_cnt.keys():
+                positions_cr_r = set([int(k) for k, v in right_clipped_pos_cnt[chrom].items() if v >= 2])
+            else:
+                positions_cr_r = set()
+
+            positions_cr[chrom] = positions_cr_l | positions_cr_r
+
+            # for pos in positions_cr:
+            #     print('{}:{}'.format(chrName, pos))
+
+            # print(positions_cr)
+            locations[chrom] = [(chr1, pos1, chr2, pos2) for chr1, pos1, chr2, pos2 in locations[chrom]
+                                if (chr1 == chrom and pos1 in positions_cr[chr1])
+                                or (chr2 == chrom and pos2 in positions_cr[chr2])]
+
+            logging.info('{} positions'.format(len(locations[chrom])))
+
+        cpos_list = []
+        for chrom in chr_list:
+            cpos_list.extend(locations[chrom])
+
+        logging.info('{} candidate positions'.format(len(cpos_list)))
 
         logging.info('Writing candidate positions file {}'.format(cr_pos_file))
 

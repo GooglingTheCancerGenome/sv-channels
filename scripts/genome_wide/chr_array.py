@@ -104,17 +104,49 @@ def get_chr_len_dict(ibam):
 
 
 def load_channels(sample, chr_list, outDir):
-    channel_names = ['coverage', 'clipped_reads', 'clipped_read_distance',
-                     'snv', 'split_read_distance']
+
+    channel_names_wg = ['split_reads', 'clipped_reads']
+
+    channel_names = ['coverage', 'clipped_read_distance', 'snv']
 
     channel_data = defaultdict(dict)
 
+    for ch in channel_names_wg:
+
+        suffix = '.json.gz'
+        filename = os.path.join(outDir, sample, ch, ch + suffix)
+        assert os.path.isfile(filename), filename + " does not exists!"
+
+        with gzip.GzipFile(filename, 'r') as fin:
+            logging.info('Reading %s...' % ch)
+            if ch == 'split_reads':
+                positions_with_min_support_ls, positions_with_min_support_rs,\
+                total_reads_coord_min_support,\
+                split_reads, split_read_distance = json.loads(fin.read().decode('utf-8'))
+
+            elif ch == 'clipped_reads':
+                clipped_reads, clipped_reads_inversion, \
+                clipped_reads_duplication, clipped_reads_translocation = json.loads(fin.read().decode('utf-8'))
+
     for chrom in chr_list:
-        logging.info('Loading data for Chr%s' % chrom)
 
-        for ch in channel_names:
+        channel_data[chrom]['split_reads'] = split_reads[chrom]
+        channel_data[chrom]['split_read_distance'] = split_read_distance[chrom]
 
-            logging.info('Loading data for channel %s' % ch)
+        channel_data[chrom]['clipped_reads'] = clipped_reads[chrom]
+        channel_data[chrom]['clipped_reads_inversion'] = clipped_reads_inversion[chrom]
+        channel_data[chrom]['clipped_reads_duplication'] = clipped_reads_duplication[chrom]
+        channel_data[chrom]['clipped_reads_translocation'] = clipped_reads_translocation[chrom]
+
+    del split_reads, split_read_distance, clipped_reads, clipped_reads_inversion, \
+        clipped_reads_duplication, clipped_reads_translocation
+
+    for ch in channel_names:
+        logging.info('Loading data for channel %s' % ch)
+
+        for chrom in chr_list:
+            logging.info('Loading data for Chr%s' % chrom)
+
             suffix = '.npy.gz' if ch in ['snv', 'coverage'] else '.json.gz'
             filename = os.path.join(outDir, sample, ch, '_'.join([chrom, ch + suffix]))
             assert os.path.isfile(filename), filename + " does not exists!"
@@ -130,14 +162,14 @@ def load_channels(sample, chr_list, outDir):
                     channel_data[chrom][ch] = json.loads(fin.read().decode('utf-8'))
             logging.info('End of reading')
 
-        # unpack clipped_reads
-        channel_data[chrom]['clipped_reads'], \
-        channel_data[chrom]['clipped_reads_inversion'], channel_data[chrom]['clipped_reads_duplication'], \
-        channel_data[chrom]['clipped_reads_translocation'] = channel_data[chrom]['clipped_reads']
-
-        # unpack split_reads
-        channel_data[chrom]['split_read_distance'], \
-        channel_data[chrom]['split_reads'] = channel_data[chrom]['split_read_distance']
+        # # unpack clipped_reads
+        # channel_data[chrom]['clipped_reads'], \
+        # channel_data[chrom]['clipped_reads_inversion'], channel_data[chrom]['clipped_reads_duplication'], \
+        # channel_data[chrom]['clipped_reads_translocation'] = channel_data[chrom]['clipped_reads']
+        #
+        # # unpack split_reads
+        # channel_data[chrom]['split_read_distance'], \
+        # channel_data[chrom]['split_reads'] = channel_data[chrom]['split_read_distance']
 
     return channel_data
 
@@ -145,7 +177,7 @@ def load_channels(sample, chr_list, outDir):
 def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
 
     chrlen = get_chr_len(ibam, chrom)
-    n_channels = 34
+    n_channels = 33
 
     channel_data = load_channels(sampleName, [chrom], outDir)
     chr_array = np.zeros(shape=(chrlen, n_channels), dtype=np.float32)
@@ -173,8 +205,9 @@ def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
 
         if current_channel == 'coverage' or current_channel == 'snv':
 
-            if current_channel == 'snv' and channel_data[chrom][current_channel].shape[1] == 2:
-                np.delete(channel_data[chrom][current_channel], 2, 0)
+            # logging.info("snv array shape %d" % channel_data[chrom][current_channel].shape[1])
+            # if current_channel == 'snv' and channel_data[chrom][current_channel].shape[1] == 2:
+            #     channel_data[chrom][current_channel] = np.delete(channel_data[chrom][current_channel], 2, 0)
 
             ch_num = channel_data[chrom][current_channel].shape[1]
 
