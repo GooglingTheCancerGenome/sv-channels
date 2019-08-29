@@ -225,9 +225,14 @@ def data(sampleName):
         #     win_ids.extend(list(map(lambda i: labs_keys[i], rnd_idx)))
 
     # X = np.concatenate(numpy_array, axis=0)
-    X = X[:, :, np.array([0,6,7,8,9,25,26])]
+
+    # Select only coverage, CR and SR channels
+    # X = X[:, :, np.array([0,6,7,8,9,25,26])]
+
     # X = X[:, :, np.array([0, 6, 7])]
-    # X = np.delete(X,33,2)
+
+    # if sampleName == 'NA12878':
+    #     X = np.delete(X, 33, 2)
 
     logging.info(X.shape)
     logging.info(Counter(y))
@@ -292,8 +297,8 @@ def create_model(dim_length, dim_channels, class_number):
     layers = 2
     filters = [4] * layers
     fc_hidden_nodes = 6
-    learning_rate = 0.0001
-    regularization_rate = 0.1
+    learning_rate = 10**(-4)
+    regularization_rate = 10**(-1)
     kernel_size = 7
     drp_out1 = 0
     drp_out2 = 0
@@ -351,10 +356,12 @@ def train(sampleName, params, X_train, y_train, y_train_binary):
     # padding_len = 10
     # dim = win_len * 2 + padding_len
 
-    class_weights = class_weight.compute_class_weight('balanced',
-                                                      np.unique(y_train),
-                                                      y_train)
-    class_weights = dict(enumerate(class_weights))
+    # print(Counter(y_train))
+    # class_weights = class_weight.compute_class_weight('balanced',
+    #                                                   np.unique(y_train),
+    #                                                   y_train)
+    # class_weights = dict(zip(np.unique(y_train), class_weights))
+    # print(class_weights)
 
     # Balancing dataset
     sampling = 'oversample'
@@ -432,7 +439,10 @@ def train(sampleName, params, X_train, y_train, y_train_binary):
 
 def train_and_test_model(sampleName_training, sampleName_test, outDir):
 
-    X_train, X_test, y_train, y_test, win_ids_train, win_ids_test = train_and_test_data(sampleName_training)
+    # X_train, X_test, y_train, y_test, win_ids_train, win_ids_test = train_and_test_data(sampleName_training)
+
+    X_train, y_train, win_ids_train = data(sampleName_training)
+    X_test, y_test, win_ids_test = data(sampleName_test)
 
     channel_data_dir = get_data_dir(sampleName_training)
     plots_dir = os.path.join(channel_data_dir, 'plots_' + sampleName_training)
@@ -510,7 +520,7 @@ def main():
                         help="Specify output path")
     parser.add_argument('-t', '--training_sample', type=str, default='T1',
                         help="Specify training sample")
-    parser.add_argument('-x', '--test_sample', type=str, default='T1',
+    parser.add_argument('-x', '--test_sample', type=str, default='NA12878',
                         help="Specify training sample")
     parser.add_argument('-l', '--logfile', default='windows.log',
                         help='File in which to write logs.')
