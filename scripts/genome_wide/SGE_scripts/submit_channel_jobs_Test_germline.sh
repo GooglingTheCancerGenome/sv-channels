@@ -50,6 +50,23 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
     BAM=${BAM_ARRAY[$i]}
     OUTDIR=$OUTPATH$SAMPLE
 
+    for PRG in clipped_read_pos clipped_reads split_reads; do
+        JOB_NAME=$SAMPLE"_"$CHROMOSOME"_"${PRG}
+
+        qsub -v SAMPLEARG=$SAMPLE,BAMARG=$BAM,PRGARG=${PRG},OUTARG=$OUTDIR \
+            -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_channel.sge
+    done
+
+done
+
+elif [ $RUNALL == 1 ]; then
+
+for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
+
+    SAMPLE=${SAMPLE_ARRAY[$i]}
+    BAM=${BAM_ARRAY[$i]}
+    OUTDIR=$OUTPATH$SAMPLE
+
 #    LOGDIR=${SAMPLE}"/log"
 #    [ ! -d "$LOGDIR" ] && mkdir -p "$LOGDIR"
 
@@ -68,7 +85,7 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
 done
 
 
-elif [ $RUNALL == 1 ]; then
+elif [ $RUNALL == 2 ]; then
 
 # Output should be in the Tumor folder
 i=0
@@ -108,7 +125,7 @@ for WINDOW in 200; do
 done
 done
 
-elif [ $RUNALL == 2 ]; then
+elif [ $RUNALL == 3 ]; then
 
 PRG='chr_array'
 

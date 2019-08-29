@@ -294,6 +294,7 @@ def get_chr_list():
 
 def get_chr_len_dict(ibam):
 
+    chr_list = get_chr_list()
     # check if the BAM file exists
     assert os.path.isfile(ibam)
     # open the BAM file
@@ -302,6 +303,7 @@ def get_chr_len_dict(ibam):
     # Extract chromosome length from the BAM header
     header_dict = bamfile.header
     chr_dict = {i['SN']: i['LN'] for i in header_dict['SQ']}
+    chr_dict = {k: v for k, v in chr_dict.items() if k in chr_list}
 
     return chr_dict
 

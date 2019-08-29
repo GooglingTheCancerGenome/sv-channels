@@ -4,13 +4,13 @@ import logging
 import os
 import json
 import gzip
-from collections import Counter
+from collections import Counter, defaultdict
 from time import time
 import pysam
 from functions import *
 
 
-def get_clipped_read_positions(ibam, chrName, outFile):
+def get_clipped_read_positions(ibam, outFile):
     '''
     
     :param ibam: input BAM alignment file
@@ -29,24 +29,26 @@ def get_clipped_read_positions(ibam, chrName, outFile):
 
     # Load the BAM file
     bamfile = pysam.AlignmentFile(ibam, "rb")
-    # Extract the header
-    header_dict = bamfile.header
-    # Get the chromosome length from the header
-    chrLen = [i['LN'] for i in header_dict['SQ'] if i['SN'] == chrName][0]
+
+    chr_list = get_chr_list()
 
     # List to store the clipped read positions
-    clipped_pos = []
+    right_clipped_pos = defaultdict(list, {k: [] for k in chr_list})
+    left_clipped_pos = defaultdict(list, {k: [] for k in chr_list})
 
-    # Fetch reads over the entire chromosome between positions [0, chrLen]
-    start_pos = 0
-    stop_pos = chrLen
+    right_clipped_pos_by_query = dict()
+    left_clipped_pos_by_query = dict()
+
     # Pysam iterator to fetch the reads
-    iter = bamfile.fetch(chrName, start_pos, stop_pos)
+    iter = bamfile.fetch()
 
     # Print every n_r alignments processed
     n_r = 10 ** 6
     # Record the current time
     last_t = time()
+
+    rc_mate_set = defaultdict(set)
+    lc_mate_set = defaultdict(set)
 
     for i, read in enumerate(iter, start=1):
 
@@ -64,48 +66,68 @@ def get_clipped_read_positions(ibam, chrName, outFile):
         # if (not read.is_unmapped) and (not read.mate_is_unmapped) and read.mapping_quality >= minMAPQ:
         if (not read.is_unmapped) and read.mapping_quality >= minMAPQ:
 
-            # if has_indels(read):
-            #     # print(read)
-            #     dels_start, dels_end, ins = fun.get_indels(read)
-            #     dels = dels_start + dels_end + ins
-            #     clipped_pos.extend(dels)
+            if (read.query_name, read.reference_start) in lc_mate_set[read.next_reference_name]:
+                if read.query_name in left_clipped_pos_by_query.keys():
+                    # print('Found left clipped {} at position {}:{}'.format(read.query_name,
+                    #                                                        read.next_reference_name,
+                    #                                                        left_clipped_pos_by_query[read.query_name]
+                    #                                                        ))
+                    left_clipped_pos[read.next_reference_name].append(left_clipped_pos_by_query[read.query_name])
+
+            if (read.query_name, read.reference_start) in rc_mate_set[read.next_reference_name]:
+                if read.query_name in right_clipped_pos_by_query.keys():
+                    # print('Found right clipped {} at position {}:{}'.format(read.query_name,
+                    #                                                         read.next_reference_name,
+                    #                                                         right_clipped_pos_by_query[read.query_name]
+                    #                                                         ))
+                    right_clipped_pos[read.next_reference_name].append(right_clipped_pos_by_query[read.query_name])
 
             if is_left_clipped(read):
+
                 # read.reference_start is the 1-based start position of the read mapped on the reference genome
-                cpos = read.reference_start
-                clipped_pos.append(cpos)
+                left_clipped_pos_by_query[read.query_name] = read.reference_start + 1
+                lc_mate_set[read.reference_name].add((read.query_name, read.next_reference_start))
+
             if is_right_clipped(read):
+
                 # read.reference_end is the 0-based end position of the read mapped on the reference genome
-                cpos = read.reference_end + 1
-                clipped_pos.append(cpos)
+                right_clipped_pos_by_query[read.query_name] = read.reference_end
+                rc_mate_set[read.reference_name].add((read.query_name, read.next_reference_start))
 
     # Close the BAM file
     bamfile.close()
 
     # Count the number of clipped reads per position
-    clipped_pos_cnt = Counter(clipped_pos)
+    left_clipped_pos_cnt = dict.fromkeys(chr_list)
+    right_clipped_pos_cnt = dict.fromkeys(chr_list)
 
-    logging.info('Number of unique positions: %d' % len(clipped_pos_cnt))
+    for chrom in chr_list:
+        left_clipped_pos_cnt[chrom] = Counter(left_clipped_pos[chrom])
+        right_clipped_pos_cnt[chrom] = Counter(right_clipped_pos[chrom])
+        logging.info('Unique positions on Chr{} left clipped: {}'.format(chrom,
+                                                                         len(left_clipped_pos_cnt[chrom])))
+        logging.info('Unique positions on Chr{} right clipped: {}'.format(chrom,
+                                                                          len(right_clipped_pos_cnt[chrom])))
 
     # Write
     with gzip.GzipFile(outFile, 'w') as fout:
-        fout.write(json.dumps(clipped_pos_cnt).encode('utf-8'))
+        fout.write(json.dumps((left_clipped_pos_cnt, right_clipped_pos_cnt)).encode('utf-8'))
 
     # to load it:
     # with gzip.GzipFile(outFile, 'r') as fin:
-    #     clipped_pos_cnt = json.loads(fin.read().decode('utf-8'))
+    #     left_clipped_pos_cnt, right_clipped_pos_cnt = json.loads(fin.read().decode('utf-8'))
+
 
 def main():
-
     # Default BAM file for testing
     # On the HPC
-    #wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
-    #inputBAM = wd + "T0_dedup.bam"
+    # wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
+    # inputBAM = wd + "T0_dedup.bam"
     # Locally
     wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
     inputBAM = wd + "T1_dedup.bam"
-    #wd = '/Users/lsantuari/Documents/mount_points/hpc_mnt/Datasets/CretuStancu2017/Patient1/'
-    #inputBAM = wd + 'Patient1.bam'
+    # wd = '/Users/lsantuari/Documents/mount_points/hpc_mnt/Datasets/CretuStancu2017/Patient1/'
+    # inputBAM = wd + 'Patient1.bam'
 
     # Default chromosome is 17 for the artificial data
 
@@ -114,8 +136,6 @@ def main():
     parser.add_argument('-b', '--bam', type=str,
                         default=inputBAM,
                         help="Specify input file (BAM)")
-    parser.add_argument('-c', '--chr', type=str, default='17',
-                        help="Specify chromosome")
     parser.add_argument('-o', '--out', type=str, default='clipped_read_pos.json.gz',
                         help="Specify output")
     parser.add_argument('-p', '--outputpath', type=str,
@@ -129,8 +149,8 @@ def main():
     cmd_name = 'clipped_read_pos'
     output_dir = os.path.join(args.outputpath, cmd_name)
     create_dir(output_dir)
-    logfilename = os.path.join(output_dir, '_'.join((args.chr, args.logfile)))
-    output_file = os.path.join(output_dir, '_'.join((args.chr, args.out)))
+    logfilename = os.path.join(output_dir, args.logfile)
+    output_file = os.path.join(output_dir, args.out)
 
     # Log file
     FORMAT = '%(asctime)s %(message)s'
@@ -141,8 +161,8 @@ def main():
         level=logging.INFO)
 
     t0 = time()
-    get_clipped_read_positions(ibam=args.bam, chrName=args.chr, outFile=output_file)
-    logging.info('Time: clipped read positions on BAM %s and Chr %s: %f' % (args.bam, args.chr, (time() - t0)))
+    get_clipped_read_positions(ibam=args.bam, outFile=output_file)
+    logging.info('Time: clipped read positions on BAM %s and Chr %s: %f' % (args.bam, (time() - t0)))
 
 
 if __name__ == '__main__':
