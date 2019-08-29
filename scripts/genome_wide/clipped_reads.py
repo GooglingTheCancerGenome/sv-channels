@@ -165,9 +165,9 @@ def get_clipped_reads(ibam, outFile):
                             #else:
                             #print('Before')
                             #print(read)
-                            print('{}:Inversion before at {}:{}'.format(
-                                read.query_name,
-                                read.reference_name, ref_pos))
+                            # print('{}:Inversion before at {}:{}'.format(
+                            #     read.query_name,
+                            #     read.reference_name, ref_pos))
                             clipped_reads_inversion[read.reference_name]['before'][ref_pos] += 1
                         # Mate is mapped after read
                         else:
@@ -176,22 +176,24 @@ def get_clipped_reads(ibam, outFile):
                             #else:
                             #print('After')
                             #print(read)
-                            print('{}:Inversion after at {}:{}'.format(
-                                read.query_name,
-                                read.reference_name, ref_pos))
+                            # print('{}:Inversion after at {}:{}'.format(
+                            #     read.query_name,
+                            #     read.reference_name, ref_pos))
                             clipped_reads_inversion[read.reference_name]['after'][ref_pos] += 1
 
             else:
                 if is_clipped(read):
                     if read.is_reverse != read.mate_is_reverse:
-                        print('{}:Translocation opposite at {}:{}'.format(
-                            read.query_name,
-                            read.reference_name, ref_pos))
+                        # print('{}:Translocation opposite at {}:{}->{}:{}'.format(
+                        #     read.query_name,
+                        #     read.reference_name, ref_pos,
+                        #     read.next_reference_name, read.next_reference_start))
                         clipped_reads_translocation[read.reference_name]['opposite'][ref_pos] += 1
                     else:
-                        print('{}:Translocation same at {}:{}'.format(
-                            read.query_name,
-                            read.reference_name, ref_pos))
+                        # print('{}:Translocation same at {}:{}->{}:{}'.format(
+                        #     read.query_name,
+                        #     read.reference_name, ref_pos,
+                        #     read.next_reference_name, read.next_reference_start))
                         clipped_reads_translocation[read.reference_name]['same'][ref_pos] += 1
 
 
@@ -220,9 +222,9 @@ def main():
     #inputBAM = wd + "T0_dedup.bam"
     # Locally
     wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
-    # inputBAM = wd + "T1_dedup.bam"
+    inputBAM = wd + "T1_dedup.bam"
 
-    inputBAM = "/Users/lsantuari/Documents/mount_points/hpc_giab/RMNISTHS_30xdownsample.bam"
+    # inputBAM = "/Users/lsantuari/Documents/mount_points/hpc_giab/RMNISTHS_30xdownsample.bam"
 
     # Default chromosome is 17 for the artificial data
 

@@ -162,7 +162,7 @@ def main():
 
     t0 = time()
     get_clipped_read_positions(ibam=args.bam, outFile=output_file)
-    logging.info('Time: clipped read positions on BAM %s and Chr %s: %f' % (args.bam, (time() - t0)))
+    logging.info('Time: clipped read positions on BAM %s: %f' % (args.bam, (time() - t0)))
 
 
 if __name__ == '__main__':
