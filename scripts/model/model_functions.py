@@ -105,7 +105,7 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test,
                 lines.append('\t'.join([str(chr1), str(pos1), str(int(pos1)+1),
                                         str(chr2), str(pos2), str(int(pos2)+1),
                                         'PRED:' + class_labels[p] + '_TRUE:' + class_labels[r],
-                                        sv_score
+                                        str(sv_score)
                                         ]
                                        )+'\n')
 
@@ -138,7 +138,7 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test,
                 lines.append('\t'.join([str(chr1), str(pos1), str(int(pos1) + 1),
                                         str(chr2), str(pos2), str(int(pos2) + 1),
                                         'PRED:' + class_labels[p] + '_TRUE:' + class_labels[r],
-                                        sv_score
+                                        str(sv_score)
                                         ]
                                        ) + '\n')
 
@@ -216,7 +216,7 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test,
     results = results.append({
         "run": str(cv_iter + 1),
         "test_set_size": X_test.shape[0],
-        "average_precision_score": average_precision["weighted"]
+        "average_precision_score": average_precision["weighted"],
         "f1_score": f1_score_metric["weighted"]
     }, ignore_index=True)
 
