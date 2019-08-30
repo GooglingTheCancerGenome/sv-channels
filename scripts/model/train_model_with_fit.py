@@ -15,6 +15,7 @@ import argparse
 import bcolz
 
 from sklearn.utils import class_weight
+from sklearn.model_selection import StratifiedKFold
 
 from keras.models import Sequential
 from keras.layers import Dense, Activation, Convolution1D, Lambda, \
@@ -44,6 +45,8 @@ tf.compat.v1.keras.backend.set_session(sess)
 
 mapclasses_all = {'DEL': 0, 'noDEL': 1, 'UK_other': 2, 'UK_single_partial': 3, 'UK_multiple_on_either_windows': 4}
 mapclasses = {'DEL': 0, 'noDEL': 1}
+
+
 # mapclasses = {'DEL_start': 0, 'DEL_end': 1, 'noDEL': 2}
 
 
@@ -162,7 +165,6 @@ def get_data_dir(sampleName):
 
 
 def data(sampleName):
-
     def filter_labels(X, y, win_ids):
         # print(y)
         keep = [i for i, v in enumerate(y) if v in ['DEL', 'noDEL']]
@@ -297,8 +299,8 @@ def create_model(dim_length, dim_channels, class_number):
     layers = 2
     filters = [4] * layers
     fc_hidden_nodes = 6
-    learning_rate = 10**(-4)
-    regularization_rate = 10**(-1)
+    learning_rate = 10 ** (-4)
+    regularization_rate = 10 ** (-1)
     kernel_size = 7
     drp_out1 = 0
     drp_out2 = 0
@@ -349,7 +351,6 @@ def create_model(dim_length, dim_channels, class_number):
 
 
 def train(sampleName, params, X_train, y_train, y_train_binary):
-
     channel_data_dir = get_data_dir(sampleName)
 
     # win_len = 200
@@ -430,26 +431,95 @@ def train(sampleName, params, X_train, y_train, y_train_binary):
                         epochs=params['epochs'],
                         shuffle=True,
                         # class_weight=class_weights,
-                        verbose=1,
+                        verbose=0,
                         callbacks=[esCallback]
                         )
 
     return model, history, X_train.shape[0], int(X_train.shape[0] * params['val_split'])
 
 
+def cross_validation(sampleName, outDir):
+
+    X, y, win_ids = data(sampleName)
+    y_binary = to_categorical(y, num_classes=len(mapclasses.keys()))
+
+    kfold_splits = 10
+
+    # Instantiate the cross validator
+    skf = StratifiedKFold(n_splits=kfold_splits, shuffle=True)
+
+    # Loop through the indices the split() method returns
+    for index, (train_indices, test_indices) in enumerate(skf.split(X, y)):
+        print("Training on fold " + str(index + 1) + "/10...")
+
+        # Generate batches from indices
+        X_train, X_test = X[train_indices], X[test_indices]
+        y_train, y_test = y[train_indices], y[test_indices]
+        y_train_binary, y_test_binary = y_binary[train_indices], y_binary[test_indices]
+        win_ids_train, win_ids_test = win_ids[train_indices], win_ids[test_indices]
+
+        batch_size = 256
+        epochs = 20
+
+        # Parameters
+        params = {'dim': X_train.shape[1],
+                  'batch_size': batch_size,
+                  'epochs': epochs,
+                  'val_split': 0.2,
+                  'n_classes': len(mapclasses.keys()),
+                  'n_channels': X_train.shape[2],
+                  'shuffle': True}
+
+        model_fn = os.path.join(outDir, 'model_' + sampleName + '_cv' + str(index + 1) + '.hdf5')
+
+        # if os.path.exists(model_fn):
+        #
+        #     print('Model {} found. Loading model...'.format(model_fn))
+        #     model = load_model(model_fn)
+        #
+        # else:
+
+        print('Training model on {}...'.format(sampleName))
+        model, history, train_set_size, validation_set_size = train(sampleName,
+                                                                    params, X_train, y_train, y_train_binary)
+
+        model.save(model_fn)
+
+        results = pd.DataFrame()
+
+        # X_test, y_test, win_ids_test = data(sampleName_test)
+        # ytest_binary = to_categorical(y_test, num_classes=len(mapclasses.keys()))
+        # print(win_ids_test[0])
+
+        # mapclasses = {'DEL': 0, 'noDEL': 1}
+
+        outDit_eval = os.path.join(outDir,
+                                   'train_' + sampleName + '_test_' + sampleName + '_cv' + str(index + 1))
+
+        intermediate_results, metrics = evaluate_model(model, X_test, y_test_binary, win_ids_test,
+                                                       results, 1, 'results', mapclasses, outDit_eval)
+
+        results = results.append(intermediate_results)
+
+        results.to_csv(os.path.join(outDir,
+                                    'train_' + sampleName + '_test_' + \
+                                    sampleName + '_cv' + str(index + 1) + '_results.csv'),
+                       sep='\t')
+
+
 def train_and_test_model(sampleName_training, sampleName_test, outDir):
+    if sampleName_training == sampleName_test:
+        X_train, X_test, y_train, y_test, win_ids_train, win_ids_test = train_and_test_data(sampleName_training)
+    else:
+        X_train, y_train, win_ids_train = data(sampleName_training)
+        X_test, y_test, win_ids_test = data(sampleName_test)
 
-    # X_train, X_test, y_train, y_test, win_ids_train, win_ids_test = train_and_test_data(sampleName_training)
-
-    X_train, y_train, win_ids_train = data(sampleName_training)
-    X_test, y_test, win_ids_test = data(sampleName_test)
-
-    channel_data_dir = get_data_dir(sampleName_training)
-    plots_dir = os.path.join(channel_data_dir, 'plots_' + sampleName_training)
-    create_dir(plots_dir)
-
-    idx_positive = [i for i, v in enumerate(y_train) if v == mapclasses['DEL']]
-    idx_negative = [i for i, v in enumerate(y_train) if v == mapclasses['noDEL']]
+    # channel_data_dir = get_data_dir(sampleName_training)
+    # plots_dir = os.path.join(channel_data_dir, 'plots_' + sampleName_training)
+    # create_dir(plots_dir)
+    #
+    # idx_positive = [i for i, v in enumerate(y_train) if v == mapclasses['DEL']]
+    # idx_negative = [i for i, v in enumerate(y_train) if v == mapclasses['noDEL']]
 
     # for i in idx_positive[:10]:
     #     plot_channels(plots_dir, X_train[i], y_train[i], win_ids_train[i])
@@ -513,12 +583,11 @@ def train_and_test_model(sampleName_training, sampleName_test, outDir):
 
 
 def main():
-
     parser = argparse.ArgumentParser(description='Train and test model')
     parser.add_argument('-p', '--outputpath', type=str,
                         default='/Users/lsantuari/Documents/Processed/channel_maker_output',
                         help="Specify output path")
-    parser.add_argument('-t', '--training_sample', type=str, default='T1',
+    parser.add_argument('-t', '--training_sample', type=str, default='NA12878',
                         help="Specify training sample")
     parser.add_argument('-x', '--test_sample', type=str, default='NA12878',
                         help="Specify training sample")
@@ -548,10 +617,14 @@ def main():
 
     # get_channel_labels()
 
-    train_and_test_model(sampleName_training=args.training_sample,
-                         sampleName_test=args.test_sample,
-                         outDir=output_dir
-                         )
+    # train_and_test_model(sampleName_training=args.training_sample,
+    #                      sampleName_test=args.test_sample,
+    #                      outDir=output_dir
+    #                      )
+
+    cross_validation(sampleName=args.training_sample,
+                     outDir=output_dir
+                     )
 
     # print('Elapsed time channel_maker_real on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))
     logging.info('Elapsed time training and testing = %f seconds' % (time() - t0))

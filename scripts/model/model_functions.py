@@ -84,7 +84,7 @@ def train_model_with_mcfly(model, xtrain, ytrain, xval, yval):
 def evaluate_model(model, X_test, ytest_binary, win_ids_test,
                    results, cv_iter, output, mapclasses, output_dir):
 
-    def write_bed_wrong_predictions(predicted, y_index, win_ids_test, class_labels):
+    def write_bed_wrong_predictions(probs, predicted, y_index, win_ids_test, class_labels):
 
         #print(class_labels)
 
@@ -95,15 +95,19 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test,
 
         lines = []
 
-        for p, r, w in zip(predicted, y_index, win_ids_test):
+        for prob, p, r, w in zip(probs, predicted, y_index, win_ids_test):
 
             if class_labels[p] != class_labels[r]:
 
+                sv_score = prob[0] - prob[1]
                 chr1, pos1, chr2, pos2 = unfold_win_id(w)
                 # print('{0}_{1}:{2}_{3}'.format(chr1, pos1, chr2, pos2))
                 lines.append('\t'.join([str(chr1), str(pos1), str(int(pos1)+1),
                                         str(chr2), str(pos2), str(int(pos2)+1),
-                                        'PRED:' + class_labels[p] + '_TRUE:' + class_labels[r]])+'\n')
+                                        'PRED:' + class_labels[p] + '_TRUE:' + class_labels[r],
+                                        sv_score
+                                        ]
+                                       )+'\n')
 
         f = open(outfile, 'w')
         try:
@@ -113,7 +117,7 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test,
         finally:
             f.close()
 
-    def write_bed_predictions(predicted, y_index, win_ids_test, class_labels):
+    def write_bed_predictions(probs, predicted, y_index, win_ids_test, class_labels):
 
         # print(class_labels)
 
@@ -124,14 +128,19 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test,
 
         lines = []
 
-        for p, r, w in zip(predicted, y_index, win_ids_test):
+        for prob, p, r, w in zip(probs, predicted, y_index, win_ids_test):
 
             if class_labels[p] == 'DEL':
+
+                sv_score = prob[0] - prob[1]
                 chr1, pos1, chr2, pos2 = unfold_win_id(w)
                 # print('{0}_{1}:{2}_{3}'.format(chr1, pos1, chr2, pos2))
                 lines.append('\t'.join([str(chr1), str(pos1), str(int(pos1) + 1),
                                         str(chr2), str(pos2), str(int(pos2) + 1),
-                                        'PRED:' + class_labels[p] + '_TRUE:' + class_labels[r]]) + '\n')
+                                        'PRED:' + class_labels[p] + '_TRUE:' + class_labels[r],
+                                        sv_score
+                                        ]
+                                       ) + '\n')
 
         f = open(outfile, 'w')
         try:
@@ -165,8 +174,8 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test,
     # print(y_index)
 
     # write predictions
-    write_bed_wrong_predictions(predicted, y_index, win_ids_test, class_labels)
-    write_bed_predictions(predicted, y_index, win_ids_test, class_labels)
+    write_bed_wrong_predictions(probs, predicted, y_index, win_ids_test, class_labels)
+    write_bed_predictions(probs, predicted, y_index, win_ids_test, class_labels)
 
     # print(y_index)
     outdir = os.path.join(output_dir, 'confusion_matrix')
@@ -202,13 +211,13 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test,
     print('Average precision score, weighted over all classes: {0:0.2f}'
           .format(average_precision["weighted"]))
 
-    # f1_score_metric["weighted"] = f1_score(y_index, predicted, average="weighted")
+    f1_score_metric["weighted"] = f1_score(y_index, predicted, average="weighted")
 
     results = results.append({
         "run": str(cv_iter + 1),
         "test_set_size": X_test.shape[0],
         "average_precision_score": average_precision["weighted"]
-        # "f1_score": f1_score_metric["weighted"]
+        "f1_score": f1_score_metric["weighted"]
     }, ignore_index=True)
 
     plot_precision_recall(cv_iter, mapclasses,
