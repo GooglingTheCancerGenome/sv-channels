@@ -39,7 +39,7 @@ SAMPLE_ARRAY=('NA12878' 'NA24385' 'CHM1_CHM13')
 #CHRARRAY=(`seq 1 22` 'X' 'Y' 'MT')
 #CHRARRAY=(`seq 1 22` 'X')
 
-PRG='create_windows'
+PRG='create_windows_from_carray'
 
 for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
 #for i in 0; do
