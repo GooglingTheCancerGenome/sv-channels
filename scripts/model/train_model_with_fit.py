@@ -387,7 +387,7 @@ def train(sampleName, params, X_train, y_train, y_train_binary):
         iw = np.where(y_train == l)
 
         if sampling == 'oversample':
-            ii = np.random.choice(a=iw[0], size=max_v, replace=True) if max_v < max_train else max_train
+            ii = np.random.choice(a=iw[0], size=min(max_v, max_train), replace=True)
         elif sampling == 'undersample':
             ii = np.random.choice(a=iw[0], size=min_v, replace=False)
 
