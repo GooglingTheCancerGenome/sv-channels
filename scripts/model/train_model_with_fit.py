@@ -369,6 +369,9 @@ def train(sampleName, params, X_train, y_train, y_train_binary):
 
     cnt_lab = Counter(y_train)
 
+    # maximum training samples per class
+    max_train = 10**5
+
     min_v = min([v for k, v in cnt_lab.items()])
     max_v = max([v for k, v in cnt_lab.items()])
 
@@ -384,7 +387,7 @@ def train(sampleName, params, X_train, y_train, y_train_binary):
         iw = np.where(y_train == l)
 
         if sampling == 'oversample':
-            ii = np.random.choice(a=iw[0], size=max_v, replace=True)
+            ii = np.random.choice(a=iw[0], size=max_v, replace=True) if max_v < max_train else max_train
         elif sampling == 'undersample':
             ii = np.random.choice(a=iw[0], size=min_v, replace=False)
 
