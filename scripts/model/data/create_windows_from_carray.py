@@ -36,7 +36,7 @@ def get_chr_list(sampleName):
         chrlist = ['17']
     else:
         chrlist = list(map(str, range(1, 23)))
-        chrlist.extend(['X'])
+        chrlist.extend(['X', 'Y'])
 
     return chrlist
 
