@@ -308,9 +308,9 @@ def create_model(dim_length, dim_channels, class_number):
     # drp_out1 = 0
     # drp_out2 = 0
 
-    layers = 2*2 # 2
-    filters = [4] * layers
-    fc_hidden_nodes = 6*2 #6
+    layers = 2
+    filters = [4] * layers # 4
+    fc_hidden_nodes = 6
     learning_rate = 10 ** (-4)
     regularization_rate = 10 ** (-1)
     kernel_size = 7
@@ -446,7 +446,7 @@ def train(sampleName, params, X_train, y_train, y_train_binary):
                         epochs=params['epochs'],
                         shuffle=True,
                         # class_weight=class_weights,
-                        verbose=0,
+                        verbose=1,
                         callbacks=[esCallback]
                         )
 
@@ -523,6 +523,7 @@ def cross_validation(sampleName, outDir):
 
 
 def train_and_test_model(sampleName_training, sampleName_test, outDir):
+
     if sampleName_training == sampleName_test:
         X_train, X_test, y_train, y_test, win_ids_train, win_ids_test = train_and_test_data(sampleName_training)
     else:
@@ -559,18 +560,18 @@ def train_and_test_model(sampleName_training, sampleName_test, outDir):
 
     model_fn = os.path.join(outDir, 'model_' + sampleName_training + '.hdf5')
 
-    if os.path.exists(model_fn):
+    # if os.path.exists(model_fn):
+    #
+    #     print('Model {} found. Loading model...'.format(model_fn))
+    #     model = load_model(model_fn)
+    #
+    # else:
 
-        print('Model {} found. Loading model...'.format(model_fn))
-        model = load_model(model_fn)
+    print('Training model on {}...'.format(sampleName_training))
+    model, history, train_set_size, validation_set_size = train(sampleName_training,
+                                                                params, X_train, y_train, y_train_binary)
 
-    else:
-
-        print('Training model on {}...'.format(sampleName_training))
-        model, history, train_set_size, validation_set_size = train(sampleName_training,
-                                                                    params, X_train, y_train, y_train_binary)
-
-        model.save(model_fn)
+    model.save(model_fn)
 
     results = pd.DataFrame()
 
@@ -632,14 +633,17 @@ def main():
 
     # get_channel_labels()
 
-    # train_and_test_model(sampleName_training=args.training_sample,
-    #                      sampleName_test=args.test_sample,
-    #                      outDir=output_dir
-    #                      )
+    if args.training_sample != args.test_sample:
 
-    cross_validation(sampleName=args.training_sample,
-                     outDir=output_dir
-                     )
+        train_and_test_model(sampleName_training=args.training_sample,
+                             sampleName_test=args.test_sample,
+                             outDir=output_dir
+                             )
+    else:
+
+        cross_validation(sampleName=args.training_sample,
+                         outDir=output_dir
+                         )
 
     # print('Elapsed time channel_maker_real on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))
     logging.info('Elapsed time training and testing = %f seconds' % (time() - t0))
