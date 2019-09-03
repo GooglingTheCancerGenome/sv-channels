@@ -41,7 +41,7 @@ def read_vcf(invcf):
     vcf_in = VariantFile(invcf, 'r')
     for rec in vcf_in.fetch():
 
-        var = SVRecord(rec, None)
+        var = SVRecord(rec, 'gridss')
 
         chrom1 = var.chrom
         pos1_start = var.start + var.cipos[0]
@@ -76,6 +76,9 @@ def read_bedpe(inbedpe):
             chrom1, pos1_start, pos1_end = str(columns[0]), int(columns[1]), int(columns[2])
             chrom2, pos2_start, pos2_end = str(columns[3]), int(columns[4]), int(columns[5])
             svtype = columns[10]
+
+            if svtype == "TYPE:DELETION":
+                svtype = "DEL"
 
             if svtype == "DEL":
                 sv_list.append((
@@ -456,14 +459,18 @@ def main():
     parser.add_argument('-w', '--window', type=str, default=200,
                         help="Specify window size")
     parser.add_argument('-gt', '--ground_truth', type=str,
-                        default=os.path.join('/Users/lsantuari/Documents/Data/germline/NA24385',
-                                             'NIST_SVs_Integration_v0.6/processed/HG002_SVs_Tier1_v0.6.PASS.vcf.gz'),
+                        # default=os.path.join('/Users/lsantuari/Documents/Data/germline/NA24385',
+                        #                      'NIST_SVs_Integration_v0.6/processed/HG002_SVs_Tier1_v0.6.PASS.vcf.gz'),
                         # default=os.path.join('/Users/lsantuari/Documents/Data/germline/CHM/Huddleston2016',
                         #                     'structural_variants/CHM1_CHM13_pseudodiploid_SVs.vcf.gz'),
                         # default=os.path.join('/Users/lsantuari/Documents/Data/svclassify',
                         #                     'Personalis_1000_Genomes_deduplicated_deletions.bedpe'),
+                        # default=os.path.join('/Users/lsantuari/Documents/External_GitHub/sv_benchmark/',
+                        #                      'input.na12878/lumpy-Mills2011-call-set.nanosv.sorted.bedpe'),
                         # default=os.path.join('/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data',
                         #                      'run_test_INDEL/SV/chr17_INDEL.sur'),
+                        default=os.path.join('/Users/lsantuari/Documents/Data/germline/NA24385/SV',
+                                             'Filtered/gridss.vcf'),
                         help="Specify ground truth VCF/BEDPE file")
     parser.add_argument('-o', '--out', type=str, default='labels.json.gz',
                         help="Specify output")

@@ -432,7 +432,7 @@ def load_all_clipped_read_positions(sampleName, win_hlen, chr_dict, output_dir):
                                 if (chr1 == chrom and pos1 in positions_cr[chr1])
                                 or (chr2 == chrom and pos2 in positions_cr[chr2])]
 
-            logging.info('{} positions'.format(len(locations[chrom])))
+            logging.info('Chr{}: {} positions'.format(chrom, len(locations[chrom])))
 
         cpos_list = []
         for chrom in chr_list:

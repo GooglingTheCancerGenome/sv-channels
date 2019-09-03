@@ -164,6 +164,15 @@ def get_data_dir(sampleName):
     return channel_dir
 
 
+def get_labels(channel_data_dir, win):
+    label_file = os.path.join(channel_data_dir, 'labels_win' + str(win), 'labels.json.gz')
+
+    with gzip.GzipFile(label_file, 'r') as fin:
+        labels = json.loads(fin.read().decode('utf-8'))
+
+    return labels
+
+
 def data(sampleName):
     def filter_labels(X, y, win_ids):
         # print(y)
@@ -198,13 +207,16 @@ def data(sampleName):
     #     labels = json.loads(fin.read().decode('utf-8'))
 
     for label_type in ['test']:
+
         carray_file = os.path.join(channel_dir,
                                    'windows', label_type + '_win200_carray')
         logging.info('Loading file: {}'.format(carray_file))
         assert os.path.exists(carray_file), carray_file + ' not found'
         X = bcolz.open(rootdir=carray_file)
 
-        labels = X.attrs['labels']
+        # labels = X.attrs['labels']
+        labels = get_labels(channel_dir, '200')
+
         y.extend(labels.values())
         win_ids.extend(labels.keys())
 
@@ -296,9 +308,9 @@ def create_model(dim_length, dim_channels, class_number):
     # drp_out1 = 0
     # drp_out2 = 0
 
-    layers = 2
+    layers = 2*2 # 2
     filters = [4] * layers
-    fc_hidden_nodes = 6
+    fc_hidden_nodes = 6*2 #6
     learning_rate = 10 ** (-4)
     regularization_rate = 10 ** (-1)
     kernel_size = 7
