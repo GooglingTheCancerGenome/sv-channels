@@ -186,13 +186,13 @@ def get_split_read_positions(ibam, outFile):
                                 right_split_pos[read.reference_name].append(read.reference_end)
                                 left_split_pos[chr_SA].append(pos_SA)
 
-                                split_reads[read.reference_name]['right'][read.reference_end] += 1
-                                split_reads[chr_SA]['left'][pos_SA] += 1
+                                split_reads[read.reference_name]['left'][read.reference_end] += 1
+                                split_reads[chr_SA]['right'][pos_SA] += 1
 
                                 if read.reference_name == chr_SA:
                                     dist = abs(read.reference_end - pos_SA)
-                                    split_read_distance[read.reference_name]['right'][read.reference_end].append(dist)
-                                    split_read_distance[chr_SA]['left'][pos_SA].append(dist)
+                                    split_read_distance[read.reference_name]['left'][read.reference_end].append(dist)
+                                    split_read_distance[chr_SA]['right'][pos_SA].append(dist)
                                 n_split += 1
 
                     if (read.query_name, pos_SA) in rs_mate_set[read.next_reference_name]:
@@ -215,13 +215,13 @@ def get_split_read_positions(ibam, outFile):
                                 left_split_pos[read.reference_name].append(read.reference_end)
                                 right_split_pos[chr_SA].append(pos_SA)
 
-                                split_reads[read.reference_name]['left'][read.reference_end] += 1
-                                split_reads[chr_SA]['right'][pos_SA] += 1
+                                split_reads[read.reference_name]['right'][read.reference_end] += 1
+                                split_reads[chr_SA]['left'][pos_SA] += 1
 
                                 if read.reference_name == chr_SA:
                                     dist = abs(read.reference_end - pos_SA)
-                                    split_read_distance[read.reference_name]['left'][read.reference_end].append(dist)
-                                    split_read_distance[chr_SA]['right'][pos_SA].append(dist)
+                                    split_read_distance[read.reference_name]['right'][read.reference_end].append(dist)
+                                    split_read_distance[chr_SA]['left'][pos_SA].append(dist)
 
                                 n_split += 1
 
