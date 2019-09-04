@@ -166,74 +166,104 @@ def get_split_read_positions(ibam, outFile):
                     elif is_left_clipped(read):
                         pos = read.reference_start + 1
 
-                    if (read.query_name, pos_SA) in ls_mate_set[read.next_reference_name]:
+                    if (read.query_name, chr_SA, pos_SA) in ls_mate_set[read.next_reference_name]:
                         if read.query_name in left_split_pos_by_query.keys():
                             if not (read.reference_name == chr_SA and
                                     pos == left_split_pos_by_query[read.query_name]):
                                 # assert is_left_clipped(read)
-                                # print('R split {} at position {}:{} to {}:{}'.format(
-                                #     read.query_name,
-                                #     read.reference_name,
-                                #     pos,
-                                #     chr_SA,
-                                #     left_split_pos_by_query[read.query_name]
-                                #     ))
-                                left_split_pos[read.next_reference_name].append(left_split_pos_by_query[read.query_name])
-                                split_pos_coord = append_coord(split_pos_coord,
-                                                               read.reference_name,
-                                                               pos,
-                                                               chr_SA, left_split_pos_by_query[read.query_name])
-                                right_split_pos[read.reference_name].append(read.reference_end)
-                                left_split_pos[chr_SA].append(pos_SA)
 
-                                split_reads[read.reference_name]['left'][read.reference_end] += 1
-                                split_reads[chr_SA]['right'][pos_SA] += 1
+                                if read.reference_name == chr_SA and \
+                                    pos < left_split_pos_by_query[read.query_name]:
 
-                                if read.reference_name == chr_SA:
-                                    dist = abs(read.reference_end - pos_SA)
-                                    split_read_distance[read.reference_name]['left'][read.reference_end].append(dist)
-                                    split_read_distance[chr_SA]['right'][pos_SA].append(dist)
-                                n_split += 1
+                                    print('R split {} at position {}:{} to {}:{}'.format(
+                                        read.query_name,
+                                        read.reference_name,
+                                        pos,
+                                        chr_SA,
+                                        left_split_pos_by_query[read.query_name]
+                                        ))
+                                    left_split_pos[read.next_reference_name].append(left_split_pos_by_query[read.query_name])
+                                    split_pos_coord = append_coord(split_pos_coord,
+                                                                   read.reference_name,
+                                                                   pos,
+                                                                   chr_SA, left_split_pos_by_query[read.query_name])
+                                    right_split_pos[read.reference_name].append(read.reference_end)
+                                    left_split_pos[chr_SA].append(pos_SA)
 
-                    if (read.query_name, pos_SA) in rs_mate_set[read.next_reference_name]:
+                                    split_reads[read.reference_name]['left'][read.reference_end] += 1
+                                    split_reads[chr_SA]['right'][pos_SA] += 1
+
+                                    if read.reference_name == chr_SA:
+                                        dist = abs(read.reference_end - pos_SA)
+                                        split_read_distance[read.reference_name]['left'][read.reference_end].append(dist)
+                                        split_read_distance[chr_SA]['right'][pos_SA].append(dist)
+                                    n_split += 1
+
+                                    ls_mate_set[read.next_reference_name].remove(
+                                        (read.query_name, chr_SA, pos_SA)
+                                    )
+                                    del left_split_pos_by_query[read.query_name]
+
+                    elif (read.query_name, chr_SA, pos_SA) in rs_mate_set[read.next_reference_name]:
                         if read.query_name in right_split_pos_by_query.keys():
                             if not (read.reference_name == chr_SA and
                                     pos == right_split_pos_by_query[read.query_name]):
                                 # assert is_right_clipped(read)
-                                # print('L split {} at position {}:{} to {}:{}'.format(
-                                #     read.query_name,
-                                #     read.reference_name,
-                                #     pos,
-                                #     chr_SA,
-                                #     right_split_pos_by_query[read.query_name]
-                                #     ))
-                                right_split_pos[read.next_reference_name].append(right_split_pos_by_query[read.query_name])
-                                split_pos_coord = append_coord(split_pos_coord,
-                                                               read.reference_name,
-                                                               pos,
-                                                               chr_SA, right_split_pos_by_query[read.query_name])
-                                left_split_pos[read.reference_name].append(read.reference_end)
-                                right_split_pos[chr_SA].append(pos_SA)
 
-                                split_reads[read.reference_name]['right'][read.reference_end] += 1
-                                split_reads[chr_SA]['left'][pos_SA] += 1
+                                if read.reference_name == chr_SA and \
+                                    right_split_pos_by_query[read.query_name] < pos:
 
-                                if read.reference_name == chr_SA:
-                                    dist = abs(read.reference_end - pos_SA)
-                                    split_read_distance[read.reference_name]['right'][read.reference_end].append(dist)
-                                    split_read_distance[chr_SA]['left'][pos_SA].append(dist)
+                                    print('L split {} at position {}:{} to {}:{}'.format(
+                                        read.query_name,
+                                        read.reference_name,
+                                        pos,
+                                        chr_SA,
+                                        right_split_pos_by_query[read.query_name]
+                                        ))
+                                    right_split_pos[read.next_reference_name].append(
+                                        right_split_pos_by_query[read.query_name]
+                                    )
+                                    split_pos_coord = append_coord(split_pos_coord,
+                                                                   read.reference_name,
+                                                                   pos,
+                                                                   chr_SA, right_split_pos_by_query[read.query_name])
+                                    left_split_pos[read.reference_name].append(read.reference_end)
+                                    right_split_pos[chr_SA].append(pos_SA)
 
-                                n_split += 1
+                                    split_reads[read.reference_name]['right'][read.reference_end] += 1
+                                    split_reads[chr_SA]['left'][pos_SA] += 1
 
-                    if is_right_clipped(read):
+                                    if read.reference_name == chr_SA:
+                                        dist = abs(read.reference_end - pos_SA)
+                                        split_read_distance[read.reference_name]['right'][read.reference_end].append(dist)
+                                        split_read_distance[chr_SA]['left'][pos_SA].append(dist)
 
-                        right_split_pos_by_query[read.query_name] = read.reference_end
-                        rs_mate_set[read.reference_name].add((read.query_name, read.reference_start))
+                                    n_split += 1
 
-                    elif is_left_clipped(read):
+                                    rs_mate_set[read.next_reference_name].remove(
+                                        (read.query_name, chr_SA, pos_SA)
+                                    )
+                                    del right_split_pos_by_query[read.query_name]
 
-                        left_split_pos_by_query[read.query_name] = read.reference_start + 1
-                        ls_mate_set[read.reference_name].add((read.query_name, read.reference_start))
+                    else:
+
+                        if is_right_clipped(read):
+                            # print('Adding {} => {}:{} to rs_mate_set'.format(read.query_name,
+                            #                                                  read.reference_name,
+                            #                                                  read.reference_start))
+                            right_split_pos_by_query[read.query_name] = read.reference_end
+                            rs_mate_set[read.reference_name].add((read.query_name,
+                                                                  read.reference_name,
+                                                                  read.reference_start))
+
+                        elif is_left_clipped(read):
+                            # print('Adding {} => {}:{} to ls_mate_set'.format(read.query_name,
+                            #                                               read.reference_name,
+                            #                                               read.reference_start))
+                            left_split_pos_by_query[read.query_name] = read.reference_start + 1
+                            ls_mate_set[read.reference_name].add((read.query_name,
+                                                                  read.reference_name,
+                                                                  read.reference_start))
 
                 # if not read.mate_is_unmapped and ( not read.is_proper_pair or is_clipped(read) ):
                 #     n_discordant += 1
@@ -378,6 +408,7 @@ def main():
     inputBAM = wd + "T1_dedup.bam"
     # wd = '/Users/lsantuari/Documents/mount_points/hpc_mnt/Datasets/CretuStancu2017/Patient1/'
     # inputBAM = wd + 'Patient1.bam'
+    inputBAM = "/Users/lsantuari/Documents/mount_points/hpc_giab/RMNISTHS_30xdownsample.bam"
 
     # Default chromosome is 17 for the artificial data
 
