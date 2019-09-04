@@ -165,6 +165,8 @@ def get_split_read_positions(ibam, outFile):
                         pos = read.reference_end
                     elif is_left_clipped(read):
                         pos = read.reference_start + 1
+                    # else:
+                    #     print('Not clipped!\n{}'.format(read))
 
                     if (read.query_name, chr_SA, pos_SA) in ls_mate_set[read.next_reference_name]:
                         if read.query_name in left_split_pos_by_query.keys():
@@ -175,13 +177,13 @@ def get_split_read_positions(ibam, outFile):
                                 if read.reference_name == chr_SA and \
                                     pos < left_split_pos_by_query[read.query_name]:
 
-                                    print('R split {} at position {}:{} to {}:{}'.format(
-                                        read.query_name,
-                                        read.reference_name,
-                                        pos,
-                                        chr_SA,
-                                        left_split_pos_by_query[read.query_name]
-                                        ))
+                                    # print('R split {} at position {}:{} to {}:{}'.format(
+                                    #     read.query_name,
+                                    #     read.reference_name,
+                                    #     pos,
+                                    #     chr_SA,
+                                    #     left_split_pos_by_query[read.query_name]
+                                    #     ))
                                     left_split_pos[read.next_reference_name].append(left_split_pos_by_query[read.query_name])
                                     split_pos_coord = append_coord(split_pos_coord,
                                                                    read.reference_name,
@@ -213,13 +215,13 @@ def get_split_read_positions(ibam, outFile):
                                 if read.reference_name == chr_SA and \
                                     right_split_pos_by_query[read.query_name] < pos:
 
-                                    print('L split {} at position {}:{} to {}:{}'.format(
-                                        read.query_name,
-                                        read.reference_name,
-                                        pos,
-                                        chr_SA,
-                                        right_split_pos_by_query[read.query_name]
-                                        ))
+                                    # print('L split {} at position {}:{} to {}:{}'.format(
+                                    #     read.query_name,
+                                    #     read.reference_name,
+                                    #     pos,
+                                    #     chr_SA,
+                                    #     right_split_pos_by_query[read.query_name]
+                                    #     ))
                                     right_split_pos[read.next_reference_name].append(
                                         right_split_pos_by_query[read.query_name]
                                     )
