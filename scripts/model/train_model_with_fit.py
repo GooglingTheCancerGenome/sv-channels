@@ -47,7 +47,7 @@ mapclasses_all = {'DEL': 0, 'noDEL': 1, 'UK_other': 2, 'UK_single_partial': 3, '
 mapclasses = {'DEL': 0, 'noDEL': 1}
 
 
-# mapclasses = {'DEL_start': 0, 'DEL_end': 1, 'noDEL': 2}
+mapclasses_single = {'DEL_start': 0, 'DEL_end': 1, 'noDEL': 2}
 
 
 def get_channel_labels():
@@ -114,7 +114,7 @@ def plot_channels(outDir, X, z, l):
     fig = plt.figure(figsize=(6, 4))
     fig.suptitle(mapclasses_rev[z] + ' ' + l, fontsize=20)
 
-    for j in range(number_channels):  # - 1, -1, -1):
+    for j in range(number_channels- 1, -1, -1):
 
         if sum(X[:, j]) != 0:
             X_win = (X[:, j] - min(X[:, j])) / max(X[:, j])
@@ -127,13 +127,30 @@ def plot_channels(outDir, X, z, l):
         plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., prop={'size': 5})
         plt.yticks(range(0, len(label) + 1, 1))
         plt.tick_params(axis='both', which='major', labelsize=5)
-        plt.axvline(x=200, color='r', linewidth=0.05, alpha=0.5)
-        plt.axvline(x=210, color='r', linewidth=0.05, alpha=0.5)
+        plt.axvline(x=50, color='r', linewidth=0.05, alpha=0.5)
+        plt.axvline(x=60, color='r', linewidth=0.05, alpha=0.5)
 
     plt.savefig(os.path.join(outDir, title_plot + '.png'),
                 format='png', dpi=300, bbox_inches='tight')
-    plt.show()
-    # plt.close()
+    # plt.show()
+    plt.close()
+
+
+def create_plots(sampleName, X_train, y_train, win_ids_train):
+
+    channel_data_dir = get_data_dir(sampleName)
+    plots_dir = os.path.join(channel_data_dir, 'plots_' + sampleName)
+    create_dir(plots_dir)
+
+    # idx_positive = [i for i, v in enumerate(y_train) if v == mapclasses['DEL']]
+    # # idx_positive = [i for i, v in enumerate(y_train) if v == mapclasses['DEL_start'] or v == mapclasses['DEL_end']]
+    # idx_negative = [i for i, v in enumerate(y_train) if v == mapclasses['noDEL']]
+    #
+    # for i in idx_positive[:10]:
+    #     plot_channels(plots_dir, X_train[i], y_train[i], win_ids_train[i])
+    #
+    # for i in idx_negative[:10]:
+    #     plot_channels(plots_dir, X_train[i], y_train[i], win_ids_train[i])
 
 
 def get_hpc_flag():
@@ -214,8 +231,8 @@ def data(sampleName):
         assert os.path.exists(carray_file), carray_file + ' not found'
         X = bcolz.open(rootdir=carray_file)
 
-        # labels = X.attrs['labels']
-        labels = get_labels(channel_dir, '200')
+        labels = X.attrs['labels']
+        # labels = get_labels(channel_dir, '200')
 
         y.extend(labels.values())
         win_ids.extend(labels.keys())
@@ -241,7 +258,7 @@ def data(sampleName):
     # X = np.concatenate(numpy_array, axis=0)
 
     # Select only coverage, CR and SR channels
-    # X = X[:, :, np.array([0,6,7,8,9,25,26])]
+    # X = X[:, :, np.array([0,6,7])]
 
     # X = X[:, :, np.array([0, 6, 7])]
 
@@ -256,7 +273,8 @@ def data(sampleName):
 
     X, y, win_ids = filter_labels(X, y, win_ids)
 
-    # X = np.stack([X[:, :200, :], X[:, 210:, :]], axis=0)
+    # transform data from window pairs to single windows
+    # X = np.concatenate([X[:, :51, :], X[:, 60:, :]], axis=0)
     # y = list(map(lambda x: x + '_start' if x == 'DEL' else x, y))
     # y.extend(
     #     list(map(lambda x: x + '_end' if x == 'DEL' else x, y))
@@ -458,6 +476,8 @@ def cross_validation(sampleName, outDir):
     X, y, win_ids = data(sampleName)
     y_binary = to_categorical(y, num_classes=len(mapclasses.keys()))
 
+    create_plots(sampleName, X, y, win_ids)
+
     kfold_splits = 10
 
     # Instantiate the cross validator
@@ -473,8 +493,8 @@ def cross_validation(sampleName, outDir):
         y_train_binary, y_test_binary = y_binary[train_indices], y_binary[test_indices]
         win_ids_train, win_ids_test = win_ids[train_indices], win_ids[test_indices]
 
-        batch_size = 256
-        epochs = 20
+        batch_size = 32
+        epochs = 50
 
         # Parameters
         params = {'dim': X_train.shape[1],
@@ -530,21 +550,8 @@ def train_and_test_model(sampleName_training, sampleName_test, outDir):
         X_train, y_train, win_ids_train = data(sampleName_training)
         X_test, y_test, win_ids_test = data(sampleName_test)
 
-    # channel_data_dir = get_data_dir(sampleName_training)
-    # plots_dir = os.path.join(channel_data_dir, 'plots_' + sampleName_training)
-    # create_dir(plots_dir)
-    #
-    # idx_positive = [i for i, v in enumerate(y_train) if v == mapclasses['DEL']]
-    # idx_negative = [i for i, v in enumerate(y_train) if v == mapclasses['noDEL']]
-
-    # for i in idx_positive[:10]:
-    #     plot_channels(plots_dir, X_train[i], y_train[i], win_ids_train[i])
-    #
-    # for i in idx_negative[:10]:
-    #     plot_channels(plots_dir, X_train[i], y_train[i], win_ids_train[i])
-
-    batch_size = 256
-    epochs = 20
+    batch_size = 32
+    epochs = 50
 
     # Parameters
     params = {'dim': X_train.shape[1],
