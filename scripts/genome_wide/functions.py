@@ -373,6 +373,10 @@ def load_all_clipped_read_positions_by_chr(sampleName, win_hlen, chr_dict, outpu
 
 
 def load_all_clipped_read_positions(sampleName, win_hlen, chr_dict, output_dir):
+
+    config = get_config_file()
+    min_CR_support = config["DEFAULT"]["MIN_CR_SUPPORT"]
+
     cr_pos_file = os.path.join(output_dir, sampleName, 'candidate_positions_' + sampleName + '.json.gz')
 
     if os.path.exists(cr_pos_file):
@@ -408,17 +412,21 @@ def load_all_clipped_read_positions(sampleName, win_hlen, chr_dict, output_dir):
         positions_cr = dict()
 
         for chrom in chr_list:
+
             locations[chrom] = [(chr1, pos1, chr2, pos2) for chr1, pos1, chr2, pos2 in total_reads_coord_min_support
                                 if chr1 in chr_dict.keys() and chr2 in chr_dict.keys() and
+                                chr1 == chrom and
                                 win_hlen <= pos1 <= (chr_dict[chr1] - win_hlen) and
                                 win_hlen <= pos2 <= (chr_dict[chr2] - win_hlen)
                                 ]
             if chrom in left_clipped_pos_cnt.keys():
-                positions_cr_l = set([int(k) for k, v in left_clipped_pos_cnt[chrom].items() if v >= 2])
+                positions_cr_l = set([int(k) for k, v in left_clipped_pos_cnt[chrom].items()
+                                      if v >= min_CR_support])
             else:
                 positions_cr_l = set()
             if chrom in right_clipped_pos_cnt.keys():
-                positions_cr_r = set([int(k) for k, v in right_clipped_pos_cnt[chrom].items() if v >= 2])
+                positions_cr_r = set([int(k) for k, v in right_clipped_pos_cnt[chrom].items()
+                                      if v >= min_CR_support])
             else:
                 positions_cr_r = set()
 

@@ -93,6 +93,7 @@ def read_bedpe(inbedpe):
 
 
 def filter_bedpe(inbedpe, sv_id_list, outDir):
+
     # Check file existence
     assert os.path.isfile(inbedpe), inbedpe + ' not found!'
     # Dictionary with chromosome keys to store SVs
@@ -105,6 +106,7 @@ def filter_bedpe(inbedpe, sv_id_list, outDir):
             chrom1, pos1_start, pos1_end = str(columns[0]), int(columns[1]), int(columns[2])
             chrom2, pos2_start, pos2_end = str(columns[3]), int(columns[4]), int(columns[5])
             svtype = columns[10]
+            svtype = "DEL" if svtype == "TYPE:DELETION" else svtype
 
             sv_id = '_'.join((svtype, chrom1, str(pos1_start), chrom2, str(pos2_start)))
 
@@ -308,8 +310,28 @@ def overlap(sv_list, cpos_list, win_hlen, ground_truth, outDir):
         elif l1 == 0 and l1 == l2:
             # logging.info('CPOS->Partial: %s\t%d\t%d' % (elem, start, end))
             labels[pos_id] = 'noDEL'
+
+        elif (l1 == 1 and l2 > 1) or (l2 == 1 and l1 > 1):
+
+            lu_start_set = set()
+            lu_end_set = set()
+
+            for s in lu_start:
+                lu_start_elem_start, lu_start_elem_end, lu_start_elem_data = s
+                lu_start_elem_svtype, lu_start_elem_svid = lu_start_elem_data
+                lu_start_set.add(lu_start_elem_svid)
+
+            for s in lu_end:
+                lu_end_elem_start, lu_end_elem_end, lu_end_elem_data = s
+                lu_end_elem_svtype, lu_end_elem_svid = lu_end_elem_data
+                lu_end_set.add(lu_end_elem_svid)
+
+            sv_covered = sv_covered | (lu_start_set & lu_end_set)
+            labels[pos_id] = 'UK_single_and_multiple'
+
         else:
-            labels[pos_id] = 'UK_other'
+            # (l1 == 1 and l2 == 0) or (l1 == 0 and l2 == 1)
+            labels[pos_id] = 'noDEL'
 
     logging.info(Counter(labels.values()))
     sv_coverage = int(len(sv_covered) / len(sv_list) * 100)
@@ -318,7 +340,9 @@ def overlap(sv_list, cpos_list, win_hlen, ground_truth, outDir):
                                                  sv_coverage))
 
     filename, file_extension = os.path.splitext(ground_truth)
+
     if file_extension == '.bedpe':
+        # print(sv_covered)
         filter_bedpe(ground_truth, sv_covered, outDir)
     elif file_extension == '.sur':
         filter_survivor_output(ground_truth, sv_covered, outDir)
@@ -328,7 +352,7 @@ def overlap(sv_list, cpos_list, win_hlen, ground_truth, outDir):
 
 
 # Get labels
-def get_labels(ibam, sampleName, win_len, ground_truth, outFile, outDir):
+def get_labels(ibam, sampleName, win_len, ground_truth, channelDataDir, outFile, outDir):
     logging.info('running {}'.format(sampleName))
 
     def make_gtrees_from_truth_set(truth_set, file_ext):
@@ -410,7 +434,7 @@ def get_labels(ibam, sampleName, win_len, ground_truth, outFile, outDir):
     chr_dict = get_chr_len_dict(ibam)
     chrlist = get_chr_list()
 
-    cpos_list = load_all_clipped_read_positions(sampleName, win_hlen, chr_dict, outDir)
+    cpos_list = load_all_clipped_read_positions(sampleName, win_hlen, chr_dict, channelDataDir)
 
     # Keep only positions that can be used to create windows
     chr_len_dict = get_chr_len_dict(ibam)
@@ -454,7 +478,7 @@ def main():
                         help="Specify input file (BAM)")
     parser.add_argument('-l', '--logfile', type=str, default='labels.log',
                         help="Specify log file")
-    parser.add_argument('-s', '--sample', type=str, default='NA24385',
+    parser.add_argument('-s', '--sample', type=str, default='T1',
                         help="Specify sample")
     parser.add_argument('-w', '--window', type=str, default=200,
                         help="Specify window size")
@@ -467,10 +491,10 @@ def main():
                         #                     'Personalis_1000_Genomes_deduplicated_deletions.bedpe'),
                         # default=os.path.join('/Users/lsantuari/Documents/External_GitHub/sv_benchmark/',
                         #                      'input.na12878/lumpy-Mills2011-call-set.nanosv.sorted.bedpe'),
-                        # default=os.path.join('/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data',
-                        #                      'run_test_INDEL/SV/chr17_INDEL.sur'),
-                        default=os.path.join('/Users/lsantuari/Documents/Data/germline/NA24385/SV',
-                                             'Filtered/gridss.vcf'),
+                        default=os.path.join('/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data',
+                                             'run_test_INDEL/SV/chr17_INDEL.sur'),
+                        # default=os.path.join('/Users/lsantuari/Documents/Data/germline/NA12878/SV',
+                        #                      'Filtered/gridss.vcf'),
                         help="Specify ground truth VCF/BEDPE file")
     parser.add_argument('-o', '--out', type=str, default='labels.json.gz',
                         help="Specify output")
@@ -500,8 +524,9 @@ def main():
                sampleName=args.sample,
                win_len=args.window,
                ground_truth=args.ground_truth,
+               channelDataDir=args.outputpath,
                outFile=output_file,
-               outDir=args.outputpath,
+               outDir=output_dir,
                )
 
     logging.info('Elapsed time making labels = %f' % (time() - t0))

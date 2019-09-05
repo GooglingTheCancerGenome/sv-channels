@@ -1,7 +1,7 @@
 {
   "DEFAULT": {
     "HPC_MODE": true,
-    "REF_GENOME": "GRCh38",
+    "REF_GENOME": "GRCh37",
     "CANDIDATE_POSITIONS" : "SR_CR",
     "READ_LENGTH": 151,
     "MIN_CR_SUPPORT": 1,
