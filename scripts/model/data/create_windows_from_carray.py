@@ -167,12 +167,16 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
             dask_array.append(padding)
             d = chr_array[chr2][pos2 - win_hlen:pos2 + win_hlen, :]
             dask_array.append(d)
-            try:
-                dask_array = np.concatenate(dask_array, axis=0)
-            except ValueError:
-                print('{}:{}-{}:{}'.format(chr1, pos1, chr2, pos2))
-                for d in dask_array:
-                    print(d.shape)
+
+            # try:
+
+            dask_array = np.concatenate(dask_array, axis=0)
+
+            # except ValueError:
+            #     print('{}:{}-{}:{}'.format(chr1, pos1, chr2, pos2))
+            #     for d in dask_array:
+            #         print(d.shape)
+
             # print(type(dask_array))
             bcolz_array.append(dask_array)
             i += 1
