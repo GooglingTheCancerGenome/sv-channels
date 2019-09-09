@@ -50,6 +50,7 @@ def load_chr_array(channel_data_dir, sampleName):
         logging.info('Loading file: {}'.format(carray_file))
         assert os.path.exists(carray_file), carray_file + ' not found'
         chr_array[c] = bcolz.open(rootdir=carray_file)
+        logging.info('Array shape: {}'.format(chr_array[c].shape))
 
     return chr_array
 
