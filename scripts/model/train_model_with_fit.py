@@ -227,7 +227,7 @@ def data(sampleName, npz_mode):
 
             outfile = os.path.join(channel_dir, 'windows', sampleName + '_windows.npz')
             npzfile = np.load(outfile, allow_pickle=True)
-            print(sorted(npzfile.files))
+            # print(sorted(npzfile.files))
             X = npzfile['data']
             labels = npzfile['labels']
             labels = labels.item()
@@ -611,11 +611,11 @@ def train_and_test_model(sampleName_training, sampleName_test, outDir, npz_mode)
     # else:
 
     print('Training model on {}...'.format(sampleName_training))
-    model, history, train_set_size, validation_set_size = train(sampleName_training,
+    model, history, train_set_size, validation_set_size = train(sampleName_training, model_fn,
                                                                 params,
                                                                 X_train, y_train, y_train_binary)
 
-    model.save(model_fn)
+    # model.save(model_fn)
 
     results = pd.DataFrame()
 
