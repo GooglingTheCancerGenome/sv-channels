@@ -95,7 +95,7 @@ def get_window_by_id(win_id, chr_array, padding, win_hlen):
     return da.concatenate(dask_arrays, axis=0)
 
 
-def get_windows(sampleName, outDir, win, cmd_name, mode):
+def get_windows(sampleName, outDir, win, cmd_name, mode, npz_mode):
 
     def same_chr_in_winid(win_id):
         chr1, pos1, chr2, pos2 = win_id.split('_')
@@ -149,6 +149,9 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
 
         padding = bcolz.zeros(shape=(padding_len, n_channels), dtype=np.float32)
 
+        if npz_mode:
+            numpy_array = []
+
         logging.info('Creating dask_arrays_win1 and dask_arrays_win2...')
         for chr1, pos1, chr2, pos2 in map(unfold_win_id, labs.keys()):
 
@@ -172,6 +175,9 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
 
             dask_array = np.concatenate(dask_array, axis=0)
 
+            if npz_mode:
+                numpy_array.append(dask_array)
+
             # except ValueError:
             #     print('{}:{}-{}:{}'.format(chr1, pos1, chr2, pos2))
             #     for d in dask_array:
@@ -185,6 +191,11 @@ def get_windows(sampleName, outDir, win, cmd_name, mode):
         bcolz_array.attrs['labels'] = labs
         bcolz_array.flush()
         logging.info(bcolz_array.shape)
+
+        if npz_mode:
+            numpy_array = np.stack(numpy_array, axis=0)
+            logging.info('Numpy array shape: {}'.format(numpy_array.shape))
+            np.savez(file=outfile_dir, data=numpy_array, labels=labs)
 
 
 def main():
@@ -217,6 +228,8 @@ def main():
                         help="Specify window size")
     parser.add_argument('-m', '--mode', type=str, default='test',
                         help="training/test mode")
+    parser.add_argument('-npz', '--save_npz', type=bool, default=True,
+                        help="save in npz format?")
 
     args = parser.parse_args()
 
@@ -239,7 +252,8 @@ def main():
                 outDir=args.outputpath,
                 win=args.window,
                 cmd_name=cmd_name,
-                mode=args.mode
+                mode=args.mode,
+                npz_mode=args.save_npz
                 )
 
     # print('Elapsed time channel_maker_real on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))

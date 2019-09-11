@@ -130,7 +130,7 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test,
 
         for prob, p, r, w in zip(probs, predicted, y_index, win_ids_test):
 
-            if class_labels[p] == 'DEL':
+            if class_labels[p][:3] == 'DEL':
 
                 sv_score = prob[0] - prob[1]
                 chr1, pos1, chr2, pos2 = unfold_win_id(w)

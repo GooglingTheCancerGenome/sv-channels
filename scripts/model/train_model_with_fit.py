@@ -190,7 +190,8 @@ def get_labels(channel_data_dir, win):
     return labels
 
 
-def data(sampleName):
+def data(sampleName, npz_mode):
+
     def filter_labels(X, y, win_ids):
         # print(y)
         keep = [i for i, v in enumerate(y) if v in ['DEL', 'noDEL']]
@@ -225,13 +226,23 @@ def data(sampleName):
 
     for label_type in ['test']:
 
-        carray_file = os.path.join(channel_dir,
-                                   'windows', label_type + '_win200_carray')
-        logging.info('Loading file: {}'.format(carray_file))
-        assert os.path.exists(carray_file), carray_file + ' not found'
-        X = bcolz.open(rootdir=carray_file)
+        if npz_mode:
 
-        labels = X.attrs['labels']
+            npz_file = os.path.join(channel_dir, 'windows.npz')
+            npzfile = np.load(npz_file)
+            X = npzfile['data']
+            labels = npzfile['labels'].item()
+
+        else:
+
+            carray_file = os.path.join(channel_dir,
+                                       'windows', label_type + '_win200_carray')
+            logging.info('Loading file: {}'.format(carray_file))
+            assert os.path.exists(carray_file), carray_file + ' not found'
+            X = bcolz.open(rootdir=carray_file)
+
+            labels = X.attrs['labels']
+
         # labels = get_labels(channel_dir, '200')
 
         y.extend(labels.values())
@@ -300,9 +311,9 @@ def data(sampleName):
     return X, y, win_ids
 
 
-def train_and_test_data(sampleName):
+def train_and_test_data(sampleName, npz_mode):
     # Datasets
-    X, y, win_ids = data(sampleName)
+    X, y, win_ids = data(sampleName, npz_mode)
 
     X = np.array(X)
     y = np.array(y)
@@ -471,9 +482,9 @@ def train(sampleName, params, X_train, y_train, y_train_binary):
     return model, history, X_train.shape[0], int(X_train.shape[0] * params['val_split'])
 
 
-def cross_validation(sampleName, outDir):
+def cross_validation(sampleName, outDir, npz_mode):
 
-    X, y, win_ids = data(sampleName)
+    X, y, win_ids = data(sampleName, npz_mode)
     y_binary = to_categorical(y, num_classes=len(mapclasses.keys()))
 
     create_plots(sampleName, X, y, win_ids)
@@ -542,13 +553,14 @@ def cross_validation(sampleName, outDir):
                        sep='\t')
 
 
-def train_and_test_model(sampleName_training, sampleName_test, outDir):
+def train_and_test_model(sampleName_training, sampleName_test, outDir, npz_mode):
 
     if sampleName_training == sampleName_test:
-        X_train, X_test, y_train, y_test, win_ids_train, win_ids_test = train_and_test_data(sampleName_training)
+        X_train, X_test, y_train, y_test, win_ids_train, win_ids_test = train_and_test_data(sampleName_training,
+                                                                                            npz_mode)
     else:
-        X_train, y_train, win_ids_train = data(sampleName_training)
-        X_test, y_test, win_ids_test = data(sampleName_test)
+        X_train, y_train, win_ids_train = data(sampleName_training, npz_mode)
+        X_test, y_test, win_ids_test = data(sampleName_test, npz_mode)
 
     batch_size = 32
     epochs = 50
@@ -618,6 +630,8 @@ def main():
                         help='File in which to write logs.')
     parser.add_argument('-m', '--mode', type=str, default='training',
                         help="training/test mode")
+    parser.add_argument('-npz', '--load_npz', type=bool, default=True,
+                        help="load npz?")
 
     args = parser.parse_args()
 
@@ -644,12 +658,14 @@ def main():
 
         train_and_test_model(sampleName_training=args.training_sample,
                              sampleName_test=args.test_sample,
-                             outDir=output_dir
+                             outDir=output_dir,
+                             npz_mode=args.load_npz
                              )
     else:
 
         cross_validation(sampleName=args.training_sample,
-                         outDir=output_dir
+                         outDir=output_dir,
+                         npz_mode=args.load_npz
                          )
 
     # print('Elapsed time channel_maker_real on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))
