@@ -25,7 +25,7 @@ from keras.regularizers import l2
 from keras.optimizers import Adam
 from keras.utils import to_categorical
 
-from keras.callbacks import TensorBoard, EarlyStopping
+from keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint, CSVLogger
 from keras.models import load_model
 
 from sklearn.model_selection import train_test_split
@@ -45,7 +45,6 @@ tf.compat.v1.keras.backend.set_session(sess)
 
 mapclasses_all = {'DEL': 0, 'noDEL': 1, 'UK_other': 2, 'UK_single_partial': 3, 'UK_multiple_on_either_windows': 4}
 mapclasses = {'DEL': 0, 'noDEL': 1}
-
 
 mapclasses_single = {'DEL_start': 0, 'DEL_end': 1, 'noDEL': 2}
 
@@ -114,7 +113,7 @@ def plot_channels(outDir, X, z, l):
     fig = plt.figure(figsize=(6, 4))
     fig.suptitle(mapclasses_rev[z] + ' ' + l, fontsize=20)
 
-    for j in range(number_channels- 1, -1, -1):
+    for j in range(number_channels - 1, -1, -1):
 
         if sum(X[:, j]) != 0:
             X_win = (X[:, j] - min(X[:, j])) / max(X[:, j])
@@ -137,7 +136,6 @@ def plot_channels(outDir, X, z, l):
 
 
 def create_plots(sampleName, X_train, y_train, win_ids_train):
-
     channel_data_dir = get_data_dir(sampleName)
     plots_dir = os.path.join(channel_data_dir, 'plots_' + sampleName)
     create_dir(plots_dir)
@@ -191,7 +189,6 @@ def get_labels(channel_data_dir, win):
 
 
 def data(sampleName, npz_mode):
-
     def filter_labels(X, y, win_ids):
         # print(y)
         keep = [i for i, v in enumerate(y) if v in ['DEL', 'noDEL']]
@@ -228,10 +225,12 @@ def data(sampleName, npz_mode):
 
         if npz_mode:
 
-            npz_file = os.path.join(channel_dir, 'windows.npz')
-            npzfile = np.load(npz_file)
+            outfile = os.path.join(channel_dir, 'windows', sampleName + '_windows.npz')
+            npzfile = np.load(outfile, allow_pickle=True)
+            print(sorted(npzfile.files))
             X = npzfile['data']
-            labels = npzfile['labels'].item()
+            labels = npzfile['labels']
+            labels = labels.item()
 
         else:
 
@@ -337,9 +336,9 @@ def create_model(dim_length, dim_channels, class_number):
     # drp_out1 = 0
     # drp_out2 = 0
 
-    layers = 2
-    filters = [4] * layers # 4
-    fc_hidden_nodes = 6
+    layers = 4 # 2
+    filters = [8] * layers  # 4
+    fc_hidden_nodes = 8
     learning_rate = 10 ** (-4)
     regularization_rate = 10 ** (-1)
     kernel_size = 7
@@ -373,6 +372,13 @@ def create_model(dim_length, dim_channels, class_number):
                     kernel_initializer=weightinit))  # Fully connected layer
     model.add(Activation('relu'))  # Relu activation
     model.add(Dropout(drp_out2))
+
+    # Adding one more FC layer
+    model.add(Dense(units=fc_hidden_nodes,
+                    kernel_regularizer=l2(regularization_rate),
+                    kernel_initializer=weightinit))  # Fully connected layer
+    model.add(Activation('relu'))  # Relu activation
+
     model.add(Dense(units=outputdim, kernel_initializer=weightinit))
     model.add(BatchNormalization())
     model.add(Activation("softmax"))  # Final classification layer
@@ -391,7 +397,7 @@ def create_model(dim_length, dim_channels, class_number):
     return model
 
 
-def train(sampleName, params, X_train, y_train, y_train_binary):
+def train(sampleName, model_fn, params, X_train, y_train, y_train_binary):
     channel_data_dir = get_data_dir(sampleName)
 
     # win_len = 200
@@ -411,7 +417,7 @@ def train(sampleName, params, X_train, y_train, y_train_binary):
     cnt_lab = Counter(y_train)
 
     # maximum training samples per class
-    max_train = 10**5
+    max_train = 10 ** 5
 
     min_v = min([v for k, v in cnt_lab.items()])
     max_v = max([v for k, v in cnt_lab.items()])
@@ -461,7 +467,20 @@ def train(sampleName, params, X_train, y_train, y_train_binary):
     logging.info('Creating model...')
     model = create_model(params['dim'], params['n_channels'], params['n_classes'])
 
-    esCallback = EarlyStopping(monitor='val_loss', patience=0, verbose=1, mode='auto')
+    earlystop = EarlyStopping(monitor='val_loss',
+                              min_delta=0,
+                              patience=3,
+                              verbose=1,
+                              restore_best_weights=True)
+
+    checkpoint = ModelCheckpoint(model_fn,
+                                 monitor='val_loss',
+                                 mode='min',
+                                 save_best_only=True,
+                                 verbose=1)
+
+    csv_logger = CSVLogger(os.path.join(channel_data_dir, sampleName+'_training.log'))
+
     tbCallBack = TensorBoard(log_dir=os.path.join(channel_data_dir, 'Graph'),
                              histogram_freq=0,
                              write_graph=True,
@@ -476,14 +495,16 @@ def train(sampleName, params, X_train, y_train, y_train_binary):
                         shuffle=True,
                         # class_weight=class_weights,
                         verbose=1,
-                        callbacks=[esCallback]
+                        callbacks=[earlystop,
+                                   tbCallBack,
+                                   csv_logger,
+                                   checkpoint]
                         )
 
     return model, history, X_train.shape[0], int(X_train.shape[0] * params['val_split'])
 
 
 def cross_validation(sampleName, outDir, npz_mode):
-
     X, y, win_ids = data(sampleName, npz_mode)
     y_binary = to_categorical(y, num_classes=len(mapclasses.keys()))
 
@@ -526,7 +547,7 @@ def cross_validation(sampleName, outDir, npz_mode):
         # else:
 
         print('Training model on {}...'.format(sampleName))
-        model, history, train_set_size, validation_set_size = train(sampleName,
+        model, history, train_set_size, validation_set_size = train(sampleName, model_fn,
                                                                     params, X_train, y_train, y_train_binary)
 
         model.save(model_fn)
@@ -554,7 +575,6 @@ def cross_validation(sampleName, outDir, npz_mode):
 
 
 def train_and_test_model(sampleName_training, sampleName_test, outDir, npz_mode):
-
     if sampleName_training == sampleName_test:
         X_train, X_test, y_train, y_test, win_ids_train, win_ids_test = train_and_test_data(sampleName_training,
                                                                                             npz_mode)
