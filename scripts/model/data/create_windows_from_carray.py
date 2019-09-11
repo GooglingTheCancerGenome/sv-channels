@@ -195,7 +195,8 @@ def get_windows(sampleName, outDir, win, cmd_name, mode, npz_mode):
         if npz_mode:
             numpy_array = np.stack(numpy_array, axis=0)
             logging.info('Numpy array shape: {}'.format(numpy_array.shape))
-            np.savez(file=outfile_dir, data=numpy_array, labels=labs)
+            np.savez(file=os.path.join(outfile_dir, sampleName+'_windows'),
+                     data=numpy_array, labels=labs)
 
 
 def main():
