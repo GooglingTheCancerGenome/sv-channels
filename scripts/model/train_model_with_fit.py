@@ -540,7 +540,7 @@ def cross_validation(sampleName, outDir, npz_mode):
                   'n_channels': X_train.shape[2],
                   'shuffle': True}
 
-        model_fn = os.path.join(outDir, 'model_' + sampleName + '_cv' + str(index + 1) + '.hdf5')
+        model_fn = os.path.join(outDir, 'model_' + sampleName + '_' + sampleName + '_cv' + str(index + 1) + '.hdf5')
 
         # if os.path.exists(model_fn):
         #
@@ -601,7 +601,7 @@ def train_and_test_model(sampleName_training, sampleName_test, outDir, npz_mode)
     y_train_binary = to_categorical(y_train, num_classes=params['n_classes'])
     y_test_binary = to_categorical(y_test, num_classes=params['n_classes'])
 
-    model_fn = os.path.join(outDir, 'model_' + sampleName_training + '.hdf5')
+    model_fn = os.path.join(outDir, 'model_' + sampleName_training + '_' + sampleName_test + '.hdf5')
 
     # if os.path.exists(model_fn):
     #
