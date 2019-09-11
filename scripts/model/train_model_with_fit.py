@@ -398,6 +398,7 @@ def create_model(dim_length, dim_channels, class_number):
 
 
 def train(sampleName, model_fn, params, X_train, y_train, y_train_binary):
+
     channel_data_dir = get_data_dir(sampleName)
 
     # win_len = 200
@@ -577,6 +578,7 @@ def cross_validation(sampleName, outDir, npz_mode):
 
 
 def train_and_test_model(sampleName_training, sampleName_test, outDir, npz_mode):
+
     if sampleName_training == sampleName_test:
         X_train, X_test, y_train, y_test, win_ids_train, win_ids_test = train_and_test_data(sampleName_training,
                                                                                             npz_mode)
@@ -610,7 +612,8 @@ def train_and_test_model(sampleName_training, sampleName_test, outDir, npz_mode)
 
     print('Training model on {}...'.format(sampleName_training))
     model, history, train_set_size, validation_set_size = train(sampleName_training,
-                                                                params, X_train, y_train, y_train_binary)
+                                                                params,
+                                                                X_train, y_train, y_train_binary)
 
     model.save(model_fn)
 
