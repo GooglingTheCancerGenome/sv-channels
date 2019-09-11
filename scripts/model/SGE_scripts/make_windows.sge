@@ -20,4 +20,5 @@ python ${PRGARG}".py" \
 	--logfile ${PRGARG}"_"${MODEARG}".log" \
 	--window ${WINDOWARG} \
 	--mode ${MODEARG} \
-	--bam ${BAMARG}
+	--bam ${BAMARG} \
+	--save_npz True
