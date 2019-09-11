@@ -501,6 +501,8 @@ def train(sampleName, model_fn, params, X_train, y_train, y_train_binary):
                                    checkpoint]
                         )
 
+    model = load_model(model_fn)
+
     return model, history, X_train.shape[0], int(X_train.shape[0] * params['val_split'])
 
 
@@ -550,7 +552,7 @@ def cross_validation(sampleName, outDir, npz_mode):
         model, history, train_set_size, validation_set_size = train(sampleName, model_fn,
                                                                     params, X_train, y_train, y_train_binary)
 
-        model.save(model_fn)
+        # model.save(model_fn)
 
         results = pd.DataFrame()
 
