@@ -226,22 +226,17 @@ def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
                 if len(channel_data[chrom][current_channel][split_direction]) > 0:
 
                     # print(split_direction)
-                    idx = np.array(
-                        list(
-                            map(
-                                int,
-                                channel_data[chrom][current_channel][split_direction].keys()
-                                )
-                        )
-                    )
+                    idx = np.fromiter(channel_data[chrom][current_channel][split_direction].keys(),
+                                      dtype=int
+                                      )
 
-                    vals = np.array(
-                        list(
-                            channel_data[chrom][current_channel][split_direction].values()
-                        )
-                    )
+                    vals = np.fromiter(channel_data[chrom][current_channel][split_direction].values(),
+                                       dtype=np.float32)
 
                     chr_array[idx, channel_index] = vals
+
+                    assert chr_array[idx, channel_index].any(), \
+                        print('{}:{} is all zeros!'.format(current_channel, split_direction))
 
                 channel_index += 1
                 del channel_data[chrom][current_channel][split_direction]

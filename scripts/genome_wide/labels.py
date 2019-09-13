@@ -38,8 +38,8 @@ ci_slop = 0
 chrom_lengths = {'1': 249250621, '2': 243199373, '3': 198022430, '4': 191154276, '5': 180915260, '6': 171115067, \
                  '7': 159138663, '8': 146364022, '9': 141213431, '10': 135534747, '11': 135006516, '12': 133851895, \
                  '13': 115169878, '14': 107349540, '15': 102531392, '16': 90354753, '17': 81195210, '18': 78077248, \
-                 '19': 59128983, '20': 63025520, '21': 48129895, '22': 51304566, 'X': 155270560, \
-                 'Y': 59373566, 'MT': 16569}
+                 '19': 59128983, '20': 63025520, '21': 48129895, '22': 51304566, 'X': 155270560}
+                 # 'Y': 59373566, 'MT': 16569}
 
 __bpRE__ = None
 __symbolicRE__ = None
@@ -110,27 +110,28 @@ class SVRecord_generic:
             self.ciend = (-ci_slop, ci_slop)
 
         self.filter = record.filter
+        self.svtype = record.info['SVTYPE']
 
         # Deletions are defined by 3to5 connection, same chromosome for start and end, start before end
-        if self.chrom == self.chrom2:
-            if ct == '3to5':
-                if self.start < self.end:
-                    self.svtype = 'DEL'
-                elif self.start == self.end - 1:
-                    self.svtype = 'INS'
-                else:
-                    self.svtype = record.info['SVTYPE']
-            elif ct == '5to5' or ct == '3to3':
-                self.svtype = 'INV'
-            elif ct == '5to3':
-                self.svtype = 'DUP'
-            else:
-                self.svtype = record.info['SVTYPE']
-        else:
-            self.svtype = 'BND'
-
-        if self.svtype in svtype_dict.keys():
-            self.svtype = svtype_dict[self.svtype]
+        # if self.chrom == self.chrom2:
+        #     if ct == '3to5':
+        #         if self.start < self.end:
+        #             self.svtype = 'DEL'
+        #         elif self.start == self.end - 1:
+        #             self.svtype = 'INS'
+        #         else:
+        #             self.svtype = record.info['SVTYPE']
+        #     elif ct == '5to5' or ct == '3to3':
+        #         self.svtype = 'INV'
+        #     elif ct == '5to3':
+        #         self.svtype = 'DUP'
+        #     else:
+        #         self.svtype = record.info['SVTYPE']
+        # else:
+        #     self.svtype = 'BND'
+        #
+        # if self.svtype in svtype_dict.keys():
+        #     self.svtype = svtype_dict[self.svtype]
 
     @staticmethod
     def stdchrom(chrom):
@@ -424,7 +425,7 @@ def load_clipped_read_positions(sampleName, chrName, win_hlen, channel_dir):
 
     # Remove positions with windows falling off chromosome boundaries
     logging.info(f'win_hlen = {win_hlen}, chrom_lengths[{chrName}] = {chrom_lengths[chrName]}')
-    logging.info(f'pos = {sr_pos[0]}')
+    logging.info(f'{len(sr_pos)} positions')
     cr_pos = [pos for pos in sr_pos if win_hlen <= pos <= (chrom_lengths[chrName] - win_hlen)]
 
     return cr_pos
@@ -438,7 +439,7 @@ def load_all_clipped_read_positions(sampleName, win_hlen, output_dir):
     #
     # return cr_pos_dict
 
-    cr_pos_file = os.path.join(output_dir, 'candidate_positions_' + sampleName + '.json.gz')
+    cr_pos_file = os.path.join(output_dir, sampleName, 'candidate_positions_' + sampleName + '.json.gz')
 
     if os.path.exists(cr_pos_file):
 
@@ -453,8 +454,8 @@ def load_all_clipped_read_positions(sampleName, win_hlen, output_dir):
     else:
 
         cr_pos_dict = {}
-        # for chrName in chrom_lengths.keys():
-        for chrName in ['17']:
+        for chrName in chrom_lengths.keys():
+        # for chrName in ['17']:
             cr_pos_dict[chrName] = load_clipped_read_positions(sampleName, chrName, win_hlen, output_dir)
 
         logging.info('Writing candidate positions file...')
@@ -1578,7 +1579,7 @@ def main():
     #                     help="Specify input file (BAM)")
     parser.add_argument('-l', '--logfile', type=str, default='labels_win200.log',
                         help="Specify log file")
-    parser.add_argument('-s', '--sample', type=str, default='T1',
+    parser.add_argument('-s', '--sample', type=str, default='NA12878',
                         help="Specify sample")
     parser.add_argument('-w', '--window', type=str, default=200,
                         help="Specify window size")
@@ -1591,8 +1592,8 @@ def main():
     args = parser.parse_args()
 
     # Log file
-    cmd_name = 'split_read_pos'
-    output_dir = os.path.join(args.outputpath, cmd_name)
+    cmd_name = 'labels' + '_win' + str(args.window)
+    output_dir = os.path.join(args.outputpath, args.sample, cmd_name)
     create_dir(output_dir)
     logfilename = os.path.join(output_dir, args.logfile)
     output_file = os.path.join(output_dir, args.out)

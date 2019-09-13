@@ -7,6 +7,7 @@ import gzip
 from collections import Counter, defaultdict
 from time import time
 import pysam
+from intervaltree import IntervalTree
 from functions import *
 
 strand_str = {True: '-', False: '+'}
@@ -27,7 +28,6 @@ def append_coord(split_pos_coord, chrName, refpos, chr, pos):
 
 
 def get_split_read_positions(ibam, outFile):
-
     # Check if the BAM file in input exists
     assert os.path.isfile(ibam)
 
@@ -37,6 +37,9 @@ def get_split_read_positions(ibam, outFile):
 
     # List to store the split read positions
     split_pos_coord = []
+
+    # Tree with windows for candidate positions
+    gtrees = defaultdict(IntervalTree)
 
     # Load the BAM file
     bamfile = pysam.AlignmentFile(ibam, "rb")
@@ -101,16 +104,18 @@ def get_split_read_positions(ibam, outFile):
                     if del_size > max_cigar_del:
                         max_cigar_del = del_size
 
-                    split_pos_coord = append_coord(split_pos_coord, read.reference_name,
-                                                   start, read.reference_name, end)
+                    split_pos_coord = append_coord(split_pos_coord,
+                                                   read.reference_name, start,
+                                                   read.reference_name, end)
 
             if read.has_tag('SA'):
+
                 chr_SA, pos_SA, strand_SA = get_suppl_aln(read)
                 if is_left_clipped(read) and is_right_clipped(read):
-                    #print('Read clipped on both sides:\n{}'.format(read))
+                    # print('Read clipped on both sides:\n{}'.format(read))
                     continue
                 elif is_right_clipped(read) and read.reference_name == chr_SA and \
-                    read.reference_end < pos_SA and strand_str[read.is_reverse] == strand_SA:
+                        read.reference_end < pos_SA and strand_str[read.is_reverse] == strand_SA:
 
                     n_split += 1
 
@@ -231,7 +236,6 @@ def get_split_read_positions(ibam, outFile):
 
 
 def main():
-
     # Default BAM file for testing
     # On the HPC
     # wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'

@@ -320,8 +320,8 @@ def load_clipped_read_positions_by_chr(sampleName, chrName, chr_dict, win_hlen, 
                  win_hlen <= pos2 <= (chr_dict[chr2] - win_hlen)
                  ]
 
-    positions_cr_l = set([int(k) + 1 for k, v in positions_cr.items() if v >= 3])
-    positions_cr_r = set([int(k) - 1 for k, v in positions_cr.items() if v >= 3])
+    positions_cr_l = set([int(k) + 1 for k, v in positions_cr.items() if v >= min_CR_support])
+    positions_cr_r = set([int(k) - 1 for k, v in positions_cr.items() if v >= min_CR_support])
     positions_cr = positions_cr_l | positions_cr_r
 
     # for pos in positions_cr:
