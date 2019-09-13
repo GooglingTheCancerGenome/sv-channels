@@ -14,7 +14,7 @@ import bz2file
 import numpy as np
 import pyBigWig
 import pysam
-#from functions import get_one_hot_sequence_by_list, load_clipped_read_positions
+# from functions import get_one_hot_sequence_by_list, load_clipped_read_positions
 from functions import *
 from candidate_pairs import *
 
@@ -191,14 +191,17 @@ def channel_maker(chrom, sampleName, outFile):
             channel_windows[:, idx, channel_index] = payload
             channel_index += 1
 
-        elif current_channel in ['clipped_reads', 'split_reads',
-                               'clipped_reads_inversion', 'clipped_reads_duplication',
-                               'clipped_reads_translocation']:
+        elif current_channel in ['clipped_reads',
+                                 'split_reads',
+                                 'clipped_reads_inversion',
+                                 'clipped_reads_duplication',
+                                 'clipped_reads_translocation']:
+
             for split_direction in direction_list[current_channel]:
 
                 channel_pos = set(positions) & set(channel_data[chrom][current_channel][split_direction].keys())
-                payload = [ channel_data[chrom][current_channel][split_direction][pos] if pos in channel_pos else 0 \
-                 for pos in positions ]
+                payload = [channel_data[chrom][current_channel][split_direction][pos] if pos in channel_pos else 0 \
+                           for pos in positions]
                 payload = np.array(payload)
                 payload.shape = channel_windows[:, idx, channel_index].shape
                 channel_windows[:, idx, channel_index] = payload
@@ -207,12 +210,11 @@ def channel_maker(chrom, sampleName, outFile):
         elif current_channel == 'clipped_read_distance':
             for split_direction in direction_list[current_channel]:
                 for clipped_arrangement in ['left', 'right', 'all']:
-
                     channel_pos = set(positions) & \
                                   set(channel_data[chrom][current_channel][split_direction][clipped_arrangement].keys())
-                    payload = [ statistics.median(
+                    payload = [statistics.median(
                         channel_data[chrom][current_channel][split_direction][clipped_arrangement][pos]) \
-                                    if pos in channel_pos else 0 for pos in positions ]
+                                   if pos in channel_pos else 0 for pos in positions]
                     payload = np.array(payload)
                     payload.shape = channel_windows[:, idx, channel_index].shape
                     channel_windows[:, idx, channel_index] = payload
@@ -220,12 +222,11 @@ def channel_maker(chrom, sampleName, outFile):
 
         elif current_channel == 'split_read_distance':
             for split_direction in direction_list[current_channel]:
-
                 channel_pos = set(positions) & \
                               set(channel_data[chrom][current_channel][split_direction].keys())
-                payload = [ statistics.median(
+                payload = [statistics.median(
                     channel_data[chrom][current_channel][split_direction][pos]) \
-                                if pos in channel_pos else 0 for pos in positions ]
+                               if pos in channel_pos else 0 for pos in positions]
                 payload = np.array(payload)
                 payload.shape = channel_windows[:, idx, channel_index].shape
                 channel_windows[:, idx, channel_index] = payload
@@ -250,8 +251,8 @@ def channel_maker(chrom, sampleName, outFile):
     nuc_list = ['A', 'T', 'C', 'G', 'N']
 
     payload = get_one_hot_sequence_by_list(chrom, positions, HPC_MODE)
-    payload.shape = channel_windows[:, idx, channel_index:channel_index+len(nuc_list)].shape
-    channel_windows[:, idx, channel_index:channel_index+len(nuc_list)] = payload
+    payload.shape = channel_windows[:, idx, channel_index:channel_index + len(nuc_list)].shape
+    channel_windows[:, idx, channel_index:channel_index + len(nuc_list)] = payload
     channel_index += len(nuc_list)
 
     logging.info("channel_windows shape: %s" % str(channel_windows.shape))
@@ -263,14 +264,13 @@ def channel_maker(chrom, sampleName, outFile):
 
 
 def inspect_windows(outFile):
-
     # Save the list of channel vstacks
     with gzip.GzipFile(outFile, "r") as f:
         channel_windows = np.load(f)
     f.close()
 
     for i in range(29):
-        print(channel_windows[0,:,i])
+        print(channel_windows[0, :, i])
 
 
 def main():
