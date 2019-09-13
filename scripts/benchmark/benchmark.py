@@ -419,17 +419,17 @@ def transpose_dataset(X):
 def transpose_single(X):
     print('Transpose')
 
-    image = []
-    for i in range(0, len(X)):
-        image.append(X[i].transpose())
-    X = np.array(image)
+    # image = []
+    # for i in range(0, len(X)):
+    #     image.append(X[i].transpose())
+    # X = np.array(image)
 
     # def func(x0):
     #     return x0.transpose()
     #
     # X = np.apply_along_axis(func, 1, X)
 
-    return X
+    return np.apply_along_axis(lambda x: x.transpose(), 0, X)
 
 
 def normalize(X):
