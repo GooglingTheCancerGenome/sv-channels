@@ -1,0 +1,13 @@
+name: channel-maker
+channels:
+- conda-forge
+- defaults
+dependencies:
+- matplotlib
+- numpy
+- pysam
+- pybigwig
+- twobitreader
+- bcolz
+- dask
+- intervaltree
