@@ -478,21 +478,23 @@ def main():
                         help="Specify input file (BAM)")
     parser.add_argument('-l', '--logfile', type=str, default='labels.log',
                         help="Specify log file")
-    parser.add_argument('-s', '--sample', type=str, default='T1',
+    parser.add_argument('-s', '--sample', type=str, default='NA24385',
                         help="Specify sample")
     parser.add_argument('-w', '--window', type=str, default=200,
                         help="Specify window size")
     parser.add_argument('-gt', '--ground_truth', type=str,
+                        default=os.path.join('/Users/lsantuari/Documents/Data/germline/NA24385',
+                                             'NIST_SVs_Integration_v0.6/processed/HG002_SVs_Tier1_v0.6.PASS.vcf.gz'),
                         # default=os.path.join('/Users/lsantuari/Documents/Data/germline/NA24385',
-                        #                      'NIST_SVs_Integration_v0.6/processed/HG002_SVs_Tier1_v0.6.PASS.vcf.gz'),
+                        #                      'NIST_SVs_Integration_v0.6/HG002_SVs_Tier1_v0.6.vcf.gz'),
                         # default=os.path.join('/Users/lsantuari/Documents/Data/germline/CHM/Huddleston2016',
                         #                     'structural_variants/CHM1_CHM13_pseudodiploid_SVs.vcf.gz'),
                         # default=os.path.join('/Users/lsantuari/Documents/Data/svclassify',
                         #                     'Personalis_1000_Genomes_deduplicated_deletions.bedpe'),
                         # default=os.path.join('/Users/lsantuari/Documents/External_GitHub/sv_benchmark/',
                         #                      'input.na12878/lumpy-Mills2011-call-set.nanosv.sorted.bedpe'),
-                        default=os.path.join('/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data',
-                                             'run_test_INDEL/SV/chr17_INDEL.sur'),
+                        # default=os.path.join('/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data',
+                        #                      'run_test_INDEL/SV/chr17_INDEL.sur'),
                         # default=os.path.join('/Users/lsantuari/Documents/Data/germline/NA12878/SV',
                         #                      'Filtered/gridss.vcf'),
                         help="Specify ground truth VCF/BEDPE file")
