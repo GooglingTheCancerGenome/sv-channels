@@ -35,6 +35,8 @@ from model_functions import create_model_with_mcfly, train_model_with_mcfly, eva
 
 import tensorflow as tf
 
+from numba import jit
+
 gpu_options = tf.compat.v1.GPUOptions(allow_growth=True)
 sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=gpu_options,
                                                             intra_op_parallelism_threads=0,
@@ -126,8 +128,8 @@ def plot_channels(outDir, X, z, l):
         plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., prop={'size': 5})
         plt.yticks(range(0, len(label) + 1, 1))
         plt.tick_params(axis='both', which='major', labelsize=5)
-        plt.axvline(x=50, color='r', linewidth=0.05, alpha=0.5)
-        plt.axvline(x=60, color='r', linewidth=0.05, alpha=0.5)
+        plt.axvline(x=200, color='r', linewidth=0.05, alpha=0.5)
+        plt.axvline(x=210, color='r', linewidth=0.05, alpha=0.5)
 
     plt.savefig(os.path.join(outDir, title_plot + '.png'),
                 format='png', dpi=300, bbox_inches='tight')
@@ -540,7 +542,8 @@ def cross_validation(sampleName, outDir, npz_mode):
                   'n_channels': X_train.shape[2],
                   'shuffle': True}
 
-        model_fn = os.path.join(outDir, 'model_' + sampleName + '_' + sampleName + '_cv' + str(index + 1) + '.hdf5')
+        model_fn = os.path.join(outDir, 'model_train_' +
+                                sampleName + '_test_' + sampleName + '_cv' + str(index + 1) + '.hdf5')
 
         # if os.path.exists(model_fn):
         #
@@ -601,7 +604,7 @@ def train_and_test_model(sampleName_training, sampleName_test, outDir, npz_mode)
     y_train_binary = to_categorical(y_train, num_classes=params['n_classes'])
     y_test_binary = to_categorical(y_test, num_classes=params['n_classes'])
 
-    model_fn = os.path.join(outDir, 'model_' + sampleName_training + '_' + sampleName_test + '.hdf5')
+    model_fn = os.path.join(outDir, 'model_train_' + sampleName_training + '_test_' + sampleName_test + '.hdf5')
 
     # if os.path.exists(model_fn):
     #
