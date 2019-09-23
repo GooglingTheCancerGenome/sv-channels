@@ -8,6 +8,7 @@ import pandas as pd
 
 # Auxiliary functions
 
+
 def transposeDataset(X):
     image = []
     for i in range (0, len(X -1)):
@@ -22,20 +23,18 @@ date = '270219'
 label_type = 'Mills2011_nanosv'
 
 
-def get_label_dict():
-
-    # Load label dictionary
-    dico_file = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test',
-                             date, 'TestData_'+date, sample_name, 'MultiLabelData/labels.pickle.gz')
-    with gzip.GzipFile(dico_file, "rb") as f:
-        dico = np.load(f)
-    f.close()
-
-    return dico
-
-
 def real_data():
     # Create reference test set using Chr4 to ChrX
+
+    def get_label_dict():
+        # Load label dictionary
+        dico_file = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test',
+                                 date, 'TestData_' + date, sample_name, 'MultiLabelData/labels.pickle.gz')
+        with gzip.GzipFile(dico_file, "rb") as f:
+            dico = np.load(f)
+        f.close()
+
+        return dico
 
     dico = get_label_dict()
 
@@ -81,8 +80,6 @@ def artificial_data():
 
     base_dir = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test',
                             date, 'TrainingData_'+date)
-
-    svtype = 'INDEL'
     sample = 'G1'
 
     for svtype in ['INDEL', 'INDEL_HOM']:

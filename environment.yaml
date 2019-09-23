@@ -1,3 +1,7 @@
 dependencies:
   - intervaltree
   - pysam
+  - numpy
+  - pandas
+  - bz2file
+  - plotnine

@@ -1,5 +1,4 @@
 import dask.array as da
-import h5py
 import os, errno
 import logging
 import json

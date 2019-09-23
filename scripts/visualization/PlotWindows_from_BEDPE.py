@@ -40,6 +40,8 @@ def get_channel_labels():
 
     labels = list()
     labels.append("coverage")
+    labels.append("discordant reads coverage")
+
     labels.append("mean_read_quality")
 
     labels.append("#left_clipped_reads")
@@ -77,7 +79,8 @@ def get_channel_labels():
 
     for direction in ['Forward', 'Reverse']:
         for clipped in ['Left', 'Right', 'All']:
-            for value in ['median']:
+            for value in ['outliers']:
+                # for value in ['median']:
                 labels.append(direction + '_' + clipped + '_Clipped_' + value)
 
     labels.append("#left split reads")
@@ -94,8 +97,8 @@ def get_channel_labels():
     for nuc in ['A', 'T', 'C', 'G', 'N']:
         labels.append("One_hot_encoding_" + nuc)
 
-    # for k, l in enumerate(labels):
-    #     print(str(k) + ':' + l)
+    for k, l in enumerate(labels):
+        print(str(k) + ':' + l)
 
     return labels
 
@@ -148,7 +151,7 @@ def plot_channels(X, z, l):
     #print(len(label))
 
     fig = plt.figure(figsize=(6, 4))
-    fig.suptitle(str(z)+' '+l, fontsize=20)
+    fig.suptitle(str(z[0])+' '+l, fontsize=20)
 
     for j in range(number_channels-1, -1, -1):
 
@@ -172,18 +175,20 @@ def plot_channels(X, z, l):
 
 def main():
 
-    create_dir('plots')
+    get_channel_labels()
 
-    bedpe_lines = load_bedpe()
-    X, y, y_binary, z = data('NA12878', 'Mills2011', 'pairs_test')
-
-    for b in bedpe_lines:
-
-        pos, lab = b
-        # print('%s => %s' % (pos, lab))
-        idx, = np.where(z == pos)
-        # print('%s' % (idx))
-        plot_channels(X[idx][0], z[idx], lab)
+    # create_dir('plots')
+    #
+    # bedpe_lines = load_bedpe()
+    # X, y, y_binary, z = data('NA12878', 'Mills2011', 'pairs_test')
+    #
+    # for b in bedpe_lines:
+    #
+    #     pos, lab = b
+    #     # print('%s => %s' % (pos, lab))
+    #     idx, = np.where(z == pos)
+    #     # print('%s' % (idx))
+    #     plot_channels(X[idx][0], z[idx], lab)
 
 
 if __name__ == '__main__':

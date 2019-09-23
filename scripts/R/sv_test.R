@@ -190,13 +190,13 @@ for (test_sample in datasets) {
   
   for (train_sample in datasets) {
     
-    # train_sample <- 'CHM1_CHM13'
+    # train_sample <- 'NA12878'
     
     if (train_sample == test_sample)
     {
       
       print(paste('Plotting training on',train_sample,'testing on',test_sample,sep = ' '))
-      outDir <- paste('/Users/lsantuari/Documents/Processed/Results_DeepSV/simpleCNN/',
+      outDir <- paste('/Users/lsantuari/Documents/Processed/Results_DeepSV/complexCNN_v0/',
                       'CNN_CV_train_',train_sample,'/train_',train_sample,'_test_',test_sample,'/predictions/', sep='') 
       print(outDir)
       
