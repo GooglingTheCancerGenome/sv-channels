@@ -15,6 +15,9 @@ CHM1_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/CHM1/bam_GRCh38/CH
 CHM13_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/CHM13/bam_GRCh38/CHM13/mapping/CHM13_dedup.bam"
 CHM1_CHM13_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/CHM1_CHM13/bam_GRCh38/CHM1_CHM13_dedup.bam"
 
+ART_INDEL_HET="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL_HET/samples/G1/BAM/G1/mapping/G1_dedup.bam"
+ART_INDEL_HOM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL_HOM/samples/G1/BAM/G1/mapping/G1_dedup.bam"
+
 #BAM_ARRAY=(${NA12878_BAM} ${NA12892_BAM} ${NA12891_BAM} ${PATIENT1_BAM} ${PATIENT2_BAM})
 #SAMPLE_ARRAY=('NA12878' 'NA12892' 'NA12891' 'PATIENT1' 'PATIENT2')
 
@@ -24,8 +27,8 @@ CHM1_CHM13_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/CHM1_CHM13/b
 #BAM_ARRAY=(${NA12878_BAM} ${NA24385_BAM} ${CHM1_CHM13_BAM})
 #SAMPLE_ARRAY=('NA12878' 'NA24385' 'CHM1_CHM13')
 
-BAM_ARRAY=(${ART_INDEL_HET}, ${ART_INDEL_HOM})
-SAMPLE_ARRAY=('ART_INDEL_HET', 'ART_INDEL_HOM')
+BAM_ARRAY=(${ART_INDEL_HET} ${ART_INDEL_HOM})
+SAMPLE_ARRAY=('ART_INDEL_HET' 'ART_INDEL_HOM')
 
 #BAM_ARRAY=(${CHM1_BAM} ${CHM13_BAM})
 #SAMPLE_ARRAY=('CHM1' 'CHM13')

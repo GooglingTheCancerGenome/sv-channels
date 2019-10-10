@@ -31,7 +31,7 @@ def create_dir(directory):
 
 def get_chr_list(sampleName):
 
-    if sampleName == 'T1':
+    if sampleName in ['T1', 'G1']:
         chrlist = ['17']
     else:
         chrlist = list(map(str, range(1, 23)))
