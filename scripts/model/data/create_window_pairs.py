@@ -101,7 +101,7 @@ def get_windows(sampleName, outDir, win, cmd_name, sv_caller, mode, npz_mode):
         chr1, pos1, chr2, pos2 = win_id.split('_')
         return chr1 == chr2
 
-    outfile_dir = os.path.join(outDir, sampleName, cmd_name)
+    outfile_dir = os.path.join(outDir, sampleName, cmd_name + '_' + sv_caller)
 
     chr_array = load_chr_array(outDir, sampleName)
     n_channels = chr_array['17'].shape[1]
