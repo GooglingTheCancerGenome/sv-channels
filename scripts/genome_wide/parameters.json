@@ -4,7 +4,7 @@
     "REF_GENOME": "GRCh37",
     "CANDIDATE_POSITIONS" : "SR_CR",
     "READ_LENGTH": 151,
-    "MIN_CR_SUPPORT": 3,
+    "MIN_CR_SUPPORT": 1,
     "MIN_SR_SUPPORT": 1,
     "MIN_MAPQ": 10
   }

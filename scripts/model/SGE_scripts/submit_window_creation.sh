@@ -45,7 +45,7 @@ SAMPLE_ARRAY=('ART_INDEL_HET' 'ART_INDEL_HOM')
 #CHRARRAY=(`seq 1 22` 'X' 'Y' 'MT')
 #CHRARRAY=(`seq 1 22` 'X')
 
-PRG='create_windows_from_carray'
+PRG='create_window_pairs'
 
 for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
 #for i in 0; do

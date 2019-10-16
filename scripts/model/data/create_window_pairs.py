@@ -54,8 +54,9 @@ def load_chr_array(channel_data_dir, sampleName):
     return chr_array
 
 
-def get_labels(channel_data_dir, sampleName, win):
-    label_file = os.path.join(channel_data_dir, sampleName, 'labels_win' + str(win), 'labels.json.gz')
+def get_labels(channel_data_dir, sampleName, win, sv_caller):
+    label_file = os.path.join(channel_data_dir, sampleName, 'labels_win' + str(win) + '_' + sv_caller,
+                              'labels.json.gz')
 
     with gzip.GzipFile(label_file, 'r') as fin:
         labels = json.loads(fin.read().decode('utf-8'))
@@ -94,7 +95,7 @@ def get_window_by_id(win_id, chr_array, padding, win_hlen):
     return da.concatenate(dask_arrays, axis=0)
 
 
-def get_windows(sampleName, outDir, win, cmd_name, mode, npz_mode):
+def get_windows(sampleName, outDir, win, cmd_name, sv_caller, mode, npz_mode):
 
     def same_chr_in_winid(win_id):
         chr1, pos1, chr2, pos2 = win_id.split('_')
@@ -104,7 +105,7 @@ def get_windows(sampleName, outDir, win, cmd_name, mode, npz_mode):
 
     chr_array = load_chr_array(outDir, sampleName)
     n_channels = chr_array['17'].shape[1]
-    labels = get_labels(outDir, sampleName, win)
+    labels = get_labels(outDir, sampleName, win, sv_caller)
     # labels = get_range(labels, 0, 10000)
 
     if sampleName == 'T1':
@@ -226,6 +227,10 @@ def main():
                         help='File in which to write logs.')
     parser.add_argument('-w', '--window', type=str, default=200,
                         help="Specify window size")
+    parser.add_argument('-sv', '--sv_caller', type=str,
+                        default='manta',
+                        help="Specify svcaller"
+                        )
     parser.add_argument('-m', '--mode', type=str, default='test',
                         help="training/test mode")
     parser.add_argument('-npz', '--save_npz', type=bool, default=True,
@@ -234,7 +239,7 @@ def main():
     args = parser.parse_args()
 
     cmd_name = 'windows'
-    output_dir = os.path.join(args.outputpath, args.sample, cmd_name)
+    output_dir = os.path.join(args.outputpath, args.sample, cmd_name + '_' + args.sv_caller)
     create_dir(output_dir)
     logfilename = os.path.join(output_dir, args.logfile)
     # output_file = os.path.join(output_dir, args.out)
@@ -252,6 +257,7 @@ def main():
                 outDir=args.outputpath,
                 win=args.window,
                 cmd_name=cmd_name,
+                sv_caller=args.sv_caller,
                 mode=args.mode,
                 npz_mode=args.save_npz
                 )

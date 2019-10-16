@@ -65,6 +65,7 @@ def read_vcf(invcf):
 
 
 def read_bedpe(inbedpe):
+
     # Check file existence
     assert os.path.isfile(inbedpe), inbedpe + ' not found!'
     # Dictionary with chromosome keys to store SVs
@@ -124,6 +125,7 @@ def filter_bedpe(inbedpe, sv_id_list, outDir):
 
 
 def read_survivor_simsv_output(insur):
+
     # Check file existence
     assert os.path.isfile(insur), insur + ' not found!'
     # Dictionary with chromosome keys to store SVs
@@ -149,6 +151,7 @@ def read_survivor_simsv_output(insur):
 
 
 def filter_survivor_output(insur, sv_id_list, outDir):
+
     # Check file existence
     assert os.path.isfile(insur), insur + ' not found!'
 
@@ -177,7 +180,7 @@ def filter_survivor_output(insur, sv_id_list, outDir):
     logging.info('{} SVs written'.format(len(lines_to_keep)))
 
 
-def overlap(sv_list, cpos_list, win_hlen, ground_truth, outDir):
+def overlap(sv_list, cpos_list_right, cpos_list_left, win_hlen, ground_truth, outDir):
     '''
 
     :param sv_list: list, list of SVs
@@ -210,12 +213,11 @@ def overlap(sv_list, cpos_list, win_hlen, ground_truth, outDir):
 
         return trees_start, trees_end
 
-    def search_tree_with_cpos(cpos, trees_start, trees_end):
+    def search_tree_with_cpos(cpos, trees):
 
         logging.info('Searching SV GenomicTrees with candidate positions...')
 
-        lookup_start = []
-        lookup_end = []
+        lookup = []
 
         # Log info every n_r times
         n_r = 10 ** 6
@@ -231,14 +233,17 @@ def overlap(sv_list, cpos_list, win_hlen, ground_truth, outDir):
                     n_r / (now_t - last_t)))
                 last_t = time()
 
-            chrom1, pos1, chrom2, pos2 = p
-            lookup_start.append(trees_start[chrom1][pos1 - win_hlen:pos1 + win_hlen + 1])
-            lookup_end.append(trees_end[chrom2][pos2 - win_hlen:pos2 + win_hlen + 1])
+            chrom1, pos1 = p
+            lookup.append(trees[chrom1][pos1 - win_hlen:pos1 + win_hlen + 1])
 
-        return lookup_start, lookup_end
+        return lookup
 
     trees_start, trees_end = make_gtrees_from_svlist(sv_list)
-    lookup_start, lookup_end = search_tree_with_cpos(cpos_list, trees_start, trees_end)
+
+    logging.info('Start positions')
+    lookup_start = search_tree_with_cpos(cpos_list_right, trees_start)
+    logging.info('End positions')
+    lookup_end = search_tree_with_cpos(cpos_list_left, trees_end)
 
     # print([l for l in lookup_start if len(l) > 0])
     # print([l for l in lookup_end if len(l) > 0])
@@ -247,91 +252,64 @@ def overlap(sv_list, cpos_list, win_hlen, ground_truth, outDir):
 
     sv_covered = set()
 
-    for p, lu_start, lu_end in zip(cpos_list, lookup_start, lookup_end):
+    def fill_labels(labels, sv_covered, cpos_list, lookup, pos_type):
 
-        chrom1, pos1, chrom2, pos2 = p
-        pos_id = '_'.join((chrom1, str(pos1), chrom2, str(pos2)))
+        for p, lu in zip(cpos_list, lookup):
 
-        l1 = len(lu_start)
-        l2 = len(lu_end)
+            chrom1, pos1 = p
+            pos_id = '_'.join((chrom1, str(pos1)))
 
-        if l1 == 1 and l1 == l2:
+            l1 = len(lu)
 
-            # print(lu_start)
-            # print(lu_end)
-            lu_start_elem_start, lu_start_elem_end, lu_start_elem_data = lu_start.pop()
-            lu_end_elem_start, lu_end_elem_end, lu_end_elem_data = lu_end.pop()
+            if l1 == 1:
 
-            lu_start_elem_svtype, lu_start_elem_svid = lu_start_elem_data
-            lu_end_elem_svtype, lu_end_elem_svid = lu_end_elem_data
+                lu_elem_start, lu_elem_end, lu_elem_data = lu.pop()
+                lu_elem_svtype, lu_elem_svid = lu_elem_data
 
-            if pos1 - win_hlen <= lu_start_elem_start and lu_start_elem_end <= pos1 + win_hlen and \
-                    pos2 - win_hlen <= lu_end_elem_start and lu_end_elem_end <= pos2 + win_hlen and \
-                    lu_start_elem_svid == lu_end_elem_svid:
-                # logging.info(
-                #     'Chr1:{}\tpos1:{}-{}\tChr2:{}\tpos2:{}-{}'.format(
-                #         chrom1, pos1 - win_hlen, pos1 + win_hlen, chrom2, pos2 - win_hlen, pos2 + win_hlen
-                #     )
-                # )
-                # logging.info(
-                #     'LookUp_start:{}-{}_{}\tLookUp_end:{}-{}_{}'.format(
-                #         lu_start_elem_start, lu_start_elem_end, lu_start_elem_data,
-                #         lu_end_elem_start, lu_end_elem_end, lu_end_elem_data
-                #     )
-                # )
-                # if pos1 in np.arange(lu_start_elem_start-2, lu_start_elem_end+2) and \
-                #         pos2 in np.arange(lu_end_elem_start-2, lu_end_elem_end+2):
-                sv_covered.add(lu_start_elem_svid)
-                labels[pos_id] = lu_start_elem_svtype
-                # else:
-                #     sv_covered.add(lu_start_elem_svid)
-                #     labels[pos_id] = 'UK_overlap_not_matching'
+                if pos1 - win_hlen <= lu_elem_start and lu_elem_end <= pos1 + win_hlen:
+
+                    # logging.info(
+                    #     'Chr1:{}\tpos1:{}-{}\tChr2:{}\tpos2:{}-{}'.format(
+                    #         chrom1, pos1 - win_hlen, pos1 + win_hlen, chrom2, pos2 - win_hlen, pos2 + win_hlen
+                    #     )
+                    # )
+                    # logging.info(
+                    #     'LookUp_start:{}-{}_{}\tLookUp_end:{}-{}_{}'.format(
+                    #         lu_start_elem_start, lu_start_elem_end, lu_start_elem_data,
+                    #         lu_end_elem_start, lu_end_elem_end, lu_end_elem_data
+                    #     )
+                    # )
+                    # if pos1 in np.arange(lu_start_elem_start-2, lu_start_elem_end+2) and \
+                    #         pos2 in np.arange(lu_end_elem_start-2, lu_end_elem_end+2):
+
+                    sv_covered.add(lu_elem_svid)
+                    labels[pos_id] = lu_elem_svtype + '_' + pos_type
+
+                    # else:
+                    #     sv_covered.add(lu_start_elem_svid)
+                    #     labels[pos_id] = 'UK_overlap_not_matching'
+                else:
+                    labels[pos_id] = 'UK_single_partial'
+
+            elif l1 > 1:
+
+                lu_set = set()
+
+                for s in lu:
+                    lu_elem_start, lu_elem_end, lu_elem_data = s
+                    lu_elem_svtype, lu_elem_svid = lu_elem_data
+                    lu_set.add(lu_elem_svid)
+
+                sv_covered = sv_covered | lu_set
+                labels[pos_id] = 'UK_multiple'
+
             else:
-                labels[pos_id] = 'UK_single_partial'
+                labels[pos_id] = 'noDEL'
 
-        elif l1 > 1 or l2 > 1:
+        return labels, sv_covered
 
-            lu_start_set = set()
-            lu_end_set = set()
-
-            for s in lu_start:
-                lu_start_elem_start, lu_start_elem_end, lu_start_elem_data = s
-                lu_start_elem_svtype, lu_start_elem_svid = lu_start_elem_data
-                lu_start_set.add(lu_start_elem_svid)
-
-            for s in lu_end:
-                lu_end_elem_start, lu_end_elem_end, lu_end_elem_data = s
-                lu_end_elem_svtype, lu_end_elem_svid = lu_end_elem_data
-                lu_end_set.add(lu_end_elem_svid)
-
-            sv_covered = sv_covered | (lu_start_set & lu_end_set)
-            labels[pos_id] = 'UK_multiple_on_either_windows'
-
-        elif l1 == 0 and l1 == l2:
-            # logging.info('CPOS->Partial: %s\t%d\t%d' % (elem, start, end))
-            labels[pos_id] = 'noDEL'
-
-        elif (l1 == 1 and l2 > 1) or (l2 == 1 and l1 > 1):
-
-            lu_start_set = set()
-            lu_end_set = set()
-
-            for s in lu_start:
-                lu_start_elem_start, lu_start_elem_end, lu_start_elem_data = s
-                lu_start_elem_svtype, lu_start_elem_svid = lu_start_elem_data
-                lu_start_set.add(lu_start_elem_svid)
-
-            for s in lu_end:
-                lu_end_elem_start, lu_end_elem_end, lu_end_elem_data = s
-                lu_end_elem_svtype, lu_end_elem_svid = lu_end_elem_data
-                lu_end_set.add(lu_end_elem_svid)
-
-            sv_covered = sv_covered | (lu_start_set & lu_end_set)
-            labels[pos_id] = 'UK_single_and_multiple'
-
-        else:
-            # (l1 == 1 and l2 == 0) or (l1 == 0 and l2 == 1)
-            labels[pos_id] = 'noDEL'
+    labels, sv_covered = fill_labels(labels, sv_covered, cpos_list_right, lookup_start, pos_type='start')
+    labels, sv_covered = fill_labels(labels, sv_covered, cpos_list_left, lookup_end, pos_type='end')
 
     logging.info(Counter(labels.values()))
     sv_coverage = int(len(sv_covered) / len(sv_list) * 100)
@@ -346,7 +324,6 @@ def overlap(sv_list, cpos_list, win_hlen, ground_truth, outDir):
         filter_bedpe(ground_truth, sv_covered, outDir)
     elif file_extension == '.sur':
         filter_survivor_output(ground_truth, sv_covered, outDir)
-
 
     return labels
 
@@ -393,55 +370,26 @@ def get_labels(ibam, sampleName, win_len, ground_truth, channelDataDir, outFile,
 
         return trees_start, trees_end
 
-    def get_crpos_overlap_with_sv_callsets(sv_dict, cr_pos_dict):
-
-        logging.info('Creating crpos_overlap_with_sv_callsets')
-        crpos_all_sv = dict()
-
-        for chrName in chrom_lengths.keys():
-
-            logging.info('Considering Chr{}'.format(chrName))
-
-            # Build two sets: crpos_full_all_sv and crpos_partial_all_sv with clipped read positions that
-            # fully/partially overlap at least one SV callset of the caller_list_all_sv
-            sv_list_all_sv = dict()
-            crpos_full_all_sv_per_caller = dict()
-            crpos_partial_all_sv_per_caller = dict()
-            caller_list_all_sv = ['manta', 'gridss', 'lumpy', 'delly', 'nanosv']
-
-            for caller in caller_list_all_sv:
-                logging.info(caller)
-                sv_list_all_sv[caller] = [var for var in sv_dict[caller] if var.chrom == chrName]
-                crpos_full_all_sv_per_caller[caller], crpos_partial_all_sv_per_caller[caller] = \
-                    get_crpos_win_with_ci_overlap(sv_list_all_sv[caller], cr_pos_dict[chrName], win_hlen)
-
-            crpos_full_all_sv = set()
-            crpos_partial_all_sv = set()
-
-            for caller in caller_list_all_sv:
-                crpos_full_all_sv = crpos_full_all_sv.union(set(crpos_full_all_sv_per_caller[caller]))
-                crpos_partial_all_sv = crpos_partial_all_sv.union(set(crpos_partial_all_sv_per_caller[caller]))
-
-            crpos_all_sv[chrName] = crpos_full_all_sv | crpos_partial_all_sv
-
-        logging.info('Finished crpos_overlap_with_sv_callsets')
-
-        return crpos_all_sv
-
     # windows half length
     win_hlen = int(int(win_len) / 2)
     # get chromosome lengths
     chr_dict = get_chr_len_dict(ibam)
     chrlist = get_chr_list()
 
-    cpos_list = load_all_clipped_read_positions(sampleName, win_hlen, chr_dict, channelDataDir)
+    cpos_list_right, cpos_list_left = load_all_clipped_read_positions(
+        sampleName, win_hlen, chr_dict, channelDataDir, 'CR'
+    )
 
     # Keep only positions that can be used to create windows
     chr_len_dict = get_chr_len_dict(ibam)
-    cpos_list = [(chrom1, pos1, chrom2, pos2) for chrom1, pos1, chrom2, pos2 in cpos_list
-                 if chrom1 in chrlist and chrom2 in chrlist and
-                 win_hlen <= pos1 <= chr_len_dict[chrom1] - win_hlen and
-                 win_hlen <= pos2 <= chr_len_dict[chrom2] - win_hlen]
+
+    def filter_cpos_list(cpos_list):
+        return [(chrom, pos) for chrom, pos in cpos_list
+                 if chrom in chrlist and
+                 win_hlen <= pos <= chr_len_dict[chrom] - win_hlen]
+
+    cpos_list_right = filter_cpos_list(cpos_list_right)
+    cpos_list_left = filter_cpos_list(cpos_list_left)
 
     filename, file_extension = os.path.splitext(ground_truth)
     if file_extension == '.bedpe':
@@ -457,7 +405,7 @@ def get_labels(ibam, sampleName, win_len, ground_truth, channelDataDir, outFile,
     # filename, file_extension = os.path.splitext(ground_truth)
     # trees_start, trees_end = make_gtrees_from_truth_set(sv_list, file_extension.upper())
 
-    labels = overlap(sv_list, cpos_list, win_hlen, ground_truth, outDir)
+    labels = overlap(sv_list, cpos_list_right, cpos_list_left, win_hlen, ground_truth, outDir)
 
     with gzip.GzipFile(outFile, 'wb') as fout:
         fout.write(json.dumps(labels).encode('utf-8'))
@@ -483,14 +431,14 @@ def main():
     parser.add_argument('-w', '--window', type=str, default=200,
                         help="Specify window size")
     parser.add_argument('-gt', '--ground_truth', type=str,
-                        default=os.path.join('/Users/lsantuari/Documents/Data/germline/NA24385',
-                                             'NIST_SVs_Integration_v0.6/processed/HG002_SVs_Tier1_v0.6.PASS.vcf.gz'),
                         # default=os.path.join('/Users/lsantuari/Documents/Data/germline/NA24385',
-                        #                      'NIST_SVs_Integration_v0.6/HG002_SVs_Tier1_v0.6.vcf.gz'),
+                        #                      'NIST_SVs_Integration_v0.6/processed/HG002_SVs_Tier1_v0.6.PASS.vcf.gz'),
+                        default=os.path.join('/Users/lsantuari/Documents/Data/germline/NA24385',
+                                             'NIST_SVs_Integration_v0.6/HG002_SVs_Tier1_v0.6.vcf.gz'),
                         # default=os.path.join('/Users/lsantuari/Documents/Data/germline/CHM/Huddleston2016',
                         #                     'structural_variants/CHM1_CHM13_pseudodiploid_SVs.vcf.gz'),
                         # default=os.path.join('/Users/lsantuari/Documents/Data/svclassify',
-                        #                     'Personalis_1000_Genomes_deduplicated_deletions.bedpe'),
+                        #                      'Personalis_1000_Genomes_deduplicated_deletions.bedpe'),
                         # default=os.path.join('/Users/lsantuari/Documents/External_GitHub/sv_benchmark/',
                         #                      'input.na12878/lumpy-Mills2011-call-set.nanosv.sorted.bedpe'),
                         # default=os.path.join('/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data',
@@ -507,7 +455,7 @@ def main():
     args = parser.parse_args()
 
     # Log file
-    cmd_name = 'labels_win' + str(args.window)
+    cmd_name = 'labels_win' + str(args.window) + '_sw'
     output_dir = os.path.join(args.outputpath, args.sample, cmd_name)
     create_dir(output_dir)
     logfilename = os.path.join(output_dir, args.logfile)
