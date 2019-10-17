@@ -190,7 +190,8 @@ def get_labels(channel_data_dir, win):
     return labels
 
 
-def data(sampleName, npz_mode):
+def data(sampleName, npz_mode, sv_caller):
+
     def filter_labels(X, y, win_ids):
         # print(y)
         keep = [i for i, v in enumerate(y) if v in ['DEL', 'noDEL']]
@@ -227,7 +228,7 @@ def data(sampleName, npz_mode):
 
         if npz_mode:
 
-            outfile = os.path.join(channel_dir, 'windows', sampleName + '_windows.npz')
+            outfile = os.path.join(channel_dir, 'windows' + '_' + sv_caller, sampleName + '_windows.npz')
             npzfile = np.load(outfile, allow_pickle=True)
             # print(sorted(npzfile.files))
             X = npzfile['data']
@@ -312,9 +313,9 @@ def data(sampleName, npz_mode):
     return X, y, win_ids
 
 
-def train_and_test_data(sampleName, npz_mode):
+def train_and_test_data(sampleName, npz_mode, sv_caller):
     # Datasets
-    X, y, win_ids = data(sampleName, npz_mode)
+    X, y, win_ids = data(sampleName, npz_mode, sv_caller)
 
     X = np.array(X)
     y = np.array(y)
@@ -509,8 +510,9 @@ def train(sampleName, model_fn, params, X_train, y_train, y_train_binary):
     return model, history, X_train.shape[0], int(X_train.shape[0] * params['val_split'])
 
 
-def cross_validation(sampleName, outDir, npz_mode):
-    X, y, win_ids = data(sampleName, npz_mode)
+def cross_validation(sampleName, outDir, npz_mode, sv_caller):
+
+    X, y, win_ids = data(sampleName, npz_mode, sv_caller)
     y_binary = to_categorical(y, num_classes=len(mapclasses.keys()))
 
     create_plots(sampleName, X, y, win_ids)
@@ -580,14 +582,14 @@ def cross_validation(sampleName, outDir, npz_mode):
                        sep='\t')
 
 
-def train_and_test_model(sampleName_training, sampleName_test, outDir, npz_mode):
+def train_and_test_model(sampleName_training, sampleName_test, outDir, npz_mode, sv_caller):
 
     if sampleName_training == sampleName_test:
         X_train, X_test, y_train, y_test, win_ids_train, win_ids_test = train_and_test_data(sampleName_training,
-                                                                                            npz_mode)
+                                                                                            npz_mode, sv_caller)
     else:
-        X_train, y_train, win_ids_train = data(sampleName_training, npz_mode)
-        X_test, y_test, win_ids_test = data(sampleName_test, npz_mode)
+        X_train, y_train, win_ids_train = data(sampleName_training, npz_mode, sv_caller)
+        X_test, y_test, win_ids_test = data(sampleName_test, npz_mode, sv_caller)
 
     batch_size = 32
     epochs = 50
@@ -650,12 +652,16 @@ def main():
     parser.add_argument('-p', '--outputpath', type=str,
                         default='/Users/lsantuari/Documents/Processed/channel_maker_output',
                         help="Specify output path")
-    parser.add_argument('-t', '--training_sample', type=str, default='NA12878',
+    parser.add_argument('-t', '--training_sample', type=str, default='CHM1_CHM13',
                         help="Specify training sample")
-    parser.add_argument('-x', '--test_sample', type=str, default='NA12878',
+    parser.add_argument('-x', '--test_sample', type=str, default='NA24385',
                         help="Specify training sample")
     parser.add_argument('-l', '--logfile', default='windows.log',
                         help='File in which to write logs.')
+    parser.add_argument('-sv', '--sv_caller', type=str,
+                        default='gridss',
+                        help="Specify svcaller"
+                        )
     parser.add_argument('-m', '--mode', type=str, default='training',
                         help="training/test mode")
     parser.add_argument('-npz', '--load_npz', type=bool, default=True,
@@ -664,37 +670,47 @@ def main():
     args = parser.parse_args()
 
     cmd_name = 'cnn'
-    output_dir = os.path.join(args.outputpath, args.training_sample, cmd_name)
-    create_dir(output_dir)
-    logfilename = os.path.join(output_dir, args.logfile)
-    # output_file = os.path.join(output_dir, args.out)
-
-    FORMAT = '%(asctime)s %(message)s'
-    logging.basicConfig(
-        format=FORMAT,
-        filename=logfilename,
-        filemode='w',
-        level=logging.INFO)
-
-    print('Writing log file to {}'.format(logfilename))
-
-    t0 = time()
 
     # get_channel_labels()
 
-    if args.training_sample != args.test_sample:
+    training_sample = args.training_sample
+    test_sample = args.test_sample
+    samples_list = ['NA12878', 'NA24385', 'CHM1_CHM13']
 
-        train_and_test_model(sampleName_training=args.training_sample,
-                             sampleName_test=args.test_sample,
-                             outDir=output_dir,
-                             npz_mode=args.load_npz
-                             )
-    else:
+    for training_sample in samples_list:
+        for test_sample in samples_list:
 
-        cross_validation(sampleName=args.training_sample,
-                         outDir=output_dir,
-                         npz_mode=args.load_npz
-                         )
+            output_dir = os.path.join(args.outputpath, training_sample, cmd_name)
+            create_dir(output_dir)
+            logfilename = os.path.join(output_dir, args.logfile)
+            # output_file = os.path.join(output_dir, args.out)
+
+            FORMAT = '%(asctime)s %(message)s'
+            logging.basicConfig(
+                format=FORMAT,
+                filename=logfilename,
+                filemode='w',
+                level=logging.INFO)
+
+            print('Writing log file to {}'.format(logfilename))
+
+            t0 = time()
+
+            if training_sample != test_sample:
+
+                train_and_test_model(sampleName_training=training_sample,
+                                     sampleName_test=test_sample,
+                                     outDir=output_dir,
+                                     npz_mode=args.load_npz,
+                                     sv_caller=args.sv_caller
+                                     )
+            else:
+
+                cross_validation(sampleName=training_sample,
+                                 outDir=output_dir,
+                                 npz_mode=args.load_npz,
+                                 sv_caller=args.sv_caller
+                                 )
 
     # print('Elapsed time channel_maker_real on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))
     logging.info('Elapsed time training and testing = %f seconds' % (time() - t0))
