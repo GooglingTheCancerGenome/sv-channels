@@ -68,7 +68,7 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
                             for CHNUM in `seq 0 32`; do
 
                                 OUTDIR=$OUTPATH
-                                JOB_NAME=$TRAINING_SAMPLE"_"$TEST_SAMPLE"_win"$WINDOW"_"$MODE"_"${PRG}
+                                JOB_NAME=$TRAINING_SAMPLE"_"$TEST_SAMPLE"_win"$WINDOW"_"$MODE"_"$SETMODE"_"$CHMODE"_"$CHNUM"_"${PRG}
                                 qsub -v TRAINING_SAMPLE_ARG=$TRAINING_SAMPLE,TEST_SAMPLE_ARG=$TEST_SAMPLE,BAMARG=$BAM,PRGARG=${PRG},OUTARG=${OUTDIR},MODEARG=${MODE},WINDOWARG=${WINDOW},SETMODEARG=${SETMODE},CHMODEARG=${CHMODE},CHNUMARG=${CHNUM} \
                                     -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" train_model.sge
 
