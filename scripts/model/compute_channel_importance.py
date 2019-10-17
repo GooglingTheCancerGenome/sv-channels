@@ -308,7 +308,7 @@ def data(sampleName, npz_mode, sv_caller,
     # win_ids = win_ids[new_indices]
 
     if leave_out_channel_mode == 'delete':
-        X[:, :, channel_number] = np.zeros(shape=(X.shape[0],X.shape[1]), dtype=int)
+        X[:, :, channel_number] = np.zeros(shape=(X.shape[0], X.shape[1]), dtype=int)
     elif leave_out_channel_mode == 'shuffle':
         np.random.shuffle(X[:, :, channel_number])
 
@@ -360,7 +360,7 @@ def create_model(dim_length, dim_channels, class_number):
     # drp_out1 = 0
     # drp_out2 = 0
 
-    layers = 4 # 2
+    layers = 4  # 2
     filters = [8] * layers  # 4
     fc_hidden_nodes = 8
     learning_rate = 10 ** (-4)
@@ -422,7 +422,6 @@ def create_model(dim_length, dim_channels, class_number):
 
 
 def train(sampleName, model_fn, params, X_train, y_train, y_train_binary):
-
     channel_data_dir = get_data_dir(sampleName)
 
     # win_len = 200
@@ -504,7 +503,7 @@ def train(sampleName, model_fn, params, X_train, y_train, y_train_binary):
                                  save_best_only=True,
                                  verbose=1)
 
-    csv_logger = CSVLogger(os.path.join(channel_data_dir, sampleName+'_training.log'))
+    csv_logger = CSVLogger(os.path.join(channel_data_dir, sampleName + '_training.log'))
 
     tbCallBack = TensorBoard(log_dir=os.path.join(channel_data_dir, 'Graph'),
                              histogram_freq=0,
@@ -535,7 +534,7 @@ def cross_validation(sampleName, outDir, npz_mode, sv_caller,
                      leave_out_channel_mode, channel_number, set_mode):
 
     X, y, win_ids = data(sampleName, npz_mode, sv_caller,
-                         'none', channel_number, set_mode)
+                         'none', channel_number)
 
     y_binary = to_categorical(y, num_classes=len(mapclasses.keys()))
 
@@ -580,9 +579,12 @@ def cross_validation(sampleName, outDir, npz_mode, sv_caller,
                   'n_channels': X_train.shape[2],
                   'shuffle': True}
 
-        model_fn = os.path.join(outDir, 'model_train_' +
-                                sampleName + '_test_' + sampleName + '_cv' + str(index + 1) + '.hdf5')
-
+        model_fn = os.path.join(outDir,
+                                '_'.join(['model_train', sampleName, 'test',
+                                          sampleName, 'cv' + str(index + 1),
+                                          set_mode, leave_out_channel_mode,
+                                          str(channel_number) + '.hdf5'])
+                                )
         # if os.path.exists(model_fn):
         #
         #     print('Model {} found. Loading model...'.format(model_fn))
@@ -605,7 +607,11 @@ def cross_validation(sampleName, outDir, npz_mode, sv_caller,
         # mapclasses = {'DEL': 0, 'noDEL': 1}
 
         outDit_eval = os.path.join(outDir,
-                                   'train_' + sampleName + '_test_' + sampleName + '_cv' + str(index + 1))
+                                   '_'.join(['model_train', sampleName, 'test',
+                                             sampleName, 'cv' + str(index + 1),
+                                             set_mode, leave_out_channel_mode,
+                                             str(channel_number)])
+                                   )
 
         intermediate_results, metrics = evaluate_model(model, X_test, y_test_binary, win_ids_test,
                                                        results, 1, 'results', mapclasses, outDit_eval)
@@ -613,14 +619,16 @@ def cross_validation(sampleName, outDir, npz_mode, sv_caller,
         results = results.append(intermediate_results)
 
         results.to_csv(os.path.join(outDir,
-                                    'train_' + sampleName + '_test_' + \
-                                    sampleName + '_cv' + str(index + 1) + '_results.csv'),
+                                    '_'.join(['model_train', sampleName, 'test',
+                                              sampleName, 'cv' + str(index + 1),
+                                              set_mode, leave_out_channel_mode,
+                                              str(channel_number), 'results.csv'])
+                                    ),
                        sep='\t')
 
 
 def train_and_test_model(sampleName_training, sampleName_test, outDir, npz_mode, sv_caller,
                          leave_out_channel_mode, channel_number, set_mode):
-
     if sampleName_training == sampleName_test:
         X_train, X_test, y_train, y_test, win_ids_train, win_ids_test = train_and_test_data(sampleName_training,
                                                                                             npz_mode, sv_caller,
@@ -656,7 +664,11 @@ def train_and_test_model(sampleName_training, sampleName_test, outDir, npz_mode,
     y_train_binary = to_categorical(y_train, num_classes=params['n_classes'])
     y_test_binary = to_categorical(y_test, num_classes=params['n_classes'])
 
-    model_fn = os.path.join(outDir, 'model_train_' + sampleName_training + '_test_' + sampleName_test + '.hdf5')
+    model_fn = os.path.join(outDir,
+                            '_'.join(['model_train', sampleName_training, 'test',
+                                      sampleName_test, set_mode, leave_out_channel_mode,
+                                      str(channel_number) + '.hdf5'])
+                            )
 
     # if os.path.exists(model_fn):
     #
@@ -681,7 +693,9 @@ def train_and_test_model(sampleName_training, sampleName_test, outDir, npz_mode,
     # mapclasses = {'DEL': 0, 'noDEL': 1}
 
     outDit_eval = os.path.join(outDir,
-                               'train_' + sampleName_training + '_test_' + sampleName_test)
+                               '_'.join(['train', sampleName_training, 'test',
+                                         sampleName_test, set_mode, leave_out_channel_mode,
+                                         str(channel_number)]))
 
     # intermediate_results, metrics = evaluate_model(model, X_test, ytest_binary, win_ids_test,
     #                                                results, 1, 'results', mapclasses, outDit_eval)
@@ -692,7 +706,10 @@ def train_and_test_model(sampleName_training, sampleName_test, outDir, npz_mode,
     results = results.append(intermediate_results)
 
     results.to_csv(os.path.join(outDir,
-                                'train_' + sampleName_training + '_test_' + sampleName_test + '_results.csv'), sep='\t')
+                                '_'.join(['train', sampleName_training, 'test',
+                                          sampleName_test, set_mode, leave_out_channel_mode,
+                                          str(channel_number) + 'results.csv'])), sep='\t'
+                   )
 
     # get_channel_labels()
 
@@ -702,9 +719,9 @@ def main():
     parser.add_argument('-p', '--outputpath', type=str,
                         default='/Users/lsantuari/Documents/Processed/channel_maker_output',
                         help="Specify output path")
-    parser.add_argument('-t', '--training_sample', type=str, default='CHM1_CHM13',
+    parser.add_argument('-t', '--training_sample', type=str, default='NA12878',
                         help="Specify training sample")
-    parser.add_argument('-x', '--test_sample', type=str, default='NA24385',
+    parser.add_argument('-x', '--test_sample', type=str, default='NA12878',
                         help="Specify training sample")
     parser.add_argument('-l', '--logfile', default='windows.log',
                         help='File in which to write logs.')
@@ -738,48 +755,48 @@ def main():
     training_sample = args.training_sample
     test_sample = args.test_sample
 
-    samples_list = ['NA12878', 'NA24385', 'CHM1_CHM13']
+    # samples_list = ['NA12878', 'NA24385', 'CHM1_CHM13']
+    #
+    # for training_sample in samples_list:
+    #     for test_sample in samples_list:
 
-    for training_sample in samples_list:
-        for test_sample in samples_list:
+    output_dir = os.path.join(args.outputpath, training_sample, cmd_name)
+    create_dir(output_dir)
+    logfilename = os.path.join(output_dir, args.logfile)
+    # output_file = os.path.join(output_dir, args.out)
 
-            output_dir = os.path.join(args.outputpath, training_sample, cmd_name)
-            create_dir(output_dir)
-            logfilename = os.path.join(output_dir, args.logfile)
-            # output_file = os.path.join(output_dir, args.out)
+    FORMAT = '%(asctime)s %(message)s'
+    logging.basicConfig(
+        format=FORMAT,
+        filename=logfilename,
+        filemode='w',
+        level=logging.INFO)
 
-            FORMAT = '%(asctime)s %(message)s'
-            logging.basicConfig(
-                format=FORMAT,
-                filename=logfilename,
-                filemode='w',
-                level=logging.INFO)
+    print('Writing log file to {}'.format(logfilename))
 
-            print('Writing log file to {}'.format(logfilename))
+    t0 = time()
 
-            t0 = time()
+    if training_sample != test_sample:
 
-            if training_sample != test_sample:
+        train_and_test_model(sampleName_training=training_sample,
+                             sampleName_test=test_sample,
+                             outDir=output_dir,
+                             npz_mode=args.load_npz,
+                             sv_caller=args.sv_caller,
+                             leave_out_channel_mode=args.leave_out_channel_mode,
+                             channel_number=args.channel_number,
+                             set_mode=args.set_mode
+                             )
+    else:
 
-                train_and_test_model(sampleName_training=training_sample,
-                                     sampleName_test=test_sample,
-                                     outDir=output_dir,
-                                     npz_mode=args.load_npz,
-                                     sv_caller=args.sv_caller,
-                                     leave_out_channel_mode=args.leave_out_channel_mode,
-                                     channel_number=args.channel_number,
-                                     set_mode=args.set_mode
-                                     )
-            else:
-
-                cross_validation(sampleName=training_sample,
-                                 outDir=output_dir,
-                                 npz_mode=args.load_npz,
-                                 sv_caller=args.sv_caller,
-                                 leave_out_channel_mode=args.leave_out_channel_mode,
-                                 channel_number=args.channel_number,
-                                 set_mode=args.set_mode
-                                 )
+        cross_validation(sampleName=training_sample,
+                         outDir=output_dir,
+                         npz_mode=args.load_npz,
+                         sv_caller=args.sv_caller,
+                         leave_out_channel_mode=args.leave_out_channel_mode,
+                         channel_number=args.channel_number,
+                         set_mode=args.set_mode
+                         )
 
     # print('Elapsed time channel_maker_real on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))
     logging.info('Elapsed time training and testing = %f seconds' % (time() - t0))
