@@ -72,7 +72,7 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
 
                         for CHMODE in delete shuffle "none"; do
 
-                            if [ CHMODE != "none" ]; then
+                            if [ $CHMODE != "none" ]; then
 
                             for CHNUM in `seq 0 32`; do
 
