@@ -21,8 +21,8 @@ CHM1_CHM13_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/CHM1_CHM13/b
 #BAM_ARRAY=(${NA24385_BAM})
 #SAMPLE_ARRAY=('NA24385')
 
-BAM_ARRAY=(${NA12878_BAM} ${NA24385_BAM} ${CHM1_CHM13_BAM})
-SAMPLE_ARRAY=('NA12878' 'NA24385' 'CHM1_CHM13')
+#BAM_ARRAY=(${NA12878_BAM} ${NA24385_BAM} ${CHM1_CHM13_BAM})
+#SAMPLE_ARRAY=('NA12878' 'NA24385' 'CHM1_CHM13')
 
 #BAM_ARRAY=(${NA12878_BAM} ${NA24385_BAM})
 #SAMPLE_ARRAY=('NA12878' 'NA24385')
@@ -48,6 +48,10 @@ SAMPLE_ARRAY=('NA12878' 'NA24385' 'CHM1_CHM13')
 #CHRARRAY=(`seq 1 22` 'X' 'Y' 'MT')
 #CHRARRAY=(`seq 1 22` 'X')
 
+
+BAM_ARRAY=(${NA12878_BAM})
+SAMPLE_ARRAY=('NA12878')
+
 PRG='compute_channel_importance'
 
 for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
@@ -58,13 +62,18 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
 
         TEST_SAMPLE=${SAMPLE_ARRAY[$j]}
 	
-	if [ $TRAINING_SAMPLE != $TEST_SAMPLE ]; then
+	if [ $TRAINING_SAMPLE == $TEST_SAMPLE ]; then
+
     		for MODE in "test"; do
 
         		for WINDOW in 200; do
 
-                    for SETMODE in train test all; do
+                    for SETMODE in test; do
+
                         for CHMODE in delete shuffle "none"; do
+
+                            if [ CHMODE != "none" ]; then
+
                             for CHNUM in `seq 0 32`; do
 
                                 OUTDIR=$OUTPATH
@@ -73,6 +82,13 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
                                     -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" train_model.sge
 
                             done
+                            else
+                                CHNUM=0
+                                OUTDIR=$OUTPATH
+                                JOB_NAME=$TRAINING_SAMPLE"_"$TEST_SAMPLE"_win"$WINDOW"_"$MODE"_"$SETMODE"_"$CHMODE"_"$CHNUM"_"${PRG}
+                                qsub -v TRAINING_SAMPLE_ARG=$TRAINING_SAMPLE,TEST_SAMPLE_ARG=$TEST_SAMPLE,BAMARG=$BAM,PRGARG=${PRG},OUTARG=${OUTDIR},MODEARG=${MODE},WINDOWARG=${WINDOW},SETMODEARG=${SETMODE},CHMODEARG=${CHMODE},CHNUMARG=${CHNUM} \
+                                    -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" train_model.sge
+                            fi
                         done
                     done
         		done
