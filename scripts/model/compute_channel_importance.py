@@ -35,7 +35,7 @@ from model_functions import create_model_with_mcfly, train_model_with_mcfly, eva
 
 import tensorflow as tf
 
-from numba import jit
+# from numba import jit
 
 gpu_options = tf.compat.v1.GPUOptions(allow_growth=True)
 sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=gpu_options,
