@@ -89,8 +89,10 @@ load_sv_caller_vcf <-
     }
     # Select DEL
     gr <- gr[which(gr$svtype == "DEL")]
+    # Remove NAs
+    # gr <- gr[!is.na(gr$svLen)]
     # Select DEL >= 50 bp
-    gr <- gr[gr$svLen <= (-50)]
+    gr <- gr[abs(gr$svLen) >= 50]
     gr <- remove_blacklist(gr, confidence_regions_gr, sample)
     gr
   }
@@ -148,7 +150,7 @@ datasets <- c('NA12878', 'NA24385', 'CHM1_CHM13')
 
 truth_set_file <- list()
 truth_set_file[['NA24385']] <-
-  'Documents/Data/germline/NA24385/NIST_SVs_Integration_v0.6/HG002_SVs_Tier1_v0.6.vcf.gz'
+  '/Users/lsantuari/Documents/Data/germline/NA24385/NIST_SVs_Integration_v0.6/HG002_SVs_Tier1_v0.6.vcf.gz'
 truth_set_file[['NA12878']] <-
   '/Users/lsantuari/Documents/Data/svclassify/Personalis_1000_Genomes_deduplicated_deletions.bedpe'
 truth_set_file[['CHM1']] <-
@@ -192,8 +194,8 @@ for (test_sample in datasets) {
     
     # train_sample <- 'NA12878'
     
-    if (train_sample == test_sample)
-    {
+    #if (train_sample == test_sample)
+    #{
       
       print(paste('Plotting training on',train_sample,'testing on',test_sample,sep = ' '))
       outDir <- paste('/Users/lsantuari/Documents/Processed/Results_DeepSV/complexCNN_v0/',
@@ -250,6 +252,11 @@ for (test_sample in datasets) {
         #vcf_file <- file.path('/Users/lsantuari/Documents/Data/germline/CHM/SV',sample,'Filtered',paste(sv_caller,'.vcf',sep=''))
         print(paste('Loading ',vcf_file,sep=''))
         gr[[test_sample]][[sv_caller]] <- load_sv_caller_vcf(vcf_file, confidence_regions_gr, test_sample, sv_caller)
+      }
+      
+      for(c in sv_caller_list)
+      {
+        print(paste(c, length(gr[[test_sample]][[c]]), 'SVs'))
       }
       
       sv_caller_list <- c(sv_caller_list, 'deepsv')
@@ -323,7 +330,6 @@ for (test_sample in datasets) {
                   gr[[test_sample]][['delly']],
                   gr[[test_sample]][['deepsv']])
       }
-
       
       # Plotting Precision and Recall, from StructuralVariantAnnotation vignette:
       # https://bioconductor.org/packages/devel/bioc/vignettes/StructuralVariantAnnotation/inst/doc/vignettes.html
@@ -386,6 +392,6 @@ for (test_sample in datasets) {
       
       write.table(res.df, file=paste(outDir, 'performance_results.csv',sep=''), quote=F, row.names = F)
       
-    }
+    #}
   }
 }
