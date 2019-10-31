@@ -460,8 +460,20 @@ def get_labels(ibam, sampleName, win_len, ground_truth, sv_caller,
     chrlist = get_chr_list()
 
     # cpos_list = load_all_clipped_read_positions(sampleName, win_hlen, chr_dict, channelDataDir)
-    sv_caller_file = os.path.join(channelDataDir, sampleName, sv_caller + '.bedpe')
-    cpos_list = read_svcaller_bedpe(sv_caller_file)
+
+    if sv_caller == 'manta_gridss':
+
+        sv_caller_file = os.path.join(channelDataDir, sampleName, 'manta' + '.bedpe')
+        cpos_list_manta = read_svcaller_bedpe(sv_caller_file)
+
+        sv_caller_file = os.path.join(channelDataDir, sampleName, 'gridss' + '.bedpe')
+        cpos_list_gridss = read_svcaller_bedpe(sv_caller_file)
+
+        cpos_list = cpos_list_manta + cpos_list_gridss
+
+    else:
+        sv_caller_file = os.path.join(channelDataDir, sampleName, sv_caller + '.bedpe')
+        cpos_list = read_svcaller_bedpe(sv_caller_file)
 
     # Keep only positions that can be used to create windows
     chr_len_dict = get_chr_len_dict(ibam)
@@ -505,21 +517,21 @@ def main():
                         help="Specify input file (BAM)")
     parser.add_argument('-l', '--logfile', type=str, default='labels.log',
                         help="Specify log file")
-    parser.add_argument('-s', '--sample', type=str, default='NA24385',
+    parser.add_argument('-s', '--sample', type=str, default='CHM1_CHM13',
                         help="Specify sample")
-    parser.add_argument('-w', '--window', type=str, default=1200,
+    parser.add_argument('-w', '--window', type=str, default=200,
                         help="Specify window size")
     parser.add_argument('-sv', '--sv_caller', type=str,
-                        default=os.path.join('manta'),
+                        default=os.path.join('manta_gridss'),
                         help="Specify Manta/GRIDSS BEDPE file"
                         )
     parser.add_argument('-gt', '--ground_truth', type=str,
-                        default=os.path.join('/Users/lsantuari/Documents/Data/germline/NA24385',
-                                             'NIST_SVs_Integration_v0.6/processed/HG002_SVs_Tier1_v0.6.PASS.vcf.gz'),
+                        # default=os.path.join('/Users/lsantuari/Documents/Data/germline/NA24385',
+                        #                      'NIST_SVs_Integration_v0.6/processed/HG002_SVs_Tier1_v0.6.PASS.vcf.gz'),
                         # default=os.path.join('/Users/lsantuari/Documents/Data/germline/NA24385',
                         #                      'NIST_SVs_Integration_v0.6/HG002_SVs_Tier1_v0.6.vcf.gz'),
-                        # default=os.path.join('/Users/lsantuari/Documents/Data/germline/CHM/Huddleston2016',
-                        #                     'structural_variants/CHM1_CHM13_pseudodiploid_SVs.vcf.gz'),
+                        default=os.path.join('/Users/lsantuari/Documents/Data/germline/CHM/Huddleston2016',
+                                            'structural_variants/CHM1_CHM13_pseudodiploid_SVs.vcf.gz'),
                         # default=os.path.join('/Users/lsantuari/Documents/Data/svclassify',
                         #                      'Personalis_1000_Genomes_deduplicated_deletions.bedpe'),
                         # default=os.path.join('/Users/lsantuari/Documents/External_GitHub/sv_benchmark/',
