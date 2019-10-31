@@ -57,7 +57,7 @@ def get_split_read_positions(ibam, outFile):
     for chrom in chr_list:
         split_reads[chrom] = dict()
         split_read_distance[chrom] = dict()
-        for split_direction in ['left', 'right']:
+        for split_direction in ['left_F', 'left_R', 'right_F', 'right_R']:
             split_reads[chrom][split_direction] = defaultdict(int)
             split_read_distance[chrom][split_direction] = defaultdict(list)
 
@@ -133,15 +133,23 @@ def get_split_read_positions(ibam, outFile):
                                                    chr_SA,
                                                    pos_SA)
 
-                    split_reads[read.reference_name]['right'][read.reference_end] += 1
-                    split_reads[read.reference_name]['left'][pos_SA] += 1
+                    if not read.is_reverse:
+                        split_reads[read.reference_name]['right_F'][read.reference_end] += 1
+                        split_reads[read.reference_name]['left_F'][pos_SA] += 1
+                    else:
+                        split_reads[read.reference_name]['right_R'][read.reference_end] += 1
+                        split_reads[read.reference_name]['left_R'][pos_SA] += 1
 
                     right_split_pos[read.reference_name].append(read.reference_end)
                     left_split_pos[read.reference_name].append(pos_SA)
 
                     dist = abs(read.reference_end - pos_SA)
-                    split_read_distance[read.reference_name]['right'][read.reference_end].append(dist)
-                    split_read_distance[read.reference_name]['left'][pos_SA].append(dist)
+                    if not read.is_reverse:
+                        split_read_distance[read.reference_name]['right_F'][read.reference_end].append(dist)
+                        split_read_distance[read.reference_name]['left_F'][pos_SA].append(dist)
+                    else:
+                        split_read_distance[read.reference_name]['right_R'][read.reference_end].append(dist)
+                        split_read_distance[read.reference_name]['left_R'][pos_SA].append(dist)
 
     # Close the BAM file
     bamfile.close()

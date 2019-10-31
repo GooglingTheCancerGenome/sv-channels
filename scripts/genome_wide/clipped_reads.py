@@ -42,7 +42,10 @@ def get_clipped_reads(ibam, outFile):
         clipped_reads[chrom] = dict()
 
         # For left- and right-clipped reads
-        for split_direction in ['left', 'right', 'D_left', 'D_right', 'I']:
+        for split_direction in ['left_F', 'left_R', 'right_F', 'right_R',
+                                'disc_right_F', 'disc_right_R', 'disc_left_F', 'disc_left_R',
+                                'D_left_F', 'D_left_R', 'D_right_F', 'D_right_R',
+                                'I_F', 'I_R']:
             clipped_reads[chrom][split_direction] = defaultdict(int)
 
         # Dictionary to store number of clipped reads per position for
@@ -103,11 +106,22 @@ def get_clipped_reads(ibam, outFile):
                     dels_start, dels_end, ins = get_indels(read)
 
                     for del_pos in dels_start:
-                        clipped_reads[read.reference_name]['D_left'][del_pos] += 1
+                        if not read.is_reverse:
+                            clipped_reads[read.reference_name]['D_left_F'][del_pos] += 1
+                        else:
+                            clipped_reads[read.reference_name]['D_left_R'][del_pos] += 1
                     for del_pos in dels_end:
-                        clipped_reads[read.reference_name]['D_right'][del_pos] += 1
+                        if not read.is_reverse:
+                            clipped_reads[read.reference_name]['D_right_F'][del_pos] += 1
+                        else:
+                            clipped_reads[read.reference_name]['D_right_R'][del_pos] += 1
+
                     for ins_pos in ins:
-                        clipped_reads[read.reference_name]['I'][ins_pos] += 1
+                        if not read.is_reverse:
+                            clipped_reads[read.reference_name]['I_F'][ins_pos] += 1
+                        else:
+                            clipped_reads[read.reference_name]['I_R'][ins_pos] += 1
+
 
             # Both read and mate should be mapped, with mapping quality greater than minMAPQ
             if not read.is_unmapped and not read.mate_is_unmapped and read.mapping_quality >= minMAPQ:
@@ -130,7 +144,14 @@ def get_clipped_reads(ibam, outFile):
                             #if ref_pos not in clipped_reads['left'].keys():
                             #    clipped_reads['left'][ref_pos] = 1
                             #else:
-                            clipped_reads[read.reference_name]['left'][ref_pos] += 1
+                            if not read.is_reverse:
+                                clipped_reads[read.reference_name]['left_F'][ref_pos] += 1
+                                if not read.is_proper_pair:
+                                    clipped_reads[read.reference_name]['disc_left_F'][ref_pos] += 1
+                            else:
+                                clipped_reads[read.reference_name]['left_R'][ref_pos] += 1
+                                if not read.is_proper_pair:
+                                    clipped_reads[read.reference_name]['disc_left_R'][ref_pos] += 1
 
                             # DUPlication, channel 2
                             # Read is mapped on the Reverse strand and mate is mapped on the Forward strand
@@ -146,7 +167,15 @@ def get_clipped_reads(ibam, outFile):
                             #if ref_pos not in clipped_reads['right'].keys():
                             #    clipped_reads['right'][ref_pos] = 1
                             #else:
-                            clipped_reads[read.reference_name]['right'][ref_pos] += 1
+                            if not read.is_reverse:
+                                clipped_reads[read.reference_name]['right_F'][ref_pos] += 1
+                                if not read.is_proper_pair:
+                                    clipped_reads[read.reference_name]['disc_right_F'][ref_pos] += 1
+                            else:
+                                clipped_reads[read.reference_name]['right_R'][ref_pos] += 1
+                                if not read.is_proper_pair:
+                                    clipped_reads[read.reference_name]['disc_right_R'][ref_pos] += 1
+
 
                             # DUPlication, channel 1
                             # Read is mapped on the Forward strand and mate is mapped on the Reverse strand

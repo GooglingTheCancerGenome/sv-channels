@@ -80,8 +80,8 @@ def count_clipped_read_positions(cpos_cnt):
 
 def get_mappability_bigwig():
     mappability_file = os.path.join("/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/Mappability",
-                                    REF_GENOME, REF_GENOME+".151mer.bw") if HPC_MODE \
-        else os.path.join("/Users/lsantuari/Documents/Data/GEM", REF_GENOME+".151mer.bw")
+                                    REF_GENOME, REF_GENOME + ".151mer.bw") if HPC_MODE \
+        else os.path.join("/Users/lsantuari/Documents/Data/GEM", REF_GENOME + ".151mer.bw")
     bw = pyBigWig.open(mappability_file)
 
     return bw
@@ -104,7 +104,6 @@ def get_chr_len_dict(ibam):
 
 
 def load_channels(sample, chr_list, outDir):
-
     channel_names_wg = ['split_reads', 'clipped_reads']
 
     channel_names = ['coverage', 'clipped_read_distance', 'snv']
@@ -120,8 +119,8 @@ def load_channels(sample, chr_list, outDir):
         with gzip.GzipFile(filename, 'r') as fin:
             logging.info('Reading %s...' % ch)
             if ch == 'split_reads':
-                positions_with_min_support_ls, positions_with_min_support_rs,\
-                total_reads_coord_min_support,\
+                positions_with_min_support_ls, positions_with_min_support_rs, \
+                total_reads_coord_min_support, \
                 split_reads, split_read_distance = json.loads(fin.read().decode('utf-8'))
 
             elif ch == 'clipped_reads':
@@ -129,7 +128,6 @@ def load_channels(sample, chr_list, outDir):
                 clipped_reads_duplication, clipped_reads_translocation = json.loads(fin.read().decode('utf-8'))
 
     for chrom in chr_list:
-
         channel_data[chrom]['split_reads'] = split_reads[chrom]
         channel_data[chrom]['split_read_distance'] = split_read_distance[chrom]
 
@@ -177,7 +175,7 @@ def load_channels(sample, chr_list, outDir):
 def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
 
     chrlen = get_chr_len(ibam, chrom)
-    n_channels = 33
+    n_channels = 46
 
     channel_data = load_channels(sampleName, [chrom], outDir)
     chr_array = np.zeros(shape=(chrlen, n_channels), dtype=np.float32)
@@ -185,9 +183,12 @@ def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
     bw_map = get_mappability_bigwig()
 
     # dictionary of key choices
-    direction_list = {'clipped_reads': ['left', 'right', 'D_left', 'D_right', 'I'],
-                      'split_reads': ['left', 'right'],
-                      'split_read_distance': ['left', 'right'],
+    direction_list = {'clipped_reads': ['left_F', 'left_R', 'right_F', 'right_R',
+                                        'disc_right_F', 'disc_right_R', 'disc_left_F', 'disc_left_R',
+                                        'D_left_F', 'D_left_R', 'D_right_F', 'D_right_R',
+                                        'I_F', 'I_R'],
+                      'split_reads': ['left_F', 'left_R', 'right_F', 'right_R'],
+                      'split_read_distance': ['left_F', 'left_R', 'right_F', 'right_R'],
                       'clipped_reads_inversion': ['before', 'after'],
                       'clipped_reads_duplication': ['before', 'after'],
                       'clipped_reads_translocation': ['opposite', 'same'],
@@ -224,7 +225,6 @@ def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
             for split_direction in direction_list[current_channel]:
 
                 if len(channel_data[chrom][current_channel][split_direction]) > 0:
-
                     # print(split_direction)
                     idx = np.fromiter(channel_data[chrom][current_channel][split_direction].keys(),
                                       dtype=int
@@ -244,7 +244,6 @@ def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
         elif current_channel == 'clipped_read_distance':
             for split_direction in direction_list[current_channel]:
                 for clipped_arrangement in ['left', 'right', 'all']:
-
                     idx = np.array(
                         list(
                             map(
@@ -258,8 +257,8 @@ def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
                         list(
                             map(
                                 statistics.median,
-                                             channel_data[chrom][current_channel][split_direction][
-                                                 clipped_arrangement].values()
+                                channel_data[chrom][current_channel][split_direction][
+                                    clipped_arrangement].values()
                             )
                         )
                     )
@@ -271,13 +270,12 @@ def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
 
         elif current_channel == 'split_read_distance':
             for split_direction in direction_list[current_channel]:
-
                 idx = np.array(
                     list(
                         map(
                             int,
                             channel_data[chrom][
-                                          current_channel][split_direction].keys()
+                                current_channel][split_direction].keys()
                         )
                     )
                 )
@@ -285,8 +283,8 @@ def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
                     list(
                         map(
                             statistics.median,
-                                         channel_data[chrom][
-                                             current_channel][split_direction].values()
+                            channel_data[chrom][
+                                current_channel][split_direction].values()
                         )
                     )
                 )
@@ -322,7 +320,6 @@ def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
     logging.info("Writing carray...")
     a = bcolz.carray(chr_array, rootdir=outfile, mode='w')
     a.flush()
-
 
 
 def main():
