@@ -84,6 +84,7 @@ def unfold_win_id(win_id):
 
 
 def get_window_by_id(win_id, chr_array, padding, win_hlen):
+
     chr1, pos1, chr2, pos2 = win_id.split('_')
     pos1 = int(pos1)
     pos2 = int(pos2)
@@ -105,6 +106,8 @@ def get_windows(sampleName, outDir, win, cmd_name, sv_caller, mode, npz_mode):
 
     chr_array = load_chr_array(outDir, sampleName)
     n_channels = chr_array['17'].shape[1]
+    logging.info('{} channels'.format(n_channels))
+
     labels = get_labels(outDir, sampleName, win, sv_caller)
     # labels = get_range(labels, 0, 10000)
 
