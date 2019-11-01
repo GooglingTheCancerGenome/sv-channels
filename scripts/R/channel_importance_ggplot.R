@@ -6,11 +6,11 @@
 # 5: SNV_frequency
 # 6: left_clipped_reads
 # 7: right_clipped_reads
-# 8: left_split_reads
-# 9: right_split_reads
-# 10: CIGAR_D_left_reads
-# 11: CIGAR_D_right_reads
-# 12: CIGAR_I_right_reads
+# 8: CIGAR_D_left_reads
+# 9: CIGAR_D_right_reads
+# 10: CIGAR_I_right_reads
+# 11: left_split_reads
+# 12: right_split_reads
 # 13: INV_before
 # 14: INV_after
 # 15: DUP_before
@@ -41,11 +41,11 @@ labels <- c(
   "SNV_freq",
   "LC",
   "RC",
-  "LS",
-  "RS",
   "D_L",
   "D_R",
   "I",
+  "LS",
+  "RS",
   "INV_b",
   "INV_a",
   "DUP_b",
@@ -68,8 +68,10 @@ labels <- c(
   "OneHot_N"
 )
 
+train_test_sets <- 'train'
+
 setwd(
-  '/Users/lsantuari/Documents/Processed/Results_DeepSV/channel_importance/NA12878_channel_importance/'
+  paste('/Users/lsantuari/Documents/Processed/Results_DeepSV/channel_importance/NA12878_channel_importance_', train_test_sets, sep='')
 )
 list.files(pattern = 'none')
 
@@ -83,7 +85,9 @@ for (mode in c('delete', 'shuffle'))
       filename <- paste(
         "model_train_NA12878_test_NA12878_cv",
         cv,
-        "_test_",
+        "_",
+        train_test_sets,
+        "_",
         mode,
         "_",
         ch,
@@ -107,7 +111,9 @@ for (cv in 1:10)
 filename <- paste(
   "model_train_NA12878_test_NA12878_cv",
   cv,
-  "_test_",
+  "_",
+  train_test_sets,
+  "_",
   "none",
   "_",
   0,
@@ -158,7 +164,7 @@ res$channel <- factor(res$channel, levels=df$channel)
 
 ggplot(res[res$mode%in%c('delete','none'),], aes(x=channel, y=average_precision_score, group=channel, fill=color)) + geom_boxplot() +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) + 
-  labs(x = "Channel", y = "Average precision score", title = "Channel importance") + 
+  labs(x = "Channel", y = "Average precision score", title = paste("Channel importance:", train_test_sets)) + 
   theme(axis.text.x = element_text(size = 10), 
         axis.text.y = element_text(size = 15),
         axis.title.x = element_text(size = 15),
@@ -173,7 +179,7 @@ ggsave(filename = paste('channel_importance_',m,'.png',sep=''),
 
 ggplot(res, aes(x=channel, y=average_precision_score, group=channel, fill=color)) + geom_boxplot() + facet_wrap(~as.factor(mode), nrow=2)+
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) + 
-  labs(x = "Channel", y = "Average precision score", title = "Channel importance") + 
+  labs(x = "Channel", y = "Average precision score", title = paste("Channel importance:", train_test_sets)) + 
   theme(axis.text.x = element_text(size = 10), 
         axis.text.y = element_text(size = 15),
         axis.title.x = element_text(size = 15),
