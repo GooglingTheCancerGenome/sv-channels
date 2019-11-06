@@ -148,7 +148,7 @@ def get_windows(sampleName, outDir, win, cmd_name, sv_caller, mode, npz_mode):
                                                       ),
                                                dtype=np.float32),
                                    mode='w',
-                                   rootdir=outfile + '_win' + str(win) + '_carray')
+                                   rootdir=outfile + '_win' + str(win) + '_carray_augmented')
 
         padding = bcolz.zeros(shape=(padding_len, n_channels), dtype=np.float32)
 
@@ -247,7 +247,7 @@ def main():
 
     args = parser.parse_args()
 
-    cmd_name = 'windows'
+    cmd_name = 'windows_augmented'
     output_dir = os.path.join(args.outputpath, args.sample, cmd_name + '_' + args.sv_caller)
     create_dir(output_dir)
     logfilename = os.path.join(output_dir, args.logfile)
