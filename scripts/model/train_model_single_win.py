@@ -205,7 +205,9 @@ def data(sampleName, npz_mode, sv_caller):
 
     def filter_labels(X, y, win_ids):
         # print(y)
-        keep = [i for i, v in enumerate(y) if v in ['DEL', 'noDEL']]
+        # keep = [i for i, v in enumerate(y) if v in ['DEL', 'noDEL']]
+        keep = [i for i, v in enumerate(y) if v[1] in ['DEL', 'noDEL']]
+
         # print(keep)
         X = X[np.array(keep)]
         # print(y)
