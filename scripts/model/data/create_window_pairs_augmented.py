@@ -131,6 +131,8 @@ def get_windows(sampleName, outDir, win, cmd_name, sv_caller, mode, npz_mode):
     padding_len = 10
     win_hlen = int(int(win) / 2)
 
+    labs_dict = dict()
+
     for labs_name, labs in labels_set.items():
 
         logging.info('Creating {}...'.format(labs_name))
@@ -156,7 +158,10 @@ def get_windows(sampleName, outDir, win, cmd_name, sv_caller, mode, npz_mode):
             numpy_array = []
 
         logging.info('Creating dask_arrays_win1 and dask_arrays_win2...')
-        for chr1, pos1, chr2, pos2 in map(unfold_win_id, labs.keys()):
+
+        for k, val in labs.items():
+
+            chr1, pos1, chr2, pos2 = unfold_win_id(k)
 
             for p1 in np.arange(pos1 - win_hlen, pos1 + win_hlen):
 
@@ -192,12 +197,12 @@ def get_windows(sampleName, outDir, win, cmd_name, sv_caller, mode, npz_mode):
                         for d in dask_array:
                             print(d.shape)
 
-            # print(type(dask_array))
-            bcolz_array.append(dask_array)
-            i += 1
+                    # print(type(dask_array))
+                    bcolz_array.append(dask_array)
+                    labs_dict['_'.join([chr1, p1, chr2, p2])] = val
+                    i += 1
 
-        # bcolz_array.append(dask_array)
-        bcolz_array.attrs['labels'] = labs
+        bcolz_array.attrs['labels'] = labs_dict
         bcolz_array.flush()
         logging.info(bcolz_array.shape)
 
