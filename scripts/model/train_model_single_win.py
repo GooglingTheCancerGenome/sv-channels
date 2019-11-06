@@ -250,7 +250,8 @@ def data(sampleName, npz_mode, sv_caller):
         else:
 
             carray_file = os.path.join(channel_dir,
-                                       'windows', label_type + '_win200_carray_single_windows')
+                                       'single_windows' + '_' + sv_caller,
+                                       label_type + '_win200_carray_single_windows')
             logging.info('Loading file: {}'.format(carray_file))
             assert os.path.exists(carray_file), carray_file + ' not found'
             X = bcolz.open(rootdir=carray_file)
