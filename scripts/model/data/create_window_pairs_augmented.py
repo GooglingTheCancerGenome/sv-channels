@@ -199,7 +199,7 @@ def get_windows(sampleName, outDir, win, cmd_name, sv_caller, mode, npz_mode):
 
                     # print(type(dask_array))
                     bcolz_array.append(dask_array)
-                    labs_dict['_'.join([chr1, p1, chr2, p2])] = val
+                    labs_dict['_'.join([chr1, str(p1), chr2, str(p2)])] = val
                     i += 1
 
         bcolz_array.attrs['labels'] = labs_dict
