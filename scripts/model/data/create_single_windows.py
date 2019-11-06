@@ -54,8 +54,10 @@ def load_chr_array(channel_data_dir, sampleName):
     return chr_array
 
 
-def get_labels(channel_data_dir, sampleName, win):
-    label_file = os.path.join(channel_data_dir, sampleName, 'labels_win' + str(win), 'labels.json.gz')
+def get_labels(channel_data_dir, sampleName, win, sv_caller):
+
+    label_file = os.path.join(channel_data_dir, sampleName, 'labels_win' + str(win) + '_' + sv_caller,
+                              'labels.json.gz')
 
     with gzip.GzipFile(label_file, 'r') as fin:
         labels = json.loads(fin.read().decode('utf-8'))
@@ -94,17 +96,17 @@ def get_window_by_id(win_id, chr_array, padding, win_hlen):
     return da.concatenate(dask_arrays, axis=0)
 
 
-def get_windows(sampleName, outDir, win, cmd_name, mode, npz_mode):
+def get_windows(sampleName, outDir, win, cmd_name, mode, sv_caller, npz_mode):
 
     def same_chr_in_winid(win_id):
         chr1, pos1, chr2, pos2 = win_id.split('_')
         return chr1 == chr2
 
-    outfile_dir = os.path.join(outDir, sampleName, cmd_name)
+    outfile_dir = os.path.join(outDir, sampleName, cmd_name + '_' + sv_caller)
 
     chr_array = load_chr_array(outDir, sampleName)
     n_channels = chr_array['17'].shape[1]
-    labels = get_labels(outDir, sampleName, win)
+    labels = get_labels(outDir, sampleName, win, sv_caller)
     # labels = get_range(labels, 0, 10000)
 
     if sampleName == 'T1':
@@ -234,6 +236,10 @@ def main():
                         help="Specify window size")
     parser.add_argument('-m', '--mode', type=str, default='test',
                         help="training/test mode")
+    parser.add_argument('-sv', '--sv_caller', type=str,
+                        default='GRIDSS',
+                        help="Specify svcaller"
+                        )
     parser.add_argument('-npz', '--save_npz', type=bool, default=True,
                         help="save in npz format?")
 
@@ -259,6 +265,7 @@ def main():
                 win=args.window,
                 cmd_name=cmd_name,
                 mode=args.mode,
+                sv_caller=args.sv_caller,
                 npz_mode=args.save_npz
                 )
 
