@@ -260,8 +260,15 @@ def data(sampleName, npz_mode, sv_caller):
 
         # labels = get_labels(channel_dir, '200')
 
-        y.extend(labels.values())
-        win_ids.extend(labels.keys())
+        if type(labels) is dict:
+
+            y.extend(labels.values())
+            win_ids.extend(labels.keys())
+
+        elif type(labels) is list:
+
+            y.extend([l[1] for l in labels])
+            win_ids.extend([l[0] for l in labels])
 
         # if label_type == 'positive':
         #
