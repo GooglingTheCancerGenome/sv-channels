@@ -206,7 +206,7 @@ def data(sampleName, npz_mode, sv_caller):
     def filter_labels(X, y, win_ids):
         # print(y)
         # keep = [i for i, v in enumerate(y) if v in ['DEL', 'noDEL']]
-        keep = [i for i, v in enumerate(y) if v[1] in ['DEL', 'noDEL']]
+        keep = [i for i, v in enumerate(y) if v in ['DEL', 'noDEL']]
 
         # print(keep)
         X = X[np.array(keep)]
@@ -267,8 +267,9 @@ def data(sampleName, npz_mode, sv_caller):
             y.extend(labels.values())
             win_ids.extend(labels.keys())
 
-        elif type(labels) is list:
+        elif type(labels) is np.ndarray:
 
+            labels = [(i,j) for i,j in labels]
             y.extend([l[1] for l in labels])
             win_ids.extend([l[0] for l in labels])
 
