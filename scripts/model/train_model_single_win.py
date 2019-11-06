@@ -245,7 +245,7 @@ def data(sampleName, npz_mode, sv_caller):
             # print(sorted(npzfile.files))
             X = npzfile['data']
             labels = npzfile['labels']
-            labels = labels.item()
+            # labels = labels.item()
 
         else:
 
