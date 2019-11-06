@@ -159,9 +159,9 @@ def get_windows(sampleName, outDir, win, cmd_name, mode, sv_caller, npz_mode):
 
             chr1, pos1, chr2, pos2 = unfold_win_id(k)
 
-            for i in [0, 1]:
+            for idx in [0, 1]:
 
-                chrA, posA = [(chr1, pos1), (chr2, pos2)][i]
+                chrA, posA = [(chr1, pos1), (chr2, pos2)][idx]
 
                 for pA in np.arange(posA - win_hlen, posA + win_hlen):
 
@@ -169,7 +169,7 @@ def get_windows(sampleName, outDir, win, cmd_name, mode, sv_caller, npz_mode):
                             # Record the current time
                             now_t = time()
                             # print(type(now_t))
-                            logging.info("%d window pairs processed (%f window pairs / s)" % (
+                            logging.info("%d windows processed (%f windows / s)" % (
                                 i,
                                 n_r / (now_t - last_t)))
                             last_t = time()
@@ -202,8 +202,8 @@ def get_windows(sampleName, outDir, win, cmd_name, mode, sv_caller, npz_mode):
         if npz_mode:
             numpy_array = np.stack(numpy_array, axis=0)
             logging.info('Numpy array shape: {}'.format(numpy_array.shape))
-            np.savez(file=os.path.join(outfile_dir, sampleName+'__single_windows'),
-                     data=numpy_array, labels=labs)
+            np.savez(file=os.path.join(outfile_dir, sampleName+'_single_windows'),
+                     data=numpy_array, labels=labs_list)
 
 
 def main():
