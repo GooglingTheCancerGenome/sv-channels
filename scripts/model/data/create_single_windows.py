@@ -246,7 +246,7 @@ def main():
     args = parser.parse_args()
 
     cmd_name = 'single_windows'
-    output_dir = os.path.join(args.outputpath, args.sample, cmd_name)
+    output_dir = os.path.join(args.outputpath, args.sample, cmd_name + '_' + args.sv_caller)
     create_dir(output_dir)
     logfilename = os.path.join(output_dir, args.logfile)
     # output_file = os.path.join(output_dir, args.out)
