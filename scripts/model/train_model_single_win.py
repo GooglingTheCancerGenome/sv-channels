@@ -240,7 +240,8 @@ def data(sampleName, npz_mode, sv_caller):
 
         if npz_mode:
 
-            outfile = os.path.join(channel_dir, 'windows' + '_' + sv_caller, sampleName + '_windows.npz')
+            outfile = os.path.join(channel_dir, 'single_windows' + '_' + sv_caller, sampleName +
+                                   '__single_windows.npz')
             npzfile = np.load(outfile, allow_pickle=True)
             # print(sorted(npzfile.files))
             X = npzfile['data']
@@ -250,7 +251,7 @@ def data(sampleName, npz_mode, sv_caller):
         else:
 
             carray_file = os.path.join(channel_dir,
-                                       'windows', label_type + '_win200_carray')
+                                       'windows', label_type + '_win200_carray_single_windows')
             logging.info('Loading file: {}'.format(carray_file))
             assert os.path.exists(carray_file), carray_file + ' not found'
             X = bcolz.open(rootdir=carray_file)
