@@ -159,7 +159,7 @@ def get_windows(sampleName, outDir, win, cmd_name, mode, sv_caller, npz_mode):
 
             chr1, pos1, chr2, pos2 = unfold_win_id(k)
 
-            for i in [1, 2]:
+            for i in [0, 1]:
 
                 chrA, posA = [(chr1, pos1), (chr2, pos2)][i]
 
