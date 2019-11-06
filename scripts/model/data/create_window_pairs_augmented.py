@@ -247,6 +247,9 @@ def main():
 
     args = parser.parse_args()
 
+    #setting NUMEXPR_MAX_THREADS
+    os.environ['NUMEXPR_MAX_THREADS'] = '32'
+
     cmd_name = 'windows_augmented'
     output_dir = os.path.join(args.outputpath, args.sample, cmd_name + '_' + args.sv_caller)
     create_dir(output_dir)
