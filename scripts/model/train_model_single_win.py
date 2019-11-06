@@ -240,7 +240,7 @@ def data(sampleName, npz_mode, sv_caller):
         if npz_mode:
 
             outfile = os.path.join(channel_dir, 'single_windows' + '_' + sv_caller, sampleName +
-                                   '__single_windows.npz')
+                                   '_single_windows.npz')
             npzfile = np.load(outfile, allow_pickle=True)
             # print(sorted(npzfile.files))
             X = npzfile['data']
