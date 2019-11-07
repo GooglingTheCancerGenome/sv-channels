@@ -444,7 +444,7 @@ def train(sampleName, model_fn, params, X_train, y_train, y_train_binary):
     cnt_lab = Counter(y_train)
 
     # maximum training samples per class
-    max_train = 2 * 10 ** 5
+    max_train = 2.5 * 10 ** 5
 
     min_v = min([v for k, v in cnt_lab.items()])
     max_v = max([v for k, v in cnt_lab.items()])
