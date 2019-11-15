@@ -15,6 +15,10 @@ CHM1_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/CHM1/bam_GRCh38/CH
 CHM13_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/CHM13/bam_GRCh38/CHM13/mapping/CHM13_dedup.bam"
 CHM1_CHM13_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/CHM1_CHM13/bam_GRCh38/CHM1_CHM13_dedup.bam"
 
+HG00514_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/1KP/HGSVC/HG00514/HG00514.alt_bwamem_GRCh38DH.20150715.CHS.high_coverage.bam"
+HG00733_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/1KP/HGSVC/HG00733/HG00733.alt_bwamem_GRCh38DH.20150715.PUR.high_coverage.bam"
+NA19240_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/1KP/HGSVC/NA19240/NA19240.alt_bwamem_GRCh38DH.20150715.YRI.high_coverage.bam"
+
 ART_INDEL_HET="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL_HET/samples/G1/BAM/G1/mapping/G1_dedup.bam"
 ART_INDEL_HOM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL_HOM/samples/G1/BAM/G1/mapping/G1_dedup.bam"
 
@@ -24,8 +28,11 @@ ART_INDEL_HOM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial
 #BAM_ARRAY=(${NA12878_BAM})
 #SAMPLE_ARRAY=('NA12878')
 
-BAM_ARRAY=(${ART_INDEL_HET}, ${ART_INDEL_HOM})
-SAMPLE_ARRAY=('ART_INDEL_HET', 'ART_INDEL_HOM')
+BAM_ARRAY=(${HG00514_BAM} ${HG00733_BAM} ${NA19240_BAM})
+SAMPLE_ARRAY=('HG00514' 'HG00733' 'NA19240')
+
+#BAM_ARRAY=(${ART_INDEL_HET}, ${ART_INDEL_HOM})
+#SAMPLE_ARRAY=('ART_INDEL_HET', 'ART_INDEL_HOM')
 
 #BAM_ARRAY=(${NA24385_BAM})
 #SAMPLE_ARRAY=('NA24385')
@@ -43,8 +50,8 @@ SAMPLE_ARRAY=('ART_INDEL_HET', 'ART_INDEL_HOM')
 #SAMPLE_ARRAY=('NA24385' 'CHM1_CHM13')
 
 #CHRARRAY=(`seq 1 22` 'X' 'Y' 'MT')
-#CHRARRAY=(`seq 1 22` 'X' 'Y')
-CHRARRAY=('17')
+CHRARRAY=(`seq 1 22` 'X' 'Y')
+#CHRARRAY=('17')
 
 # Run single channel scripts (0) or ChannelMaker (1)
 RUNALL=0
