@@ -277,10 +277,17 @@ def create_dir(directory):
         if e.errno != errno.EEXIST:
             raise
 
+# def get_chr_list():
+#
+#     chrlist = [str(c) for c in list(np.arange(1, 23))]
+#     chrlist.extend(['X', 'Y'])
+#
+#     return chrlist
 
 def get_chr_list():
-    chrlist = [str(c) for c in list(np.arange(1, 23))]
-    chrlist.extend(['X', 'Y'])
+
+    chrlist = ['chr' + str(c) for c in list(np.arange(1, 23))]
+    chrlist.extend(['chrX', 'chrY'])
 
     return chrlist
 
