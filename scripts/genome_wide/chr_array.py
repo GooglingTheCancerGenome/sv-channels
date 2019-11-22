@@ -297,7 +297,8 @@ def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
     current_channel = 'mappability'
     logging.info("Adding channel %s at index %d" % (current_channel, channel_index))
 
-    chr_array[:, channel_index] = np.array(bw_map.values(chrom, 0, chrlen), dtype=np.float32)
+    bw_chrom = chrom.replace('chr', '')
+    chr_array[:, channel_index] = np.array(bw_map.values(bw_chrom, 0, chrlen), dtype=np.float32)
     channel_index += 1
 
     current_channel = 'one_hot_encoding'
