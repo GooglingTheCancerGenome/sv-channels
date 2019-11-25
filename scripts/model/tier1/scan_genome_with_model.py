@@ -51,27 +51,32 @@ def run_tier1(sampleName, channeldir, chrom, win, model_fn, outFile):
 
         print('Scanning chr {} from {} to {} by {}bp'.format(chrom, vstart, vend, win))
 
-        B = []
-        idx = []
-
-        for j in np.arange(200):
-
-            vstart_in = vstart + j
-            vend_in = vend + j
-
-            if vend_in > bc_array.shape[0]:
-                break
-
-            B.extend(
-                np.split(
-                    bc_array[vstart_in:vend_in, :], step // win
-                )
-            )
-            idx.extend(list(np.arange(vstart_in, vend_in)))
+        # B = []
+        # idx = []
+        #
+        # for j in np.arange(200):
+        #
+        #     vstart_in = vstart + j
+        #     vend_in = vend + j
+        #
+        #     if vend_in > bc_array.shape[0]:
+        #         break
+        #
+        #     B.extend(
+        #         np.split(
+        #             bc_array[vstart_in:vend_in, :], step // win
+        #         )
+        #     )
+        #     idx.extend(list(np.arange(vstart_in, vend_in)))
 
         # print(B.shape)
 
-        B = np.array(B)[idx]
+        B = np.array(
+            np.split(
+                bc_array[vstart:vend, :], step // win
+                )
+        )
+
         # print(B.shape)
         probs = model.predict_proba(B, batch_size=batch_size, verbose=False)
         probs_list.extend(
