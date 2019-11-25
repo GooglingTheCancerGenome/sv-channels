@@ -95,7 +95,7 @@ def main():
                         help="Specify model")
     parser.add_argument('-chr', '--chromosome', type=str, default='1',
                         help="Specify chromosome")
-    parser.add_argument('-w', '--window', type=str, default=200,
+    parser.add_argument('-w', '--window', type=int, default=200,
                         help="Specify window size")
     parser.add_argument('-c', '--channeldir', type=str,
                         default='/Users/lsantuari/Documents/Processed/channel_maker_output',
