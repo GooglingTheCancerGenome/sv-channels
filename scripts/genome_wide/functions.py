@@ -215,7 +215,8 @@ def get_one_hot_sequence_by_list(chrname, positions, HPC_MODE, REF_GENOME):
     if chrname == 'MT':
         chrname = 'M'
 
-    whole_chrom = str(genome[chrname]) if REF_GENOME == 'GRCh38' else str(genome['chr' + chrname])
+    chrname_num = chrname.replace('chr','')
+    whole_chrom = str(genome[chrname_num]) if REF_GENOME == 'GRCh38' else str(genome['chr' + chrname_num])
 
     nuc_list = ['A', 'T', 'C', 'G', 'N']
     res = np.zeros(shape=(len(positions), len(nuc_list)), dtype=np.uint32)
@@ -277,19 +278,19 @@ def create_dir(directory):
         if e.errno != errno.EEXIST:
             raise
 
-# def get_chr_list():
-#
-#     chrlist = [str(c) for c in list(np.arange(1, 23))]
-#     chrlist.extend(['X', 'Y'])
-#
-#     return chrlist
-
 def get_chr_list():
 
-    chrlist = ['chr' + str(c) for c in list(np.arange(1, 23))]
-    chrlist.extend(['chrX', 'chrY'])
+    chrlist = [str(c) for c in list(np.arange(1, 23))]
+    chrlist.extend(['X', 'Y'])
 
     return chrlist
+
+# def get_chr_list():
+#
+#     chrlist = ['chr' + str(c) for c in list(np.arange(1, 23))]
+#     chrlist.extend(['chrX', 'chrY'])
+#
+#     return chrlist
 
 
 def get_chr_len_dict(ibam):
