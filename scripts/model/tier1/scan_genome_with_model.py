@@ -107,7 +107,7 @@ def main():
     args = parser.parse_args()
 
     # Log file
-    cmd_name = 'tier1' + str(args.window)
+    cmd_name = 'tier1_' + str(args.window)
     output_dir = os.path.join(args.outputpath, args.sample, cmd_name)
     create_dir(output_dir)
     logfilename = os.path.join(output_dir, args.logfile)
