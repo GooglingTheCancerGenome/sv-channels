@@ -18,8 +18,8 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
 
         for WINDOW in 200; do
 
-		    	OUTDIR=$OUTPATH
-		    	JOB_NAME=SAMPLE"_win"$WINDOW"_"${PRG}
+		    	OUTDIR=${OUTPATH}
+		    	JOB_NAME=${SAMPLE}"_win"${WINDOW}"_"${PRG}
 		    	qsub -v SAMPLE_ARG=${SAMPLE},CHRARG=${CHROMOSOME},MODELARG=${MODEL},PRGARG=${PRG},OUTDIRARG=${OUTDIR},CHANNELDIRARG=${OUTDIR},WINDOWARG=${WINDOW} \
 				    -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" tier1_chromosome_scan.sge
 
