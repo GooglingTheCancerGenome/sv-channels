@@ -29,9 +29,9 @@ for chn in ${CHANNELS[@]}; do
   done
 done
 
-# print logs into STDOUT
+# write stdout/stderr logs into terminal
 echo -e "\nLog files:"
-for f in $(find $DATA_DIR -name *.log); do
+for f in $(find $DATA_DIR -name \*.log); do
   echo -e "\n### $f ###\n"
   cat $f
 done
