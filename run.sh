@@ -36,13 +36,13 @@ done
 echo -e "\nOutput files:"
 cd $DATA_DIR
 #ls
-find . -name \*.gz
+find -type f -name \*.gz | grep "." || exit 1
 
 # write stdout/stderr logs into terminal
 echo -e "\nLog files:"
 cd ../../scripts/genome_wide
 #ls
-for f in $(find . -name \*.log); do
+for f in $(ls *.log); do
   echo "### $f ###"
   cat $f
 done
