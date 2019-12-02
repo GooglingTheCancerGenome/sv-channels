@@ -29,6 +29,10 @@ for chn in ${CHANNELS[@]}; do
   done
 done
 
+# list channel outfiles (*.json.gz)
+echo -e "\nOutput files:"
+find $DATA_DIR -name \*.gz
+
 # write stdout/stderr logs into terminal
 echo -e "\nLog files:"
 for f in $(find $DATA_DIR -name \*.log); do
