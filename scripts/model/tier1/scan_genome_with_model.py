@@ -44,7 +44,7 @@ def run_tier1(sampleName, channeldir, chrom, win, model_fn, outFile):
 
     chr_len = bc_array.shape[0] // win * win
 
-    dim1 = (step // win) * (chr_len // step) + (bc_array.shape[0] - chr_len) // win
+    dim1 = (step // win) * (chr_len // step) + (chr_len % step) // win
     dim2 = int(model.outputs[0].shape.dims[1])
 
     res_array = np.empty(shape=(dim1, dim2))
@@ -77,7 +77,7 @@ def run_tier1(sampleName, channeldir, chrom, win, model_fn, outFile):
 
         # print(B.shape)
 
-        split = (bc_array.shape[0] - chr_len)//win if i == (chr_len//step) else step//win
+        split = (chr_len % step)//win if i == (chr_len//step) else step//win
 
         B = np.array(
             np.split(
