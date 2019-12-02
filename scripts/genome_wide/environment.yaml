@@ -1,11 +1,11 @@
 channels:
-- defaults
-- bioconda
+  - conda-forge
+  - bioconda
 
 dependencies:
-- numpy
-- bcolz
-- intervaltree
-- pysam
-- pybigwig
-- twobitreader
+  - numpy
+  - bcolz
+  - intervaltree
+  - pysam
+  - pybigwig
+  - twobitreader
