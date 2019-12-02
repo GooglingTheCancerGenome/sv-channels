@@ -1,9 +1,6 @@
 #!/bin/bash -xe
 
-# install deps into new conda env
-ENV_NAME=cm
 cd scripts/genome_wide
-conda env create -n $ENV_NAME -f environment.yaml && conda activate
 
 # set env variables
 DATA_DIR=../../data/test
