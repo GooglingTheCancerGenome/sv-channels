@@ -1,15 +1,19 @@
 #!/bin/bash -xe
 
+# clone repo & install deps into conda env
 source ~/.profile
 export BRANCH=iss6
 git clone -b $BRANCH https://github.com/GooglingTheCancerGenome/CNN.git
 cd CNN/scripts/genome_wide
 conda install --file environment.yaml
 
+# set env variables
 DATA_DIR=../../data/test
 BAM=hmz-sv.bam
 CHANNELS=(clipped_read_pos clipped_reads split_reads)
 CHROMS=(17)
+
+# create channels per chromosome
 for chn in ${CHANNELS[@]}; do
   SAMPLEARG=$(basename $BAM .bam)
   export SAMPLEARG=$SAMPLE
@@ -22,6 +26,7 @@ for chn in ${CHANNELS[@]}; do
   done
 done
 
+# print logs into STDOUT
 echo -e "\nLog files:"
 for f in $(find $DATA_DIR -name *.log); do
   echo -e "\n### $f ###\n"
