@@ -1,6 +1,7 @@
 channels:
-- conda-forge
+- defaults
 - bioconda
+
 dependencies:
 - numpy
 - bcolz

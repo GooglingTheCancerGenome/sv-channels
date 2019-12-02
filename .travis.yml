@@ -11,7 +11,7 @@ env:
     - TAG=dev
   matrix:
     - PORT=10022 SCH=gridengine
-#    - PORT=10023 SCH=slurm
+    - PORT=10023 SCH=slurm
 install:
   - docker pull $PREFIX-$SCH:$TAG
   - docker run -d -p $PORT:22 --name $SCH $PREFIX-$SCH:$TAG
@@ -19,4 +19,4 @@ install:
   - docker ps -a
   - docker cp run.sh $SCH:/home/xenon
 script:
-  - docker exec -u xenon -t $SCH /bin/bash run.sh  # $SCH
+  - docker exec -u xenon -t $SCH /bin/bash run.sh $SCH

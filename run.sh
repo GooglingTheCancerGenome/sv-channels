@@ -8,6 +8,7 @@ cd CNN/scripts/genome_wide
 conda install --file environment.yaml
 
 # set env variables
+SCH=$1
 DATA_DIR=../../data/test
 BAM=hmz-sv.bam
 CHANNELS=(clipped_read_pos clipped_reads split_reads)
@@ -22,7 +23,9 @@ for chn in ${CHANNELS[@]}; do
   export OUTARG=$DATA_DIR
   for chr in ${CHROMS[@]}; do
     export CHRARG=$chr
-    ./make_channel.sh
+    xenon -vvv scheduler $SCH --location local:// submit --name $SAMPLE_$chn \
+      --cores-per-task 1 --inherit-env --max-run-time 1 --working-directory . \
+      --stderr stderr-%j.log --stdout stdout-%j.log make_channel.sh
   done
 done
 
