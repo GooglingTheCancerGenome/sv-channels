@@ -44,10 +44,15 @@ def run_tier1(sampleName, channeldir, chrom, win, model_fn, outFile):
 
     chr_len = bc_array.shape[0] // win * win
 
+    dim1 = (step // win) * (chr_len // step)
+    dim2 = int(model.outputs[0].shape.dims[1])
+    res_array = np.empty(shape=(dim1, dim2))
+
     for i in np.arange(0, chr_len // step):
 
         vstart = i * step
         vend = min((i + 1) * step, chr_len)
+        d0 = step // win
 
         print('Scanning chr {} from {} to {} by {}bp'.format(chrom, vstart, vend, win))
 
@@ -79,13 +84,11 @@ def run_tier1(sampleName, channeldir, chrom, win, model_fn, outFile):
 
         # print(B.shape)
         probs = model.predict_proba(B, batch_size=batch_size, verbose=False)
-        probs_list.extend(
-            probs
-        )
+        # print(probs)
+        res_array[i*d0:(i+1)*d0] = probs
 
     # Write
-    with gzip.GzipFile(outFile, 'w') as fout:
-        fout.write(json.dumps(probs_list).encode('utf-8'))
+    np.savez(file=outFile, probs=res_array)
 
 
 def main():
@@ -116,7 +119,7 @@ def main():
     output_dir = os.path.join(args.outputpath, args.sample, cmd_name)
     create_dir(output_dir)
     logfilename = os.path.join(output_dir, args.logfile)
-    output_file = os.path.join(output_dir, 'predictions_'+args.chromosome+'.json.gz')
+    output_file = os.path.join(output_dir, 'predictions_'+args.chromosome)
 
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(
