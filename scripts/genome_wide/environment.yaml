@@ -1,13 +1,10 @@
-name: channel-maker
 channels:
 - conda-forge
-- defaults
+- bioconda
 dependencies:
-- matplotlib
 - numpy
+- bcolz
+- intervaltree
 - pysam
 - pybigwig
 - twobitreader
-- bcolz
-- dask
-- intervaltree
