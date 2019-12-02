@@ -1,11 +1,11 @@
 #!/bin/bash -xe
 
-# clone repo & install deps into conda env
+# clone repo & install deps into current conda env
 source ~/.profile
 export BRANCH=iss6
 git clone -b $BRANCH https://github.com/GooglingTheCancerGenome/CNN.git
 cd CNN/scripts/genome_wide
-conda install --file environment.yaml
+conda env update --file environment.yaml
 
 # set env variables
 SCH=$1
@@ -13,6 +13,8 @@ DATA_DIR=../../data/test
 BAM=hmz-sv.bam
 CHANNELS=(clipped_read_pos clipped_reads split_reads)
 CHROMS=(17)
+
+xenon --version
 
 # create channels per chromosome
 for chn in ${CHANNELS[@]}; do
