@@ -6,7 +6,7 @@ git clone -b $BRANCH https://github.com/GooglingTheCancerGenome/CNN.git
 cd CNN/scripts/genome_wide
 conda env create -n cm -f environment.yaml && conda activate cm
 
-DATA_DIR=../../test/data
+DATA_DIR=../../data/test
 BAM=hmz-sv.bam
 CHANNELS=(clipped_read_pos clipped_reads split_reads)
 for c in ${CHANNELS[@]}; do
