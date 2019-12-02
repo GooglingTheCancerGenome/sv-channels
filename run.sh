@@ -8,13 +8,12 @@ conda env create -n cm -f environment.yaml && conda activate cm
 
 DATA_DIR=data
 BAM=hmz-sv.bam
-
-for PRG in (clipped_read_pos clipped_reads split_reads); do
-  SAMPLEARG="$(basename $BAM .bam)"
-  JOB_NAME="$SAMPLEARG_$PRG"
+CHANNELS=(clipped_read_pos clipped_reads split_reads)
+for c in ${CHANNELS[@]}; do
+  SAMPLEARG=$(basename $BAM .bam)
   export SAMPLEARG=$SAMPLE
-  export BAMARG=$BAM
-  export PRGARG=$PRG
+  export BAMARG=$DATA_DIR/$BAM
+  export PRGARG=$c
   export OUTARG=$DATA_DIR
-  ./make_channel.sge
+  ./make_channel.sh
 done
