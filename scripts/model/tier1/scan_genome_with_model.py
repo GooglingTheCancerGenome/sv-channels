@@ -44,11 +44,12 @@ def run_tier1(sampleName, channeldir, chrom, win, model_fn, outFile):
 
     chr_len = bc_array.shape[0] // win * win
 
-    dim1 = (step // win) * (chr_len // step)
+    dim1 = (step // win) * (chr_len // step) + (bc_array.shape[0] - chr_len // step) // win
     dim2 = int(model.outputs[0].shape.dims[1])
+
     res_array = np.empty(shape=(dim1, dim2))
 
-    for i in np.arange(0, chr_len // step):
+    for i in np.arange(0, chr_len // step + 1):
 
         vstart = i * step
         vend = min((i + 1) * step, chr_len)
