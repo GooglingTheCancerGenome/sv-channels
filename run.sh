@@ -1,8 +1,8 @@
 #!/bin/bash -xe
 
 # clone repo & install deps into current conda env
+BRANCH=iss6
 source ~/.profile
-export BRANCH=iss6
 git clone -b $BRANCH https://github.com/GooglingTheCancerGenome/CNN.git
 cd CNN/scripts/genome_wide
 conda env update --file environment.yaml
@@ -28,18 +28,21 @@ for chn in ${CHANNELS[@]}; do
     export CHRARG=$chr
     xenon -v scheduler $SCH --location local:// submit --name $SAMPLE_$chn \
       --cores-per-task 1 --inherit-env --max-run-time 1 --working-directory . \
-      --stderr stderr-%j.log --stdout stdout-%j.log make_channel.sh
+      --stderr stderr-%j.log --stdout stdout-%j.log ./make_channel.sh
   done
 done
 
 # list channel outfiles (*.json.gz)
 echo -e "\nOutput files:"
 cd $DATA_DIR
-ls
+#ls
 find . -name \*.gz
 
 # write stdout/stderr logs into terminal
 echo -e "\nLog files:"
 cd ../../scripts/genome_wide
-ls
-find . -name \*.log
+#ls
+for f in $(find . -name \*.log); do
+  echo "### $f ###"
+  cat $f
+done
