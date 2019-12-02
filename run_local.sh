@@ -21,13 +21,14 @@ for chn in ${CHANNELS[@]}; do
   done
 done
 
-# list channel outfiles (*.json.gz)
+cd $DATA_DIR
+ls
 echo -e "\nOutput files:"
-find $DATA_DIR -name \*.gz
+find . -name *.gz
 
-# print logs into STDOUT
+# write stdout/stderr logs into terminal
 echo -e "\nLog files:"
-for f in $(find $DATA_DIR -name \*.log); do
+for f in $(find . -name *.log); do
   echo -e "\n### $f ###\n"
   cat $f
 done
