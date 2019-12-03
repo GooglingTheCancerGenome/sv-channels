@@ -1,4 +1,12 @@
-#!/bin/bash -xe
+#!/usr/bin/env bash
+
+set -e
+
+# check input arg(s)
+if [ $# == 0 ]; then
+  echo "Usage: $0 [BAM file]"
+  exit 1
+fi
 
 # set [env] variables
 BAM=$1
