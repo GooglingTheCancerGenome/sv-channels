@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e
+set -xe
 
 # check input arg(s)
 if [ $# == 0 ]; then

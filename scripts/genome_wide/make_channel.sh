@@ -1,4 +1,6 @@
-#!/bin/bash -x
+#!/usr/bin/env bash
+
+set -xe
 
 # If directory for script used to store per chromosome output files does not exist, create it
 [ ! -d ${OUTARG}"/"${PRGARG} ] && mkdir -p ${OUTARG}"/"${PRGARG}

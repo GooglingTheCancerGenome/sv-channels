@@ -8,10 +8,10 @@ if [ $# != 2 ]; then
   exit 1
 fi
 
-printenv
 source ~/.profile
-cd genome_wide
+cd $HOME/scripts/genome_wide
 conda env update --file environment.yaml
+printenv
 
 # set [env] variables
 SCH=$1
@@ -38,17 +38,16 @@ for chn in ${CHANNELS[@]}; do
   done
 done
 
-# list channel outfiles (*.json.gz)
-echo -e "\nOutput files:"
-cd $BASE_DIR
-#ls
-find -type f -name \*.gz | grep "." || exit 1
-
 # write stdout/stderr logs into terminal
+cd $HOME
 echo -e "\nLog files:"
-cd ..
 #ls
-for f in $(ls *.log); do
+for f in $(find -type f -name std*.log); do
   echo "### $f ###"
   cat $f
 done
+
+# list channel outfiles (*.json.gz)
+echo -e "\nOutput files:"
+#ls
+find -type f -name \*.json.gz | grep "." || exit 1
