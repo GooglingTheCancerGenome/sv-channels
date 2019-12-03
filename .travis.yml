@@ -9,6 +9,8 @@ env:
   global:
     - PREFIX=gtcg/sv-callers
     - TAG=dev
+    - HOME=/home/xenon/
+    - BAM=data/test/hmz-sv.bam
   matrix:
     - PORT=10022 SCH=gridengine
     - PORT=10023 SCH=slurm
@@ -17,6 +19,8 @@ install:
   - docker run -d -p $PORT:22 --name $SCH $PREFIX-$SCH:$TAG
   - sleep 10
   - docker ps -a
-  - docker cp run.sh $SCH:/home/xenon
+  - docker cp data/test/ $SCH:$HOME
+  - docker cp scripts/genome_wide/ $SCH:$HOME
+  - docker cp run.sh $SCH:$HOME
 script:
-  - docker exec -u xenon -t $SCH /bin/bash run.sh $SCH
+  - docker exec -u xenon -t $SCH ls # run.sh $SCH $BAM
