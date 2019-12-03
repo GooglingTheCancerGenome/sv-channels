@@ -1,8 +1,6 @@
 #!/bin/bash -xe
 
-cd scripts/genome_wide
-
-# set penv] variables
+# set [env] variables
 DATA_DIR=../../data/test
 BAM=hmz-sv.bam
 SAMPLE=$(basename $BAM .bam)
