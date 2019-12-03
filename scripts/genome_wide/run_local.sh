@@ -1,15 +1,15 @@
 #!/bin/bash -xe
 
 # set [env] variables
-DATA_DIR=../../data/test
-BAM=hmz-sv.bam
+BAM=$1
+BASE_DIR=$(dirname $BAM)
 SAMPLE=$(basename $BAM .bam)
 CHANNELS=(clipped_read_pos clipped_reads split_reads)
 CHROMS=(17)
 
 export SAMPLEARG=$SAMPLE
-export BAMARG=$DATA_DIR/$BAM
-export OUTARG=$DATA_DIR
+export BAMARG=$BAM
+export OUTARG=$BASE_DIR
 
 # create channels per chromosome
 for chn in ${CHANNELS[@]}; do
@@ -20,7 +20,7 @@ for chn in ${CHANNELS[@]}; do
   done
 done
 
-cd $DATA_DIR
+cd $BASE_DIR
 echo -e "\nOutput files:"
 find . -name \*.gz
 echo -e "\nLog files:"
