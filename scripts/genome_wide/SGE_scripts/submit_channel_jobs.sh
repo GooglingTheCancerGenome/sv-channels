@@ -56,6 +56,8 @@ CHRARRAY=(`seq 1 22` 'X' 'Y')
 # Run single channel scripts (0) or ChannelMaker (1)
 RUNALL=0
 
+# RUN_MODE_0: The scripts "clipped_read_pos", "clipped_reads" and "split_reads" are run on the entire BAM file across
+# chromosomes 1 to 22, plus X and Y
 if [ $RUNALL == 0 ]; then
 
 for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
@@ -73,6 +75,7 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
 
 done
 
+# RUN_MODE_1: The scripts "coverage", "snv" and "clipped_read_distance" are run per each chromosome
 elif [ $RUNALL == 1 ]; then
 
 for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
@@ -98,48 +101,8 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
     #mv ${SAMPLE}"*.out" ${LOGDIR}
 done
 
-
+# RUN_MODE_2: Generate the chromosome array in the format "bcolz carray" per each chromosome
 elif [ $RUNALL == 2 ]; then
-
-# Output should be in the Tumor folder
-i=0
-
-SVMODE='INDEL'
-
-# This BAM is only used to extract header information
-
-SLICE=("${SAMPLE_ARRAY[@]:0:2}")
-
-# ChannelMaker script to generate channel data for Training data
-PRG='channel_maker_real_germline'
-#for SAMPLE in ${SAMPLE_ARRAY[@]}; do
-
-for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
-#for i in 0; do
-
-	SAMPLE=${SAMPLE_ARRAY[$i]}
-	BAM=${BAM_ARRAY[$i]}
-
-#	LOGDIR=$SAMPLE"/log"
-#	echo "creating directory " $LOGDIR
-#	[ ! -d ${LOGDIR} ] && mkdir -p $LOGDIR
-
-for WINDOW in 200; do
-
-	for CHROMOSOME in ${CHRARRAY[@]}; do
-	#for CHROMOSOME in 1; do
-		OUTDIR=$OUTPATH
-		JOB_NAME=$SAMPLE"_win"$WINDOW"_"$CHROMOSOME"_"${PRG}
-		qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=${OUTDIR},SVMODEARG=${SVMODE},WINDOWARG=${WINDOW} \
-			-N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_channel.sge
-    done
-	#mv ${SAMPLE}"*.err" ${LOGDIR}
-	#mv ${SAMPLE}"*.out" ${LOGDIR}
-
-done
-done
-
-elif [ $RUNALL == 3 ]; then
 
 PRG='chr_array'
 
