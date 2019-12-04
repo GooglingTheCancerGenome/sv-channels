@@ -18,5 +18,8 @@ install:
   - sleep 10
   - docker ps -a
   - docker cp ./ $SCH:/home/xenon
+  - |
+    docker exec -u xenon -t $SCH conda env update -n wf --file \
+    scripts/genome_wide/environment.yaml
 script:
   - docker exec -u xenon -t $SCH ./run.sh $SCH data/test/hmz-sv.bam
