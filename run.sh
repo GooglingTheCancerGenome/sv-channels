@@ -29,7 +29,7 @@ for prg in ${PRGS[@]}; do
     --stderr stderr-%j.log --stdout stdout-%j.log "python $prg.py --bam $BAM --out $prg.json.gz --outputpath ."
 done
 
-sleep 10
+sleep 60
 
 # write stdout/stderr logs into terminal
 echo -e "\nLog files:"
