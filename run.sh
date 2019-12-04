@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -xe
+set -e
 
 # check input arg(s)
 if [ $# != 2 ]; then
@@ -19,18 +19,25 @@ BASE_DIR=$(dirname $BAM)
 SAMPLE=$(basename $BAM .bam)
 PRGS=(clipped_read_pos clipped_reads split_reads)
 #CHROMS=(17)
+JOBS=()
 
 xenon --version
 
 # create channels per chromosome
-for prg in ${PRGS[@]}; do
-  xenon -v scheduler $SCH --location local:// submit --name $SAMPLE_$prg \
-    --cores-per-task 1 --inherit-env --max-run-time 1 --working-directory . \
-    --stderr stderr-%j.log --stdout stdout-%j.log "python $prg.py --bam $BAM --out $prg.json.gz --outputpath $BASE_DIR"
+for p in ${PRGS[@]}; do
+  CMD="python $p.py --bam ./$BAM --out $p.json.gz --outputpath $BASE_DIR"
+  JOB_ID=$(xenon -v scheduler $SCH --location local:// submit \
+    --name $SAMPLE_$p --cores-per-task 1 --inherit-env --max-run-time 1 \
+    --working-directory . --stderr stderr-%j.log --stdout stdout-%j.log "$CMD")
+  JOBS+=($JOB_ID)
 done
 
-sleep 60
-find $HOME -name \*.log
+# fetch job accounting info
+sleep 10
+for j in ${JOBS[@]}; do
+   xenon scheduler $SCH --location local:// list --identifier $j
+done
+ls -alh
 
 # write stdout/stderr logs into terminal
 echo -e "\nLog files:"
