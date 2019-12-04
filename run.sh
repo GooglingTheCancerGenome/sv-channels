@@ -26,10 +26,11 @@ xenon --version
 for prg in ${PRGS[@]}; do
   xenon -v scheduler $SCH --location local:// submit --name $SAMPLE_$prg \
     --cores-per-task 1 --inherit-env --max-run-time 1 --working-directory . \
-    --stderr stderr-%j.log --stdout stdout-%j.log "python $prg.py --bam $BAM --out $prg.json.gz --outputpath ."
+    --stderr stderr-%j.log --stdout stdout-%j.log "python $prg.py --bam $BAM --out $prg.json.gz --outputpath $BASE_DIR"
 done
 
 sleep 60
+find $HOME -name \*.log
 
 # write stdout/stderr logs into terminal
 echo -e "\nLog files:"
