@@ -22,4 +22,4 @@ install:
     docker exec -u xenon -t $SCH conda env update -n wf --file \
     scripts/genome_wide/environment.yaml
 script:
-  - docker exec -u xenon -t $SCH ./run.sh $SCH data/test/hmz-sv.bam
+  - docker exec -u xenon -t $SCH ./run.sh $SCH hmz-sv.bam
