@@ -9,6 +9,7 @@ env:
   global:
     - PREFIX=gtcg/sv-callers
     - TAG=dev
+    - BAM=/home/xenon/data/test/hmz-sv.bam
   matrix:
     - PORT=10022 SCH=gridengine
     - PORT=10023 SCH=slurm
@@ -21,4 +22,4 @@ install:
   - docker cp ./ $SCH:/home/xenon
   - docker exec -u xenon -t $SCH ./install.sh
 script:
-  - docker exec -u xenon -t $SCH ./run.sh $SCH hmz-sv.bam
+  - docker exec -u xenon -t $SCH ./run.sh $SCH $BAM
