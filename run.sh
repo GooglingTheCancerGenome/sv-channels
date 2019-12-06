@@ -24,7 +24,8 @@ xenon --version
 
 # create channels per chromosome
 for p in ${PRGS[@]}; do
-  CMD="python $p.py --bam $BAM --out $p.json.gz --outputpath ."
+  #CMD="python $p.py --bam $BAM --out $p.json.gz --outputpath ."
+  CMD="ls $BAM"
   JOB_ID=$(xenon -v scheduler $SCH --location local:// submit \
     --name $SAMPLE_$p --cores-per-task 1 --inherit-env --max-run-time 1 \
     --working-directory $WORK_DIR --stderr stderr-%j.log --stdout stdout-%j.log "$CMD")
