@@ -19,7 +19,7 @@ before_install:
   - sleep 10
   - docker ps -a
 install:
-  - docker cp -u xenon ./ $SCH:/home/xenon
+  - docker cp ./ $SCH:/home/xenon
   - docker exec -u xenon -t $SCH ./install.sh
 script:
-  - docker exec -u xenon -t $SCH ./run_local.sh $SCH $BAM
+  - docker exec -u xenon -t $SCH ./run_local.sh $BAM

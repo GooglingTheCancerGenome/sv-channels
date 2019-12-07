@@ -8,23 +8,23 @@ if [ $# != 2 ]; then
   exit 1
 fi
 
-WORK_DIR=$HOME/scripts/genome_wide
-source ~/.profile
-cd $WORK_DIR
-printenv
-
 # set [env] variables
 SCH=$1
 BAM=$2
 SAMPLE=$(basename $BAM .bam)
 PRGS=(clipped_read_pos clipped_reads split_reads)
 JOBS=()
+WORK_DIR=$HOME/scripts/genome_wide
 
+source ~/.profile
+cd $WORK_DIR
+printenv
 xenon --version
 
 # create channels per chromosome
 for p in ${PRGS[@]}; do
-  CMD="python $p.py --bam $BAM --out $p.json.gz --outputpath ."
+  #CMD="python $p.py --bam $BAM --out $p.json.gz --outputpath ."
+  CMD=ls
   JOB_ID=$(xenon -v scheduler $SCH --location local:// submit \
     --name $SAMPLE_$p --cores-per-task 1 --inherit-env --max-run-time 1 \
     --working-directory . --stderr stderr.log --stdout stdout.log "$CMD")
@@ -34,7 +34,7 @@ done
 # fetch job accounting info
 sleep 10
 for j in ${JOBS[@]}; do
-   xenon scheduler $SCH --location local:// list --identifier $j
+   xenon -vvv scheduler $SCH --location local:// list --identifier $j
 done
 ls -alh
 

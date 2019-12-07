@@ -21,13 +21,13 @@ ls -alh
 
 # output channels in *.json.gz files
 for p in clipped_read_pos clipped_reads split_reads; do
-  python ${p}.py --bam $BAM --out $p.json.gz --outputpath . \
+  python $p.py --bam $BAM --out $p.json.gz --outputpath . \
     --logfile $p.log
 done
 
 for p in coverage clipped_read_distance; do
   for s in ${SEQ_IDS[@]}; do
-    python ${p}.py --bam $BAM --chr $s --out $p.json.gz --outputpath . \
+    python $p.py --bam $BAM --chr $s --out $p.json.gz --outputpath . \
       --logfile $p.log
     done
 done
