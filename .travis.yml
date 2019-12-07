@@ -9,7 +9,7 @@ env:
   global:
     - PREFIX=gtcg/sv-callers
     - TAG=dev
-    - BAM=/home/xenon/data/test/hmz-sv.bam
+    - BAM=data/test/hmz-sv.bam
   matrix:
     - PORT=10022 SCH=gridengine
     - PORT=10023 SCH=slurm
@@ -19,7 +19,7 @@ before_install:
   - sleep 10
   - docker ps -a
 install:
-  - docker cp ./ $SCH:/home/xenon
+  - docker cp -u xenon ./ $SCH:/home/xenon
   - docker exec -u xenon -t $SCH ./install.sh
 script:
-  - docker exec -u xenon -t $SCH ./run.sh $SCH $BAM
+  - docker exec -u xenon -t $SCH ./run_local.sh $SCH $BAM
