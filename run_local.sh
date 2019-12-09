@@ -17,10 +17,8 @@ WORK_DIR=scripts/genome_wide
 source ~/.profile
 cd $WORK_DIR
 printenv
-id $(whoami)
-ls -alh
 
-# output channels in *.json.gz files
+# write channels into *.json.gz files
 for p in clipped_read_pos clipped_reads split_reads; do
   python $p.py --bam $BAM --out $p.json.gz --outputpath . \
     --logfile $p.log
@@ -33,7 +31,6 @@ for p in coverage clipped_read_distance; do
     done
 done
 
-ls -alh
 echo -e "\nOutput files:"
 find . -name \*.gz
 echo -e "\nLog files:"

@@ -21,10 +21,9 @@ cd $WORK_DIR
 printenv
 xenon --version
 
-# create channels per chromosome
+# write channels into *.json.gz files
 for p in ${PRGS[@]}; do
-  #CMD="python $p.py --bam $BAM --out $p.json.gz --outputpath ."
-  CMD=ls
+  CMD="python $p.py --bam $BAM --out $p.json.gz --outputpath ."
   JOB_ID=$(xenon -v scheduler $SCH --location local:// submit \
     --name $SAMPLE_$p --cores-per-task 1 --inherit-env --max-run-time 1 \
     --working-directory . --stderr stderr.log --stdout stdout.log "$CMD")
@@ -34,9 +33,8 @@ done
 # fetch job accounting info
 sleep 10
 for j in ${JOBS[@]}; do
-   xenon -vvv scheduler $SCH --location local:// list --identifier $j
+   xenon -v scheduler $SCH --location local:// list --identifier $j
 done
-ls -alh
 
 # write stdout/stderr logs into terminal
 echo -e "\nLog files:"
