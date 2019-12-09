@@ -20,7 +20,7 @@ printenv
 ls -alh
 
 # output channels in *.json.gz files
-for p in clipped_read_pos clipped_reads split_reads; do
+for p in clipped_reads split_reads; do  # clipped_read_pos
   python $p.py --bam $BAM --out $p.json.gz --outputpath . \
     --logfile $p.log
 done
