@@ -20,6 +20,9 @@ before_install:
   - docker ps -a
 install:
   - docker cp ./ $SCH:/home/xenon
+  - docker exec -t $SCH chown -R xenon.xenon /home/xenon
   - docker exec -u xenon -t $SCH ./install.sh
 script:
   - docker exec -u xenon -t $SCH ./run_local.sh $BAM
+  - docker exec -u xenon -t $SCH ./run.sh $BAM
+
