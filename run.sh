@@ -47,7 +47,7 @@ for j in ${JOBS[@]}; do
 done
 
 # write stdout/stderr logs into terminal
-echo "\n---------------"
+echo "---------------"
 echo -e "Log files:"
 for f in *.log; do
   echo "### $f ###"
@@ -55,7 +55,7 @@ for f in *.log; do
 done
 
 # list channel outfiles (*.json.gz)
-echo "\n---------------"
+echo "---------------"
 echo -e "Output files:"
 #ls
 find -type f -name *.json.gz | grep "." || exit 1
