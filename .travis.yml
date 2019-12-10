@@ -24,6 +24,5 @@ install:
   - docker exec -t $SCH chown -R xenon.xenon /home/xenon
   - docker exec -u xenon -t $SCH ./install.sh
 script:
-  - docker exec -u xenon -t $SCH ./run_local.sh $BAM
   - docker exec -u xenon -t $SCH ./run.sh $SCH $BAM
 
