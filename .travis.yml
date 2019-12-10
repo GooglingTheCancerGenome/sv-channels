@@ -11,6 +11,7 @@ env:
     - TAG=dev
     - BAM=data/test/hmz-sv.bam
   matrix:
+    - PORT=10021 SCH=local
     - PORT=10022 SCH=gridengine
     - PORT=10023 SCH=slurm
 before_install:
