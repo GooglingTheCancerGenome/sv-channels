@@ -276,6 +276,7 @@ def create_dir(directory):
         os.makedirs(directory)
     except OSError as e:
         if e.errno != errno.EEXIST:
+            logging.error(os.path.abspath(directory))
             raise
 
 def get_chr_list():

@@ -1,0 +1,11 @@
+channels:
+  - conda-forge
+  - bioconda
+
+dependencies:
+  - numpy
+  - bcolz
+  - intervaltree
+  - pysam
+  - pybigwig
+  - twobitreader

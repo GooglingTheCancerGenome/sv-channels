@@ -1,0 +1,28 @@
+dist: trusty
+sudo: required
+language: python
+python:
+  - "3.6"
+services:
+  - docker
+env:
+  global:
+    - PREFIX=gtcg/sv-callers
+    - TAG=dev
+    - BAM=data/test/hmz-sv.bam
+  matrix:
+#    - PORT=10021 SCH=at
+    - PORT=10022 SCH=gridengine
+    - PORT=10023 SCH=slurm
+before_install:
+  - docker pull $PREFIX-$SCH:$TAG
+  - docker run -d -p $PORT:22 --name $SCH $PREFIX-$SCH:$TAG
+  - sleep 10
+  - docker ps -a
+install:
+  - docker cp ./ $SCH:/home/xenon
+  - docker exec -t $SCH chown -R xenon.xenon /home/xenon
+  - docker exec -u xenon -t $SCH ./install.sh
+script:
+  - docker exec -u xenon -t $SCH ./run.sh $SCH $BAM
+
