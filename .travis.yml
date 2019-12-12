@@ -9,9 +9,8 @@ env:
   global:
     - PREFIX=gtcg/sv-callers
     - TAG=dev
-    - BAM=data/test/hmz-sv.bam
+    - BAM=data/test/chr22.bam
   matrix:
-#    - PORT=10021 SCH=at
     - PORT=10022 SCH=gridengine
     - PORT=10023 SCH=slurm
 before_install:

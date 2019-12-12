@@ -11,7 +11,7 @@ fi
 # set [env] variables
 BAM=$(realpath $1)
 SAMPLE=$(basename $BAM .bam)
-SEQ_IDS=(17.1 17.2)  # ($(seq 1 22) X Y MT)
+SEQ_IDS=(chr22)  # ($(seq 1 22) X Y MT)
 WORK_DIR=scripts/genome_wide
 
 source ~/.profile
