@@ -3,14 +3,14 @@
 set -xe
 
 # check input arg(s)
-if [ $# != 1 ]; then
-  echo "Usage: $0 [BAM file]"
+if [ $# -lt "2" ]; then
+  echo "Usage: $0 [BAM file] [SEQID...]"
   exit 1
 fi
 
 # set [env] variables
 BAM=$(realpath $1)
-SEQ_IDS=${@:3}
+SEQ_IDS=${@:2}
 BASE_DIR=$(dirname $BAM)
 SAMPLE=$(basename $BAM .bam)
 TWOBIT=${BASE_DIR}/${SAMPLE}.2bit
@@ -37,5 +37,5 @@ done
 echo -e "\nLog files:"
 find . -name \*.log
 echo -e "\nOutput files:"
-find . -name \*.json\*
-find . -name \*.npy\*
+find -type f -name *.json\* | grep "." || exit 1
+find -type f -name *.npy\* | grep "." || exit 1

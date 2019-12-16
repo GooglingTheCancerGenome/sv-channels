@@ -3,16 +3,16 @@
 set -xe
 
 # check input arg(s)
-if [ $# != 2 ]; then
-  echo "Usage: $0 [SCHEDULER {local,gridengine,slurm}] [BAM file]"
+if [ $# -lt "3" ]; then
+  echo "Usage: $0 [SCHEDULER {gridengine,slurm}] [BAM file] [SEQID...]"
   exit 1
 fi
 
 # set [env] variables
-RTIME=5
+RTIME=5  # runtime in minutes
 SCH=$1
 BAM=$(realpath $2)
-SEQ_IDS=${@:4}
+SEQ_IDS=${@:3}
 SAMPLE=$(basename $BAM .bam)
 TWOBIT=${BASE_DIR}/${SAMPLE}.2bit
 WORK_DIR=scripts/genome_wide
