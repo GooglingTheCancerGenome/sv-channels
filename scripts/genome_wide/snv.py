@@ -18,7 +18,7 @@ MAX_PILEUP_BUFFER_SIZE = 8000
 minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
 
 
-def get_snvs(ibam, chrName, outFile):
+def get_snvs(ibam, itwobit, chrName, outFile):
     def get_2bit_genome():
         if HPC_MODE:
             # Path on the HPC of the 2bit version of the human reference genome (hg19)
@@ -27,8 +27,9 @@ def get_snvs(ibam, chrName, outFile):
         else:
             # Path on the local machine of the 2bit version of the human reference genome (hg19)
             genome = twobit.TwoBitFile(os.path.join('/Users/lsantuari/Documents',
-                                                    'Data/GiaB/reference', REF_GENOME+'.2bit'))
+                                                    'Data/GiaB/reference', REF_GENOME+'.2bit'))(reference)
         return genome
+
 
     def get_snv_number(query_seq_list, reference_base):
 
@@ -74,7 +75,7 @@ def get_snvs(ibam, chrName, outFile):
     stop_pos = chrLen
     # stop_pos = 10000000
 
-    reference_sequence = get_2bit_genome()
+    reference_sequence = twobit.TwoBitFile(itwobit)
 
     # snv_list = ['BQ', 'nALN', 'nSEG', 'A', 'a', 'C', 'c', 'G', 'g', 'T', 't']
     snv_list = ['BQ', 'SNV']
@@ -100,7 +101,7 @@ def get_snvs(ibam, chrName, outFile):
 
                 query_seq_list = pileupcolumn.get_query_sequences()
                 chrName_2bit = chrName.replace('chr', '') if REF_GENOME == 'GRCh38' else 'chr' + chrName
-                snv_number = get_snv_number(query_seq_list, reference_sequence[chrName_2bit][pileupcolumn.pos])
+                snv_number = get_snv_number(query_seq_list, reference_sequence[chrName][pileupcolumn.pos])
                 snv_array[snv_dict['SNV'], pileupcolumn.pos] = snv_number/pileupcolumn.nsegments \
                     if pileupcolumn.nsegments != 0 else 0
 
@@ -200,8 +201,8 @@ def main():
     # wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
     # inputBAM = wd + "T0_dedup.bam"
     # Locally
-    wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
-    inputBAM = wd + "T1_dedup.bam"
+    #wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
+    #inputBAM = 'wd + "T1_dedup.bam"
     # wd = '/Users/lsantuari/Documents/mount_points/hpc_mnt/Datasets/CretuStancu2017/Patient1/'
     # inputBAM = wd + 'Patient1.bam'
 
@@ -210,14 +211,17 @@ def main():
     # Parse the arguments of the script
     parser = argparse.ArgumentParser(description='Get snv info')
     parser.add_argument('-b', '--bam', type=str,
-                        default=inputBAM,
+                        default='hmz-sv.bam',
                         help="Specify input file (BAM)")
+    parser.add_argument('-t', '--twobit', type=str,
+                        default='hmz-sv.2bit',
+                        help="Specify input file (2bit)")
     parser.add_argument('-c', '--chr', type=str, default='17',
                         help="Specify chromosome")
     parser.add_argument('-o', '--out', type=str, default='snv.npy',
                         help="Specify output")
     parser.add_argument('-p', '--outputpath', type=str,
-                        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
+                        default='.',
                         help="Specify output path")
     parser.add_argument('-l', '--logfile', default='snv.log',
                         help='File in which to write logs.')
@@ -240,7 +244,7 @@ def main():
         level=logging.INFO)
 
     t0 = time()
-    get_snvs(ibam=args.bam, chrName=args.chr, outFile=output_file)
+    get_snvs(ibam=args.bam, itwobit=args.twobit, chrName=args.chr, outFile=output_file)
     logging.info('Time: SNVs on BAM %s and Chr %s: %f' % (args.bam, args.chr, (time() - t0)))
 
 
