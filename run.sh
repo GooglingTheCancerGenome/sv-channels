@@ -12,9 +12,9 @@ fi
 RTIME=5
 SCH=$1
 BAM=$(realpath $2)
+SEQ_IDS=${@:4}
 SAMPLE=$(basename $BAM .bam)
 TWOBIT=${BASE_DIR}/${SAMPLE}.2bit
-SEQ_IDS=(chr22)
 WORK_DIR=scripts/genome_wide
 JOBS=()  # store jobIDs
 

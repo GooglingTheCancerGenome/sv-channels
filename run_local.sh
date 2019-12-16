@@ -10,10 +10,10 @@ fi
 
 # set [env] variables
 BAM=$(realpath $1)
+SEQ_IDS=${@:3}
 BASE_DIR=$(dirname $BAM)
 SAMPLE=$(basename $BAM .bam)
 TWOBIT=${BASE_DIR}/${SAMPLE}.2bit
-SEQ_IDS=(chr22)
 WORK_DIR=scripts/genome_wide
 
 source ~/.profile

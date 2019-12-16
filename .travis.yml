@@ -10,6 +10,7 @@ env:
     - PREFIX=gtcg/sv-callers
     - TAG=dev
     - BAM=data/test/chr22.bam
+    - CHR=chr22
   matrix:
     - PORT=10022 SCH=gridengine
     - PORT=10023 SCH=slurm
@@ -23,5 +24,5 @@ install:
   - docker exec -t $SCH chown -R xenon.xenon /home/xenon
   - docker exec -u xenon -t $SCH ./install.sh
 script:
-  - docker exec -u xenon -t $SCH ./run.sh $SCH $BAM
+  - docker exec -u xenon -t $SCH ./run.sh $SCH $BAM $CHR
 
