@@ -24,7 +24,7 @@ JOBS=()  # store jobIDs
 submit () {  # submit job via Xenon
   xenon -v scheduler $SCH --location local:// submit \
     --name $SAMPLE_$p --cores-per-task 1 --inherit-env --max-run-time $RTIME \
-    --working-directory . --stderr stderr.log --stdout stdout.log "$1"
+    --working-directory . --stderr stderr-%j.log --stdout stdout-%j.log "$1"
 }
 
 source ~/.profile
