@@ -62,7 +62,7 @@ for s in ${SEQ_IDS[@]}; do # calls per chromosome given BAM
 done
 
 # fetch job accounting info
-sleep 10
+sleep 60
 for j in ${JOBS[@]}; do
    xenon -v scheduler $SCH --location local:// list --identifier $j
 done
