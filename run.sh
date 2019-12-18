@@ -55,10 +55,10 @@ for s in ${SEQ_IDS[@]}; do # calls per chromosome given BAM
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 
-  #p=chr_array && JOB="python $p.py --bam $BAM --chr $s --twobit $TWOBIT \
-  #  --map $BIGWIG --out $p.npy --outputpath . --logfile $p.log"
-  #JOB_ID=$($SUBMIT "$JOB")
-  #JOBS+=($JOB_ID)
+  p=chr_array && JOB="python $p.py --bam $BAM --chr $s --twobit $TWOBIT \
+    --map $BIGWIG --out $p.npy --outputpath . --logfile $p.log"
+  JOB_ID=$(submit "$JOB")
+  JOBS+=($JOB_ID)
 done
 
 # fetch job accounting info
