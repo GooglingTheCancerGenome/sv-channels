@@ -9,13 +9,15 @@ if [ $# -lt "3" ]; then
 fi
 
 # set [env] variables
-RTIME=5  # runtime in minutes
-SCH=$1
+SCH=$1  # scheduler type
 BAM=$(realpath $2)
 SEQ_IDS=${@:3}
+BASE_DIR=$(dirname $BAM)
 SAMPLE=$(basename $BAM .bam)
 TWOBIT=${BASE_DIR}/${SAMPLE}.2bit
+BIGWIG=${BASE_DIR}/${SAMPLE}.bw
 WORK_DIR=scripts/genome_wide
+RTIME=5  # runtime in minutes
 JOBS=()  # store jobIDs
 
 source ~/.profile
@@ -49,6 +51,13 @@ for s in ${SEQ_IDS[@]}; do # calls per chromosome given BAM
 
   p=clipped_read_distance && python $p.py --bam $BAM --chr $s --out $p.json.gz \
     --outputpath . --logfile $p.log
+  JOB_ID=$(xenon -v scheduler $SCH --location local:// submit \
+    --name $SAMPLE_$p --cores-per-task 1 --inherit-env --max-run-time $RTIME \
+    --working-directory . --stderr stderr.log --stdout stdout.log "$CMD")
+  JOBS+=($JOB_ID)
+
+  p=chr_array && CMD="python $p.py --bam $BAM --chr $s --twobit $TWOBIT \
+    --map $BIGWIG --out $p.npy --outputpath . --logfile $p.log"
   JOB_ID=$(xenon -v scheduler $SCH --location local:// submit \
     --name $SAMPLE_$p --cores-per-task 1 --inherit-env --max-run-time $RTIME \
     --working-directory . --stderr stderr.log --stdout stdout.log "$CMD")

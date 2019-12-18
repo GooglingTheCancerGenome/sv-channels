@@ -14,6 +14,7 @@ SEQ_IDS=${@:2}
 BASE_DIR=$(dirname $BAM)
 SAMPLE=$(basename $BAM .bam)
 TWOBIT=${BASE_DIR}/${SAMPLE}.2bit
+BIGWIG=${BASE_DIR}/${SAMPLE}.bw
 WORK_DIR=scripts/genome_wide
 
 source ~/.profile
@@ -31,7 +32,10 @@ for s in ${SEQ_IDS[@]}; do # per chromosome
   p=coverage && python $p.py --bam $BAM --chr $s --out $p.npy \
     --outputpath . --logfile $p.log
   p=clipped_read_distance && python $p.py --bam $BAM --chr $s --out $p.json.gz \
-    --outputpath . --logfile $p.log  
+    --outputpath . --logfile $p.log
+  p=chr_array && python $p.py --bam $BAM --chr $s --twobit $TWOBIT \
+    --map $BIGWIG --out $p.npy --outputpath . --logfile $p.log
+    
 done
 
 echo -e "\nLog files:"
