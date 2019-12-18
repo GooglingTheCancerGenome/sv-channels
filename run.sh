@@ -20,6 +20,13 @@ WORK_DIR=scripts/genome_wide
 RTIME=5  # runtime in minutes
 JOBS=()  # store jobIDs
 
+
+submit () {  # submit job via Xenon
+  xenon -v scheduler $SCH --location local:// submit \
+    --name $SAMPLE_$p --cores-per-task 1 --inherit-env --max-run-time $RTIME \
+    --working-directory . --stderr stderr.log --stdout stdout.log "$1"
+}
+
 source ~/.profile
 cd $WORK_DIR
 printenv
@@ -27,40 +34,30 @@ xenon --version
 
 # write channels into *.json.gz and *.npy.gz files
 for p in clipped_read_pos clipped_reads split_reads; do  # calls per BAM
-  CMD="python $p.py --bam $BAM --out $p.json.gz --outputpath ."
-  JOB_ID=$(xenon -v scheduler $SCH --location local:// submit \
-    --name $SAMPLE_$p --cores-per-task 1 --inherit-env --max-run-time $RTIME \
-    --working-directory . --stderr stderr.log --stdout stdout.log "$CMD")
+  JOB="python $p.py --bam $BAM --out $p.json.gz --outputpath ."
+  JOB_ID=$(submit $JOB)
   JOBS+=($JOB_ID)
 done
 
 for s in ${SEQ_IDS[@]}; do # calls per chromosome given BAM
-  p=snv && CMD="python $p.py --bam $BAM --twobit $TWOBIT --chr $s --out $p.npy \
+  p=snv && JOB="python $p.py --bam $BAM --twobit $TWOBIT --chr $s --out $p.npy \
     --outputpath . --logfile $p.log"
-  JOB_ID=$(xenon -v scheduler $SCH --location local:// submit \
-    --name $SAMPLE_$p --cores-per-task 1 --inherit-env --max-run-time $RTIME \
-    --working-directory . --stderr stderr.log --stdout stdout.log "$CMD")
+  JOB_ID=$(submit $JOB)
   JOBS+=($JOB_ID)
       
-  p=coverage && CMD="python $p.py --bam $BAM --chr $s --out $p.npy \
+  p=coverage && JOB="python $p.py --bam $BAM --chr $s --out $p.npy \
     --outputpath . --logfile $p.log"
-  JOB_ID=$(xenon -v scheduler $SCH --location local:// submit \
-    --name $SAMPLE_$p --cores-per-task 1 --inherit-env --max-run-time $RTIME \
-    --working-directory . --stderr stderr.log --stdout stdout.log "$CMD")
+  JOB_ID=$(submit $JOB)
   JOBS+=($JOB_ID)
 
   p=clipped_read_distance && python $p.py --bam $BAM --chr $s --out $p.json.gz \
     --outputpath . --logfile $p.log
-  JOB_ID=$(xenon -v scheduler $SCH --location local:// submit \
-    --name $SAMPLE_$p --cores-per-task 1 --inherit-env --max-run-time $RTIME \
-    --working-directory . --stderr stderr.log --stdout stdout.log "$CMD")
+  JOB_ID=$(submit $JOB)
   JOBS+=($JOB_ID)
 
-  p=chr_array && CMD="python $p.py --bam $BAM --chr $s --twobit $TWOBIT \
+  p=chr_array && JOB="python $p.py --bam $BAM --chr $s --twobit $TWOBIT \
     --map $BIGWIG --out $p.npy --outputpath . --logfile $p.log"
-  JOB_ID=$(xenon -v scheduler $SCH --location local:// submit \
-    --name $SAMPLE_$p --cores-per-task 1 --inherit-env --max-run-time $RTIME \
-    --working-directory . --stderr stderr.log --stdout stdout.log "$CMD")
+  JOB_ID=$($SUBMIT "$JOB")
   JOBS+=($JOB_ID)
 done
 
