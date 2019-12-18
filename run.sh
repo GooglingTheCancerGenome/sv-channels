@@ -35,30 +35,30 @@ xenon --version
 # write channels into *.json.gz and *.npy.gz files
 for p in clipped_read_pos clipped_reads split_reads; do  # calls per BAM
   JOB="python $p.py --bam $BAM --out $p.json.gz --outputpath ."
-  JOB_ID=$(submit $JOB)
+  JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 done
 
 for s in ${SEQ_IDS[@]}; do # calls per chromosome given BAM
   p=snv && JOB="python $p.py --bam $BAM --twobit $TWOBIT --chr $s --out $p.npy \
     --outputpath . --logfile $p.log"
-  JOB_ID=$(submit $JOB)
+  JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
       
   p=coverage && JOB="python $p.py --bam $BAM --chr $s --out $p.npy \
     --outputpath . --logfile $p.log"
-  JOB_ID=$(submit $JOB)
+  JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 
   p=clipped_read_distance && python $p.py --bam $BAM --chr $s --out $p.json.gz \
     --outputpath . --logfile $p.log
-  JOB_ID=$(submit $JOB)
+  JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 
-  p=chr_array && JOB="python $p.py --bam $BAM --chr $s --twobit $TWOBIT \
-    --map $BIGWIG --out $p.npy --outputpath . --logfile $p.log"
-  JOB_ID=$($SUBMIT "$JOB")
-  JOBS+=($JOB_ID)
+  #p=chr_array && JOB="python $p.py --bam $BAM --chr $s --twobit $TWOBIT \
+  #  --map $BIGWIG --out $p.npy --outputpath . --logfile $p.log"
+  #JOB_ID=$($SUBMIT "$JOB")
+  #JOBS+=($JOB_ID)
 done
 
 # fetch job accounting info
