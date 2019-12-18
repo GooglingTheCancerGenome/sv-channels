@@ -79,5 +79,5 @@ done
 echo "---------------"
 echo -e "Output files:"
 #ls
-find -type f -name *.json\* | grep "." || exit 1
-find -type f -name *.npy\* | grep "." || exit 1
+find -type f -name *.json.gz | grep "." || exit 1
+find -type f -name *.npy.gz | grep "." || exit 1

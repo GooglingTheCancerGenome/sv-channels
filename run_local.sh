@@ -41,5 +41,5 @@ done
 echo -e "\nLog files:"
 find . -name \*.log
 echo -e "\nOutput files:"
-find -type f -name *.json\* | grep "." || exit 1
-find -type f -name *.npy\* | grep "." || exit 1
+find -type f -name *.json.gz | grep "." || exit 1
+find -type f -name *.npy.gz | grep "." || exit 1
