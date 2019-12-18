@@ -86,7 +86,7 @@ for f in *.log; do
 done
 
 # check if there are failed jobs
-cat $LOG
+#cat $LOG
 [ $(grep -v "Exit code" $LOG | cut -f 7 | grep -v ^0) ] && exit 1
 
 # list channel outfiles (*.json.gz)

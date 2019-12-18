@@ -154,12 +154,12 @@ def load_channels(chr_list, outDir):
     return channel_data
 
 
-def create_hdf5(ibam, twobit, chrom, outDir, cmd_name):
+def create_hdf5(ibam, chrom, twobit, bigwig, outDir, cmd_name):
     chrlen = get_chr_len(ibam, chrom)
     n_channels = 46
     channel_data = load_channels([chrom], outDir)
     chr_array = np.zeros(shape=(chrlen, n_channels), dtype=np.float32)
-    bw_map = get_mappability_bigwig()
+    bw_map = pyBigWig.open(bigwig)  # get_mappability_bigwig()
 
     # dictionary of key choices
     direction_list = {'clipped_reads': ['left_F', 'left_R', 'right_F', 'right_R',
@@ -357,8 +357,9 @@ def main():
     t0 = time()
 
     create_hdf5(ibam=args.bam,
-                twobit=args.twobit,
                 chrom=args.chr,
+                twobit=args.twobit,
+                bigwig=args.map,
                 outDir=args.outputpath,
                 cmd_name=cmd_name
                 )
