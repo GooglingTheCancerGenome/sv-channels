@@ -22,20 +22,21 @@ cd $WORK_DIR
 printenv
 
 # write channels into *.json.gz and *.npy.gz files
-for p in clipped_read_pos clipped_reads split_reads; do
-  python $p.py --bam $BAM --out $p.json.gz --outputpath . --logfile $p.log
-done
-
-for s in ${SEQ_IDS[@]}; do # per chromosome
-  p=snv && python $p.py --bam $BAM --twobit $TWOBIT --chr $s --out $p.npy \
-    --outputpath . --logfile $p.log
-  p=coverage && python $p.py --bam $BAM --chr $s --out $p.npy \
-    --outputpath . --logfile $p.log
+for s in ${SEQ_IDS[@]}; do  # per chromosome
   p=clipped_read_distance && python $p.py --bam $BAM --chr $s --out $p.json.gz \
     --outputpath . --logfile $p.log
+  p=clipped_reads && python $p.py --bam $BAM --chr $s --out $p.json.gz \
+    --outputpath . --logfile $p.log
+  p=split_reads && python $p.py --bam $BAM --chr $s --out $p.json.gz \
+    --outputpath . --logfile $p.log
+  p=clipped_read_pos && python $p.py --bam $BAM --chr $s --out $p.json.gz \
+    --outputpath . --logfile $p.log
+  p=snv && python $p.py --bam $BAM --chr $s --twobit $TWOBIT --out $p.npy \
+   --outputpath . --logfile $p.log
+  p=coverage && python $p.py --bam $BAM --chr $s --out $p.npy \
+    --outputpath . --logfile $p.log
   p=chr_array && python $p.py --bam $BAM --chr $s --twobit $TWOBIT \
-    --map $BIGWIG --out $p.npy --outputpath . --logfile $p.log
-    
+   --map $BIGWIG --out $p.npy --outputpath . --logfile $p.log
 done
 
 echo -e "\nLog files:"

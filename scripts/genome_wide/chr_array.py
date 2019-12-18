@@ -128,7 +128,7 @@ def load_channels(chr_list, outDir):
             logging.info('Loading data for Chr%s' % chrom)
 
             suffix = '.npy.gz' if ch in ['snv', 'coverage'] else '.json.gz'
-            filename = os.path.join(outDir, sample, ch, '_'.join([chrom, ch + suffix]))
+            filename = os.path.join(outDir, ch, '_'.join([chrom, ch + suffix]))
             assert os.path.isfile(filename), filename + " does not exists!"
 
             logging.info('Reading %s for Chr%s' % (ch, chrom))
@@ -334,8 +334,6 @@ def main():
     parser.add_argument('-p', '--outputpath', type=str,
                         default='/Users/lsantuari/Documents/Processed/channel_maker_output',
                         help="Specify output path")
-#    parser.add_argument('-s', '--sample', type=str, default='T1',
-#                        help="Specify sample")
     parser.add_argument('-l', '--logfile', default='window_maker.log',
                         help='File in which to write logs.')
     parser.add_argument('-w', '--window', type=str, default=200,
