@@ -18,6 +18,7 @@ TWOBIT=${BASE_DIR}/${SAMPLE}.2bit
 BIGWIG=${BASE_DIR}/${SAMPLE}.bw
 WORK_DIR=scripts/genome_wide
 RTIME=5  # runtime in minutes
+LOG=xenon.log
 JOBS=()  # store jobIDs
 
 
@@ -61,11 +62,15 @@ for s in ${SEQ_IDS[@]}; do # calls per chromosome given BAM
   JOBS+=($JOB_ID)
 done
 
-# fetch job accounting info
+# collect job accounting info
 sleep 60
 for j in ${JOBS[@]}; do
-   xenon -v scheduler $SCH --location local:// list --identifier $j
+   xenon -v scheduler $SCH --location local:// list --identifier $j >> $LOG
 done
+cat $LOG
+
+# check if jobs failed based on their exit codes
+[ $(grep -v "Exit code" $LOG | cut -f 7 | grep -v ^0) ] && exit 1
 
 # write stdout/stderr logs into terminal
 echo "---------------"
