@@ -64,7 +64,9 @@ for s in ${SEQ_IDS[@]}; do  # per chromosome
     --outputpath . --logfile $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
-    
+  
+  # wait for input files genrated by the scripts above
+  sleep 120
   p=chr_array && JOB="python $p.py --bam $BAM --chr $s --twobit $TWOBIT \
    --map $BIGWIG --out $p.npy --outputpath . --logfile $p.log"
   JOB_ID=$(submit "$JOB")
