@@ -47,24 +47,6 @@ def create_dir(directory):
             raise
 
 
-def load_candidate_positions(datadir, sampleName, chrom1, chrom2):
-    vec_type = 'split_read_pos'
-
-    print('Loading candidate positions for Chr%s to Chr%s' % (chrom1, chrom2))
-
-    # Load files
-    fn = os.path.join(datadir, sampleName, vec_type, chrom1 + '_' + vec_type + '.json.gz')
-
-    with gzip.GzipFile(fn, 'r') as fin:
-        positions, locations = json.loads(fin.read().decode('utf-8'))
-
-    locations = [(c1, p1, c2, p2) for (c1, p1, c2, p2) in locations if c1 == chrom1 and c2 == chrom2]
-
-    print('%d candidate positions for Chr%s to Chr%s' % (len(locations), chrom1, chrom2))
-
-    return locations
-
-
 def count_clipped_read_positions(cpos_cnt):
     '''
 
@@ -103,7 +85,7 @@ def get_chr_len_dict(ibam):
     return chrLen
 
 
-def load_channels(sample, chr_list, outDir):
+def load_channels(chr_list, outDir):
     channel_names_wg = ['split_reads', 'clipped_reads']
 
     channel_names = ['coverage', 'clipped_read_distance', 'snv']
@@ -113,7 +95,7 @@ def load_channels(sample, chr_list, outDir):
     for ch in channel_names_wg:
 
         suffix = '.json.gz'
-        filename = os.path.join(outDir, sample, ch, ch + suffix)
+        filename = os.path.join(outDir, ch, ch + suffix)
         assert os.path.isfile(filename), filename + " does not exists!"
 
         with gzip.GzipFile(filename, 'r') as fin:
@@ -172,14 +154,11 @@ def load_channels(sample, chr_list, outDir):
     return channel_data
 
 
-def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
-
+def create_hdf5(ibam, twobit, chrom, outDir, cmd_name):
     chrlen = get_chr_len(ibam, chrom)
     n_channels = 46
-
-    channel_data = load_channels(sampleName, [chrom], outDir)
+    channel_data = load_channels([chrom], outDir)
     chr_array = np.zeros(shape=(chrlen, n_channels), dtype=np.float32)
-
     bw_map = get_mappability_bigwig()
 
     # dictionary of key choices
@@ -307,7 +286,7 @@ def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
     nuc_list = ['A', 'T', 'C', 'G', 'N']
 
     chr_array[:, channel_index:channel_index + len(nuc_list)] = get_one_hot_sequence_by_list(
-        chrom, list(np.arange(chrlen)), HPC_MODE, REF_GENOME)
+        twobit, args.chrom, list(np.arange(chrlen)))
     channel_index += len(nuc_list)
 
     logging.info("chr_array shape: %s" % str(chr_array.shape))
@@ -317,7 +296,7 @@ def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
     # logging.info("Writing HDF5...")
     # da.to_hdf5(outfile, '/' + 'chr' + chrom, dask_array)  # , compression='lzf', shuffle=False)
 
-    outfile = os.path.join(outDir, sampleName, cmd_name, sampleName + '_' + chrom + '_carray')
+    outfile = os.path.join(outDir, cmd_name, chrom + '_carray')
     logging.info("Writing carray...")
     a = bcolz.carray(chr_array, rootdir=outfile, mode='w')
     a.flush()
@@ -344,13 +323,19 @@ def main():
                         help="Specify input file (BAM)")
     parser.add_argument('-c', '--chr', type=str, default='17',
                         help="Specify chromosome")
+    parser.add_argument('-m', '--map', type=str,
+                        default='chr22.bw',
+                        help="Specify input file (bigWig)")
+    parser.add_argument('-t', '--twobit', type=str,
+                        default='chr22.2bit',
+                        help="Specify input file (2bit)")
     parser.add_argument('-o', '--out', type=str, default='channel_maker.npy.gz',
                         help="Specify output")
     parser.add_argument('-p', '--outputpath', type=str,
                         default='/Users/lsantuari/Documents/Processed/channel_maker_output',
                         help="Specify output path")
-    parser.add_argument('-s', '--sample', type=str, default='T1',
-                        help="Specify sample")
+#    parser.add_argument('-s', '--sample', type=str, default='T1',
+#                        help="Specify sample")
     parser.add_argument('-l', '--logfile', default='window_maker.log',
                         help='File in which to write logs.')
     parser.add_argument('-w', '--window', type=str, default=200,
@@ -359,7 +344,7 @@ def main():
     args = parser.parse_args()
 
     cmd_name = 'chr_array'
-    output_dir = os.path.join(args.outputpath, args.sample, cmd_name)
+    output_dir = os.path.join(args.outputpath, cmd_name)
     create_dir(output_dir)
     logfilename = os.path.join(output_dir, args.logfile)
     # output_file = os.path.join(output_dir, args.out)
@@ -373,8 +358,8 @@ def main():
 
     t0 = time()
 
-    create_hdf5(sampleName=args.sample,
-                ibam=args.bam,
+    create_hdf5(ibam=args.bam,
+                twobit=args.twobit,
                 chrom=args.chr,
                 outDir=args.outputpath,
                 cmd_name=cmd_name

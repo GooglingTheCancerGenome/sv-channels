@@ -209,15 +209,9 @@ def get_one_hot_sequence(chrname, start, stop, nuc, HPC_MODE, REF_GENOME):
                     dtype=np.uint8)
 
 
-def get_one_hot_sequence_by_list(chrname, positions, HPC_MODE, REF_GENOME):
-    genome = get_reference_sequence(HPC_MODE, REF_GENOME)
-
-    if chrname == 'MT':
-        chrname = 'M'
-
-    chrname_num = chrname.replace('chr','')
-    whole_chrom = str(genome[chrname_num]) if REF_GENOME == 'GRCh38' else str(genome['chr' + chrname_num])
-
+def get_one_hot_sequence_by_list(twobitfile, chrname, positions):
+    genome = twobit.TwoBitFile(twobitfile)
+    whole_chrom = str(genome[chrname])
     nuc_list = ['A', 'T', 'C', 'G', 'N']
     res = np.zeros(shape=(len(positions), len(nuc_list)), dtype=np.uint32)
 
