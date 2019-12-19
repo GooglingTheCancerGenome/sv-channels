@@ -22,10 +22,14 @@ LOG=xenon.log
 JOBS=()  # store jobIDs
 
 
-submit () {  # submit job via Xenon
+submit () {  # submit a job via Xenon CLI
   xenon -v scheduler $SCH --location local:// submit \
     --name $SAMPLE_$p --cores-per-task 1 --inherit-env --max-run-time $RTIME \
     --working-directory . --stderr stderr-%j.log --stdout stdout-%j.log "$1"
+}
+
+monitor () {  # monitor a job via Xenon CLI
+  xenon -v scheduler $SCH --location local:// list --identifier $1
 }
 
 source ~/.profile
@@ -64,22 +68,33 @@ for s in ${SEQ_IDS[@]}; do  # per chromosome
     --outputpath . --logfile $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
-  
-  # wait for input files genrated by the scripts above
-  sleep 120
+done
+
+# check if all jobs are done
+for j in ${JOBS[@]}; do
+  while true; do
+    [ $(monitor $j | cut -f 5 | grep -i true) ] && break || sleep 10
+  done
+done
+
+# generate "chromosome arrays" from the channel files
+for s in ${SEQ_IDS[@]}; do
   p=chr_array && JOB="python $p.py --bam $BAM --chr $s --twobit $TWOBIT \
-   --map $BIGWIG --out $p.npy --outputpath . --logfile $p.log"
+    --map $BIGWIG --out $p.npy --outputpath . --logfile $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 done
 
+# check if the last job is done
+watch -g -n 10 "xenon -v scheduler $SCH --location local:// list \
+  --identifier ${JOBS[-1]}) | cut -f 5 | grep -i true"
+
 # collect job accounting info
-sleep 60
 for j in ${JOBS[@]}; do
-   xenon -v scheduler $SCH --location local:// list --identifier $j >> $LOG
+  monitor $j >> $LOG
 done
 
-# write stdout/stderr logs into terminal
+# write std{out,err} logs into terminal
 echo "---------------"
 echo -e "Log files:"
 for f in *.log; do
@@ -88,7 +103,6 @@ for f in *.log; do
 done
 
 # check if there are failed jobs
-#cat $LOG
 [ $(grep -v "Exit code" $LOG | cut -f 7 | grep -v ^0) ] && exit 1
 
 # list channel outfiles (*.json.gz)
