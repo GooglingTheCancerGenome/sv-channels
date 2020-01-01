@@ -17,7 +17,8 @@ SAMPLE=$(basename $BAM .bam)
 TWOBIT=${BASE_DIR}/${SAMPLE}.2bit
 BIGWIG=${BASE_DIR}/${SAMPLE}.bw
 WORK_DIR=scripts/genome_wide
-RTIME=5  # runtime in minutes
+RTIME=10  # runtime in minutes
+STIME=1   # sleep X minutes
 LOG=xenon.log
 JOBS=()  # store jobIDs
 
@@ -73,7 +74,7 @@ done
 # check if all jobs are done
 for j in ${JOBS[@]}; do
   while true; do
-    [ $(monitor $j | cut -f 5 | grep -i true) ] && break || sleep 10
+    [ $(monitor $j | cut -f 5 | grep -i true) ] && break || sleep ${STIME}m
   done
 done
 
