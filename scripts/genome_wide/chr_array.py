@@ -82,7 +82,7 @@ def get_chr_len_dict(ibam):
     header_dict = bamfile.header
 
 
-def load_channel(sample, chr_list, outDir, ch):
+def load_channel(chr_list, outDir, ch):
     channel_names_wg = ['split_reads', 'clipped_reads']
     channel_names = ['coverage', 'clipped_read_distance', 'snv']
     channel_data = defaultdict(dict)
@@ -162,7 +162,7 @@ def create_hdf5(ibam, chrom, twobit, bigwig, outDir, cmd_name):
                             'clipped_reads_translocation',
                             'clipped_read_distance', 'split_read_distance']:
 
-        channel_data = load_channel(sampleName, [chrom], outDir, current_channel)
+        channel_data = load_channel([chrom], outDir, current_channel)
 
         logging.info("Adding channel %s at index %d" % (current_channel, channel_index))
 
