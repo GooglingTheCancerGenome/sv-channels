@@ -99,18 +99,17 @@ def get_chr_len_dict(ibam):
     # Extract chromosome length from the BAM header
     header_dict = bamfile.header
 
-    chrLen = {i['SN']: i['LN'] for i in header_dict['SQ']}
-    return chrLen
 
+def load_channel(sample, chr_list, outDir, ch):
 
-def load_channels(sample, chr_list, outDir):
     channel_names_wg = ['split_reads', 'clipped_reads']
 
     channel_names = ['coverage', 'clipped_read_distance', 'snv']
 
     channel_data = defaultdict(dict)
 
-    for ch in channel_names_wg:
+    # for ch in channel_names_wg:
+    if ch in channel_names_wg:
 
         suffix = '.json.gz'
         filename = os.path.join(outDir, sample, ch, ch + suffix)
@@ -127,19 +126,26 @@ def load_channels(sample, chr_list, outDir):
                 clipped_reads, clipped_reads_inversion, \
                 clipped_reads_duplication, clipped_reads_translocation = json.loads(fin.read().decode('utf-8'))
 
-    for chrom in chr_list:
-        channel_data[chrom]['split_reads'] = split_reads[chrom]
-        channel_data[chrom]['split_read_distance'] = split_read_distance[chrom]
+        for chrom in chr_list:
 
-        channel_data[chrom]['clipped_reads'] = clipped_reads[chrom]
-        channel_data[chrom]['clipped_reads_inversion'] = clipped_reads_inversion[chrom]
-        channel_data[chrom]['clipped_reads_duplication'] = clipped_reads_duplication[chrom]
-        channel_data[chrom]['clipped_reads_translocation'] = clipped_reads_translocation[chrom]
+            if ch == 'split_reads':
+                channel_data[chrom]['split_reads'] = split_reads[chrom]
+                channel_data[chrom]['split_read_distance'] = split_read_distance[chrom]
 
-    del split_reads, split_read_distance, clipped_reads, clipped_reads_inversion, \
-        clipped_reads_duplication, clipped_reads_translocation
+                del split_reads, split_read_distance
 
-    for ch in channel_names:
+            elif ch == 'clipped_reads':
+                channel_data[chrom]['clipped_reads'] = clipped_reads[chrom]
+                channel_data[chrom]['clipped_reads_inversion'] = clipped_reads_inversion[chrom]
+                channel_data[chrom]['clipped_reads_duplication'] = clipped_reads_duplication[chrom]
+                channel_data[chrom]['clipped_reads_translocation'] = clipped_reads_translocation[chrom]
+
+                del clipped_reads, clipped_reads_inversion, \
+                    clipped_reads_duplication, clipped_reads_translocation
+
+    #for ch in channel_names:
+    elif ch in channel_names:
+
         logging.info('Loading data for channel %s' % ch)
 
         for chrom in chr_list:
@@ -160,15 +166,6 @@ def load_channels(sample, chr_list, outDir):
                     channel_data[chrom][ch] = json.loads(fin.read().decode('utf-8'))
             logging.info('End of reading')
 
-        # # unpack clipped_reads
-        # channel_data[chrom]['clipped_reads'], \
-        # channel_data[chrom]['clipped_reads_inversion'], channel_data[chrom]['clipped_reads_duplication'], \
-        # channel_data[chrom]['clipped_reads_translocation'] = channel_data[chrom]['clipped_reads']
-        #
-        # # unpack split_reads
-        # channel_data[chrom]['split_read_distance'], \
-        # channel_data[chrom]['split_reads'] = channel_data[chrom]['split_read_distance']
-
     return channel_data
 
 
@@ -177,7 +174,6 @@ def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
     chrlen = get_chr_len(ibam, chrom)
     n_channels = 46
 
-    channel_data = load_channels(sampleName, [chrom], outDir)
     chr_array = np.zeros(shape=(chrlen, n_channels), dtype=np.float32)
 
     bw_map = get_mappability_bigwig()
@@ -201,6 +197,8 @@ def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
                             'clipped_reads_inversion', 'clipped_reads_duplication',
                             'clipped_reads_translocation',
                             'clipped_read_distance', 'split_read_distance']:
+
+        channel_data = load_channel(sampleName, [chrom], outDir, current_channel)
 
         logging.info("Adding channel %s at index %d" % (current_channel, channel_index))
 
