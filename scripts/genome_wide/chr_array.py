@@ -156,8 +156,7 @@ def create_hdf5(ibam, chrom, twobit, bigwig, outDir, cmd_name):
                       }
 
     channel_index = 0
-    for current_channel in ['coverage', 'snv',
-                            'clipped_reads', 'split_reads']:
+    for current_channel in ['coverage', 'snv', 'clipped_reads', 'split_reads']:
     #                        'clipped_reads_inversion', 'clipped_reads_duplication',
     #                        'clipped_reads_translocation',
     #                        'clipped_read_distance', 'split_read_distance']:
@@ -263,7 +262,7 @@ def create_hdf5(ibam, chrom, twobit, bigwig, outDir, cmd_name):
     nuc_list = ['A', 'T', 'C', 'G', 'N']
 
     chr_array[:, channel_index:channel_index + len(nuc_list)] = get_one_hot_sequence_by_list(
-        twobit, args.chrom, list(np.arange(chrlen)))
+        twobit, chrom, list(np.arange(chrlen)))
     channel_index += len(nuc_list)
 
     logging.info("chr_array shape: %s" % str(chr_array.shape))
