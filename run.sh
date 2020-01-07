@@ -115,4 +115,4 @@ find -type f -name *.json.gz | grep "." || exit 1
 find -type f -name *.npy.gz | grep "." || exit 1
 
 ENDTIME=$(date +%s)
-echo "Processing took $($ENDTIME - $STARTTIME) seconds to complete."
+echo "Processing took $((ENDTIME - STARTTIME)) seconds to complete."
