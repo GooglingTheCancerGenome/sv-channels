@@ -19,6 +19,7 @@ BIGWIG=${BASE_DIR}/${SAMPLE}.bw
 WORK_DIR=scripts/genome_wide
 RTIME=10  # runtime in minutes
 STIME=1   # sleep X minutes
+STARTTIME=$(date +%s)
 LOG=xenon.log
 JOBS=()  # store jobIDs
 
@@ -112,3 +113,6 @@ echo -e "Output files:"
 #ls
 find -type f -name *.json.gz | grep "." || exit 1
 find -type f -name *.npy.gz | grep "." || exit 1
+
+ENDTIME=$(date +%s)
+echo "Processing took $($ENDTIME - $STARTTIME) seconds to complete."
