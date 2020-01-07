@@ -88,7 +88,7 @@ done
 
 # check if the last job is done
 watch -g -n 10 "xenon -v scheduler $SCH --location local:// list \
-  --identifier ${JOBS[-1]}) | cut -f 5 | grep -i true"
+  --identifier ${JOBS[-1]} | cut -f 5 | grep -i true"
 
 # collect job accounting info
 for j in ${JOBS[@]}; do
