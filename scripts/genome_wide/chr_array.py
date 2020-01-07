@@ -157,10 +157,10 @@ def create_hdf5(ibam, chrom, twobit, bigwig, outDir, cmd_name):
 
     channel_index = 0
     for current_channel in ['coverage', 'snv',
-                            'clipped_reads', 'split_reads',
-                            'clipped_reads_inversion', 'clipped_reads_duplication',
-                            'clipped_reads_translocation',
-                            'clipped_read_distance', 'split_read_distance']:
+                            'clipped_reads', 'split_reads']:
+    #                        'clipped_reads_inversion', 'clipped_reads_duplication',
+    #                        'clipped_reads_translocation',
+    #                        'clipped_read_distance', 'split_read_distance']:
 
         channel_data = load_channel([chrom], outDir, current_channel)
 
@@ -178,10 +178,10 @@ def create_hdf5(ibam, chrom, twobit, bigwig, outDir, cmd_name):
             channel_index += ch_num
             del channel_data[chrom][current_channel]
 
-        elif current_channel in ['clipped_reads', 'split_reads']:
-        #                         'clipped_reads_inversion',
-        #                         'clipped_reads_duplication',
-        #                         'clipped_reads_translocation']:
+        elif current_channel in ['clipped_reads', 'split_reads',
+                                 'clipped_reads_inversion',
+                                 'clipped_reads_duplication',
+                                 'clipped_reads_translocation']:
             for split_direction in direction_list[current_channel]:
                 if len(channel_data[chrom][current_channel][split_direction]) > 0:
                     # print(split_direction)
