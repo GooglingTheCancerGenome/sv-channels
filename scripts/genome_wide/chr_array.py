@@ -1,19 +1,19 @@
 # Imports
 
+import os
 import argparse
 import errno
 import gzip
 import logging
-import os
 import json
 import statistics
-from collections import defaultdict
-from time import time
-import numpy as np
 import pyBigWig
 import pysam
-import bcolz
-import dask.array as da
+import numpy as np
+import bcolz as bz
+
+from collections import defaultdict
+from time import time
 from functions import *
 
 config = get_config_file()
@@ -139,7 +139,7 @@ def load_channel(chr_list, outDir, ch):
 def create_hdf5(ibam, chrom, twobit, bigwig, outDir, cmd_name):
     chrlen = get_chr_len(ibam, chrom)
     n_channels = 46
-    chr_array = np.zeros(shape=(chrlen, n_channels), dtype=np.float32)
+    chr_array = bz.zeros(shape=(chrlen, n_channels), dtype=np.float32)
     bw_map = pyBigWig.open(bigwig)  # get_mappability_bigwig()
 
     # dictionary of key choices
@@ -274,7 +274,7 @@ def create_hdf5(ibam, chrom, twobit, bigwig, outDir, cmd_name):
 
     outfile = os.path.join(outDir, cmd_name, chrom + '_carray')
     logging.info("Writing carray...")
-    a = bcolz.carray(chr_array, rootdir=outfile, mode='w')
+    a = bz.carray(chr_array, rootdir=outfile, mode='w')
     a.flush()
 
 
