@@ -16,6 +16,7 @@ SAMPLE=$(basename $BAM .bam)
 TWOBIT=${BASE_DIR}/${SAMPLE}.2bit
 BIGWIG=${BASE_DIR}/${SAMPLE}.bw
 WORK_DIR=scripts/genome_wide
+NUMEXPR_MAX_THREADS=128  # required by py-bcolz
 
 source ~/.profile
 cd $WORK_DIR

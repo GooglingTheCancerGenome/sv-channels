@@ -22,6 +22,7 @@ STIME=1   # sleep X minutes
 STARTTIME=$(date +%s)
 LOG=xenon.log
 JOBS=()  # store jobIDs
+NUMEXPR_MAX_THREADS=128  # required by py-bcolz
 
 
 submit () {  # submit a job via Xenon CLI
@@ -97,7 +98,7 @@ for j in ${JOBS[@]}; do
   monitor $j >> $LOG
 done
 
-# write std{out,err} logs into terminal
+# show std{out,err}-[jobid].log files
 echo "---------------"
 echo -e "Log files:"
 for f in *.log; do
