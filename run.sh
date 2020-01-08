@@ -38,6 +38,7 @@ source ~/.profile
 cd $WORK_DIR
 printenv
 xenon --version
+conda list
 
 # write channels into *.json.gz and *.npy.gz files
 for s in ${SEQ_IDS[@]}; do  # per chromosome
