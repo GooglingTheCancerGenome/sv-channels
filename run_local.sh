@@ -41,7 +41,7 @@ for s in ${SEQ_IDS[@]}; do  # per chromosome
 done
 
 echo -e "\nLog files:"
-find . -name \*.log
+find -type f -name *.log
 echo -e "\nOutput files:"
 find -type f -name *.json.gz | grep "." || exit 1
 find -type f -name *.npy.gz | grep "." || exit 1

@@ -96,10 +96,10 @@ for j in ${JOBS[@]}; do
   monitor $j >> $LOG
 done
 
-# show std{out,err}-[jobid].log files
+# output channel/job logs in std{out,err}-[jobid].log
 echo "---------------"
 echo -e "Log files:"
-for f in *.log; do
+for f in $(find -type f -name *.log); do
   echo "### $f ###"
   cat $f
 done
