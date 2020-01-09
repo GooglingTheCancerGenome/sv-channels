@@ -96,6 +96,9 @@ for j in ${JOBS[@]}; do
   monitor $j >> $LOG
 done
 
+ENDTIME=$(date +%s)
+echo "Processing took $((ENDTIME - STARTTIME)) seconds to complete."
+
 # output channel/job logs in std{out,err}-[jobid].log
 echo "---------------"
 echo -e "Log files:"
@@ -104,9 +107,6 @@ for f in $(find -type f -name *.log); do
   cat $f
 done
 
-# check if there are failed jobs
-[ $(grep -v "Exit code" $LOG | cut -f 7 | grep -v ^0) ] && exit 1
-
 # list (channel) outfiles in *.json.gz and *.npy.gz
 echo "---------------"
 echo -e "Output files:"
@@ -114,5 +114,6 @@ echo -e "Output files:"
 find -type f -name *.json.gz | grep "." || exit 1
 find -type f -name *.npy.gz | grep "." || exit 1
 
-ENDTIME=$(date +%s)
-echo "Processing took $((ENDTIME - STARTTIME)) seconds to complete."
+# check if there are failed jobs
+[ $(grep -v "Exit code" $LOG | cut -f 7 | grep -v ^0) ] && exit 1
+
