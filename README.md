@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/GooglingTheCancerGenome/CNN.svg?branch=dev)](https://travis-ci.org/GooglingTheCancerGenome/CNN)
+[![Build Status](https://travis-ci.org/GooglingTheCancerGenome/CNN.svg?branch=iss8)](https://travis-ci.org/GooglingTheCancerGenome/CNN)
 
 # ChannelMaker
 
