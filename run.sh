@@ -37,9 +37,7 @@ monitor () {  # monitor a job via Xenon CLI
 
 source ~/.profile
 cd $WORK_DIR
-printenv
 xenon --version
-conda list
 
 # write channels into *.json.gz and *.npy.gz files
 for s in ${SEQ_IDS[@]}; do  # per chromosome
@@ -109,7 +107,7 @@ done
 # check if there are failed jobs
 [ $(grep -v "Exit code" $LOG | cut -f 7 | grep -v ^0) ] && exit 1
 
-# list channel outfiles (*.json.gz)
+# list (channel) outfiles in *.json.gz and *.npy.gz
 echo "---------------"
 echo -e "Output files:"
 #ls
