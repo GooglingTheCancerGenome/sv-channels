@@ -55,6 +55,7 @@ def get_nchannels(genome_array):
 
 
 def get_truth_set_trees(truth_set_file):
+
     def read_vcf(invcf):
 
         # Check file existence
@@ -335,87 +336,89 @@ def save_windows(outfile, start_array, end_array):
     print('{} MB'.format(size_in_bytes / 10 ** 6))
 
 
-class TrainingData(object):
+def positive(args):
+
+    print('positive')
+
+    genome_array = {chrom: get_chr_array(args.inputdir, chrom) for chrom in args.chrlist}
+    # print(genome_array)
+
+    sv_list, bp1_tree, bp2_tree = get_truth_set_trees(args.truthset)
+    # only keep SVs on chromosomes from chrlist
+    sv_list = [e for e in sv_list if e[0] in args.chrlist]
+
+    generate_positive_set(args.win, sv_list, genome_array)
+
+
+def negative(args):
+
+    print('negative')
+
+    genome_array = {chrom: get_chr_array(args.inputdir, chrom) for chrom in args.chrlist}
+    # print(genome_array)
+
+    sv_list, bp1_tree, bp2_tree = get_truth_set_trees(args.truthset)
+    # only keep SVs on chromosomes from chrlist
+    sv_list = [e for e in sv_list if e[0] in args.chrlist]
+
+    generate_negative_set(args.win, sv_list, bp1_tree, bp2_tree, genome_array)
+
+
+def main():
 
     truth_sets = {
         'svclassify': os.path.join('/Users/lsantuari/Documents/Local_GitHub',
-                                   'sv-callers/scripts/data/benchmark/in'
+                                   'sv-callers/scripts/data/benchmark/in',
                                    'Personalis_1000_Genomes_deduplicated_deletions.bed'),
         'mills_nanosv': os.path.join('/Users/lsantuari/Documents/External_GitHub/sv_benchmark/input.na12878',
                                      'lumpy-Mills2011-call-set.nanosv.sorted.bed'),
         'gridss': '/Users/lsantuari/Documents/Data/germline/NA12878/SV/Filtered/gridss.vcf'
     }
 
-    def __init__(self):
 
-        parser = argparse.ArgumentParser(
-            description='Generate training data',
-            usage='''T0_S1_generate_training_data.py <command> [<args>]
+    parser = argparse.ArgumentParser(
+        description='Generate training data',
+        usage='''T0_S1_generate_training_data.py <command> [<args>]
 
-Commands are:
-   positive   Generate positive set
-   negative   Generate negative set
-''')
+    Commands are:
+       positive   Generate positive set
+       negative   Generate negative set
+    ''')
 
-        subparsers = parser.add_subparsers(help='sub-command help')
+    subparsers = parser.add_subparsers(help='sub-command help')
 
-        # create the parser for the "positive" command
-        parser_pos = subparsers.add_parser('positive', help='positive help')
+    # create the parser for the "positive" command
+    parser_pos = subparsers.add_parser('positive', help='positive help')
 
-        parser_pos.add_argument('-chrlist', nargs='+', default=['17'],
+    parser_pos.add_argument('-chrlist', nargs='+', default=['17'],
                             help="List of chromosomes to consider")
-        parser_pos.add_argument('-win', type=int, default=200,
+    parser_pos.add_argument('-win', type=int, default=200,
                             help="Window length")
-        parser_pos.add_argument('-truthset', nargs='+',
-                            default=self.truth_sets['gridss'],
+    parser_pos.add_argument('-truthset', nargs='+',
+                            default=truth_sets['svclassify'],
                             help="Truth set file")
-        parser_pos.add_argument('-inputdir', type=str,
+    parser_pos.add_argument('-inputdir', type=str,
                             default='/Users/lsantuari/Documents/Processed/channel_maker_output/T1',
                             help="Specify input data directory")
-        parser_pos.set_defaults(func=self.positive)
+    parser_pos.set_defaults(func=positive)
 
-        # create the parser for the "negative" command
-        parser_neg = subparsers.add_parser('negative', help='negative help')
+    # create the parser for the "negative" command
+    parser_neg = subparsers.add_parser('negative', help='negative help')
 
-        parser_neg.add_argument('-chrlist', nargs='+', default=['17'],
+    parser_neg.add_argument('-chrlist', nargs='+', default=['17'],
                             help="List of chromosomes to consider")
-        parser_neg.add_argument('-win', type=int, default=200,
+    parser_neg.add_argument('-win', type=int, default=200,
                             help="Window length")
-        parser_neg.add_argument('-truthset', nargs='+',
-                            default=self.truth_sets['gridss'],
+    parser_neg.add_argument('-truthset', nargs='+',
+                            default=truth_sets['svclassify'],
                             help="Truth set file")
-        parser_neg.add_argument('-inputdir', type=str,
+    parser_neg.add_argument('-inputdir', type=str,
                             default='/Users/lsantuari/Documents/Processed/channel_maker_output/T1',
                             help="Specify input data directory")
-        parser_neg.set_defaults(func=self.negative)
+    parser_neg.set_defaults(func=negative)
 
-    def positive(self, args):
-
-        genome_array = {chrom: get_chr_array(args.inputdir, chrom) for chrom in args.chrlist}
-        # print(genome_array)
-
-        sv_list, bp1_tree, bp2_tree = get_truth_set_trees(args.truthset)
-        # only keep SVs on chromosomes from chrlist
-        sv_list = [e for e in sv_list if e[0] in args.chrlist]
-
-        generate_positive_set(args.win, sv_list, genome_array)
-
-    def negative(self, args):
-
-        genome_array = {chrom: get_chr_array(args.inputdir, chrom) for chrom in args.chrlist}
-        # print(genome_array)
-
-        sv_list, bp1_tree, bp2_tree = get_truth_set_trees(args.truthset)
-        # only keep SVs on chromosomes from chrlist
-        sv_list = [e for e in sv_list if e[0] in args.chrlist]
-
-        generate_negative_set(args.win, sv_list, bp1_tree, bp2_tree, genome_array)
-
-
-def main():
-
-    t = TrainingData()
-    print(t)
+    args = parser.parse_args('positive'.split())
+    args.func(args)
 
 
 if __name__ == '__main__':
