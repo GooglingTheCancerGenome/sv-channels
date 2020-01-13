@@ -265,6 +265,8 @@ def generate_positive_set(win, sv_list, genome_array):
     print(b_s.shape)
     print(b_e.shape)
 
+    return b_s, b_e
+
 
 def generate_negative_set(win, sv_list, bp1_tree, bp2_tree, genome_array):
     # 1) generate random (chr, pos)
@@ -327,18 +329,17 @@ def generate_negative_set(win, sv_list, bp1_tree, bp2_tree, genome_array):
 
     print(b.shape)
 
-
-def save_windows(outfile, start_array, end_array):
-    np.savez_compressed(outfile,
-                        start=np.array(start_array),
-                        end=np.array(end_array))
-    size_in_bytes = os.path.getsize(outfile)
-    print('{} MB'.format(size_in_bytes / 10 ** 6))
+    return b
 
 
 def positive(args):
 
-    print('positive')
+    def save_positive_windows(outfile, start_array, end_array):
+        np.savez_compressed(outfile,
+                            start=np.array(start_array),
+                            end=np.array(end_array))
+        size_in_bytes = os.path.getsize(outfile)
+        print('{} MB'.format(size_in_bytes / 10 ** 6))
 
     genome_array = {chrom: get_chr_array(args.inputdir, chrom) for chrom in args.chrlist}
     # print(genome_array)
@@ -347,12 +348,19 @@ def positive(args):
     # only keep SVs on chromosomes from chrlist
     sv_list = [e for e in sv_list if e[0] in args.chrlist]
 
-    generate_positive_set(args.win, sv_list, genome_array)
+    b_s, b_e = generate_positive_set(args.win, sv_list, genome_array)
+
+    save_positive_windows(args.output, b_s, b_e)
 
 
 def negative(args):
 
-    print('negative')
+    def save_negative_windows(outfile, array):
+        np.savez_compressed(outfile,
+                            neg=np.array(array)
+                            )
+        size_in_bytes = os.path.getsize(outfile)
+        print('{} MB'.format(size_in_bytes / 10 ** 6))
 
     genome_array = {chrom: get_chr_array(args.inputdir, chrom) for chrom in args.chrlist}
     # print(genome_array)
@@ -361,7 +369,9 @@ def negative(args):
     # only keep SVs on chromosomes from chrlist
     sv_list = [e for e in sv_list if e[0] in args.chrlist]
 
-    generate_negative_set(args.win, sv_list, bp1_tree, bp2_tree, genome_array)
+    b = generate_negative_set(args.win, sv_list, bp1_tree, bp2_tree, genome_array)
+
+    save_negative_windows(args.output, b)
 
 
 def main():
@@ -400,6 +410,9 @@ def main():
     parser_pos.add_argument('-inputdir', type=str,
                             default='/Users/lsantuari/Documents/Processed/channel_maker_output/T1',
                             help="Specify input data directory")
+    parser_pos.add_argument('-output', type=str,
+                            default='positive.npz',
+                            help="Specify output")
     parser_pos.set_defaults(func=positive)
 
     # create the parser for the "negative" command
@@ -415,10 +428,19 @@ def main():
     parser_neg.add_argument('-inputdir', type=str,
                             default='/Users/lsantuari/Documents/Processed/channel_maker_output/T1',
                             help="Specify input data directory")
+    parser_neg.add_argument('-output', type=str,
+                            default='negative.npz',
+                            help="Specify output")
     parser_neg.set_defaults(func=negative)
 
-    args = parser.parse_args('positive'.split())
+    args = parser.parse_args()
     args.func(args)
+
+    # test
+    # args = parser.parse_args('positive'.split())
+    # args.func(args)
+    # args = parser.parse_args('negative'.split())
+    # args.func(args)
 
 
 if __name__ == '__main__':
