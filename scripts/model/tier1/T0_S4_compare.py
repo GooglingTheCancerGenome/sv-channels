@@ -15,6 +15,7 @@ sys.path.append(
     )
 )
 from genome_wide.label_classes import SVRecord
+
 from T0_S1_generate_training_data import get_truth_set_trees
 
 
@@ -82,29 +83,38 @@ def compare(args):
 
     # load truth set
     sv_list, sv_bp1_tree, sv_bp2_tree = get_truth_set_trees(args.truthset)
-    # load results of the genome scanning
-    bp1_list, bp2_list = load_predicted_positions(args.chrlist, args.inputdir)
 
+    # window half length
     win_hlen = int(args.win / 2)
 
-    bp1_hits = {}
-    bp2_hits = {}
+    hit_ids_bp1 = set()
+    hit_ids_bp2 = set()
 
-    for c in args.chrlist:
-        if c in sv_bp1_tree.keys() and c in bp1_list.keys():
-            bp1_hits[c] = [sv_bp1_tree[c][p - win_hlen:p + win_hlen] for p in bp1_list[c]]
-        if c in sv_bp2_tree.keys() and c in bp2_list.keys():
-            bp2_hits[c] = [sv_bp2_tree[c][p - win_hlen:p + win_hlen] for p in bp2_list[c]]
+    for inputdir in args.inputdirlist:
 
-    hit_ids_bp1 = get_hit_ids(bp1_hits)
+        # load results of the genome scanning
+        bp1_list, bp2_list = load_predicted_positions(args.chrlist, inputdir)
+
+        bp1_hits = {}
+        bp2_hits = {}
+
+        # Look for matches
+        for c in args.chrlist:
+            if c in sv_bp1_tree.keys() and c in bp1_list.keys():
+                bp1_hits[c] = [sv_bp1_tree[c][p - win_hlen:p + win_hlen] for p in bp1_list[c]]
+            if c in sv_bp2_tree.keys() and c in bp2_list.keys():
+                bp2_hits[c] = [sv_bp2_tree[c][p - win_hlen:p + win_hlen] for p in bp2_list[c]]
+
+        hit_ids_bp1 = hit_ids_bp1 | get_hit_ids(bp1_hits)
+        hit_ids_bp2 = hit_ids_bp2 | get_hit_ids(bp2_hits)
+
     hit_ids_bp1_len = len(hit_ids_bp1)
-    hit_ids_bp2 = get_hit_ids(bp2_hits)
     hit_ids_bp2_len = len(hit_ids_bp2)
-
     bp1_bp2_union_len = len(hit_ids_bp1 | hit_ids_bp2)
 
     n_svs = len([l for l in sv_list if l[0] in args.chrlist])
 
+    # write CSV output file
     df = pd.DataFrame({'bp1_num': [hit_ids_bp1_len],
                        'bp1_sv_cov': [hit_ids_bp1_len / n_svs * 100],
                        'bp2_num': [hit_ids_bp2_len],
@@ -133,8 +143,8 @@ def main():
                         help="List of chromosomes to consider")
     parser.add_argument('-win', type=int, default=200,
                         help="Window length")
-    parser.add_argument('-inputdir', type=str,
-                        default='',
+    parser.add_argument('-inputdirlist', nargs='+',
+                        default=[''],
                         help="Positive set file(s)")
     parser.add_argument('-output', type=str,
                         default='results.csv',
@@ -142,6 +152,7 @@ def main():
 
     args = parser.parse_args()
     compare(args)
+
 
 if __name__ == '__main__':
     main()
