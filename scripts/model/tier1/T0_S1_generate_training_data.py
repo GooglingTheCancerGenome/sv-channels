@@ -67,7 +67,7 @@ def get_truth_set_trees(truth_set_file):
 
         for rec in vcf_in.fetch():
 
-            var = SVRecord(rec, 'gridss')
+            var = SVRecord(rec, '')
 
             chrom1 = var.chrom
             pos1_start = var.start + var.cipos[0]
@@ -92,6 +92,8 @@ def get_truth_set_trees(truth_set_file):
         return sv_list
 
     file_basename = os.path.basename(truth_set_file)
+
+    filename, file_ext = os.path.splitext(file_basename)
 
     bp1_tree = None
     bp2_tree = None
@@ -161,7 +163,7 @@ def get_truth_set_trees(truth_set_file):
             elif l[3] == 'DEL_end':
                 bp2_tree[c][s:e + 1] = interval_id
 
-    elif file_basename == 'gridss.vcf':
+    elif file_ext in ['.vcf', '.gz']:
 
         sv_list = read_vcf(truth_set_file)
 
@@ -186,50 +188,8 @@ def get_truth_set_trees(truth_set_file):
     return sv_list, bp1_tree, bp2_tree
 
 
-def get_sv_list():
-    def read_vcf(invcf):
-
-        # Check file existence
-        assert os.path.isfile(invcf), invcf + ' not found!'
-        # Dictionary with chromosome keys to store SVs
-        sv_list = []
-
-        vcf_in = VariantFile(invcf, 'r')
-
-        for rec in vcf_in.fetch():
-
-            var = SVRecord(rec, 'gridss')
-
-            chrom1 = var.chrom
-            pos1_start = var.start + var.cipos[0]
-            pos1_bp = var.start
-            pos1_end = var.start + var.cipos[1] + 1
-
-            chrom2 = var.chrom2
-            pos2_start = var.end + var.ciend[0]
-            pos2_bp = var.end
-            pos2_end = var.end + var.ciend[1] + 1
-            svtype = var.svtype
-
-            if svtype == "DEL":
-                sv_list.append((
-                    chrom1, pos1_start, pos1_bp, pos1_end,
-                    chrom2, pos2_start, pos2_bp, pos2_end
-                ))
-
-        print('{} SVs'.format(len(sv_list)))
-
-        return sv_list
-
-    gridss_vcf = '/Users/lsantuari/Documents/Data/germline/NA12878/SV/Filtered/gridss.vcf'
-    gridss_sv = read_vcf(gridss_vcf)
-    # do not consider the MT genome
-    gridss_sv = [e for e in gridss_sv if e[0] != 'MT' and e[4] != 'MT']
-
-    return gridss_sv
-
-
 def generate_positive_set(win, sv_list, genome_array):
+
     win_hlen = int(win / 2)
 
     a_size = len(sv_list)
@@ -382,9 +342,9 @@ def main():
                                    'Personalis_1000_Genomes_deduplicated_deletions.bed'),
         'mills_nanosv': os.path.join('/Users/lsantuari/Documents/External_GitHub/sv_benchmark/input.na12878',
                                      'lumpy-Mills2011-call-set.nanosv.sorted.bed'),
-        'gridss': '/Users/lsantuari/Documents/Data/germline/NA12878/SV/Filtered/gridss.vcf'
+        'gridss': '/Users/lsantuari/Documents/Data/germline/NA12878/SV/Filtered/gridss.vcf',
+        'manta': '/Users/lsantuari/Documents/Data/germline/NA12878/SV/Filtered/manta.vcf'
     }
-
 
     parser = argparse.ArgumentParser(
         description='Generate training data',
@@ -405,7 +365,7 @@ def main():
     parser_pos.add_argument('-win', type=int, default=200,
                             help="Window length")
     parser_pos.add_argument('-truthset', nargs='+',
-                            default=truth_sets['svclassify'],
+                            default=truth_sets['gridss'],
                             help="Truth set file")
     parser_pos.add_argument('-inputdir', type=str,
                             default='/Users/lsantuari/Documents/Processed/channel_maker_output/T1',
@@ -423,7 +383,7 @@ def main():
     parser_neg.add_argument('-win', type=int, default=200,
                             help="Window length")
     parser_neg.add_argument('-truthset', nargs='+',
-                            default=truth_sets['svclassify'],
+                            default=truth_sets['gridss'],
                             help="Truth set file")
     parser_neg.add_argument('-inputdir', type=str,
                             default='/Users/lsantuari/Documents/Processed/channel_maker_output/T1',
@@ -433,14 +393,14 @@ def main():
                             help="Specify output")
     parser_neg.set_defaults(func=negative)
 
-    args = parser.parse_args()
-    args.func(args)
+    # args = parser.parse_args()
+    # args.func(args)
 
     # test
-    # args = parser.parse_args('positive'.split())
-    # args.func(args)
-    # args = parser.parse_args('negative'.split())
-    # args.func(args)
+    args = parser.parse_args('positive'.split())
+    args.func(args)
+    args = parser.parse_args('negative'.split())
+    args.func(args)
 
 
 if __name__ == '__main__':

@@ -102,7 +102,7 @@ def main():
                             default='model.hdf5',
                             help="Specify model")
     parser.add_argument('-output', type=str,
-                            default='',
+                            default='17_predictions.npz',
                             help="Specify output")
 
     args = parser.parse_args()
