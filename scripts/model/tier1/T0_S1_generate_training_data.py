@@ -393,14 +393,14 @@ def main():
                             help="Specify output")
     parser_neg.set_defaults(func=negative)
 
-    # args = parser.parse_args()
-    # args.func(args)
+    args = parser.parse_args()
+    args.func(args)
 
     # test
-    args = parser.parse_args('positive'.split())
-    args.func(args)
-    args = parser.parse_args('negative'.split())
-    args.func(args)
+    # args = parser.parse_args('positive'.split())
+    # args.func(args)
+    # args = parser.parse_args('negative'.split())
+    # args.func(args)
 
 
 if __name__ == '__main__':
