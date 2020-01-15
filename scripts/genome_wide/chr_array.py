@@ -10,7 +10,7 @@ import statistics
 import pyBigWig
 import pysam
 import numpy as np
-#import bcolz as bz
+import bcolz as bz
 
 from collections import defaultdict
 from time import time
@@ -274,7 +274,7 @@ def create_hdf5(ibam, chrom, twobit, bigwig, outDir, cmd_name):
 
     outfile = os.path.join(outDir, cmd_name, chrom + '_carray')
     logging.info("Writing carray...")
-    a = np.carray(chr_array, rootdir=outfile, mode='w')  # bz.carray
+    a = bz.carray(chr_array, rootdir=outfile, mode='w')
     a.flush()
 
 
