@@ -10,7 +10,7 @@ env:
     - PREFIX=gtcg/sv-callers
     - TAG=dev
     - BAM=data/test/chr22.bam
-    - CHR=chr22
+    - CHR=22
   matrix:
     - PORT=10022 SCH=gridengine
     - PORT=10023 SCH=slurm

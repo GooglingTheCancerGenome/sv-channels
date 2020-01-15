@@ -102,7 +102,7 @@ echo "Processing took $((ENDTIME - STARTTIME)) seconds to complete."
 # output channel/job logs in std{out,err}-[jobid].log
 echo "---------------"
 echo -e "Log files:"
-for f in $(find -type f -name *.log); do
+for f in $(find -type f -name \*.log); do
   echo "### $f ###"
   cat $f
 done
