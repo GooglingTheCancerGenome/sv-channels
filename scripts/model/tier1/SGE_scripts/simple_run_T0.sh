@@ -50,7 +50,7 @@ for CHROMOSOME in ${CHRARRAY[@]}; do
 
     echo "Running chromosome "$CHROMOSOME"..."
 
-    python T0_S3_scan_chromosome.py \
+    python ../T0_S3_scan_chromosome.py \
         -inputdir $CHANNELDIR_TEST \
         -window $WINDOW \
         -chr $CHROMOSOME \
