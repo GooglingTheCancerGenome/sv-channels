@@ -3,7 +3,7 @@
 #$ -l h_rt=48:00:00
 #$ -l h_vmem=64G
 #$ -q all.q
-#$ -wd /hpc/cog_bioinf/ridder/users/lsantuari/Git/DeepSV_runs/060219/CNN/scripts/model/tier1
+#$ -wd /hpc/cog_bioinf/ridder/users/lsantuari/Git/DeepSV_refactoring/CNN/scripts/model/tier1
 
 SAMPLE_TRAINING="NA19878"
 SAMPLE_TEST="NA24385"
