@@ -71,7 +71,7 @@ def get_truth_set_trees(truth_set_file):
 
         for rec in vcf_in.fetch():
 
-            var = SVRecord(rec, '')
+            var = SVRecord(rec, 'gridss')
 
             chrom1 = var.chrom
             pos1_start = var.start + var.cipos[0]
@@ -84,12 +84,31 @@ def get_truth_set_trees(truth_set_file):
             pos2_end = var.end + var.ciend[1] + 1
             svtype = var.svtype
 
+            if chrom1 < chrom2:
+                sv_entry = (
+                        chrom1, pos1_start, pos1_bp, pos1_end,
+                        chrom2, pos2_start, pos2_bp, pos2_end
+                    )
+            elif chrom1 > chrom2:
+                sv_entry = (
+                    chrom2, pos2_start, pos2_bp, pos2_end,
+                    chrom1, pos1_start, pos1_bp, pos1_end
+                )
+            elif chrom1 == chrom2:
+                if pos1_bp < pos2_bp:
+                    sv_entry = (
+                        chrom1, pos1_start, pos1_bp, pos1_end,
+                        chrom2, pos2_start, pos2_bp, pos2_end
+                    )
+                else:
+                    sv_entry = (
+                        chrom2, pos2_start, pos2_bp, pos2_end,
+                        chrom1, pos1_start, pos1_bp, pos1_end
+                    )
+
             # choose only deletions?
-            if svtype == "DEL":
-                sv_list.append((
-                    chrom1, pos1_start, pos1_bp, pos1_end,
-                    chrom2, pos2_start, pos2_bp, pos2_end
-                ))
+            if svtype == "DEL" and sv_entry not in sv_list:
+                sv_list.append(sv_entry)
 
         print('{} SVs'.format(len(sv_list)))
 
