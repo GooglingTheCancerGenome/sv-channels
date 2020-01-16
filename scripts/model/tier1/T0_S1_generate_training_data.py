@@ -226,7 +226,7 @@ def generate_positive_set(win, sv_list, genome_array):
     for i, sv in enumerate(sv_list):
         if i % 100 == 0 and i != 0:
             print(i)
-
+        # print(len(sv_list[0]))
         if len(sv_list[0]) == 3:
             # from (chrom, bp1_pos, bp2_pos)
             c = sv[0]
@@ -235,13 +235,14 @@ def generate_positive_set(win, sv_list, genome_array):
             b_s[i, :, :] = genome_array[c][s - win_hlen:s + win_hlen, :]
             b_e[i, :, :] = genome_array[c][e - win_hlen:e + win_hlen, :]
 
-        elif len(sv_list[0]) == 3 * 2:
+        elif len(sv_list[0]) == 4 * 2:
             # generate positive set from GRIDSS
             # from (chrom1, bp1_start, bp1_end, chrom2, bp2_start, bp2_end)
             c1 = sv[0]
             s1 = int(sv[2])
             c2 = sv[4]
             s2 = int(sv[6])
+            # print('{}:{}-{}:{}'.format(c1,s1,c2,s2))
             b_s[i, :, :] = genome_array[c1][s1 - win_hlen:s1 + win_hlen, :]
             b_e[i, :, :] = genome_array[c2][s2 - win_hlen:s2 + win_hlen, :]
 
