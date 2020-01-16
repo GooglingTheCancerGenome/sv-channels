@@ -40,6 +40,7 @@ tf.keras.backend.set_session(sess)
 
 
 def get_chr_array(channels_dir, chrom):
+
     carray_fname = glob.glob(os.path.join(channels_dir, 'chr_array',
                                           '*_' + chrom + '_carray'))
 
@@ -367,7 +368,7 @@ def main():
                             help="List of chromosomes to consider")
     parser_pos.add_argument('-win', type=int, default=200,
                             help="Window length")
-    parser_pos.add_argument('-truthset', nargs='+',
+    parser_pos.add_argument('-truthset', type=str,
                             default=truth_sets['gridss'],
                             help="Truth set file")
     parser_pos.add_argument('-inputdir', type=str,
@@ -385,7 +386,7 @@ def main():
                             help="List of chromosomes to consider")
     parser_neg.add_argument('-win', type=int, default=200,
                             help="Window length")
-    parser_neg.add_argument('-truthset', nargs='+',
+    parser_neg.add_argument('-truthset', type=str,
                             default=truth_sets['gridss'],
                             help="Truth set file")
     parser_neg.add_argument('-inputdir', type=str,
