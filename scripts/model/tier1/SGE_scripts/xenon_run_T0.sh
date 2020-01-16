@@ -20,6 +20,7 @@ CHANNELDIR=$USERDIR"/Processed/DeepSV/channel_data"
 
 #Named after the truth set used
 OUTPUTDIR=$USERDIR"/Processed/DeepSV/two_tier/"$TRUTHSET_NAME
+[ ! -d $OUTPUTDIR ] && mkdir -p $OUTPUTDIR
 
 SAMPLE_TRAINING="NA12878"
 
@@ -37,7 +38,7 @@ CHRLIST=${CHRARRAY[@]}
 
 WORK_DIR="/hpc/cog_bioinf/ridder/users/lsantuari/Git/DeepSV_refactoring/CNN/scripts/model/tier1"
 
-RTIME=10  # runtime in minutes
+RTIME=30  # runtime in minutes
 STIME=1   # sleep X minutes
 STARTTIME=$(date +%s)
 LOG=xenon.log
