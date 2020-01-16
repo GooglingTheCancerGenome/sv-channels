@@ -42,8 +42,11 @@ tf.keras.backend.set_session(sess)
 def get_chr_array(channels_dir, chrom):
     carray_fname = glob.glob(os.path.join(channels_dir, 'chr_array',
                                           '*_' + chrom + '_carray'))
-    assert len(carray_fname) == 1, 'Not a single carray folder found:' + carray_fname
+
+    assert len(carray_fname) == 1, 'Not a single carray folder found!'
+
     carray_fname = carray_fname[0]
+
     assert os.path.exists(carray_fname), carray_fname + ' not found'
 
     return bcolz.open(rootdir=carray_fname)
