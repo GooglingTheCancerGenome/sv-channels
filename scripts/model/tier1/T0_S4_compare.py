@@ -56,7 +56,7 @@ def compare(args):
     def write_bed(hit_ids):
 
         lines = []
-        half_interval = 1000/2
+        half_interval = 500
 
         for i in hit_ids:
             c1, s1_0, s1_1, c2, s2_0, s2_1 = i.split('_')
