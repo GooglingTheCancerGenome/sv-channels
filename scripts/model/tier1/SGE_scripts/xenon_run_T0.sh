@@ -126,13 +126,15 @@ check_jobs
 # Running T0_S4_compare
 
 CSV_OUTPUT=$OUTPUTDIR"/results.csv"
+BED_OUTPUT=$OUTPUTDIR"/regions_of_interest.bed"
 
 p=T0_S4_compare && JOB="python $p.py \
     -truthset $TRUTHSET_TEST \
     -chrlist $CHRLIST \
     -win $WINDOW \
     -inputdirlist $OUTPUTDIR \
-    -output $CSV_OUTPUT"
+    -output $CSV_OUTPUT \
+    -outputbed $BED_OUTPUT"
 JOB_ID=$(submit "$JOB")
 JOBS+=($JOB_ID)
 

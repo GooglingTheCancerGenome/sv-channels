@@ -9,10 +9,11 @@ USERDIR="/hpc/cog_bioinf/ridder/users/lsantuari"
 CHANNELDIR=$USERDIR"/Processed/DeepSV/channel_data"
 
 #Named after the truth set used
-OUTPUTDIR=$USERDIR"/Processed/DeepSV/two_tier/svclassify"
+OUTPUTDIR=$USERDIR"/Processed/DeepSV/two_tier/gridss"
 
 SAMPLE_TRAINING="NA12878"
-TRUTHSET_TRAINING=$USERDIR"/Datasets/truth_sets/NA12878/Personalis_1000_Genomes_deduplicated_deletions.bed"
+#TRUTHSET_TRAINING=$USERDIR"/Datasets/truth_sets/NA12878/Personalis_1000_Genomes_deduplicated_deletions.bed"
+TRUTHSET_TRAINING=$USERDIR"/Processed/sv_callers_results/NA12878/gridss_out/gridss.vcf"
 
 SAMPLE_TEST="NA24385"
 TRUTHSET_TEST=$USERDIR"/Datasets/GiaB/HG002_NA24385_son/NIST_SVs_Integration_v0.6/processed/HG002_SVs_Tier1_v0.6.PASS.vcf.gz"
@@ -76,4 +77,5 @@ python T0_S4_compare.py \
     -chrlist $CHRLIST \
     -win $WINDOW \
     -inputdirlist $OUTPUTDIR \
-    -output $OUTPUTDIR"/results.csv"
+    -output $OUTPUTDIR"/results.csv" \
+    -outputbed $OUTPUTDIR"/regions_of_interest.bed"

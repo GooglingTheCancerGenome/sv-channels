@@ -71,4 +71,5 @@ python ../T0_S4_compare.py \
     -chrlist $CHRLIST \
     -win $WINDOW \
     -inputdirlist $OUTPUTDIR \
-    -output $OUTPUTDIR"/results.csv"
+    -output $OUTPUTDIR"/results.csv" \
+    -outputbed $OUTPUTDIR"/regions_of_interest.bed"
