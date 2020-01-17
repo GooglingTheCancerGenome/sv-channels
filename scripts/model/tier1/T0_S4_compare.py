@@ -60,7 +60,9 @@ def compare(args):
 
         for i in hit_ids:
             c1, s1_0, s1_1, c2, s2_0, s2_1 = i.split('_')
-            lines.append('\t'.join([str(c1), str(s1_0 - half_interval), str(s1_0 + half_interval)]) + '\n')
+            s1_0 = int(s1_0)
+            s2_0 = int(s2_0)
+            lines.append('\t'.join([str(c1), str(int(s1_0) - half_interval), str(s1_0 + half_interval)]) + '\n')
             lines.append('\t'.join([str(c2), str(s2_0 - half_interval), str(s2_0 + half_interval)]) + '\n')
 
         f = open(args.outputbed, 'w')
