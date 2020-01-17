@@ -53,6 +53,24 @@ def read_vcf(invcf):
 
 def compare(args):
 
+    def write_bed(hit_ids):
+
+        lines = []
+        half_interval = 1000/2
+
+        for i in hit_ids:
+            c1, s1_0, s1_1, c2, s2_0, s2_1 = i.split('_')
+            lines.append('\t'.join([str(c1), str(s1_0 - half_interval), str(s1_0 + half_interval)]) + '\n')
+            lines.append('\t'.join([str(c2), str(s2_0 - half_interval), str(s2_0 + half_interval)]) + '\n')
+
+        f = open(args.outputbed, 'w')
+        try:
+            # use set to make lines unique
+            for l in lines:
+                f.write(l)
+        finally:
+            f.close()
+
     def load_predicted_positions(chrlist, inputdir):
 
         bp1_list = {}
@@ -108,6 +126,11 @@ def compare(args):
         hit_ids_bp1 = hit_ids_bp1 | get_hit_ids(bp1_hits)
         hit_ids_bp2 = hit_ids_bp2 | get_hit_ids(bp2_hits)
 
+    # writing BED output
+    write_bed(hit_ids_bp1 | hit_ids_bp2)
+
+    # Collect stats
+
     hit_ids_bp1_len = len(hit_ids_bp1)
     hit_ids_bp2_len = len(hit_ids_bp2)
     bp1_bp2_union_len = len(hit_ids_bp1 | hit_ids_bp2)
@@ -149,6 +172,9 @@ def main():
     parser.add_argument('-output', type=str,
                         default='results.csv',
                         help="Specify output")
+    parser.add_argument('-outputbed', type=str,
+                        default='regions_of_interest.bed',
+                        help="Specify output file for regions of interest for GRIDSS targeted approach")
 
     args = parser.parse_args()
     compare(args)
