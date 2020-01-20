@@ -13,3 +13,4 @@ dependencies:
   - twobitreader
   - bcolz
   - xenon-cli
+  - jq

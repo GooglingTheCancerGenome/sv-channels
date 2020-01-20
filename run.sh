@@ -20,7 +20,7 @@ WORK_DIR=scripts/genome_wide
 RTIME=10  # runtime in minutes
 STIME=1   # sleep X minutes
 STARTTIME=$(date +%s)
-LOG=xenon.log
+LOG=xenon.log  # Xenon log file in JSON format
 JOBS=()  # store jobIDs
 NUMEXPR_MAX_THREADS=128  # required by py-bcolz
 
@@ -32,14 +32,14 @@ submit () {  # submit a job via Xenon CLI
 }
 
 monitor () {  # monitor a job via Xenon CLI
-  xenon -v scheduler $SCH --location local:// list --identifier $1
+  xenon -v --json scheduler $SCH --location local:// list --identifier $1
 }
 
 source ~/.profile
 cd $WORK_DIR
 xenon --version
 
-# write channels into *.json.gz and *.npy.gz files
+# submit jobs to output "channel" files (*.json.gz and *.npy.gz)
 for s in ${SEQ_IDS[@]}; do  # per chromosome
   p=clipped_read_distance && JOB="python $p.py --bam $BAM --chr $s --out $p.json.gz \
     --outputpath . --logfile $p.log"
@@ -72,14 +72,14 @@ for s in ${SEQ_IDS[@]}; do  # per chromosome
   JOBS+=($JOB_ID)
 done
 
-# check if all jobs are done
+# wait until the jobs are done
 for j in ${JOBS[@]}; do
   while true; do
-    [ $(monitor $j | cut -f 5 | grep -i true) ] && break || sleep ${STIME}m
+    [[ $(monitor $j | jq '.statuses | .[] | select(.done==true)') ]] && break || sleep ${STIME}m
   done
 done
 
-# generate "chromosome arrays" from the channel files
+# generate chromosome arrays from the channels above
 for s in ${SEQ_IDS[@]}; do
   p=chr_array && JOB="python $p.py --bam $BAM --chr $s --twobit $TWOBIT \
     --map $BIGWIG --out $p.npy --outputpath . --logfile $p.log"
@@ -87,9 +87,11 @@ for s in ${SEQ_IDS[@]}; do
   JOBS+=($JOB_ID)
 done
 
-# check if the last job is done
-watch -g -n 10 "xenon -v scheduler $SCH --location local:// list \
-  --identifier ${JOBS[-1]} | cut -f 5 | grep -i true"
+# wait until the last job is done
+while true; do
+  [[ $(monitor ${JOBS[-1]} | jq '.statuses | .[] | select(.done==true)') ]] \
+    && break || sleep ${STIME}m
+done
 
 # collect job accounting info
 for j in ${JOBS[@]}; do
@@ -99,7 +101,7 @@ done
 ENDTIME=$(date +%s)
 echo "Processing took $((ENDTIME - STARTTIME)) seconds to complete."
 
-# output channel/job logs in std{out,err}-[jobid].log
+# output logs in std{out,err}-[jobid].log
 echo "---------------"
 echo -e "Log files:"
 for f in $(find -type f -name \*.log); do
@@ -107,13 +109,14 @@ for f in $(find -type f -name \*.log); do
   cat $f
 done
 
-# list (channel) outfiles in *.json.gz and *.npy.gz
+# list "channel" files
 echo "---------------"
 echo -e "Output files:"
 #ls
 find -type f -name \*.json.gz | grep "." || exit 1
 find -type f -name \*.npy.gz | grep "." || exit 1
 
-# check if there are failed jobs
-[ $(grep -v "Exit code" $LOG | cut -f 6 | grep -v ^0) ] && exit 1
+# exit with non-zero if there are failed jobs
+[ $(cat $LOG | jq '.statuses | .[] | select(.done==true and .exitCode!=0)') ] \
+  && exit 1 || exit 0
 
