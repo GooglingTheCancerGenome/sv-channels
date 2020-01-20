@@ -111,9 +111,9 @@ done
 echo "---------------"
 echo -e "Output files:"
 #ls
-find -type f -name *.json.gz | grep "." || exit 1
-find -type f -name *.npy.gz | grep "." || exit 1
+find -type f -name \*.json.gz | grep "." || exit 1
+find -type f -name \*.npy.gz | grep "." || exit 1
 
 # check if there are failed jobs
-[ $(grep -v "Exit code" $LOG | cut -f 7 | grep -v ^0) ] && exit 1
+[ $(grep -v "Exit code" $LOG | cut -f 6 | grep -v ^0) ] && exit 1
 
