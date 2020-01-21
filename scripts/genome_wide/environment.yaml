@@ -9,3 +9,6 @@ dependencies:
   - pysam
   - pybigwig
   - twobitreader
+  - ucsc-fatotwobit
+  - ucsc-twobittofa
+  - ucsc-twobitinfo

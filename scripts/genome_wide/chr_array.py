@@ -1,19 +1,19 @@
 # Imports
 
+import os
 import argparse
 import errno
 import gzip
 import logging
-import os
 import json
 import statistics
-from collections import defaultdict
-from time import time
-import numpy as np
 import pyBigWig
 import pysam
-import bcolz
-import dask.array as da
+import numpy as np
+import bcolz as bz
+
+from collections import defaultdict
+from time import time
 from functions import *
 
 config = get_config_file()
@@ -45,24 +45,6 @@ def create_dir(directory):
     except OSError as e:
         if e.errno != errno.EEXIST:
             raise
-
-
-def load_candidate_positions(datadir, sampleName, chrom1, chrom2):
-    vec_type = 'split_read_pos'
-
-    print('Loading candidate positions for Chr%s to Chr%s' % (chrom1, chrom2))
-
-    # Load files
-    fn = os.path.join(datadir, sampleName, vec_type, chrom1 + '_' + vec_type + '.json.gz')
-
-    with gzip.GzipFile(fn, 'r') as fin:
-        positions, locations = json.loads(fin.read().decode('utf-8'))
-
-    locations = [(c1, p1, c2, p2) for (c1, p1, c2, p2) in locations if c1 == chrom1 and c2 == chrom2]
-
-    print('%d candidate positions for Chr%s to Chr%s' % (len(locations), chrom1, chrom2))
-
-    return locations
 
 
 def count_clipped_read_positions(cpos_cnt):
@@ -99,21 +81,15 @@ def get_chr_len_dict(ibam):
     # Extract chromosome length from the BAM header
     header_dict = bamfile.header
 
-    chrLen = {i['SN']: i['LN'] for i in header_dict['SQ']}
-    return chrLen
 
-
-def load_channels(sample, chr_list, outDir):
+def load_channel(chr_list, outDir, ch):
     channel_names_wg = ['split_reads', 'clipped_reads']
-
     channel_names = ['coverage', 'clipped_read_distance', 'snv']
-
     channel_data = defaultdict(dict)
 
-    for ch in channel_names_wg:
-
+    if ch in channel_names_wg:
         suffix = '.json.gz'
-        filename = os.path.join(outDir, sample, ch, ch + suffix)
+        filename = os.path.join(outDir, ch, ch + suffix)
         assert os.path.isfile(filename), filename + " does not exists!"
 
         with gzip.GzipFile(filename, 'r') as fin:
@@ -122,31 +98,29 @@ def load_channels(sample, chr_list, outDir):
                 positions_with_min_support_ls, positions_with_min_support_rs, \
                 total_reads_coord_min_support, \
                 split_reads, split_read_distance = json.loads(fin.read().decode('utf-8'))
-
             elif ch == 'clipped_reads':
                 clipped_reads, clipped_reads_inversion, \
                 clipped_reads_duplication, clipped_reads_translocation = json.loads(fin.read().decode('utf-8'))
 
-    for chrom in chr_list:
-        channel_data[chrom]['split_reads'] = split_reads[chrom]
-        channel_data[chrom]['split_read_distance'] = split_read_distance[chrom]
+        for chrom in chr_list:
+            if ch == 'split_reads':
+                channel_data[chrom]['split_reads'] = split_reads[chrom]
+                channel_data[chrom]['split_read_distance'] = split_read_distance[chrom]
+                del split_reads, split_read_distance
+            elif ch == 'clipped_reads':
+                channel_data[chrom]['clipped_reads'] = clipped_reads[chrom]
+                channel_data[chrom]['clipped_reads_inversion'] = clipped_reads_inversion[chrom]
+                channel_data[chrom]['clipped_reads_duplication'] = clipped_reads_duplication[chrom]
+                channel_data[chrom]['clipped_reads_translocation'] = clipped_reads_translocation[chrom]
+                del clipped_reads, clipped_reads_inversion, \
+                    clipped_reads_duplication, clipped_reads_translocation
 
-        channel_data[chrom]['clipped_reads'] = clipped_reads[chrom]
-        channel_data[chrom]['clipped_reads_inversion'] = clipped_reads_inversion[chrom]
-        channel_data[chrom]['clipped_reads_duplication'] = clipped_reads_duplication[chrom]
-        channel_data[chrom]['clipped_reads_translocation'] = clipped_reads_translocation[chrom]
-
-    del split_reads, split_read_distance, clipped_reads, clipped_reads_inversion, \
-        clipped_reads_duplication, clipped_reads_translocation
-
-    for ch in channel_names:
+    elif ch in channel_names:
         logging.info('Loading data for channel %s' % ch)
-
         for chrom in chr_list:
             logging.info('Loading data for Chr%s' % chrom)
-
             suffix = '.npy.gz' if ch in ['snv', 'coverage'] else '.json.gz'
-            filename = os.path.join(outDir, sample, ch, '_'.join([chrom, ch + suffix]))
+            filename = os.path.join(outDir, ch, '_'.join([chrom, ch + suffix]))
             assert os.path.isfile(filename), filename + " does not exists!"
 
             logging.info('Reading %s for Chr%s' % (ch, chrom))
@@ -159,28 +133,14 @@ def load_channels(sample, chr_list, outDir):
                 with gzip.GzipFile(filename, 'r') as fin:
                     channel_data[chrom][ch] = json.loads(fin.read().decode('utf-8'))
             logging.info('End of reading')
-
-        # # unpack clipped_reads
-        # channel_data[chrom]['clipped_reads'], \
-        # channel_data[chrom]['clipped_reads_inversion'], channel_data[chrom]['clipped_reads_duplication'], \
-        # channel_data[chrom]['clipped_reads_translocation'] = channel_data[chrom]['clipped_reads']
-        #
-        # # unpack split_reads
-        # channel_data[chrom]['split_read_distance'], \
-        # channel_data[chrom]['split_reads'] = channel_data[chrom]['split_read_distance']
-
     return channel_data
 
 
-def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
-
+def create_hdf5(ibam, chrom, twobit, bigwig, outDir, cmd_name):
     chrlen = get_chr_len(ibam, chrom)
     n_channels = 46
-
-    channel_data = load_channels(sampleName, [chrom], outDir)
-    chr_array = np.zeros(shape=(chrlen, n_channels), dtype=np.float32)
-
-    bw_map = get_mappability_bigwig()
+    chr_array = np.zeros(shape=(chrlen, n_channels), dtype=np.float32)  # bz.zeros
+    bw_map = pyBigWig.open(bigwig)  # get_mappability_bigwig()
 
     # dictionary of key choices
     direction_list = {'clipped_reads': ['left_F', 'left_R', 'right_F', 'right_R',
@@ -196,11 +156,14 @@ def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
                       }
 
     channel_index = 0
-    for current_channel in ['coverage', 'snv',
-                            'clipped_reads', 'split_reads',
-                            'clipped_reads_inversion', 'clipped_reads_duplication',
-                            'clipped_reads_translocation',
-                            'clipped_read_distance', 'split_read_distance']:
+    for current_channel in ['coverage', 'snv', 'clipped_reads', 'split_reads',
+                            'clipped_read_distance']:
+                            #'clipped_reads_inversion',
+                            #'clipped_reads_duplication',
+                            #'clipped_reads_translocation',
+                            #'split_read_distance']:
+
+        channel_data = load_channel([chrom], outDir, current_channel)
 
         logging.info("Adding channel %s at index %d" % (current_channel, channel_index))
 
@@ -216,23 +179,17 @@ def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
             channel_index += ch_num
             del channel_data[chrom][current_channel]
 
-        elif current_channel in ['clipped_reads',
-                                 'split_reads',
+        elif current_channel in ['clipped_reads', 'split_reads',
                                  'clipped_reads_inversion',
                                  'clipped_reads_duplication',
                                  'clipped_reads_translocation']:
-
             for split_direction in direction_list[current_channel]:
-
                 if len(channel_data[chrom][current_channel][split_direction]) > 0:
                     # print(split_direction)
                     idx = np.fromiter(channel_data[chrom][current_channel][split_direction].keys(),
-                                      dtype=int
-                                      )
-
+                                      dtype=int)
                     vals = np.fromiter(channel_data[chrom][current_channel][split_direction].values(),
                                        dtype=np.float32)
-
                     chr_array[idx, channel_index] = vals
 
                     assert chr_array[idx, channel_index].any(), \
@@ -307,7 +264,7 @@ def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
     nuc_list = ['A', 'T', 'C', 'G', 'N']
 
     chr_array[:, channel_index:channel_index + len(nuc_list)] = get_one_hot_sequence_by_list(
-        chrom, list(np.arange(chrlen)), HPC_MODE, REF_GENOME)
+        twobit, chrom, list(np.arange(chrlen)))
     channel_index += len(nuc_list)
 
     logging.info("chr_array shape: %s" % str(chr_array.shape))
@@ -317,9 +274,9 @@ def create_hdf5(sampleName, ibam, chrom, outDir, cmd_name):
     # logging.info("Writing HDF5...")
     # da.to_hdf5(outfile, '/' + 'chr' + chrom, dask_array)  # , compression='lzf', shuffle=False)
 
-    outfile = os.path.join(outDir, sampleName, cmd_name, sampleName + '_' + chrom + '_carray')
+    outfile = os.path.join(outDir, cmd_name, chrom + '_carray')
     logging.info("Writing carray...")
-    a = bcolz.carray(chr_array, rootdir=outfile, mode='w')
+    a = bz.carray(chr_array, rootdir=outfile, mode='w')
     a.flush()
 
 
@@ -344,13 +301,17 @@ def main():
                         help="Specify input file (BAM)")
     parser.add_argument('-c', '--chr', type=str, default='17',
                         help="Specify chromosome")
+    parser.add_argument('-m', '--map', type=str,
+                        default='chr22.bw',
+                        help="Specify input file (bigWig)")
+    parser.add_argument('-t', '--twobit', type=str,
+                        default='chr22.2bit',
+                        help="Specify input file (2bit)")
     parser.add_argument('-o', '--out', type=str, default='channel_maker.npy.gz',
                         help="Specify output")
     parser.add_argument('-p', '--outputpath', type=str,
                         default='/Users/lsantuari/Documents/Processed/channel_maker_output',
                         help="Specify output path")
-    parser.add_argument('-s', '--sample', type=str, default='T1',
-                        help="Specify sample")
     parser.add_argument('-l', '--logfile', default='window_maker.log',
                         help='File in which to write logs.')
     parser.add_argument('-w', '--window', type=str, default=200,
@@ -359,7 +320,7 @@ def main():
     args = parser.parse_args()
 
     cmd_name = 'chr_array'
-    output_dir = os.path.join(args.outputpath, args.sample, cmd_name)
+    output_dir = os.path.join(args.outputpath, cmd_name)
     create_dir(output_dir)
     logfilename = os.path.join(output_dir, args.logfile)
     # output_file = os.path.join(output_dir, args.out)
@@ -373,18 +334,13 @@ def main():
 
     t0 = time()
 
-    create_hdf5(sampleName=args.sample,
-                ibam=args.bam,
+    create_hdf5(ibam=args.bam,
                 chrom=args.chr,
+                twobit=args.twobit,
+                bigwig=args.map,
                 outDir=args.outputpath,
                 cmd_name=cmd_name
-                )
-
-    # inspect_windows(outFile=args.out)
-    # chr_list = [args.chr1]
-    # load_channels(sample=args.sample, chr_list=chr_list, outDir=args.outputpath)
-
-    # print('Elapsed time channel_maker_real on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))
+    )
     logging.info('Elapsed time channel_maker_real = %f mins' % (time() - t0))
 
 

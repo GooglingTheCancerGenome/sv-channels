@@ -3,59 +3,120 @@
 set -xe
 
 # check input arg(s)
-if [ $# != 2 ]; then
-  echo "Usage: $0 [SCHEDULER {local,gridengine,slurm}] [BAM file]"
+if [ $# -lt "3" ]; then
+  echo "Usage: $0 [SCHEDULER {gridengine,slurm}] [BAM file] [SEQID...]"
   exit 1
 fi
 
 # set [env] variables
-SCH=$1
+SCH=$1  # scheduler type
 BAM=$(realpath $2)
+SEQ_IDS=${@:3}
+BASE_DIR=$(dirname $BAM)
 SAMPLE=$(basename $BAM .bam)
-SEQ_IDS=(17.1 17.2)  # ($(seq 1 22) X Y MT)
+TWOBIT=${BASE_DIR}/${SAMPLE}.2bit
+BIGWIG=${BASE_DIR}/${SAMPLE}.bw
 WORK_DIR=scripts/genome_wide
+RTIME=10  # runtime in minutes
+STIME=1   # sleep X minutes
+STARTTIME=$(date +%s)
+LOG=xenon.log  # Xenon log file in JSON format
 JOBS=()  # store jobIDs
+NUMEXPR_MAX_THREADS=128  # required by py-bcolz
+
+
+submit () {  # submit a job via Xenon CLI
+  xenon -v scheduler $SCH --location local:// submit \
+    --name $SAMPLE_$p --cores-per-task 1 --inherit-env --max-run-time $RTIME \
+    --working-directory . --stderr stderr-%j.log --stdout stdout-%j.log "$1"
+}
+
+monitor () {  # monitor a job via Xenon CLI
+  xenon -v --json scheduler $SCH --location local:// list --identifier $1
+}
 
 source ~/.profile
 cd $WORK_DIR
-printenv
 xenon --version
 
-# write channels into *.json.gz files
-for p in clipped_read_pos clipped_reads split_reads; do
-  CMD="python $p.py --bam $BAM --out $p.json.gz --outputpath ."
-  JOB_ID=$(xenon -v scheduler $SCH --location local:// submit \
-    --name $SAMPLE_$p --cores-per-task 1 --inherit-env --max-run-time 1 \
-    --working-directory . --stderr stderr.log --stdout stdout.log "$CMD")
+# submit jobs to output "channel" files (*.json.gz and *.npy.gz)
+for s in ${SEQ_IDS[@]}; do  # per chromosome
+  p=clipped_read_distance && JOB="python $p.py --bam $BAM --chr $s --out $p.json.gz \
+    --outputpath . --logfile $p.log"
+  JOB_ID=$(submit "$JOB")
+  JOBS+=($JOB_ID)
+
+  p=clipped_reads && JOB="python $p.py --bam $BAM --chr $s --out $p.json.gz \
+    --outputpath . --logfile $p.log"
+  JOB_ID=$(submit "$JOB")
+  JOBS+=($JOB_ID)
+    
+  p=split_reads && JOB="python $p.py --bam $BAM --chr $s --out $p.json.gz \
+    --outputpath . --logfile $p.log"
+  JOB_ID=$(submit "$JOB")
+  JOBS+=($JOB_ID)
+
+  p=clipped_read_pos && JOB="python $p.py --bam $BAM --chr $s --out $p.json.gz \
+    --outputpath . --logfile $p.log"
+  JOB_ID=$(submit "$JOB")
+  JOBS+=($JOB_ID)
+
+  p=snv && JOB="python $p.py --bam $BAM --chr $s --twobit $TWOBIT --out $p.npy \
+   --outputpath . --logfile $p.log"
+  JOB_ID=$(submit "$JOB")
+  JOBS+=($JOB_ID)
+
+  p=coverage && JOB="python $p.py --bam $BAM --chr $s --out $p.npy \
+    --outputpath . --logfile $p.log"
+  JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 done
 
-for p in coverage clipped_read_distance; do
-  for s in ${SEQ_IDS[@]}; do
-    CMD="python $p.py --bam $BAM --chr $s --out $p.json.gz --outputpath ."
-    JOB_ID=$(xenon -v scheduler $SCH --location local:// submit \
-      --name $SAMPLE_$p --cores-per-task 1 --inherit-env --max-run-time 1 \
-      --working-directory . --stderr stderr.log --stdout stdout.log "$CMD")
-    JOBS+=($JOB_ID)
-    done
-done
-
-# fetch job accounting info
-sleep 10
+# wait until the jobs are done
 for j in ${JOBS[@]}; do
-   xenon -v scheduler $SCH --location local:// list --identifier $j
+  while true; do
+    [[ $(monitor $j | jq '.statuses | .[] | select(.done==true)') ]] && break || sleep ${STIME}m
+  done
 done
 
-# write stdout/stderr logs into terminal
+# generate chromosome arrays from the channels above
+for s in ${SEQ_IDS[@]}; do
+  p=chr_array && JOB="python $p.py --bam $BAM --chr $s --twobit $TWOBIT \
+    --map $BIGWIG --out $p.npy --outputpath . --logfile $p.log"
+  JOB_ID=$(submit "$JOB")
+  JOBS+=($JOB_ID)
+done
+
+# wait until the last job is done
+while true; do
+  [[ $(monitor ${JOBS[-1]} | jq '.statuses | .[] | select(.done==true)') ]] \
+    && break || sleep ${STIME}m
+done
+
+# collect job accounting info
+for j in ${JOBS[@]}; do
+  monitor $j >> $LOG
+done
+
+ENDTIME=$(date +%s)
+echo "Processing took $((ENDTIME - STARTTIME)) seconds to complete."
+
+# output logs in std{out,err}-[jobid].log
 echo "---------------"
 echo -e "Log files:"
-for f in *.log; do
+for f in $(find -type f -name \*.log); do
   echo "### $f ###"
   cat $f
 done
 
-# list channel outfiles (*.json.gz)
+# list "channel" files
 echo "---------------"
 echo -e "Output files:"
 #ls
-find -type f -name *.json.gz | grep "." || exit 1
+find -type f -name \*.json.gz | grep "." || exit 1
+find -type f -name \*.npy.gz | grep "." || exit 1
+
+# exit with non-zero if there are failed jobs
+[ $(cat $LOG | jq '.statuses | .[] | select(.done==true and .exitCode!=0)') ] \
+  && exit 1 || exit 0
+

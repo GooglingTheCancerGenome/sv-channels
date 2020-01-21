@@ -14,7 +14,7 @@ import json
 from functions import *
 
 
-def get_clipped_reads(ibam, outFile):
+def get_clipped_reads(ibam, chrName, outFile):
     '''
 
     :param ibam: input BAM alignment file
@@ -29,7 +29,7 @@ def get_clipped_reads(ibam, outFile):
     config = get_config_file()
     minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
 
-    chr_list = get_chr_list()
+    chr_list = [chrName]  # get_chr_list()
 
     # Dictionary to store number of clipped reads per position
     clipped_reads = dict()
@@ -263,6 +263,8 @@ def main():
     parser.add_argument('-b', '--bam', type=str,
                         default=inputBAM,
                         help="Specify input file (BAM)")
+    parser.add_argument('-c', '--chr', type=str, default='17',
+                        help="Specify chromosome")
     parser.add_argument('-o', '--out', type=str, default='clipped_reads.json.gz',
                         help="Specify output")
     parser.add_argument('-p', '--outputpath', type=str,
@@ -287,7 +289,7 @@ def main():
         level=logging.INFO)
 
     t0 = time()
-    get_clipped_reads(ibam=args.bam, outFile=output_file)
+    get_clipped_reads(ibam=args.bam, chrName=args.chr, outFile=output_file)
     logging.info('Time: clipped reads on BAM %s: %f' % (args.bam, (time() - t0)))
 
 
