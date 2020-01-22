@@ -56,14 +56,12 @@ def compare(args):
     def write_bed(hit_ids):
 
         lines = []
-        half_interval = 500
+        # half_interval = 500
 
         for i in hit_ids:
-            c1, s1_0, s1_1, c2, s2_0, s2_1 = i.split('_')
-            s1_0 = int(s1_0)
-            s2_0 = int(s2_0)
-            lines.append('\t'.join([str(c1), str(int(s1_0) - half_interval), str(s1_0 + half_interval)]) + '\n')
-            lines.append('\t'.join([str(c2), str(s2_0 - half_interval), str(s2_0 + half_interval)]) + '\n')
+            c1, s1 = i.split('_')
+            s1 = int(s1)
+            lines.append('\t'.join([str(c1), str(int(s1) - half_interval), str(s1 + half_interval)]) + '\n')
 
         f = open(args.outputbed, 'w')
         try:
@@ -107,6 +105,9 @@ def compare(args):
     # window half length
     win_hlen = int(args.win / 2)
 
+    ids_bp1 = set()
+    ids_bp2 = set()
+
     hit_ids_bp1 = set()
     hit_ids_bp2 = set()
 
@@ -128,23 +129,34 @@ def compare(args):
         hit_ids_bp1 = hit_ids_bp1 | get_hit_ids(bp1_hits)
         hit_ids_bp2 = hit_ids_bp2 | get_hit_ids(bp2_hits)
 
+        ids_bp1 = ids_bp1 | set([c + '_' + str(p) for c in bp1_list.keys() for p in bp1_list[c]])
+        ids_bp2 = ids_bp2 | set([c + '_' + str(p) for c in bp2_list.keys() for p in bp2_list[c]])
+
     # writing BED output
-    write_bed(hit_ids_bp1 | hit_ids_bp2)
+    write_bed(ids_bp1 | ids_bp2)
 
     # Collect stats
 
+    ids_bp1_len = len(ids_bp1)
+    ids_bp2_len = len(ids_bp2)
+    bp1_bp2_union_len = len(ids_bp1 | ids_bp2)
+    print(bp1_bp2_union_len)
+
     hit_ids_bp1_len = len(hit_ids_bp1)
     hit_ids_bp2_len = len(hit_ids_bp2)
-    bp1_bp2_union_len = len(hit_ids_bp1 | hit_ids_bp2)
+    hits_bp1_bp2_union_len = len(hit_ids_bp1 | hit_ids_bp2)
 
     n_svs = len([l for l in sv_list if l[0] in args.chrlist])
 
     # write CSV output file
     df = pd.DataFrame({'bp1_num': [hit_ids_bp1_len],
-                       'bp1_sv_cov': [hit_ids_bp1_len / n_svs * 100],
+                       'bp1_sv_rec': [hit_ids_bp1_len / n_svs * 100],
+                       'bp1_sv_prec': [hit_ids_bp1_len / ids_bp1_len * 100],
                        'bp2_num': [hit_ids_bp2_len],
-                       'bp2_sv_cov': [hit_ids_bp2_len / n_svs * 100],
-                       'bp1_bp2__sv_cov': [bp1_bp2_union_len / n_svs * 100],
+                       'bp2_sv_rec': [hit_ids_bp2_len / n_svs * 100],
+                       'bp2_sv_prec': [hit_ids_bp2_len / ids_bp2_len * 100],
+                       'bp1_bp2_sv_rec': [hits_bp1_bp2_union_len / n_svs * 100],
+                       'bp1_bp2_sv_prec': [hits_bp1_bp2_union_len / bp1_bp2_union_len * 100]
                        })
     df.to_csv(path_or_buf=args.output, index=False)
 
