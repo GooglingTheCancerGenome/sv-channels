@@ -13,8 +13,8 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
 #for i in 0; do
 	SAMPLE=${SAMPLE_ARRAY[$i]}
 
-    # for CHROMOSOME in ${CHRARRAY[@]}; do
-    for CHROMOSOME in '1'; do
+    for CHROMOSOME in ${CHRARRAY[@]}; do
+    #for CHROMOSOME in '1'; do
 
         for WINDOW in 200; do
 

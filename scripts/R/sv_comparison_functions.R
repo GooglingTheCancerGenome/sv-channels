@@ -60,12 +60,14 @@ remove_blacklist <- function(gr, confidence_regions_gr, sample)
 load_sv_caller_vcf <-
   function(vcf_file,
            confidence_regions_gr,
-           sample,
+           sample_name,
            sv_caller)
   {
     # vcf_file <- truth_set_file[[sample]]
     sv_callset_vcf <-
       VariantAnnotation::readVcf(vcf_file)
+    
+    sv_callset_vcf <- sv_callset_vcf[rowRanges(sv_callset_vcf)$FILTER%in%c("PASS",".")]
     
     if (sv_caller == 'lumpy')
     {
@@ -82,18 +84,21 @@ load_sv_caller_vcf <-
     }
     
     bpgr <- breakpointRanges(sv_callset_vcf)
-    begr <- breakendRanges(sv_callset_vcf)
-    gr <- sort(c(bpgr, begr))
-    if (sv_caller %in% c('gridss', 'manta')) {
-      gr <- apply_svtype(gr)
-    }
+    #begr <- breakendRanges(sv_callset_vcf)
+    #gr <- sort(c(bpgr, begr))
+    gr <- apply_svtype(bpgr)
+    
+    # if (sv_caller %in% c('gridss', 'manta')) {
+    #   gr <- apply_svtype(gr)
+    # }
+    
     # Select DEL
     gr <- gr[which(gr$svtype == "DEL")]
     # Remove NAs
     # gr <- gr[!is.na(gr$svLen)]
     # Select DEL >= 50 bp
     gr <- gr[abs(gr$svLen) >= 50]
-    gr <- remove_blacklist(gr, confidence_regions_gr, sample)
+    gr <- remove_blacklist(gr, confidence_regions_gr, sample_name)
     gr
     
   }
@@ -143,7 +148,7 @@ load_bedpe <- function(bedpe_file,
 }
 
 make_percent <- function(x){
-  round(x*100,digits = 1)
+  signif(x*100,digits = 4)
 }
 
 load_callsets <- function(sample)

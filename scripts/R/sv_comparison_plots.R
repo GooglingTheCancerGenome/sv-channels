@@ -1,4 +1,4 @@
-source("sv_comparison_functions.R")
+source("~/Documents/Local_GitHub/CNN/scripts/R/sv_comparison_functions.R")
 
 datasets <- c('NA12878', 'NA24385', 'CHM1_CHM13')
 
@@ -18,7 +18,7 @@ truth_set_file[['CHM1_CHM13']] <-
 gr <- list()
 
 for (test_sample in datasets) {
-  #test_sample <- 'NA12878'
+  #test_sample <- 'NA24385'
   
   print(paste(
     'Plotting testing on',
@@ -50,10 +50,10 @@ for (test_sample in datasets) {
   
   gr <- load_callsets(test_sample)
   
-  mode_name <- 'SR1_CR3_svcalls'
+  mode_name <- 'GRIDSS_targeted'
   
-  modes <- c('complexCNN_v0')
-  names(modes) <- c('SR1_CR3')
+  modes <- c('GRIDSS_targeted')
+  names(modes) <- c('GRIDSS_targeted')
   
   # modes <- c('GRIDSS_labelling', 'manta_labelling', 'manta_GRIDSS_labelling')
   # names(modes) <- c('GRIDSS', 'Manta', 'Manta_U_GRIDSS')
@@ -67,7 +67,7 @@ for (test_sample in datasets) {
     #train_sample <- 'NA12878'
     
     if( test_sample == train_sample ){
-      suf <- '10CV'
+      suf <- ''
       deepsv_name <- paste('DeepSV',train_sample, suf, names(modes)[modes==m], sep='_')
     }else{
       deepsv_name <- paste('DeepSV_trained_on',train_sample, names(modes)[modes==m], sep='_')
@@ -95,6 +95,8 @@ for (test_sample in datasets) {
     
     sv_caller_list <- c('gridss', 'manta', 'lumpy', 'delly')
     sv_caller_list <- c(sv_caller_list, deepsv_name)
+    
+    # DeepSV BEDPE
     bedpe_file <-
       file.path(#paste('/Users/lsantuari/Documents/Processed/channel_maker_output/',sample,'/cnn/CNN_CV_100919/DeepSV_DEL.svLen.bedpe',sep="")
         paste(dataDir, 'DeepSV_DEL.svLen.bedpe',
@@ -103,6 +105,12 @@ for (test_sample in datasets) {
       load_bedpe(bedpe_file, confidence_regions_gr, test_sample)
     gr[[test_sample]][[deepsv_name]] <-
       gr[[test_sample]][[deepsv_name]][gr[[test_sample]][[deepsv_name]]$NA. >= (50)]
+    
+    # DeepSV VCF from GRIDSS targeted
+    vcf_file <- "~/Documents/Processed/two_tier/GRIDSS_targeted/NA24385.targeted.sv.vcf"
+  
+    gr[[test_sample]][[deepsv_name]] <-
+      load_sv_caller_vcf(vcf_file, confidence_regions_gr, test_sample, deepsv_name)
     
   }
   }
@@ -215,8 +223,8 @@ for (test_sample in datasets) {
         cum_tp = cumsum(tp),
         cum_n = cumsum(calls),
         cum_fp = cum_n - cum_tp,
-        precision = round(cum_tp / cum_n, digits = 1),
-        recall = round(cum_tp / length(truth_svgr), digits = 1)
+        precision = signif(cum_tp / cum_n, digits = 4),
+        recall = signif(cum_tp / length(truth_svgr), digits = 4)
       )
     res.df$F1 = with(res.df, 2 * (precision * recall) / (precision + recall))
     
@@ -234,4 +242,3 @@ for (test_sample in datasets) {
     
     #}
 }
-
