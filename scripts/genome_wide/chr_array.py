@@ -157,13 +157,26 @@ def create_hdf5(ibam, chrom, twobit, bigwig, outDir, cmd_name):
 
     channel_index = 0
     for current_channel in ['coverage', 'snv', 'clipped_reads', 'split_reads',
-                            'clipped_read_distance']:
-                            #'clipped_reads_inversion',
-                            #'clipped_reads_duplication',
-                            #'clipped_reads_translocation',
-                            #'split_read_distance']:
+                            'clipped_read_distance',
+                            'clipped_reads_inversion',
+                            'clipped_reads_duplication',
+                            'clipped_reads_translocation',
+                            'split_read_distance']:
 
-        channel_data = load_channel([chrom], outDir, current_channel)
+        current_channel_dataset = current_channel
+
+        if current_channel in ['split_reads', 'split_read_distance']:
+
+            current_channel_dataset = 'split_reads'
+
+        elif current_channel in ['clipped_reads',
+                                 'clipped_reads_inversion',
+                                 'clipped_reads_duplication',
+                                 'clipped_reads_translocation']:
+
+            current_channel_dataset = 'clipped_reads'
+
+        channel_data = load_channel([chrom], outDir, current_channel_dataset)
 
         logging.info("Adding channel %s at index %d" % (current_channel, channel_index))
 
