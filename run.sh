@@ -80,12 +80,12 @@ for s in ${SEQ_IDS[@]}; do
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 
-  p=label_window_pairs_on_split_read_positions && $JOB="python $p.py -b $BAM \
+  p=label_window_pairs_on_split_read_positions && JOB="python $p.py -b $BAM \
     -c $s -w 200 -gt $BEDPE -o $p.json.gz -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 
-  p=label_window_pairs_on_svcallset && $JOB="python $p.py -b $BAM -c $s -w 200 \
+  p=label_window_pairs_on_svcallset && JOB="python $p.py -b $BAM -c $s -w 200 \
     -gt $BEDPE -o $p.json.gz -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
