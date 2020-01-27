@@ -34,7 +34,9 @@ if (length(args)==0) {
   stop("At least one argument must be supplied (input file).n", call.=FALSE)
 } else if (length(args)==1) {
   # default output file
-  args[2] = paste(file_path_sans_ext(args[1]), "bedpe", sep='.')
+  vcf_output = paste(file_path_sans_ext(args[1]), "bedpe", sep='.')
+} else if (length(args)==2) {
+  vcf_output <- args[2]
 }
 
 sv_callset_vcf <-
@@ -47,9 +49,9 @@ sv_callset_vcf <-
 
 gr <- breakpointRanges(sv_callset_vcf)
 gr <- apply_svtype(gr)
-# Select SVs >= 50 bp
-gr <- gr[abs(gr$svLen) >= 50]
+# Select SVs >= 50 bp. svLen==NA for svtype=='BP'
+gr <- gr[abs(gr$svLen) >= 50 | gr$svtype == 'BP']
 
 bedpe <- breakpointgr2bedpe(gr)
 
-write.table(file=args[2], bedpe, quote=FALSE, row.names = FALSE, col.names = FALSE, sep='\t')
+write.table(file=vcf_output, bedpe, quote=FALSE, row.names = FALSE, col.names = FALSE, sep='\t')
