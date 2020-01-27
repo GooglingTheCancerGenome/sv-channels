@@ -16,6 +16,7 @@ SAMPLE=$(basename $BAM .bam)
 SEQ_IDS=${@:3}
 TWOBIT=${BASE_DIR}/${SAMPLE}.2bit
 BIGWIG=${BASE_DIR}/${SAMPLE}.bw
+BEDPE=${BASE_DIR}/${SAMPLE}.bedpe
 WORK_DIR=scripts/genome_wide
 RTIME=10  # runtime in minutes
 STIME=1   # sleep X minutes
