@@ -1,0 +1,95 @@
+##fileformat=VCFv4.2
+##FILTER=<ID=PASS,Description="All filters passed">
+##ALT=<ID=INV,Description="Inversion">
+##FILTER=<ID=ASSEMBLY_ONLY,Description="Variant is supported only by assembly evidence.">
+##FILTER=<ID=ASSEMBLY_TOO_FEW_READ,Description="Not enough reads contribute to this assembly as specified by 'assembly.minReads'">
+##FILTER=<ID=ASSEMBLY_TOO_SHORT,Description="This assembly is shorter than a read length">
+##FILTER=<ID=LOW_BREAKPOINT_SUPPORT,Description="Does not reach the required threshold quality for calling as specified by 'variantcalling.minScore'">
+##FILTER=<ID=LOW_QUAL,Description="Low quality call as specified by 'variantcalling.lowQuality'">
+##FILTER=<ID=NO_ASSEMBLY,Description="No assembly supporting this variant could be found.">
+##FILTER=<ID=REF,Description="Breakpoint corresponds to reference allele">
+##FILTER=<ID=SINGLE_ASSEMBLY,Description="Only one side of the breakpoint could be assembled.">
+##FILTER=<ID=SINGLE_SUPPORT,Description="Supported by a single read or read pair only.">
+##FILTER=<ID=SMALL_EVENT,Description="Event size is smaller than the minimum reportable size specified by 'variantcalling.minSize'">
+##FORMAT=<ID=ASQ,Number=1,Type=Float,Description="Pro-rata quality score contribution of assemblies supporting breakpoint">
+##FORMAT=<ID=ASRP,Number=1,Type=Integer,Description="Count of read pairs incorporated into any breakpoint assembly">
+##FORMAT=<ID=ASSR,Number=1,Type=Integer,Description="Count of split, soft clipped or indel-containing reads incorporated into any breakpoint assemblies">
+##FORMAT=<ID=BAQ,Number=1,Type=Float,Description="Pro-rata quality score contribution of assemblies supporting just local breakend">
+##FORMAT=<ID=BQ,Number=1,Type=Float,Description="Quality score of breakend evidence after evidence reallocation">
+##FORMAT=<ID=BSC,Number=1,Type=Integer,Description="Count of soft clips supporting just local breakend per category">
+##FORMAT=<ID=BSCQ,Number=1,Type=Float,Description="Quality score of soft clips supporting just local breakend per category">
+##FORMAT=<ID=BUM,Number=1,Type=Integer,Description="Count of read pairs (with one read unmapped) supporting just local breakend per category">
+##FORMAT=<ID=BUMQ,Number=1,Type=Float,Description="Quality score of read pairs (with one read unmapped) supporting just local breakend per category">
+##FORMAT=<ID=CASQ,Number=1,Type=Float,Description="Pro-rata quality score of complex compound breakpoint assemblies supporting breakpoint from elsewhere">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=IC,Number=1,Type=Integer,Description="Count of read indels supporting breakpoint per category">
+##FORMAT=<ID=IQ,Number=1,Type=Float,Description="Quality score of read indels supporting breakpoint per category">
+##FORMAT=<ID=QUAL,Number=1,Type=Float,Description="Quality score of breakend evidence after evidence reallocation">
+##FORMAT=<ID=RASQ,Number=1,Type=Float,Description="Pro-rata quality score contribution of assemblies supporting breakpoint from remote breakend">
+##FORMAT=<ID=REF,Number=1,Type=Integer,Description="Count of reads mapping across this breakend">
+##FORMAT=<ID=REFPAIR,Number=1,Type=Integer,Description="Count of reference read pairs spanning this breakpoint supporting the reference allele">
+##FORMAT=<ID=RP,Number=1,Type=Integer,Description="Count of read pairs supporting breakpoint per category">
+##FORMAT=<ID=RPQ,Number=1,Type=Float,Description="Quality score of read pairs supporting breakpoint per category">
+##FORMAT=<ID=SR,Number=1,Type=Integer,Description="Count of split reads supporting breakpoint per category">
+##FORMAT=<ID=SRQ,Number=1,Type=Float,Description="Quality score of split reads supporting breakpoint per category">
+##INFO=<ID=AS,Number=1,Type=Integer,Description="Count of assemblies supporting breakpoint">
+##INFO=<ID=ASQ,Number=1,Type=Float,Description="Quality score of assemblies supporting breakpoint">
+##INFO=<ID=ASRP,Number=1,Type=Integer,Description="Count of read pairs incorporated into any breakpoint assembly">
+##INFO=<ID=ASSR,Number=1,Type=Integer,Description="Count of split, soft clipped or indel-containing reads incorporated into any breakpoint assemblies">
+##INFO=<ID=BA,Number=1,Type=Integer,Description="Count of assemblies supporting just local breakend">
+##INFO=<ID=BAQ,Number=1,Type=Float,Description="Quality score of assemblies supporting just local breakend">
+##INFO=<ID=BEID,Number=.,Type=String,Description="Breakend assemblies contributing support to the breakpoint.">
+##INFO=<ID=BQ,Number=1,Type=Float,Description="Quality score of breakend evidence">
+##INFO=<ID=BSC,Number=1,Type=Integer,Description="Count of soft clips supporting just local breakend">
+##INFO=<ID=BSCQ,Number=1,Type=Float,Description="Quality score of soft clips supporting just local breakend">
+##INFO=<ID=BUM,Number=1,Type=Integer,Description="Count of read pairs (with one read unmapped) supporting just local breakend">
+##INFO=<ID=BUMQ,Number=1,Type=Float,Description="Quality score of read pairs (with one read unmapped) supporting just local breakend">
+##INFO=<ID=CAS,Number=1,Type=Integer,Description="Count of complex compound breakpoint assemblies supporting breakpoint from elsewhere">
+##INFO=<ID=CASQ,Number=1,Type=Float,Description="Quality score of complex compound breakpoint assemblies supporting breakpoint from elsewhere">
+##INFO=<ID=CIEND,Number=2,Type=Integer,Description="Confidence interval around END for imprecise variants">
+##INFO=<ID=CIPOS,Number=2,Type=Integer,Description="Confidence interval around POS for imprecise variants">
+##INFO=<ID=CIRPOS,Number=2,Type=Integer,Description="Confidence interval around remote breakend POS for imprecise variants">
+##INFO=<ID=CQ,Number=1,Type=Float,Description="Breakpoint quality score before evidence reallocation">
+##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+##INFO=<ID=EVENT,Number=1,Type=String,Description="ID of event associated to breakend">
+##INFO=<ID=HOMLEN,Number=.,Type=Integer,Description="Length of base pair identical micro-homology at event breakpoints">
+##INFO=<ID=HOMSEQ,Number=.,Type=String,Description="Sequence of base pair identical micro-homology at event breakpoints">
+##INFO=<ID=IC,Number=1,Type=Integer,Description="Count of read indels supporting breakpoint">
+##INFO=<ID=IHOMPOS,Number=2,Type=Integer,Description="Position of inexact homology">
+##INFO=<ID=IMPRECISE,Number=0,Type=Flag,Description="Imprecise structural variation">
+##INFO=<ID=IQ,Number=1,Type=Float,Description="Quality score of read indels supporting breakpoint">
+##INFO=<ID=PARID,Number=1,Type=String,Description="ID of partner breakend">
+##INFO=<ID=RAS,Number=1,Type=Integer,Description="Count of assemblies supporting breakpoint from remote breakend">
+##INFO=<ID=RASQ,Number=1,Type=Float,Description="Quality score of assemblies supporting breakpoint from remote breakend">
+##INFO=<ID=REF,Number=1,Type=Integer,Description="Count of reads mapping across this breakend">
+##INFO=<ID=REFPAIR,Number=1,Type=Integer,Description="Count of reference read pairs spanning this breakpoint supporting the reference allele">
+##INFO=<ID=RP,Number=1,Type=Integer,Description="Count of read pairs supporting breakpoint">
+##INFO=<ID=RPQ,Number=1,Type=Float,Description="Quality score of read pairs supporting breakpoint">
+##INFO=<ID=RSI,Number=.,Type=Integer,Description="Support interval offsets of partner breakend.">
+##INFO=<ID=SC,Number=1,Type=String,Description="CIGAR for displaying anchoring alignment of any contributing evidence and microhomologies.">
+##INFO=<ID=SELF,Number=0,Type=Flag,Description="Indicates a breakpoint is self-intersecting">
+##INFO=<ID=SI,Number=.,Type=Integer,Description="Support interval offsets from breakend position in which at least one supporting read/read pair/assembly is mapped.">
+##INFO=<ID=SR,Number=1,Type=Integer,Description="Count of split reads supporting breakpoint">
+##INFO=<ID=SRQ,Number=1,Type=Float,Description="Quality score of split reads supporting breakpoint">
+##INFO=<ID=SVLEN,Number=.,Type=Integer,Description="Difference in length between REF and ALT alleles">
+##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">
+##contig=<ID=22,length=1000001>
+##bcftools_filterVersion=1.9+htslib-1.9
+##bcftools_filterCommand=filter -O v -o data/bam/4/S4/gridss_out/gridss.vcf -i 'FILTER == '.'' data/bam/4/S4/gridss_out/gridss.unfiltered.vcf; Date=Mon Jan 27 21:11:59 2020
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	S4.bam
+22	195416	gridss0_100o	T	TATAACGAGACGCGCCGCAGTGAGCGGGTGATGTTTAGTTGCCTTGACAAATGACAGAGGGTCCGAATGTGAATTACTCCACCGCGGAGCGCATGGTGCGCTGGGGGACTCCCGAGCGGTTAATTGGTATCGTTACCGCTCTAGCACGTTGGAGGTCAGCTTTGTTAACCTTAACGAGATGGGGCACGAATTTTGGGGTATGTAGAGTTGGCCATGAAAAATAAGGGCACCTAATGACCTAAACATTCATCAGCACTTGTATTATGTTAATAATCCTAGTTTTCCAGATAATTTAGCTGCTCCAAGCTGTGCGGTTGCACGAACTAAATGGTTTTTGATATCGCTCCCGCGACTGATGATAGGTGCGACCAATGCGTGAGTGGACAACGCAGTGCCTACACGAAACTA[22:195417[	1787.75	PASS	AS=1;ASQ=1612.29;ASRP=32;ASSR=18;BA=0;BAQ=0;BEID=asm0-146,asm0-949;BQ=1524.57;BSC=18;BSCQ=722.81;BUM=26;BUMQ=801.76;CAS=0;CASQ=0;CQ=1787.75;EVENT=gridss0_100;IC=0;IHOMPOS=0,0;IQ=0;PARID=gridss0_100h;RAS=1;RASQ=87.73;REF=27;REFPAIR=22;RP=3;RPQ=87.73;SC=389M1X;SR=0;SRQ=0;SVTYPE=BND	GT:ASQ:ASRP:ASSR:BAQ:BQ:BSC:BSCQ:BUM:BUMQ:CASQ:IC:IQ:QUAL:RASQ:REF:REFPAIR:RP:RPQ:SR:SRQ	.:1612.29:32:18:0:1524.57:18:722.81:26:801.76:0:0:0:1787.75:87.73:27:22:3:87.73:0:0
+22	195417	gridss0_100h	T	]22:195416]ATAACGAGACGCGCCGCAGTGAGCGGGTGATGTTTAGTTGCCTTGACAAATGACAGAGGGTCCGAATGTGAATTACTCCACCGCGGAGCGCATGGTGCGCTGGGGGACTCCCGAGCGGTTAATTGGTATCGTTACCGCTCTAGCACGTTGGAGGTCAGCTTTGTTAACCTTAACGAGATGGGGCACGAATTTTGGGGTATGTAGAGTTGGCCATGAAAAATAAGGGCACCTAATGACCTAAACATTCATCAGCACTTGTATTATGTTAATAATCCTAGTTTTCCAGATAATTTAGCTGCTCCAAGCTGTGCGGTTGCACGAACTAAATGGTTTTTGATATCGCTCCCGCGACTGATGATAGGTGCGACCAATGCGTGAGTGGACAACGCAGTGCCTACACGAAACTAT	1787.75	PASS	AS=1;ASQ=87.73;ASRP=32;ASSR=18;BA=6;BAQ=1636.18;BEID=asm0-146,asm0-949;BQ=3426.54;BSC=27;BSCQ=1050.28;BUM=24;BUMQ=740.08;CAS=0;CASQ=0;CQ=1787.75;EVENT=gridss0_100;IC=0;IHOMPOS=0,0;IQ=0;PARID=gridss0_100o;RAS=1;RASQ=1612.29;REF=27;REFPAIR=22;RP=3;RPQ=87.73;SC=1X58M;SR=0;SRQ=0;SVTYPE=BND	GT:ASQ:ASRP:ASSR:BAQ:BQ:BSC:BSCQ:BUM:BUMQ:CASQ:IC:IQ:QUAL:RASQ:REF:REFPAIR:RP:RPQ:SR:SRQ	.:87.73:32:18:1636.18:3426.54:27:1050.28:24:740.08:0:0:0:1787.75:1612.29:27:22:3:87.73:0:0
+22	197268	gridss0_101o	T	T[22:197385[	5177.22	PASS	AS=1;ASQ=1763.28;ASRP=70;ASSR=41;BA=0;BAQ=0;BEID=asm0-147,asm0-957;BQ=138.43;BSC=4;BSCQ=138.43;BUM=0;BUMQ=0;CAS=0;CASQ=0;CIPOS=0,1;CIRPOS=0,1;CQ=5177.22;EVENT=gridss0_101;HOMLEN=1;HOMSEQ=A;IC=0;IHOMPOS=0,1;IQ=0;PARID=gridss0_101h;RAS=1;RASQ=1789.08;REF=28;REFPAIR=26;RP=35;RPQ=1024.76;SC=410M2X;SR=16;SRQ=600.09;SVTYPE=BND	GT:ASQ:ASRP:ASSR:BAQ:BQ:BSC:BSCQ:BUM:BUMQ:CASQ:IC:IQ:QUAL:RASQ:REF:REFPAIR:RP:RPQ:SR:SRQ	.:1763.28:70:41:0:138.43:4:138.43:0:0:0:0:0:5177.22:1789.08:28:26:35:1024.76:16:600.09
+22	197385	gridss0_101h	A	]22:197268]A	5177.22	PASS	AS=1;ASQ=1789.08;ASRP=70;ASSR=41;BA=0;BAQ=0;BEID=asm0-147,asm0-957;BQ=164.22;BSC=5;BSCQ=164.22;BUM=0;BUMQ=0;CAS=0;CASQ=0;CIPOS=0,1;CIRPOS=0,1;CQ=5177.22;EVENT=gridss0_101;HOMLEN=1;HOMSEQ=A;IC=0;IHOMPOS=0,1;IQ=0;PARID=gridss0_101o;RAS=1;RASQ=1763.28;REF=24;REFPAIR=17;RP=35;RPQ=1024.76;SC=2X421M;SR=16;SRQ=600.09;SVTYPE=BND	GT:ASQ:ASRP:ASSR:BAQ:BQ:BSC:BSCQ:BUM:BUMQ:CASQ:IC:IQ:QUAL:RASQ:REF:REFPAIR:RP:RPQ:SR:SRQ	.:1789.08:70:41:0:164.22:5:164.22:0:0:0:0:0:5177.22:1763.28:24:17:35:1024.76:16:600.09
+22	559112	gridss0_334o	A	A[22:559354[	5858.76	PASS	AS=1;ASQ=2043.74;ASRP=86;ASSR=42;BA=0;BAQ=0;BEID=asm0-1286,asm0-457;BQ=204.36;BSC=6;BSCQ=204.36;BUM=0;BUMQ=0;CAS=0;CASQ=0;CIPOS=-1,0;CIRPOS=-1,0;CQ=5858.76;EVENT=gridss0_334;HOMLEN=1;HOMSEQ=A;IC=0;IHOMPOS=-1,0;IQ=0;PARID=gridss0_334h;RAS=1;RASQ=1975.64;REF=23;REFPAIR=21;RP=43;RPQ=1259;SC=395M2X;SR=16;SRQ=580.38;SVTYPE=BND	GT:ASQ:ASRP:ASSR:BAQ:BQ:BSC:BSCQ:BUM:BUMQ:CASQ:IC:IQ:QUAL:RASQ:REF:REFPAIR:RP:RPQ:SR:SRQ	.:2043.74:86:42:0:204.36:6:204.36:0:0:0:0:0:5858.76:1975.64:23:21:43:1259:16:580.38
+22	559354	gridss0_334h	A	]22:559112]A	5858.76	PASS	AS=1;ASQ=1975.64;ASRP=86;ASSR=42;BA=0;BAQ=0;BEID=asm0-1286,asm0-457;BQ=136.26;BSC=4;BSCQ=136.26;BUM=0;BUMQ=0;CAS=0;CASQ=0;CIPOS=-1,0;CIRPOS=-1,0;CQ=5858.76;EVENT=gridss0_334;HOMLEN=1;HOMSEQ=A;IC=0;IHOMPOS=-1,0;IQ=0;PARID=gridss0_334o;RAS=1;RASQ=2043.74;REF=21;REFPAIR=19;RP=43;RPQ=1259;SC=2X418M;SR=16;SRQ=580.38;SVTYPE=BND	GT:ASQ:ASRP:ASSR:BAQ:BQ:BSC:BSCQ:BUM:BUMQ:CASQ:IC:IQ:QUAL:RASQ:REF:REFPAIR:RP:RPQ:SR:SRQ	.:1975.64:86:42:0:136.26:4:136.26:0:0:0:0:0:5858.76:2043.74:21:19:43:1259:16:580.38
+22	636172	gridss0_383o	T	T[22:636262[	5255.99	PASS	AS=1;ASQ=1706.87;ASRP=74;ASSR=38;BA=0;BAQ=0;BEID=asm0-1350,asm0-525;BQ=33.69;BSC=1;BSCQ=33.69;BUM=0;BUMQ=0;CAS=0;CASQ=0;CIPOS=0,2;CIRPOS=0,2;CQ=5138.87;EVENT=gridss0_383;HOMLEN=2;HOMSEQ=TT;IC=0;IHOMPOS=0,2;IQ=0;PARID=gridss0_383h;RAS=1;RASQ=1842.24;REF=22;REFPAIR=25;RP=37;RPQ=1083.3;SC=414M1X1N1X;SR=17;SRQ=623.57;SVTYPE=BND	GT:ASQ:ASRP:ASSR:BAQ:BQ:BSC:BSCQ:BUM:BUMQ:CASQ:IC:IQ:QUAL:RASQ:REF:REFPAIR:RP:RPQ:SR:SRQ	.:1706.87:74:38:0:33.69:1:33.69:0:0:0:0:0:5255.99:1842.24:22:25:37:1083.3:17:623.57
+22	636262	gridss0_383h	T	]22:636172]T	5255.99	PASS	AS=1;ASQ=1842.24;ASRP=74;ASSR=38;BA=0;BAQ=0;BEID=asm0-1350,asm0-525;BQ=135.37;BSC=4;BSCQ=135.37;BUM=0;BUMQ=0;CAS=0;CASQ=0;CIPOS=0,2;CIRPOS=0,2;CQ=5138.87;EVENT=gridss0_383;HOMLEN=2;HOMSEQ=TT;IC=0;IHOMPOS=0,2;IQ=0;PARID=gridss0_383o;RAS=1;RASQ=1706.87;REF=38;REFPAIR=13;RP=37;RPQ=1083.3;SC=1X1N1X396M;SR=17;SRQ=623.57;SVTYPE=BND	GT:ASQ:ASRP:ASSR:BAQ:BQ:BSC:BSCQ:BUM:BUMQ:CASQ:IC:IQ:QUAL:RASQ:REF:REFPAIR:RP:RPQ:SR:SRQ	.:1842.24:74:38:0:135.37:4:135.37:0:0:0:0:0:5255.99:1706.87:38:13:37:1083.3:17:623.57
+22	697934	gridss0_421o	A	A[22:698118[	6623.12	PASS	AS=1;ASQ=2345.92;ASRP=86;ASSR=56;BA=0;BAQ=0;BEID=asm0-1411,asm0-580;BQ=275.32;BSC=8;BSCQ=275.32;BUM=0;BUMQ=0;CAS=0;CASQ=0;CIPOS=-1,0;CIRPOS=-1,0;CQ=6564.57;EVENT=gridss0_421;HOMLEN=1;HOMSEQ=A;IC=0;IHOMPOS=-1,0;IQ=0;PARID=gridss0_421h;RAS=1;RASQ=2206.6;REF=39;REFPAIR=23;RP=43;RPQ=1259;SC=447M2X;SR=22;SRQ=811.61;SVTYPE=BND	GT:ASQ:ASRP:ASSR:BAQ:BQ:BSC:BSCQ:BUM:BUMQ:CASQ:IC:IQ:QUAL:RASQ:REF:REFPAIR:RP:RPQ:SR:SRQ	.:2345.92:86:56:0:275.32:8:275.32:0:0:0:0:0:6623.12:2206.6:39:23:43:1259:22:811.61
+22	698118	gridss0_421h	G	]22:697934]G	6623.12	PASS	AS=1;ASQ=2206.6;ASRP=86;ASSR=56;BA=0;BAQ=0;BEID=asm0-1411,asm0-580;BQ=136;BSC=4;BSCQ=136;BUM=0;BUMQ=0;CAS=0;CASQ=0;CIPOS=-1,0;CIRPOS=-1,0;CQ=6564.57;EVENT=gridss0_421;HOMLEN=1;HOMSEQ=A;IC=0;IHOMPOS=-1,0;IQ=0;PARID=gridss0_421o;RAS=1;RASQ=2345.92;REF=33;REFPAIR=25;RP=43;RPQ=1259;SC=2X440M;SR=22;SRQ=811.61;SVTYPE=BND	GT:ASQ:ASRP:ASSR:BAQ:BQ:BSC:BSCQ:BUM:BUMQ:CASQ:IC:IQ:QUAL:RASQ:REF:REFPAIR:RP:RPQ:SR:SRQ	.:2206.6:86:56:0:136:4:136:0:0:0:0:0:6623.12:2345.92:33:25:43:1259:22:811.61
+22	802229	gridss0_494o	G	G[22:802597[	5693.46	PASS	AS=1;ASQ=1965.92;ASRP=82;ASSR=41;BA=0;BAQ=0;BEID=asm0-1498,asm0-677;BQ=168.8;BSC=5;BSCQ=168.8;BUM=0;BUMQ=0;CAS=0;CASQ=0;CIPOS=-6,0;CIRPOS=-6,0;CQ=5391.17;EVENT=gridss0_494;HOMLEN=6;HOMSEQ=CTGTGG;IC=0;IHOMPOS=-5,0;IQ=0;PARID=gridss0_494h;RAS=1;RASQ=1930.41;REF=25;REFPAIR=20;RP=41;RPQ=1200.44;SC=418M1X5N1X;SR=16;SRQ=596.68;SVTYPE=BND	GT:ASQ:ASRP:ASSR:BAQ:BQ:BSC:BSCQ:BUM:BUMQ:CASQ:IC:IQ:QUAL:RASQ:REF:REFPAIR:RP:RPQ:SR:SRQ	.:1965.92:82:41:0:168.8:5:168.8:0:0:0:0:0:5693.46:1930.41:25:20:41:1200.44:16:596.68
+22	802597	gridss0_494h	A	]22:802229]A	5693.46	PASS	AS=1;ASQ=1930.41;ASRP=82;ASSR=41;BA=0;BAQ=0;BEID=asm0-1498,asm0-677;BQ=133.29;BSC=4;BSCQ=133.29;BUM=0;BUMQ=0;CAS=0;CASQ=0;CIPOS=-6,0;CIRPOS=-6,0;CQ=5391.17;EVENT=gridss0_494;HOMLEN=6;HOMSEQ=CTGTGG;IC=0;IHOMPOS=-5,0;IQ=0;PARID=gridss0_494o;RAS=1;RASQ=1965.92;REF=24;REFPAIR=19;RP=41;RPQ=1200.44;SC=1X5N1X416M;SR=16;SRQ=596.68;SVTYPE=BND	GT:ASQ:ASRP:ASSR:BAQ:BQ:BSC:BSCQ:BUM:BUMQ:CASQ:IC:IQ:QUAL:RASQ:REF:REFPAIR:RP:RPQ:SR:SRQ	.:1930.41:82:41:0:133.29:4:133.29:0:0:0:0:0:5693.46:1965.92:24:19:41:1200.44:16:596.68
+22	865620	gridss0_529h	G	]22:865620]ATGTCAATCAATCAGCGTGCTACCGCCGGAGGTAGCCGAGGACAATCGTTTGTATCCCATCGGCTAGAGGGAGTAGTCAGCTAATAGACGTGACTTCCTTTCACCATAGTGTGGTCGCCTTCGAGCTATTTGATACATCGTTCCGATAGAACCGCATCAGATCATCGTATCTTGCCGACAACGGTTGTAGCACG	3666.37	PASS	AS=1;ASQ=1279.84;ASRP=56;ASSR=41;BA=1;BAQ=215.86;BEID=asm0-1541,asm0-719;BQ=1100.69;BSC=19;BSCQ=607.3;BUM=9;BUMQ=277.53;CAS=0;CASQ=0;CQ=3067.2;EVENT=gridss0_529;IC=0;IHOMPOS=172,-14;IQ=0;PARID=gridss0_529o;RAS=1;RASQ=1729.83;REF=50;REFPAIR=21;RP=24;RPQ=656.7;SC=1X378M;SR=0;SRQ=0;SVTYPE=BND	GT:ASQ:ASRP:ASSR:BAQ:BQ:BSC:BSCQ:BUM:BUMQ:CASQ:IC:IQ:QUAL:RASQ:REF:REFPAIR:RP:RPQ:SR:SRQ	.:1279.84:56:41:215.86:1100.69:19:607.3:9:277.53:0:0:0:3666.37:1729.83:50:21:24:656.7:0:0
+22	865620	gridss0_529o	G	GATGTCAATCAATCAGCGTGCTACCGCCGGAGGTAGCCGAGGACAATCGTTTGTATCCCATCGGCTAGAGGGAGTAGTCAGCTAATAGACGTGACTTCCTTTCACCATAGTGTGGTCGCCTTCGAGCTATTTGATACATCGTTCCGATAGAACCGCATCAGATCATCGTATCTTGCCGACAACGGTTGTAGCAC[22:865620[	3666.37	PASS	AS=1;ASQ=1729.83;ASRP=56;ASSR=41;BA=0;BAQ=0;BEID=asm0-1541,asm0-719;BQ=1057.34;BSC=22;BSCQ=810.65;BUM=8;BUMQ=246.69;CAS=0;CASQ=0;CQ=3067.2;EVENT=gridss0_529;IC=0;IHOMPOS=13,-177;IQ=0;PARID=gridss0_529h;RAS=1;RASQ=1279.84;REF=51;REFPAIR=21;RP=24;RPQ=656.7;SC=371M1X;SR=0;SRQ=0;SVTYPE=BND	GT:ASQ:ASRP:ASSR:BAQ:BQ:BSC:BSCQ:BUM:BUMQ:CASQ:IC:IQ:QUAL:RASQ:REF:REFPAIR:RP:RPQ:SR:SRQ	.:1729.83:56:41:0:1057.34:22:810.65:8:246.69:0:0:0:3666.37:1279.84:51:21:24:656.7:0:0
+22	941067	gridss0_605o	T	]22:941068]CCCGTTGAAGTTAGGATCCCGGAAGTACGGTTAACTTTAAGTTGCCGAGAGAGGAACACTTAGTCAGATGACCATGCGTAGCAATCAACCAAGGTTGGTGAATGATACCTCTAGTTTTAAAACGGACCGCTT	3838.79	PASS	AS=1;ASQ=1443.1;ASRP=54;ASSR=41;BA=1;BAQ=154.18;BEID=asm0-1608,asm0-774;BQ=1106.03;BSC=19;BSCQ=735.99;BUM=7;BUMQ=215.86;CAS=0;CASQ=0;CQ=3131.68;EVENT=gridss0_605;IC=0;IHOMPOS=82,-97;IQ=0;PARID=gridss0_605h;RAS=1;RASQ=1688.58;REF=55;REFPAIR=23;RP=25;RPQ=707.11;SC=1X382M;SR=0;SRQ=0;SVTYPE=BND	GT:ASQ:ASRP:ASSR:BAQ:BQ:BSC:BSCQ:BUM:BUMQ:CASQ:IC:IQ:QUAL:RASQ:REF:REFPAIR:RP:RPQ:SR:SRQ	.:1443.1:54:41:154.18:1106.03:19:735.99:7:215.86:0:0:0:3838.79:1688.58:55:23:25:707.11:0:0
+22	941068	gridss0_605h	C	CCCCGTTGAAGTTAGGATCCCGGAAGTACGGTTAACTTTAAGTTGCCGAGAGAGGAACACTTAGTCAGATGACCATGCGTAGCAATCAACCAAGGTTGGTGAATGATACCTCTAGTTTTAAAACGGACCGCT[22:941067[	3838.79	PASS	AS=1;ASQ=1688.58;ASRP=54;ASSR=41;BA=0;BAQ=0;BEID=asm0-1608,asm0-774;BQ=981.47;BSC=22;BSCQ=858.12;BUM=4;BUMQ=123.35;CAS=0;CASQ=0;CQ=3131.68;EVENT=gridss0_605;IC=0;IHOMPOS=128,-65;IQ=0;PARID=gridss0_605o;RAS=1;RASQ=1443.1;REF=52;REFPAIR=24;RP=25;RPQ=707.11;SC=377M1X;SR=0;SRQ=0;SVTYPE=BND	GT:ASQ:ASRP:ASSR:BAQ:BQ:BSC:BSCQ:BUM:BUMQ:CASQ:IC:IQ:QUAL:RASQ:REF:REFPAIR:RP:RPQ:SR:SRQ	.:1688.58:54:41:0:981.47:22:858.12:4:123.35:0:0:0:3838.79:1443.1:52:24:25:707.11:0:0
