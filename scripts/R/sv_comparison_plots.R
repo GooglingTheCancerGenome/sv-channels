@@ -18,7 +18,7 @@ truth_set_file[['CHM1_CHM13']] <-
 gr <- list()
 
 for (test_sample in datasets) {
-  #test_sample <- 'NA24385'
+  #test_sample <- 'CHM1_CHM13'
   
   print(paste(
     'Plotting testing on',
@@ -50,10 +50,12 @@ for (test_sample in datasets) {
   
   gr <- load_callsets(test_sample)
   
-  mode_name <- 'GRIDSS_targeted'
+  # bedpe_to_bed(gr[[test_sample]][['manta']], '~/Documents/Processed/two_tier/pipe_manta_gridss/manta/NA24385/manta.bed')
   
-  modes <- c('GRIDSS_targeted')
-  names(modes) <- c('GRIDSS_targeted')
+  mode_name <- 'manta_targeted'
+  
+  modes <- c('manta_targeted')
+  names(modes) <- c('manta_targeted')
   
   # modes <- c('GRIDSS_labelling', 'manta_labelling', 'manta_GRIDSS_labelling')
   # names(modes) <- c('GRIDSS', 'Manta', 'Manta_U_GRIDSS')
@@ -64,7 +66,7 @@ for (test_sample in datasets) {
   for (m in modes) {
     #m <- modes[1]
   for (train_sample in datasets) {
-    #train_sample <- 'NA12878'
+    #train_sample <- 'NA24385'
     
     if( test_sample == train_sample ){
       suf <- ''
@@ -107,7 +109,9 @@ for (test_sample in datasets) {
       gr[[test_sample]][[deepsv_name]][gr[[test_sample]][[deepsv_name]]$NA. >= (50)]
     
     # DeepSV VCF from GRIDSS targeted
-    vcf_file <- "~/Documents/Processed/two_tier/GRIDSS_targeted/NA24385.targeted.sv.vcf"
+    #vcf_file <- "~/Documents/Processed/two_tier/GRIDSS_targeted/NA24385.targeted.sv.vcf"
+    # DeepSV manta targeted
+    vcf_file <- "~/Documents/Processed/two_tier/train_NA24385_test_CHM1_CHM13/manta_targeted/diploidSV.vcf.gz"
   
     gr[[test_sample]][[deepsv_name]] <-
       load_sv_caller_vcf(vcf_file, confidence_regions_gr, test_sample, deepsv_name)
@@ -242,3 +246,17 @@ for (test_sample in datasets) {
     
     #}
 }
+
+# ggsave(
+#   filename = paste("~/Documents/Processed/two_tier/train_NA24385_test_CHM1_CHM13/manta_targeted/", deepsv_name,".png",sep=""),
+#   width = 10,
+#   height = 7,
+#   units = 'in'
+# )
+# 
+# write.table(
+#   res.df,
+#   file = paste("~/Documents/Processed/two_tier/train_NA24385_test_CHM1_CHM13/manta_targeted/", deepsv_name,".csv",sep=""),
+#   quote = F,
+#   row.names = F
+# )

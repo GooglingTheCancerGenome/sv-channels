@@ -200,3 +200,20 @@ load_callsets <- function(sample)
   return(gr)
          
 }
+
+bedpe_to_bed <- function(breakpointgr, output.bed)
+{
+  require(bedr)
+  bedpe.file <- StructuralVariantAnnotation::breakpointgr2bedpe(breakpointgr)
+  bp1_bed <- bedpe.file[,c(1:3)]
+  names(bp1_bed) <- c('chr', 'start', 'end')
+  bp2_bed <- bedpe.file[,c(4:6)]
+  names(bp2_bed) <- c('chr', 'start', 'end')
+  bed_df <- rbind(bp1_bed, bp2_bed)
+  bed_df$chr <- as.character(bed_df$chr)
+  bed_df$start <- as.integer(bed_df$start)
+  bed_df$end <- as.integer(bed_df$end)
+  bed_df <- bedr.sort.region(bed_df, check.chr = FALSE)
+  write.table(file = output.bed, bed_df, row.names = FALSE, col.names = FALSE, quote = FALSE, sep='\t')
+  
+}
