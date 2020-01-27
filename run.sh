@@ -86,7 +86,7 @@ for s in ${SEQ_IDS[@]}; do
   JOBS+=($JOB_ID)
 
   p=label_window_pairs_on_svcallset && JOB="python $p.py -b $BAM -c $s -w 200 \
-    -gt $BEDPE -o $p.json.gz -p . -l $p.log"
+    -gt $BEDPE -sv $BASE_DIR/gridss -o $p.json.gz -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 done
