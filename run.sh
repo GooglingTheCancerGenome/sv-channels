@@ -122,6 +122,6 @@ find -type f -name \*.json.gz | grep "." || exit 1
 find -type f -name \*.npy.gz | grep "." || exit 1
 
 # exit with non-zero if there are failed jobs
-[ $(cat $LOG | jq '.statuses | .[] | select(.done==true and .exitCode!=0)') ] \
+[[ $(jq ".statuses | .[] | select(.done==true and .exitCode!=0)" $LOG) ]] \
   && exit 1 || exit 0
 
