@@ -1,4 +1,4 @@
-# to run: Rscript --vanilla -i vcf2bedpe.R [svcaller].vcf -o [svcaller].bedpe
+# to run: Rscript --vanilla vcf2bedpe.R -i [svcaller].vcf -o [svcaller].bedpe
 # require StructuralVariantAnnotation (Bioconductor) and argparser (CRAN)
 
 suppressPackageStartupMessages(require(StructuralVariantAnnotation))
