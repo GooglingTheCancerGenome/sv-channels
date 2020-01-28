@@ -10,7 +10,7 @@ fi
 
 # set variables
 SCH=$1  # scheduler type
-BAM=$(realpath -s $1)
+BAM=$(realpath -s $2)
 BASE_DIR=$(dirname $BAM)
 SAMPLE=$(basename $BAM .bam)
 SEQ_IDS=${@:3}
