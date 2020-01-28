@@ -26,9 +26,10 @@ awk '{OFS="\t"}{if($5 ~ /DEL|INS/){print $1,$2,$2+1,$1,$4,$4+1,$5}}' \
   $TSV > $BEDPE
 
 # convert sv-callers output in VCF to BEDPE files
-for f in $(find data -mindepth 5 -name \*.vcf); do
-  prefix=$(basename $f .vcf)
-  Rscript --vanilla scripts/R/vcf2bedpe.R $f data/test/$prefix.bedpe
+for vcf in $(find data -mindepth 5 -name \*.vcf); do
+  prefix=$(basename $vcf .vcf)
+  bedpe="data/test/$prefix.bedpe"
+  Rscript --vanilla scripts/R/vcf2bedpe.R -i $vcf -o $bedpe
 done
 
 #source ~/.profile
