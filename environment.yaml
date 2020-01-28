@@ -12,5 +12,6 @@ dependencies:
   - pybigwig
   - twobitreader
   - bcolz
+  - bioconductor-structuralvariantannotation
   - xenon-cli
   - jq

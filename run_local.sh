@@ -20,14 +20,20 @@ BEDPE=${BASE_DIR}/${SAMPLE}.bedpe
 WORK_DIR=scripts/genome_wide
 NUMEXPR_MAX_THREADS=128  # required by py-bcolz
 
+# convert truth set in TSV to BEDPE file
+# N.B.: consider INDELs only
+awk '{OFS="\t"}{if($5 ~ /DEL|INS/){print $1,$2,$2+1,$1,$4,$4+1,$5}}' \
+  $TSV > $BEDPE
+
+# convert sv-callers output in VCF to BEDPE files
+for f in $(find data -mindepth 5 -name \*.vcf); do
+  prefix=$(basename $f .vcf)
+  Rscript --vanilla scripts/R/vcf2bedpe.R $f data/test/$prefix.bedpe
+done
+
 #source ~/.profile
 cd $WORK_DIR
 printenv
-
-# convert the truth set in TSV to BEDPE file
-# N.B.: consider only INS and DEL types
-awk '{OFS="\t"}{if($5 ~ /DEL|INS/){print $1,$2,$2+1,$1,$4,$4+1,$5}}' \
-  $TSV > $BEDPE
 
 # write channels into *.json.gz and *.npy.gz files
 for s in ${SEQ_IDS[@]}; do  # per chromosome
@@ -42,7 +48,7 @@ for s in ${SEQ_IDS[@]}; do  # per chromosome
   p=label_window_pairs_on_split_read_positions && python $p.py -b $BAM -c $s \
     -w 200 -gt $BEDPE -o $p.json.gz -p . -l $p.log
   p=label_window_pairs_on_svcallset && python $p.py -b $BAM -c $s \
-    -w 200 -gt $BEDPE -o $p.json.gz -p . -l $p.log
+    -w 200 -gt $BEDPE -sv $BASE_DIR/gridss -o $p.json.gz -p . -l $p.log
 done
 
 echo -e "\nLog files:"

@@ -1,0 +1,50 @@
+##fileformat=VCFv4.2
+##FILTER=<ID=PASS,Description="All filters passed">
+##fileDate=20200127
+##ALT=<ID=DEL,Description="Deletion">
+##ALT=<ID=DUP,Description="Duplication">
+##ALT=<ID=INV,Description="Inversion">
+##ALT=<ID=BND,Description="Translocation">
+##ALT=<ID=INS,Description="Insertion">
+##FILTER=<ID=LowQual,Description="PE/SR support below 3 or mapping quality below 20.">
+##INFO=<ID=CIEND,Number=2,Type=Integer,Description="PE confidence interval around END">
+##INFO=<ID=CIPOS,Number=2,Type=Integer,Description="PE confidence interval around POS">
+##INFO=<ID=CHR2,Number=1,Type=String,Description="Chromosome for END coordinate in case of a translocation">
+##INFO=<ID=END,Number=1,Type=Integer,Description="End position of the structural variant">
+##INFO=<ID=PE,Number=1,Type=Integer,Description="Paired-end support of the structural variant">
+##INFO=<ID=MAPQ,Number=1,Type=Integer,Description="Median mapping quality of paired-ends">
+##INFO=<ID=SR,Number=1,Type=Integer,Description="Split-read support">
+##INFO=<ID=SRQ,Number=1,Type=Float,Description="Split-read consensus alignment quality">
+##INFO=<ID=CONSENSUS,Number=1,Type=String,Description="Split-read consensus sequence">
+##INFO=<ID=CE,Number=1,Type=Float,Description="Consensus sequence entropy">
+##INFO=<ID=CT,Number=1,Type=String,Description="Paired-end signature induced connection type">
+##INFO=<ID=IMPRECISE,Number=0,Type=Flag,Description="Imprecise structural variation">
+##INFO=<ID=PRECISE,Number=0,Type=Flag,Description="Precise structural variation">
+##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">
+##INFO=<ID=SVMETHOD,Number=1,Type=String,Description="Type of approach used to detect SV">
+##INFO=<ID=INSLEN,Number=1,Type=Integer,Description="Predicted length of the insertion">
+##INFO=<ID=HOMLEN,Number=1,Type=Integer,Description="Predicted microhomology length using a max. edit distance of 2">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=GL,Number=G,Type=Float,Description="Log10-scaled genotype likelihoods for RR,RA,AA genotypes">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=FT,Number=1,Type=String,Description="Per-sample genotype filter">
+##FORMAT=<ID=RC,Number=1,Type=Integer,Description="Raw high-quality read counts for the SV">
+##FORMAT=<ID=RCL,Number=1,Type=Integer,Description="Raw high-quality read counts for the left control region">
+##FORMAT=<ID=RCR,Number=1,Type=Integer,Description="Raw high-quality read counts for the right control region">
+##FORMAT=<ID=CN,Number=1,Type=Integer,Description="Read-depth based copy-number estimate for autosomal sites">
+##FORMAT=<ID=DR,Number=1,Type=Integer,Description="# high-quality reference pairs">
+##FORMAT=<ID=DV,Number=1,Type=Integer,Description="# high-quality variant pairs">
+##FORMAT=<ID=RR,Number=1,Type=Integer,Description="# high-quality reference junction reads">
+##FORMAT=<ID=RV,Number=1,Type=Integer,Description="# high-quality variant junction reads">
+##reference=data/fasta/chr22.fasta
+##contig=<ID=22,length=1000001>
+##bcftools_filterVersion=1.9+htslib-1.9
+##bcftools_filterCommand=filter -O b -o data/bam/4/S4/delly_out/delly-BND.bcf -i 'FILTER == 'PASS'' data/bam/4/S4/delly_out/delly-BND.unfiltered.bcf; Date=Mon Jan 27 21:11:44 2020
+##bcftools_concatVersion=1.9+htslib-1.9
+##bcftools_concatCommand=concat -a -O v -o data/bam/4/S4/delly_out/delly.vcf data/bam/4/S4/delly_out/delly-BND.bcf data/bam/4/S4/delly_out/delly-DEL.bcf data/bam/4/S4/delly_out/delly-DUP.bcf data/bam/4/S4/delly_out/delly-INS.bcf data/bam/4/S4/delly_out/delly-INV.bcf; Date=Mon Jan 27 21:12:04 2020
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	htz-sv
+22	197268	DEL00000000	TATAAAACATGCTGGTAAAATTAAGTACACAGACAAACCTGGGATACTCTAATACTGGAATTGTGATGTGCAATCTACTCGTAACTCTAGCATGAAGCCCAAAAGAGAAATCTCTTA	T	0	PASS	PRECISE;SVTYPE=DEL;SVMETHOD=EMBL.DELLYv0.7.7;CHR2=22;END=197385;PE=0;MAPQ=60;CT=3to5;CIPOS=-4,4;CIEND=-4,4;INSLEN=0;HOMLEN=4;SR=10;SRQ=1;CONSENSUS=GAGAGAATTCACCACCACCAGACCTGTCTTACAAGAAATGCCAAAGGAATTCAATCTGAAAGAAAGAAAACACTAACATTCAGAAAAAAAACAAAAGATAAAACAATAATAGCTACTACAACCTGTTGAGATAGGTAATATAAAAGTATGTAAATTGAGACAATTAAAAGTCAAAATGTGG;CE=1.80001	GT:GL:GQ:FT:RCL:RC:RCR:CN:DR:DV:RR:RV	0/1:-73.257,0,-69.157:10000:PASS:2883:2627:2737:1:0:0:21:22
+22	559111	DEL00000001	GAGGCTGAGGCGGGTGGATCATTTGAGCCCAAGAGTTAGAGACTAGCCTGACCAACATGGCAAAACCCGTCTCTAAAAAAAATAATAATAATACAAAAATTAGCCGGGCACAGTGATGCGTGCCTGTAGTCCCAACTACTGGGGAAGCTGAGGCAGGAAGATGGCTTGAGCCTGGGAGGTGGAGGTTGCAGTGAGCTGAGATCTCGCCACTGTGCACTAGCCTGCGCTCTAGACCCTGTCTC	G	.	PASS	PRECISE;SVTYPE=DEL;SVMETHOD=EMBL.DELLYv0.7.7;CHR2=22;END=559353;PE=0;MAPQ=60;CT=3to5;CIPOS=-2,2;CIEND=-2,2;INSLEN=0;HOMLEN=1;SR=10;SRQ=1;CONSENSUS=CATCCTTTCTGGGCCTCAGTTTCCCTGTCTGTGAAATGGGGTCACTGTGGGCCAGGCGCAGCGGCTCACGCCTGTAATTCCAGCACTTTGGGAAAAAACGTAAATAAATAAATAAACAAAGAAATAATAAATAAAATGGGGCCCCTGTGACTTCTCATCAGGTGGCTGGCATCTGGGGCA;CE=1.9951	GT:GL:GQ:FT:RCL:RC:RCR:CN:DR:DV:RR:RV	0/1:-77.1568,0,-65.5571:10000:PASS:7303:6902:4394:1:0:0:20:23
+22	636172	DEL00000002	TTTTAGAATAATTTTGTCTGTCTTCAAAAAATCTTCCTGGGATTTTGGCAGGAATTGGAGATAATTGACATCAATCTGATTTGGGGAGAA	T	.	PASS	PRECISE;SVTYPE=DEL;SVMETHOD=EMBL.DELLYv0.7.7;CHR2=22;END=636262;PE=0;MAPQ=60;CT=3to5;CIPOS=-4,4;CIEND=-4,4;INSLEN=0;HOMLEN=5;SR=10;SRQ=1;CONSENSUS=GTAGTAAAATTAGGTTGAGTGATTACTCCCATTTCTCCCACTTTATTCTGTTTCAAAATTATCTTAAGCTATTCTTGTCCTTTGCTTTTCTGTATAAATTTGACGTCTTTACTTTGTTGAGTATTTCAGTCTATGAATATGTCACATCTCTTCATTTATTTAGATTTCCTTTGATTTCCTTCAGCAGTGCTTTCTC;CE=1.82139	GT:GL:GQ:FT:RCL:RC:RCR:CN:DR:DV:RR:RV	0/1:-57.0562,0,-89.2558:10000:PASS:1405:3061:2801:1:0:0:26:18
+22	697933	DEL00000003	AAAGTACAGTGGCCCACACCACCCAGGCGTTGTAATCCCAGCACTTTGGGAGGCCGAGGCTGGCGGATCACCTGAGGTCAGGAGTTCGAGACCAGCCTGACCAACCTGGACAAACGCTGTCTCTACGAAAAATACAAAATTAGCCGGGCATGGTGGTGCATGTCTGTAGTCCCAGCTACTTGGG	A	.	PASS	PRECISE;SVTYPE=DEL;SVMETHOD=EMBL.DELLYv0.7.7;CHR2=22;END=698117;PE=0;MAPQ=60;CT=3to5;CIPOS=-3,3;CIEND=-3,3;INSLEN=0;HOMLEN=2;SR=10;SRQ=1;CONSENSUS=TTGGGAAGATGAAAAAGTTCTGGAGGTGCATGGTGGGGAGGGTCGCACAACACTGAATTTACTCAATGCCACTGACTGTCCACTTAAAAAGGGTTAAGGCCAAGGCGGGAGAACAGCTTGAACCTGGGAGGTGGAGGCTGCAGTGAGCTGAGATCACGCCATTGCACTCCAGCCTGGGCGACAGAGC;CE=1.96342	GT:GL:GQ:FT:RCL:RC:RCR:CN:DR:DV:RR:RV	0/1:-104.142,0,-86.3421:10000:PASS:6428:5980:5366:1:0:0:27:31
+22	802223	DEL00000004	A	<DEL>	.	PASS	PRECISE;SVTYPE=DEL;SVMETHOD=EMBL.DELLYv0.7.7;CHR2=22;END=802591;PE=41;MAPQ=60;CT=3to5;CIPOS=-6,6;CIEND=-6,6;INSLEN=0;HOMLEN=5;SR=10;SRQ=1;CONSENSUS=TGCTTCCTGCGCAGGATTCATTTCCTTAAATGTCCTCTCTCTGTCCAGGGTCTTGAATTCTTGGGAGACAAGGACGTATTTACTGTGGACCCTCCGCAACGTCCAGGCCCAGGGAGGGAGGGCAGCTTGCCCAGCAAGTGGCAGCAGGGCTAGCCAGGCTAAACAATGAACGGC;CE=1.99001	GT:GL:GQ:FT:RCL:RC:RCR:CN:DR:DV:RR:RV	0/1:-66.8611,0,-62.2609:10000:PASS:10530:9979:9359:1:38:38:19:20
