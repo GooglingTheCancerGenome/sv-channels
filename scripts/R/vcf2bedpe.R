@@ -1,23 +1,34 @@
-# to run: Rscript --vanilla vcf2bedpe.R -i [svcaller].vcf -o [svcaller].bedpe
-# require StructuralVariantAnnotation (Bioconductor) and argparser (CRAN)
+#!/usr/bin/env Rscript
 
 suppressPackageStartupMessages(require(StructuralVariantAnnotation))
 library(tools)
 library(argparser, quietly=TRUE)
 
-# Create a parser
-p <- arg_parser("Convert GRIDSS/manta/LUMPY/DELLY VCF output to BEDPE")
+script.name<-basename(sub(".*=", "", commandArgs()[4])) # script name
 
-# Add command line arguments
-p <- add_argument(p, "-i", help="VCF input file", type="character")
-p <- add_argument(p, "-o", help="BEDPE output file", type="character")
-p <- add_argument(p, "-p", help="SVTYPE=INS if insertion length greater or equal to SV_length * p", type="numeric", default=0.7)
-p <- add_argument(p, "-l", help="minimum SV length to consider", type="int", default=50)
+# create a parser and add command-line arguments
+p <- arg_parser("Convert VCF output of Manta, DELLY, LUMPY or GRIDSS to BEDPE format.")
+p <- add_argument(p, "-i", help="Input in VCF", type="character")
+p <- add_argument(p, "-o", help="Output in BEDPE", type="character")
+p <- add_argument(p, "-p", help="SVTYPE=INS if insertion length >= SV length * p",
+  type="numeric", default=0.7)
+p <- add_argument(p, "-l", help="Minimum SV length to consider", type="int",
+  default=50)
 
-# Parse the command line arguments
+# parse the command line arguments
 argv <- parse_args(p)
+if (is.na(argv$i))
+{
+    print(p)
+    q(status=1)
+}
 
-#SV type assignment based on
+if (is.na(argv$o))
+{
+  argv$o = paste(file_path_sans_ext(argv$i), "bedpe", sep='.')
+}
+
+# SV types assigned according to
 # https://github.com/PapenfussLab/gridss/blob/7b1fedfed32af9e03ed5c6863d368a821a4c699f/example/simple-event-annotation.R#L9
 apply_svtype <- function(gr, p_inslen)
 {
@@ -41,16 +52,16 @@ apply_svtype <- function(gr, p_inslen)
   gr
 }
 
-# test if there is at least one argument: if not, return an error
-if (length(argv)==0) {
-  stop("At least one argument must be supplied (input file).n", call.=FALSE)
-} else if (! "p" %in% names(argv)) {
-  # default output file
-  argv$o = paste(file_path_sans_ext(argv$i), "bedpe", sep='.')
-}
+# t est if there is at least one argument: if not, return an error
+#if (length(args) <= 1) {
+#  print_usage()
+#if (! "o" %in% names(argv))
+#{
+#  # default output file
+#  argv$o = paste(file_path_sans_ext(argv$i), "bedpe", sep='.')
+#}
 
-sv_callset_vcf <-
-  VariantAnnotation::readVcf(argv$i)
+sv_callset_vcf <- VariantAnnotation::readVcf(argv$i)
 
 # Not including breakends (unpaired breakpoints)
 # bpgr <- breakpointRanges(sv_callset_vcf)
@@ -61,12 +72,12 @@ sv_callset_vcf <-
 gr <- breakpointRanges(sv_callset_vcf)
 
 gr <- apply_svtype(gr, p_inslen=argv$p)
-# Select SVs >= 50 bp. svLen==NA for svtype=='BP'
+# select SVs >= 50 bp. svLen==NA for svtype=='BP'
 gr <- gr[abs(gr$svLen) >= argv$l | gr$svtype == 'BP']
 
 bedpe <- breakpointgr2bedpe(gr)
 
-# create vector with mapping sourceId -> svtype
+# create a vector with mappings: sourceId -> svtype
 svtype_vec <- gr$svtype
 names(svtype_vec) <- names(gr)
 
@@ -74,12 +85,12 @@ names(svtype_vec) <- names(gr)
 bedpe_keys <- as.vector(bedpe[,7])
 bedpe_svtype <- cbind(bedpe[,1:6], svtype_vec[bedpe_keys])
 
-#check that all SVs with svtype==BP have breakpoints on different chromosomes
+# check that all SVs with svtype==BP have breakpoints on different chromosomes
 if(any(bedpe_svtype[,1]==bedpe_svtype[,4]&bedpe_svtype[,7]=='BP'))
 {
   stop("Some SVs with svtype BP contain breakpoints that are both on the same chromosomes")
 }
 
-# write output
-write.table(file=argv$o, bedpe_svtype, quote=FALSE, 
-            row.names = FALSE, col.names = FALSE, sep='\t')
+# write output in BEDPE
+write.table(file=argv$o, bedpe_svtype, quote=FALSE, row.names=FALSE,
+            col.names=FALSE, sep='\t')
