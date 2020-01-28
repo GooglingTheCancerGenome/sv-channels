@@ -29,7 +29,7 @@ awk '{OFS="\t"}{if($5 ~ /DEL|INS/){print $1,$2,$2+1,$1,$4,$4+1,$5}}' \
 for vcf in $(find data -mindepth 5 -name \*.vcf); do
   prefix=$(basename $vcf .vcf)
   bedpe="data/test/$prefix.bedpe"
-  Rscript --vanilla scripts/R/vcf2bedpe.R -i $vcf -o $bedpe
+  scripts/R/vcf2bedpe.R -i $vcf -o $bedpe
 done
 
 #source ~/.profile
