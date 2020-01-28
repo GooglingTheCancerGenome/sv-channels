@@ -75,7 +75,7 @@ def read_bedpe(inbedpe):
             columns = line.rstrip().split("\t")
             chrom1, pos1_start, pos1_end = str(columns[0]), int(columns[1]), int(columns[2])
             chrom2, pos2_start, pos2_end = str(columns[3]), int(columns[4]), int(columns[5])
-            svtype = columns[10]
+            svtype = columns[-1]
 
             if svtype == "TYPE:DELETION":
                 svtype = "DEL"
@@ -105,7 +105,7 @@ def filter_bedpe(inbedpe, sv_id_list, outDir):
             columns = line.rstrip().split("\t")
             chrom1, pos1_start, pos1_end = str(columns[0]), int(columns[1]), int(columns[2])
             chrom2, pos2_start, pos2_end = str(columns[3]), int(columns[4]), int(columns[5])
-            svtype = columns[10]
+            svtype = columns[-1]
             svtype = "DEL" if svtype == "TYPE:DELETION" else svtype
 
             sv_id = '_'.join((svtype, chrom1, str(pos1_start), chrom2, str(pos2_start)))
@@ -134,7 +134,7 @@ def read_survivor_simsv_output(insur):
             columns = line.rstrip().split("\t")
             chrom1, pos1_start, pos1_end = str(columns[0]), int(columns[1]) - 1, int(columns[1])
             chrom2, pos2_start, pos2_end = str(columns[2]), int(columns[3]) - 1, int(columns[3])
-            svtype = columns[4]
+            svtype = columns[-1]
 
             if svtype == "DEL":
                 sv_list.append((
@@ -160,7 +160,7 @@ def filter_survivor_output(insur, sv_id_list, outDir):
             columns = line.rstrip().split("\t")
             chrom1, pos1_start, pos1_end = str(columns[0]), int(columns[1]) - 1, int(columns[1])
             chrom2, pos2_start, pos2_end = str(columns[2]), int(columns[3]) - 1, int(columns[3])
-            svtype = columns[4]
+            svtype = columns[-1]
 
             sv_id = '_'.join((svtype, chrom1, str(pos1_start), chrom2, str(pos2_start)))
 
