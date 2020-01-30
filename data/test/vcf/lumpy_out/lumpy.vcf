@@ -1,0 +1,52 @@
+##fileformat=VCFv4.2
+##FILTER=<ID=PASS,Description="All filters passed">
+##source=LUMPY
+##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">
+##INFO=<ID=SVLEN,Number=.,Type=Integer,Description="Difference in length between REF and ALT alleles">
+##INFO=<ID=END,Number=1,Type=Integer,Description="End position of the variant described in this record">
+##INFO=<ID=STRANDS,Number=.,Type=String,Description="Strand orientation of the adjacency in BEDPE format (DEL:+-, DUP:-+, INV:++/--)">
+##INFO=<ID=IMPRECISE,Number=0,Type=Flag,Description="Imprecise structural variation">
+##INFO=<ID=CIPOS,Number=2,Type=Integer,Description="Confidence interval around POS for imprecise variants">
+##INFO=<ID=CIEND,Number=2,Type=Integer,Description="Confidence interval around END for imprecise variants">
+##INFO=<ID=CIPOS95,Number=2,Type=Integer,Description="Confidence interval (95%) around POS for imprecise variants">
+##INFO=<ID=CIEND95,Number=2,Type=Integer,Description="Confidence interval (95%) around END for imprecise variants">
+##INFO=<ID=MATEID,Number=.,Type=String,Description="ID of mate breakends">
+##INFO=<ID=EVENT,Number=1,Type=String,Description="ID of event associated to breakend">
+##INFO=<ID=SECONDARY,Number=0,Type=Flag,Description="Secondary breakend in a multi-line variants">
+##INFO=<ID=SU,Number=.,Type=Integer,Description="Number of pieces of evidence supporting the variant across all samples">
+##INFO=<ID=PE,Number=.,Type=Integer,Description="Number of paired-end reads supporting the variant across all samples">
+##INFO=<ID=SR,Number=.,Type=Integer,Description="Number of split reads supporting the variant across all samples">
+##INFO=<ID=BD,Number=.,Type=Integer,Description="Amount of BED evidence supporting the variant across all samples">
+##INFO=<ID=EV,Number=.,Type=String,Description="Type of LUMPY evidence contributing to the variant call">
+##INFO=<ID=PRPOS,Number=.,Type=String,Description="LUMPY probability curve of the POS breakend">
+##INFO=<ID=PREND,Number=.,Type=String,Description="LUMPY probability curve of the END breakend">
+##ALT=<ID=DEL,Description="Deletion">
+##ALT=<ID=DUP,Description="Duplication">
+##ALT=<ID=INV,Description="Inversion">
+##ALT=<ID=DUP:TANDEM,Description="Tandem duplication">
+##ALT=<ID=INS,Description="Insertion of novel sequence">
+##ALT=<ID=CNV,Description="Copy number variable region">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=SU,Number=1,Type=Integer,Description="Number of pieces of evidence supporting the variant">
+##FORMAT=<ID=PE,Number=1,Type=Integer,Description="Number of paired-end reads supporting the variant">
+##FORMAT=<ID=SR,Number=1,Type=Integer,Description="Number of split reads supporting the variant">
+##FORMAT=<ID=BD,Number=1,Type=Integer,Description="Amount of BED evidence supporting the variant">
+##bcftools_filterVersion=1.9+htslib-1.9
+##bcftools_filterCommand=filter -O v -o data/bam/4/S4/lumpy_out/lumpy.vcf -i 'FILTER == '.'' data/bam/4/S4/lumpy_out/lumpy.unfiltered.vcf; Date=Mon Jan 27 21:11:52 2020
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	htz-sv
+22	195180	1	N	<DEL>	.	PASS	SVTYPE=DEL;STRANDS=+-:4;SVLEN=-164;END=195344;CIPOS=-10,170;CIEND=-163,17;CIPOS95=0,164;CIEND95=-156,8;IMPRECISE;SU=4;PE=4;SR=0	GT:SU:PE:SR	./.:4:4:0
+22	195518	2	N	<DEL>	.	PASS	SVTYPE=DEL;STRANDS=+-:7;SVLEN=-125;END=195643;CIPOS=-10,126;CIEND=-124,12;CIPOS95=0,122;CIEND95=-119,3;IMPRECISE;SU=7;PE=7;SR=0	GT:SU:PE:SR	./.:7:7:0
+22	197269	3	N	<DEL>	.	PASS	SVTYPE=DEL;STRANDS=+-:28;SVLEN=-115;END=197384;CIPOS=-2,1;CIEND=-2,1;CIPOS95=0,0;CIEND95=0,0;SU=28;PE=12;SR=16	GT:SU:PE:SR	./.:28:12:16
+22	552519	4	N	<DEL>	.	PASS	SVTYPE=DEL;STRANDS=+-:7;SVLEN=-149;END=552668;CIPOS=-10,147;CIEND=-148,9;CIPOS95=0,142;CIEND95=-142,0;IMPRECISE;SU=7;PE=7;SR=0	GT:SU:PE:SR	./.:7:7:0
+22	552837	5	N	<DEL>	.	PASS	SVTYPE=DEL;STRANDS=+-:7;SVLEN=-133;END=552970;CIPOS=-10,138;CIEND=-132,16;CIPOS95=0,133;CIEND95=-126,7;IMPRECISE;SU=7;PE=7;SR=0	GT:SU:PE:SR	./.:7:7:0
+22	559112	6	N	<DEL>	.	PASS	SVTYPE=DEL;STRANDS=+-:47;SVLEN=-240;END=559352;CIPOS=-10,9;CIEND=-10,9;CIPOS95=0,0;CIEND95=0,0;SU=47;PE=31;SR=16	GT:SU:PE:SR	./.:47:31:16
+22	636174	7	N	<DEL>	.	PASS	SVTYPE=DEL;STRANDS=+-:54;SVLEN=-87;END=636261;CIPOS=-2,1;CIEND=-2,0;CIPOS95=0,0;CIEND95=0,0;SU=54;PE=37;SR=17	GT:SU:PE:SR	./.:54:37:17
+22	697934	8	N	<DEL>	.	PASS	SVTYPE=DEL;STRANDS=+-:23;SVLEN=-182;END=698116;CIPOS=-10,9;CIEND=-10,9;CIPOS95=0,0;CIEND95=0,0;SU=23;PE=1;SR=22	GT:SU:PE:SR	./.:23:1:22
+22	802229	9	N	<DEL>	.	PASS	SVTYPE=DEL;STRANDS=+-:57;SVLEN=-361;END=802590;CIPOS=-10,3;CIEND=-2,0;CIPOS95=0,0;CIEND95=0,0;SU=57;PE=41;SR=16	GT:SU:PE:SR	./.:57:41:16
+22	865530	10	N	<DEL>	.	PASS	SVTYPE=DEL;STRANDS=+-:5;SVLEN=-1;END=865531;CIPOS=-10,12;CIEND=0,22;CIPOS95=-10,12;CIEND95=0,13;IMPRECISE;SU=5;PE=5;SR=0	GT:SU:PE:SR	./.:5:5:0
+22	865617	11	N	<DEL>	.	PASS	SVTYPE=DEL;STRANDS=+-:17;SVLEN=-3;END=865620;CIPOS=-8,0;CIEND=0,8;CIPOS95=-8,0;CIEND95=0,1;IMPRECISE;SU=17;PE=17;SR=0	GT:SU:PE:SR	./.:17:17:0
+22	869592	12	N	<DEL>	.	PASS	SVTYPE=DEL;STRANDS=+-:4;SVLEN=-111;END=869703;CIPOS=-10,124;CIEND=-110,24;CIPOS95=0,120;CIEND95=-105,15;IMPRECISE;SU=4;PE=4;SR=0	GT:SU:PE:SR	./.:4:4:0
+22	869825	13	N	<DEL>	.	PASS	SVTYPE=DEL;STRANDS=+-:16;SVLEN=-3;END=869828;CIPOS=-1,0;CIEND=0,1;CIPOS95=0,1;CIEND95=0,0;IMPRECISE;SU=16;PE=16;SR=0	GT:SU:PE:SR	./.:16:16:0
+22	869906	14	N	<DEL>	.	PASS	SVTYPE=DEL;STRANDS=+-:4;SVLEN=-152;END=870058;CIPOS=-10,150;CIEND=-151,9;CIPOS95=0,145;CIEND95=-144,0;IMPRECISE;SU=4;PE=4;SR=0	GT:SU:PE:SR	./.:4:4:0
+22	941034	15	N	<DEL>	.	PASS	SVTYPE=DEL;STRANDS=+-:23;SVLEN=-3;END=941037;CIPOS=-10,2;CIEND=-2,10;CIPOS95=-10,2;CIEND95=-2,1;IMPRECISE;SU=23;PE=23;SR=0	GT:SU:PE:SR	./.:23:23:0
+22	941129	16	N	<DEL>	.	PASS	SVTYPE=DEL;STRANDS=+-:14;SVLEN=-1;END=941130;CIPOS=-10,3;CIEND=0,13;CIPOS95=-10,3;CIEND95=0,5;IMPRECISE;SU=14;PE=14;SR=0	GT:SU:PE:SR	./.:14:14:0

@@ -75,7 +75,7 @@ def read_bedpe(inbedpe):
             columns = line.rstrip().split("\t")
             chrom1, pos1_start, pos1_end = str(columns[0]), int(columns[1]), int(columns[2])
             chrom2, pos2_start, pos2_end = str(columns[3]), int(columns[4]), int(columns[5])
-            svtype = columns[10]
+            svtype = columns[-1]
 
             if svtype == "TYPE:DELETION":
                 svtype = "DEL"
@@ -105,7 +105,7 @@ def filter_bedpe(inbedpe, sv_id_list, outDir):
             columns = line.rstrip().split("\t")
             chrom1, pos1_start, pos1_end = str(columns[0]), int(columns[1]), int(columns[2])
             chrom2, pos2_start, pos2_end = str(columns[3]), int(columns[4]), int(columns[5])
-            svtype = columns[10]
+            svtype = columns[-1]
             svtype = "DEL" if svtype == "TYPE:DELETION" else svtype
 
             sv_id = '_'.join((svtype, chrom1, str(pos1_start), chrom2, str(pos2_start)))
@@ -352,8 +352,8 @@ def overlap(sv_list, cpos_list, win_hlen, ground_truth, outDir):
 
 
 # Get labels
-def get_labels(ibam, sampleName, win_len, ground_truth, channelDataDir, outFile, outDir):
-    logging.info('running {}'.format(sampleName))
+def get_labels(ibam, chrName, win_len, ground_truth, channelDataDir, outFile, outDir):
+    logging.info('running {}'.format(chrName))
 
     def make_gtrees_from_truth_set(truth_set, file_ext):
 
@@ -434,7 +434,7 @@ def get_labels(ibam, sampleName, win_len, ground_truth, channelDataDir, outFile,
     chr_dict = get_chr_len_dict(ibam)
     chrlist = get_chr_list()
 
-    cpos_list = load_all_clipped_read_positions(sampleName, win_hlen, chr_dict, channelDataDir)
+    cpos_list = load_all_clipped_read_positions(win_hlen, chr_dict, channelDataDir)
 
     # Keep only positions that can be used to create windows
     chr_len_dict = get_chr_len_dict(ibam)
@@ -476,10 +476,12 @@ def main():
     parser.add_argument('-b', '--bam', type=str,
                         default=inputBAM,
                         help="Specify input file (BAM)")
+    parser.add_argument('-c', '--chr', type=str, default='17',
+                        help="Specify chromosome")
     parser.add_argument('-l', '--logfile', type=str, default='labels.log',
                         help="Specify log file")
-    parser.add_argument('-s', '--sample', type=str, default='NA24385',
-                        help="Specify sample")
+    # parser.add_argument('-s', '--sample', type=str, default='NA24385',
+    #                     help="Specify sample")
     parser.add_argument('-w', '--window', type=str, default=200,
                         help="Specify window size")
     parser.add_argument('-gt', '--ground_truth', type=str,
@@ -507,8 +509,7 @@ def main():
     args = parser.parse_args()
 
     # Log file
-    cmd_name = 'labels_win' + str(args.window)
-    output_dir = os.path.join(args.outputpath, args.sample, cmd_name)
+    output_dir = os.path.join(args.outputpath, 'labels', 'win' + str(args.window))
     create_dir(output_dir)
     logfilename = os.path.join(output_dir, args.logfile)
     output_file = os.path.join(output_dir, args.out)
@@ -523,13 +524,13 @@ def main():
     t0 = time()
 
     get_labels(ibam=args.bam,
-               sampleName=args.sample,
+               chrName=args.chr,
                win_len=args.window,
                ground_truth=args.ground_truth,
                channelDataDir=args.outputpath,
                outFile=output_file,
                outDir=output_dir,
-               )
+    )
 
     logging.info('Elapsed time making labels = %f' % (time() - t0))
 

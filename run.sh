@@ -8,14 +8,15 @@ if [ $# -lt "3" ]; then
   exit 1
 fi
 
-# set [env] variables
+# set variables
 SCH=$1  # scheduler type
-BAM=$(realpath $2)
-SEQ_IDS=${@:3}
+BAM=$(realpath -s $2)
 BASE_DIR=$(dirname $BAM)
 SAMPLE=$(basename $BAM .bam)
+SEQ_IDS=${@:3}
 TWOBIT=${BASE_DIR}/${SAMPLE}.2bit
 BIGWIG=${BASE_DIR}/${SAMPLE}.bw
+BEDPE=${BASE_DIR}/${SAMPLE}.bedpe
 WORK_DIR=scripts/genome_wide
 RTIME=10  # runtime in minutes
 STIME=1   # sleep X minutes
@@ -41,33 +42,27 @@ xenon --version
 
 # submit jobs to output "channel" files (*.json.gz and *.npy.gz)
 for s in ${SEQ_IDS[@]}; do  # per chromosome
-  p=clipped_read_distance && JOB="python $p.py --bam $BAM --chr $s --out $p.json.gz \
-    --outputpath . --logfile $p.log"
+  p=clipped_read_distance && JOB="python $p.py -b $BAM -c $s -o $p.json.gz -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 
-  p=clipped_reads && JOB="python $p.py --bam $BAM --chr $s --out $p.json.gz \
-    --outputpath . --logfile $p.log"
-  JOB_ID=$(submit "$JOB")
-  JOBS+=($JOB_ID)
-    
-  p=split_reads && JOB="python $p.py --bam $BAM --chr $s --out $p.json.gz \
-    --outputpath . --logfile $p.log"
+  p=clipped_reads && JOB="python $p.py -b $BAM -c $s -o $p.json.gz -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 
-  p=clipped_read_pos && JOB="python $p.py --bam $BAM --chr $s --out $p.json.gz \
-    --outputpath . --logfile $p.log"
+  p=clipped_read_pos && JOB="python $p.py -b $BAM -c $s -o $p.json.gz -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 
-  p=snv && JOB="python $p.py --bam $BAM --chr $s --twobit $TWOBIT --out $p.npy \
-   --outputpath . --logfile $p.log"
+  p=split_reads && JOB="python $p.py -b $BAM -c $s -o $p.json.gz -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 
-  p=coverage && JOB="python $p.py --bam $BAM --chr $s --out $p.npy \
-    --outputpath . --logfile $p.log"
+  p=snv && JOB="python $p.py -b $BAM -c $s -t $TWOBIT -o $p.npy -p . -l $p.log"
+  JOB_ID=$(submit "$JOB")
+  JOBS+=($JOB_ID)
+
+  p=coverage && JOB="python $p.py -b $BAM -c $s -o $p.npy -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 done
@@ -81,8 +76,18 @@ done
 
 # generate chromosome arrays from the channels above
 for s in ${SEQ_IDS[@]}; do
-  p=chr_array && JOB="python $p.py --bam $BAM --chr $s --twobit $TWOBIT \
-    --map $BIGWIG --out $p.npy --outputpath . --logfile $p.log"
+  p=chr_array && JOB="python $p.py -b $BAM -c $s -t $TWOBIT -m $BIGWIG \
+    -o $p.npy -p . -l $p.log"
+  JOB_ID=$(submit "$JOB")
+  JOBS+=($JOB_ID)
+
+  p=label_window_pairs_on_split_read_positions && JOB="python $p.py -b $BAM \
+    -c $s -w 200 -gt $BEDPE -o $p.json.gz -p . -l $p.log"
+  JOB_ID=$(submit "$JOB")
+  JOBS+=($JOB_ID)
+
+  p=label_window_pairs_on_svcallset && JOB="python $p.py -b $BAM -c $s -w 200 \
+    -gt $BEDPE -sv $BASE_DIR/gridss -o $p.json.gz -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 done
@@ -117,6 +122,6 @@ find -type f -name \*.json.gz | grep "." || exit 1
 find -type f -name \*.npy.gz | grep "." || exit 1
 
 # exit with non-zero if there are failed jobs
-[ $(cat $LOG | jq '.statuses | .[] | select(.done==true and .exitCode!=0)') ] \
+[[ $(jq ".statuses | .[] | select(.done==true and .exitCode!=0)" $LOG) ]] \
   && exit 1 || exit 0
 

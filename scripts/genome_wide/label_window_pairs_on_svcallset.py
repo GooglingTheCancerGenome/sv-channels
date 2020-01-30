@@ -75,7 +75,7 @@ def read_bedpe(inbedpe):
             columns = line.rstrip().split("\t")
             chrom1, pos1_start, pos1_end = str(columns[0]), int(columns[1]), int(columns[2])
             chrom2, pos2_start, pos2_end = str(columns[3]), int(columns[4]), int(columns[5])
-            svtype = columns[10]
+            svtype = columns[-1]
 
             if svtype == "TYPE:DELETION":
                 svtype = "DEL"
@@ -105,7 +105,7 @@ def filter_bedpe(inbedpe, sv_id_list, outDir):
             columns = line.rstrip().split("\t")
             chrom1, pos1_start, pos1_end = str(columns[0]), int(columns[1]), int(columns[2])
             chrom2, pos2_start, pos2_end = str(columns[3]), int(columns[4]), int(columns[5])
-            svtype = columns[10]
+            svtype = columns[-1]
             svtype = "DEL" if svtype == "TYPE:DELETION" else svtype
 
             sv_id = '_'.join((svtype, chrom1, str(pos1_start), chrom2, str(pos2_start)))
@@ -134,7 +134,7 @@ def read_survivor_simsv_output(insur):
             columns = line.rstrip().split("\t")
             chrom1, pos1_start, pos1_end = str(columns[0]), int(columns[1]) - 1, int(columns[1])
             chrom2, pos2_start, pos2_end = str(columns[2]), int(columns[3]) - 1, int(columns[3])
-            svtype = columns[4]
+            svtype = columns[-1]
 
             if svtype == "DEL":
                 sv_list.append((
@@ -160,7 +160,7 @@ def filter_survivor_output(insur, sv_id_list, outDir):
             columns = line.rstrip().split("\t")
             chrom1, pos1_start, pos1_end = str(columns[0]), int(columns[1]) - 1, int(columns[1])
             chrom2, pos2_start, pos2_end = str(columns[2]), int(columns[3]) - 1, int(columns[3])
-            svtype = columns[4]
+            svtype = columns[-1]
 
             sv_id = '_'.join((svtype, chrom1, str(pos1_start), chrom2, str(pos2_start)))
 
@@ -375,10 +375,10 @@ def overlap(sv_list, cpos_list, win_hlen, ground_truth, outDir):
 
 
 # Get labels
-def get_labels(ibam, sampleName, win_len, ground_truth, sv_caller,
+def get_labels(ibam, chrName, win_len, ground_truth, sv_caller,
                channelDataDir, outFile, outDir):
 
-    logging.info('running {}'.format(sampleName))
+    logging.info('running {}'.format(chrName))
 
     def make_gtrees_from_truth_set(truth_set, file_ext):
 
@@ -463,16 +463,16 @@ def get_labels(ibam, sampleName, win_len, ground_truth, sv_caller,
 
     if sv_caller == 'manta_gridss':
 
-        sv_caller_file = os.path.join(channelDataDir, sampleName, 'manta' + '.bedpe')
+        sv_caller_file = os.path.join(channelDataDir, 'manta' + '.bedpe')
         cpos_list_manta = read_svcaller_bedpe(sv_caller_file)
 
-        sv_caller_file = os.path.join(channelDataDir, sampleName, 'gridss' + '.bedpe')
+        sv_caller_file = os.path.join(channelDataDir, 'gridss' + '.bedpe')
         cpos_list_gridss = read_svcaller_bedpe(sv_caller_file)
 
         cpos_list = cpos_list_manta + cpos_list_gridss
 
     else:
-        sv_caller_file = os.path.join(channelDataDir, sampleName, sv_caller + '.bedpe')
+        sv_caller_file = os.path.join(channelDataDir, sv_caller + '.bedpe')
         cpos_list = read_svcaller_bedpe(sv_caller_file)
 
     # Keep only positions that can be used to create windows
@@ -517,8 +517,8 @@ def main():
                         help="Specify input file (BAM)")
     parser.add_argument('-l', '--logfile', type=str, default='labels.log',
                         help="Specify log file")
-    parser.add_argument('-s', '--sample', type=str, default='CHM1_CHM13',
-                        help="Specify sample")
+    parser.add_argument('-c', '--chr', type=str, default='17',
+                        help="Specify chromosome")
     parser.add_argument('-w', '--window', type=str, default=200,
                         help="Specify window size")
     parser.add_argument('-sv', '--sv_caller', type=str,
@@ -550,8 +550,7 @@ def main():
     args = parser.parse_args()
 
     # Log file
-    cmd_name = 'labels_win' + str(args.window) + '_' + args.sv_caller
-    output_dir = os.path.join(args.outputpath, args.sample, cmd_name)
+    output_dir = os.path.join(args.outputpath, 'labels', 'win' + str(args.window))
     create_dir(output_dir)
     logfilename = os.path.join(output_dir, args.logfile)
     output_file = os.path.join(output_dir, args.out)
@@ -566,14 +565,14 @@ def main():
     t0 = time()
 
     get_labels(ibam=args.bam,
-               sampleName=args.sample,
+               chrName=args.chr,
                win_len=args.window,
                ground_truth=args.ground_truth,
                sv_caller=args.sv_caller,
                channelDataDir=args.outputpath,
                outFile=output_file,
-               outDir=output_dir,
-               )
+               outDir=output_dir
+    )
 
     logging.info('Elapsed time making labels = %f' % (time() - t0))
 

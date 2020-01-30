@@ -12,5 +12,7 @@ dependencies:
   - pybigwig
   - twobitreader
   - bcolz
+  - r-argparser
+  - bioconductor-structuralvariantannotation
   - xenon-cli
   - jq

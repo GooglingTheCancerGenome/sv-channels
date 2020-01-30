@@ -1,0 +1,56 @@
+##fileformat=VCFv4.1
+##FILTER=<ID=PASS,Description="All filters passed">
+##fileDate=20200127
+##source=GenerateSVCandidates 1.1.0
+##reference=file:///home/akuzniar/GTCG/sv-callers/snakemake/data/fasta/chr22.fasta
+##contig=<ID=22,length=1000001>
+##INFO=<ID=IMPRECISE,Number=0,Type=Flag,Description="Imprecise structural variation">
+##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">
+##INFO=<ID=SVLEN,Number=.,Type=Integer,Description="Difference in length between REF and ALT alleles">
+##INFO=<ID=END,Number=1,Type=Integer,Description="End position of the variant described in this record">
+##INFO=<ID=CIPOS,Number=2,Type=Integer,Description="Confidence interval around POS">
+##INFO=<ID=CIEND,Number=2,Type=Integer,Description="Confidence interval around END">
+##INFO=<ID=CIGAR,Number=A,Type=String,Description="CIGAR alignment for each alternate indel allele">
+##INFO=<ID=MATEID,Number=.,Type=String,Description="ID of mate breakend">
+##INFO=<ID=EVENT,Number=1,Type=String,Description="ID of event associated to breakend">
+##INFO=<ID=HOMLEN,Number=.,Type=Integer,Description="Length of base pair identical homology at event breakpoints">
+##INFO=<ID=HOMSEQ,Number=.,Type=String,Description="Sequence of base pair identical homology at event breakpoints">
+##INFO=<ID=SVINSLEN,Number=.,Type=Integer,Description="Length of insertion">
+##INFO=<ID=SVINSSEQ,Number=.,Type=String,Description="Sequence of insertion">
+##INFO=<ID=LEFT_SVINSSEQ,Number=.,Type=String,Description="Known left side of insertion for an insertion of unknown length">
+##INFO=<ID=RIGHT_SVINSSEQ,Number=.,Type=String,Description="Known right side of insertion for an insertion of unknown length">
+##INFO=<ID=INV3,Number=0,Type=Flag,Description="Inversion breakends open 3' of reported location">
+##INFO=<ID=INV5,Number=0,Type=Flag,Description="Inversion breakends open 5' of reported location">
+##INFO=<ID=BND_DEPTH,Number=1,Type=Integer,Description="Read depth at local translocation breakend">
+##INFO=<ID=MATE_BND_DEPTH,Number=1,Type=Integer,Description="Read depth at remote translocation mate breakend">
+##INFO=<ID=JUNCTION_QUAL,Number=1,Type=Integer,Description="If the SV junction is part of an EVENT (ie. a multi-adjacency variant), this field provides the QUAL value for the adjacency in question only">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=FT,Number=1,Type=String,Description="Sample filter, 'PASS' indicates that all filters have passed for this sample">
+##FORMAT=<ID=GQ,Number=1,Type=Float,Description="Genotype Quality">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+##FORMAT=<ID=PR,Number=.,Type=Integer,Description="Spanning paired-read support for the ref and alt alleles in the order listed">
+##FORMAT=<ID=SR,Number=.,Type=Integer,Description="Split reads for the ref and alt alleles in the order listed, for reads where P(allele|read)>0.999">
+##FILTER=<ID=Ploidy,Description="For DEL & DUP variants, the genotypes of overlapping variants (with similar size) are inconsistent with diploid expectation">
+##FILTER=<ID=MaxDepth,Description="Depth is greater than 3x the median chromosome depth near one or both variant breakends">
+##FILTER=<ID=MaxMQ0Frac,Description="For a small variant (<1000 bases), the fraction of reads in all samples with MAPQ0 around either breakend exceeds 0.4">
+##FILTER=<ID=NoPairSupport,Description="For variants significantly larger than the paired read fragment size, no paired reads support the alternate allele in any sample.">
+##FILTER=<ID=MinQUAL,Description="QUAL score is less than 20">
+##FILTER=<ID=MinGQ,Description="GQ score is less than 15 (filter applied at sample level and record level if all samples are filtered)">
+##ALT=<ID=BND,Description="Translocation Breakend">
+##ALT=<ID=INV,Description="Inversion">
+##ALT=<ID=DEL,Description="Deletion">
+##ALT=<ID=INS,Description="Insertion">
+##ALT=<ID=DUP:TANDEM,Description="Tandem Duplication">
+##cmdline=/home/akuzniar/GTCG/sv-callers/snakemake/.snakemake/conda/a98d7839/bin/configManta.py --runDir data/bam/4/S4/manta_out --reference data/fasta/chr22.fasta --bam data/bam/4/S4.bam
+##bcftools_filterVersion=1.9+htslib-1.9
+##bcftools_filterCommand=filter -O v -o manta.vcf -i 'FILTER == 'PASS'' results/variants/diploidSV.vcf.gz; Date=Mon Jan 27 21:11:47 2020
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	htz-sv
+22	195416	MantaINS:1:0:0:0:10:0	T	<INS>	999	PASS	END=195416;SVTYPE=INS;LEFT_SVINSSEQ=ATAACGAGACGCGCCGCAGTGAGCGGGTGATGTTTAGTTGCCTTGACAAATGACAGAGGGTCCGAATGTGAATTACTCCACCGCGGAGCGCATGGTGCGCTGGGGGACTCCCGAG;RIGHT_SVINSSEQ=GAACTAAATGGTTTTTGAGATCGCTCCCGCGACTGATGATAGGTGCGACCAATGCGTGAGTGGACAACGCAGTGCCTACACGAAACTA	GT:FT:GQ:PL:PR:SR	0/1:PASS:999:999,0,999:23,1:22,34
+22	197268	MantaDEL:2:0:0:1:0:0	TATAAAACATGCTGGTAAAATTAAGTACACAGACAAACCTGGGATACTCTAATACTGGAATTGTGATGTGCAATCTACTCGTAACTCTAGCATGAAGCCCAAAAGAGAAATCTCTTA	T	705	PASS	END=197384;SVTYPE=DEL;SVLEN=-116;CIGAR=1M116D;CIPOS=0,1;HOMLEN=1;HOMSEQ=A	GT:FT:GQ:PL:PR:SR	0/1:PASS:705:755,0,999:33,25:41,21
+22	552749	MantaINS:3:0:0:0:10:0	G	<INS>	999	PASS	END=552749;SVTYPE=INS;LEFT_SVINSSEQ=GCCCCGGCACCGACCTCCACGGTTAACCTAGGCTTTCGACTCTAGATTGTAAGATGACTACCGTACGCTGCTTGTGTGCCGGCAGCGGGCGTGAGGGA;RIGHT_SVINSSEQ=TGTCGCGAAGGCTCGCACTCACGTTTGTTAAGGTAAAGCAATCTAACACACCCTCATTTGTTCCGCGGTTGTGATGAAGCATGCTTGGTCAGCCATGGGCCACTAACAATCAGACCTTTGCACGCCCATTCAAGTAGACGTGGCGATGTGAAGCGAGAACTCCTAAAGACCTTTCGTAATGATCGGCAGCGCGTCGACCAGGACCCTCCTATATAGCCGTGACCAGT	GT:FT:GQ:PL:PR:SR	0/1:PASS:999:999,0,999:25,0:27,37
+22	559111	MantaDEL:0:0:0:1:0:0	GAGGCTGAGGCGGGTGGATCATTTGAGCCCAAGAGTTAGAGACTAGCCTGACCAACATGGCAAAACCCGTCTCTAAAAAAAATAATAATAATACAAAAATTAGCCGGGCACAGTGATGCGTGCCTGTAGTCCCAACTACTGGGGAAGCTGAGGCAGGAAGATGGCTTGAGCCTGGGAGGTGGAGGTTGCAGTGAGCTGAGATCTCGCCACTGTGCACTAGCCTGCGCTCTAGACCCTGTCTC	G	786	PASS	END=559352;SVTYPE=DEL;SVLEN=-241;CIGAR=1M241D;CIPOS=0,1;HOMLEN=1;HOMSEQ=A	GT:FT:GQ:PL:PR:SR	0/1:PASS:786:836,0,999:35,32:39,21
+22	697933	MantaDEL:6:0:0:1:0:0	AAAGTACAGTGGCCCACACCACCCAGGCGTTGTAATCCCAGCACTTTGGGAGGCCGAGGCTGGCGGATCACCTGAGGTCAGGAGTTCGAGACCAGCCTGACCAACCTGGACAAACGCTGTCTCTACGAAAAATACAAAATTAGCCGGGCATGGTGGTGCATGTCTGTAGTCCCAGCTACTTGGG	A	999	PASS	END=698116;SVTYPE=DEL;SVLEN=-183;CIGAR=1M183D;CIPOS=0,1;HOMLEN=1;HOMSEQ=A	GT:FT:GQ:PL:PR:SR	0/1:PASS:999:999,0,999:42,28:52,30
+22	802223	MantaDEL:4:0:0:0:0:0	AATGTGGGAGAATAACCTCTCTCCCTGCAGTGATTTCAACTGGTTGGTATTGAAATACCTTCCTAGCCTAAGGGCACTGGGGATGTGTATTACTTATTTTGCGAATTATCGTGAACTAGAGTATTTGTGAGCCACCTTTAAGCCACCCGGCCTCCCCTTCCAGCTGCCTGCTGTGTGGCTCTCCTGAGCCTCCGTGTCCTGGGGCTCCACAGCCATGAATTATTAAAGAACAGGACAATTATAATTCACATAATGAGATCAGAGGTTCCTAGTTACTAGTTAATTTAGAGCTGGTGCCAGAGGAGCTTGAAGGAGTTCTCAGGGAACAACTCAAGTGCCGGGGAATTGCCTTTGATGGGGTCCTAGGG	A	804	PASS	END=802590;SVTYPE=DEL;SVLEN=-367;CIGAR=1M367D	GT:FT:GQ:PL:PR:SR	0/1:PASS:804:854,0,999:54,33:40,20
+22	865619	MantaINS:7:0:0:0:10:0	A	<INS>	990	PASS	END=865619;SVTYPE=INS;CIPOS=0,1;CIEND=0,1;HOMLEN=1;HOMSEQ=G;LEFT_SVINSSEQ=GATGTCAATCAATCAGCGTGCTACCGCCGGAGGTAGCCGAGGACAATCGTTTGTATCCCATCGGCTAGAGGGAGTAGTCAGCTAATAG;RIGHT_SVINSSEQ=ATAGAACCGCATCAGATCATCGTATCTTGCCGACAACGGTTGTAGCAC	GT:FT:GQ:PL:PR:SR	0/1:PASS:990:999,0,999:28,0:25,31
+22	869827	MantaINS:8:0:0:0:10:0	A	<INS>	834	PASS	END=869827;SVTYPE=INS;CIPOS=0,1;CIEND=0,1;HOMLEN=1;HOMSEQ=C;LEFT_SVINSSEQ=CGCTCTTATAATGCGCCCGCAACCGATCGTTTGAGTTGTGGACACACGCATCAAGGCGTTCGG;RIGHT_SVINSSEQ=AAGTACTCGTTGGGTACGCTCCAGTCTGACTCGCAGGATATGGC	GT:FT:GQ:PL:PR:SR	0/1:PASS:834:884,0,999:26,0:16,28
+22	941066	MantaINS:9:0:0:0:0:0	C	CTCCCCGTTGAAGTTAGGATCCCGGAAGTACGGTTAACTTTAAGTTGCCGAGAGAGGAACACTTAGTCAGATGACCATGCGTAGCAATCAACCAAGGTTGGTGAATGATACCTCTAGTTTTAAAACGGACCGCT	999	PASS	END=941066;SVTYPE=INS;SVLEN=133;CIGAR=1M133I;CIPOS=0,2;HOMLEN=2;HOMSEQ=TC	GT:FT:GQ:PL:PR:SR	0/1:PASS:999:999,0,999:31,19:23,37

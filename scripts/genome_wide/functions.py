@@ -375,13 +375,12 @@ def load_all_clipped_read_positions_by_chr(sampleName, win_hlen, chr_dict, outpu
         return cpos_list
 
 
-def load_all_clipped_read_positions(sampleName, win_hlen, chr_dict, output_dir, clipped_type="SR"):
+def load_all_clipped_read_positions(win_hlen, chr_dict, output_dir, clipped_type="SR"):
 
     config = get_config_file()
     min_CR_support = config["DEFAULT"]["MIN_CR_SUPPORT"]
 
-    cr_pos_file = os.path.join(output_dir, sampleName, 'candidate_positions_' + sampleName + '_' +
-                               clipped_type + '.json.gz')
+    cr_pos_file = os.path.join(output_dir, 'candidate_positions_' + clipped_type + '.json.gz')
 
     if os.path.exists(cr_pos_file):
 
@@ -396,13 +395,13 @@ def load_all_clipped_read_positions(sampleName, win_hlen, chr_dict, output_dir, 
     else:
 
         def get_filepath(vec_type):
-            fn = os.path.join(output_dir, sampleName, vec_type, vec_type + '.json.gz')
+            fn = os.path.join(output_dir, vec_type, vec_type + '.json.gz')
             return fn
 
         logging.info('Loading SR positions')
 
         chrlist = get_chr_list()
-        chr_list = chrlist if sampleName != 'T1' else ['17']
+        chr_list = chrlist # if sampleName != 'T1' else ['17']
 
         with gzip.GzipFile(get_filepath('split_reads'), 'rb') as fin:
             positions_with_min_support_ls, positions_with_min_support_rs, total_reads_coord_min_support, \
