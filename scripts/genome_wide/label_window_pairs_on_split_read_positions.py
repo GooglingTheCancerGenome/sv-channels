@@ -509,8 +509,7 @@ def main():
     args = parser.parse_args()
 
     # Log file
-    cmd_name = 'labels_win' + str(args.window)
-    output_dir = os.path.join(args.outputpath, cmd_name, args.chr)
+    output_dir = os.path.join(args.outputpath, 'labels', 'win' + str(args.window))
     create_dir(output_dir)
     logfilename = os.path.join(output_dir, args.logfile)
     output_file = os.path.join(output_dir, args.out)
