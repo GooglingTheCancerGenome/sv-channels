@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 
 set -xe
+
+MY_ENV=wf
+
+eval "$(conda shell.bash hook)"
 printenv
-conda env update -n $MY_ENV --file scripts/genome_wide/environment.yaml
+conda env create -n $MY_ENV -f scripts/genome_wide/environment.yaml
+conda activate $MY_ENV
 conda list

@@ -1,13 +1,13 @@
-dist: trusty
+dist: xenial
 sudo: required
 language: python
 python:
-  - "3.6"
+  - "3.7"
 services:
   - docker
 env:
   global:
-    - PREFIX=gtcg/sv-callers
+    - PREFIX=gtcg/xenon
     - TAG=dev
     - BAM=data/test/chr22.bam
     - CHR=22
