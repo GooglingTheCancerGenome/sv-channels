@@ -1,4 +1,4 @@
-from mcfly import modelgen, find_architecture
+#from mcfly import modelgen, find_architecture
 import logging
 import numpy as np
 from sklearn.metrics import precision_recall_curve
@@ -31,54 +31,54 @@ def create_dir(directory):
             raise
 
 
-def create_model_with_mcfly(X, y_binary):
-
-    models = modelgen.generate_models(X.shape,
-                                      y_binary.shape[1],
-                                      number_of_models=1,
-                                      model_type='CNN',
-                                      cnn_min_layers=2,
-                                      cnn_max_layers=2,
-                                      cnn_min_filters=4,
-                                      cnn_max_filters=4,
-                                      cnn_min_fc_nodes=6,
-                                      cnn_max_fc_nodes=6,
-                                      low_lr=4, high_lr=4,
-                                      low_reg=1, high_reg=1,
-                                      kernel_size=7)
-
-    i = 0
-    for model, params, model_types in models:
-        logging.info('model ' + str(i))
-        i = i + 1
-        logging.info(params)
-        logging.info(model.summary())
-
-    return models
-
-
-def train_model_with_mcfly(model, xtrain, ytrain, xval, yval):
-
-    train_set_size = xtrain.shape[0]
-    nr_epochs = 5
-
-    histories, val_accuracies, val_losses = find_architecture.train_models_on_samples(xtrain, ytrain,
-                                                                                      xval, yval,
-                                                                                      model, nr_epochs=nr_epochs,
-                                                                                      subset_size=train_set_size,
-                                                                                      verbose=True)
-
-    best_model_index = np.argmax(val_accuracies)
-    best_model, best_params, best_model_types = model[best_model_index]
-    # print(best_model_index, best_model_types, best_params)
-
-    history = best_model.fit(xtrain, ytrain,
-                             epochs=nr_epochs,
-                             validation_data=(xval, yval),
-                             verbose=True,
-                             shuffle=True)
-
-    return history, best_model
+# def create_model_with_mcfly(X, y_binary):
+# 
+#     models = modelgen.generate_models(X.shape,
+#                                       y_binary.shape[1],
+#                                       number_of_models=1,
+#                                       model_type='CNN',
+#                                       cnn_min_layers=2,
+#                                       cnn_max_layers=2,
+#                                       cnn_min_filters=4,
+#                                       cnn_max_filters=4,
+#                                       cnn_min_fc_nodes=6,
+#                                       cnn_max_fc_nodes=6,
+#                                       low_lr=4, high_lr=4,
+#                                       low_reg=1, high_reg=1,
+#                                       kernel_size=7)
+# 
+#     i = 0
+#     for model, params, model_types in models:
+#         logging.info('model ' + str(i))
+#         i = i + 1
+#         logging.info(params)
+#         logging.info(model.summary())
+# 
+#     return models
+# 
+# 
+# def train_model_with_mcfly(model, xtrain, ytrain, xval, yval):
+# 
+#     train_set_size = xtrain.shape[0]
+#     nr_epochs = 5
+# 
+#     histories, val_accuracies, val_losses = find_architecture.train_models_on_samples(xtrain, ytrain,
+#                                                                                       xval, yval,
+#                                                                                       model, nr_epochs=nr_epochs,
+#                                                                                       subset_size=train_set_size,
+#                                                                                       verbose=True)
+# 
+#     best_model_index = np.argmax(val_accuracies)
+#     best_model, best_params, best_model_types = model[best_model_index]
+#     # print(best_model_index, best_model_types, best_params)
+# 
+#     history = best_model.fit(xtrain, ytrain,
+#                              epochs=nr_epochs,
+#                              validation_data=(xval, yval),
+#                              verbose=True,
+#                              shuffle=True)
+# 
+#     return history, best_model
 
 
 def evaluate_model(model, X_test, ytest_binary, win_ids_test,
