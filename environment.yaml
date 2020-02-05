@@ -12,6 +12,9 @@ dependencies:
   - pybigwig
   - twobitreader
   - bcolz
+  - scikit-learn
+  - keras
+  - tensorflow
   - r-argparser
   - bioconductor-structuralvariantannotation
   - xenon-cli
