@@ -24,7 +24,7 @@ STARTTIME=$(date +%s)
 LOG=xenon.log  # Xenon log file in JSON format
 JOBS=()  # store jobIDs
 NUMEXPR_MAX_THREADS=128  # required by py-bcolz
-
+MY_ENV=wf  # conda env
 
 submit () {  # submit a job via Xenon CLI
   xenon -v scheduler $SCH --location local:// submit \
@@ -36,11 +36,14 @@ monitor () {  # monitor a job via Xenon CLI
   xenon -v --json scheduler $SCH --location local:// list --identifier $1
 }
 
-source ~/.profile
-cd $WORK_DIR
-xenon --version
+# activate conda env
+eval "$(conda shell.bash hook)"
+conda activate $MY_ENV
+conda list
 
 # submit jobs to output "channel" files (*.json.gz and *.npy.gz)
+cd $WORK_DIR
+
 for s in ${SEQ_IDS[@]}; do  # per chromosome
   p=clipped_read_distance && JOB="python $p.py -b $BAM -c $s -o $p.json.gz -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
