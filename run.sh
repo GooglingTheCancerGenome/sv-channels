@@ -77,7 +77,7 @@ for j in ${JOBS[@]}; do
   done
 done
 
-# generate chromosome arrays from the channels above
+# generate chromosome arrays from the channels as well as label window pairs
 for s in ${SEQ_IDS[@]}; do
   p=chr_array && JOB="python $p.py -b $BAM -c $s -t $TWOBIT -m $BIGWIG \
     -o $p.npy -p . -l $p.log"
@@ -95,7 +95,21 @@ for s in ${SEQ_IDS[@]}; do
   JOBS+=($JOB_ID)
 done
 
-# wait until the last job is done
+# wait until the jobs are done
+while true; do
+  [[ $(monitor ${JOBS[-1]} | jq '.statuses | .[] | select(.done==true)') ]] \
+    && break || sleep ${STIME}m
+done
+
+# generate window pairs
+for s in ${SEQ_IDS[@]}; do
+  p=create_window_pairs && JOB="python $p.py -b $BAM -c $s -sv gridss -w 200 \
+    -p . -l $p.log"
+  JOB_ID=$(submit "$JOB")
+  JOBS+=($JOB_ID)
+done
+
+# wait until the jobs are done
 while true; do
   [[ $(monitor ${JOBS[-1]} | jq '.statuses | .[] | select(.done==true)') ]] \
     && break || sleep ${STIME}m
