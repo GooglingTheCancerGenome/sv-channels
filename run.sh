@@ -18,13 +18,13 @@ TWOBIT=${BASE_DIR}/${SAMPLE}.2bit
 BIGWIG=${BASE_DIR}/${SAMPLE}.bw
 BEDPE=${BASE_DIR}/${SAMPLE}.bedpe
 WORK_DIR=scripts/genome_wide
-RTIME=10  # runtime in minutes
-STIME=1   # sleep X minutes
-STARTTIME=$(date +%s)
-LOG=xenon.log  # Xenon log file in JSON format
-JOBS=()  # store jobIDs
 NUMEXPR_MAX_THREADS=128  # required by py-bcolz
-MY_ENV=wf  # conda env
+STARTTIME=$(date +%s)
+JOBS=() # array of job IDs
+JOBS_LOG=jobs.json # job accounting log
+RTIME=10  # runtime in minutes
+STIME=1 # sleep X minutes
+MY_ENV=wf # conda env
 
 submit () {  # submit a job via Xenon CLI
   xenon -v scheduler $SCH --location local:// submit \
@@ -115,30 +115,44 @@ while true; do
     && break || sleep ${STIME}m
 done
 
-# collect job accounting info
-for j in ${JOBS[@]}; do
-  monitor $j >> $LOG
+# train/test models
+for s in ${SEQ_IDS[@]}; do
+  p=train_model_with_fit && JOB="python $p.py -k 3 -p . -l $p.log \
+    --test_sample . --training_sample ."
+  JOB_ID=$(submit "$JOB")
+  JOBS+=($JOB_ID)
+done
+
+# wait until the jobs are done
+while true; do
+  [[ $(monitor ${JOBS[-1]} | jq '.statuses | .[] | select(.done==true)') ]] \
+    && break || sleep ${STIME}m
 done
 
 ENDTIME=$(date +%s)
 echo "Processing took $((ENDTIME - STARTTIME)) seconds to complete."
 
+# collect job accounting info
+for j in ${JOBS[@]}; do
+  monitor $j >> $JOBS_LOG
+done
+cat $JOBS_LOG
+
 # output logs in std{out,err}-[jobid].log
-echo "---------------"
-echo -e "Log files:"
+echo "----------"
+echo "Log files:"
 for f in $(find -type f -name \*.log); do
   echo "### $f ###"
   cat $f
 done
 
 # list "channel" files
-echo "---------------"
-echo -e "Output files:"
+echo "-------------"
+echo "Output files:"
 #ls
 find -type f -name \*.json.gz | grep "." || exit 1
 find -type f -name \*.npy.gz | grep "." || exit 1
 
 # exit with non-zero if there are failed jobs
-[[ $(jq ".statuses | .[] | select(.done==true and .exitCode!=0)" $LOG) ]] \
+[[ $(jq ".statuses | .[] | select(.done==true and .exitCode!=0)" $JOBS_LOG) ]] \
   && exit 1 || exit 0
-

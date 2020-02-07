@@ -51,7 +51,8 @@ for s in ${SEQ_IDS[@]}; do  # per chromosome
     -w 200 -gt $BEDPE -sv $BASE_DIR/gridss -o $p.json.gz -p . -l $p.log
   p=create_window_pairs && python $p.py -b $BAM -c $s -sv gridss \
     -w 200 -p . -l $p.log
-  #p=train_model_with_fit && python $p.py --test_sample . --training_sample . -k 3 -p . -l $p.log
+  p=train_model_with_fit && python $p.py --test_sample . --training_sample . \
+    -k 3 -p . -l $p.log  # use "dummy" path for test/training samples
 done
 
 echo -e "\nLog files:"

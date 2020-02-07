@@ -1,8 +1,8 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import sys
-import dask.array as da
-import h5py
+#import dask.array as da
+#import h5py
 import os, errno
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,10 +10,11 @@ import json
 import gzip
 import pandas as pd
 import logging
-from time import time
 import argparse
 import bcolz
+import tensorflow as tf
 
+from time import time
 from sklearn.utils import class_weight
 from sklearn.model_selection import StratifiedKFold
 
@@ -31,11 +32,9 @@ from keras.models import load_model
 from sklearn.model_selection import train_test_split
 from collections import Counter
 
-from model_functions import create_model_with_mcfly, train_model_with_mcfly, evaluate_model, create_dir
+from model_functions import evaluate_model, create_dir  # create_model_with_mcfly, train_model_with_mcfly
 
-import tensorflow as tf
-
-from numba import jit
+#from numba import jit
 
 gpu_options = tf.compat.v1.GPUOptions(allow_growth=True)
 sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=gpu_options,
@@ -138,8 +137,7 @@ def plot_channels(outDir, X, z, l):
 
 
 def create_plots(sampleName, X_train, y_train, win_ids_train):
-    channel_data_dir = get_data_dir(sampleName)
-    plots_dir = os.path.join(channel_data_dir, 'plots_' + sampleName)
+    plots_dir = os.path.join(sampleName, 'plots')
     create_dir(plots_dir)
 
     # idx_positive = [i for i, v in enumerate(y_train) if v == mapclasses['DEL']]
@@ -190,7 +188,7 @@ def get_labels(channel_data_dir, win):
     return labels
 
 
-def data(sampleName, npz_mode, sv_caller):
+def data(out_dir, npz_mode, sv_caller):
 
     def filter_labels(X, y, win_ids):
         # print(y)
@@ -204,9 +202,7 @@ def data(sampleName, npz_mode, sv_caller):
         print(Counter(y))
         return X, y, win_ids
 
-    logging.info('Loading data for {}...'.format(sampleName))
-
-    channel_dir = get_data_dir(sampleName)
+    logging.info('Loading data for {}...'.format(out_dir))
 
     y = []
     # numpy_array = []
@@ -228,7 +224,7 @@ def data(sampleName, npz_mode, sv_caller):
 
         if npz_mode:
 
-            outfile = os.path.join(channel_dir, 'windows' + '_' + sv_caller, sampleName + '_windows.npz')
+            outfile = os.path.join(out_dir, 'windows', 'windows.npz')
             npzfile = np.load(outfile, allow_pickle=True)
             # print(sorted(npzfile.files))
             X = npzfile['data']
@@ -237,7 +233,7 @@ def data(sampleName, npz_mode, sv_caller):
 
         else:
 
-            carray_file = os.path.join(channel_dir,
+            carray_file = os.path.join(out_dir,
                                        'windows', label_type + '_win200_carray')
             logging.info('Loading file: {}'.format(carray_file))
             assert os.path.exists(carray_file), carray_file + ' not found'
@@ -306,7 +302,7 @@ def data(sampleName, npz_mode, sv_caller):
     # y = y[new_indices]
     # win_ids = win_ids[new_indices]
 
-    logging.info('Data for {} loaded'.format(sampleName))
+    logging.info('Data for {} loaded'.format(out_dir))
 
     print(X.shape)
 
@@ -402,7 +398,7 @@ def create_model(dim_length, dim_channels, class_number):
 
 def train(sampleName, model_fn, params, X_train, y_train, y_train_binary):
 
-    channel_data_dir = get_data_dir(sampleName)
+    channel_data_dir = sampleName  #get_data_dir(sampleName)
 
     # win_len = 200
     # padding_len = 10
@@ -483,12 +479,14 @@ def train(sampleName, model_fn, params, X_train, y_train, y_train_binary):
                                  save_best_only=True,
                                  verbose=1)
 
-    csv_logger = CSVLogger(os.path.join(channel_data_dir, sampleName+'_training.log'))
+    csv_logger = CSVLogger(os.path.join(channel_data_dir, 'training.log'))
 
     tbCallBack = TensorBoard(log_dir=os.path.join(channel_data_dir, 'Graph'),
                              histogram_freq=0,
                              write_graph=True,
                              write_images=True)
+
+    callbacks = [earlystop, tbCallBack, csv_logger, checkpoint]
 
     logging.info('Fitting model...')
     # Train model on dataset
@@ -497,30 +495,25 @@ def train(sampleName, model_fn, params, X_train, y_train, y_train_binary):
                         batch_size=params['batch_size'],
                         epochs=params['epochs'],
                         shuffle=True,
-                        # class_weight=class_weights,
+                        #class_weight=class_weights,
                         verbose=1,
-                        callbacks=[earlystop,
-                                   tbCallBack,
-                                   csv_logger,
-                                   checkpoint]
-                        )
+                        callbacks=callbacks
+    )
 
     model = load_model(model_fn)
 
     return model, history, X_train.shape[0], int(X_train.shape[0] * params['val_split'])
 
 
-def cross_validation(sampleName, outDir, npz_mode, sv_caller):
+def cross_validation(sampleName, outDir, npz_mode, sv_caller, kfold):
 
     X, y, win_ids = data(sampleName, npz_mode, sv_caller)
     y_binary = to_categorical(y, num_classes=len(mapclasses.keys()))
 
     create_plots(sampleName, X, y, win_ids)
 
-    kfold_splits = 10
-
     # Instantiate the cross validator
-    skf = StratifiedKFold(n_splits=kfold_splits, shuffle=True)
+    skf = StratifiedKFold(n_splits=kfold, shuffle=True)
 
     # Loop through the indices the split() method returns
     for index, (train_indices, test_indices) in enumerate(skf.split(X, y)):
@@ -544,8 +537,7 @@ def cross_validation(sampleName, outDir, npz_mode, sv_caller):
                   'n_channels': X_train.shape[2],
                   'shuffle': True}
 
-        model_fn = os.path.join(outDir, 'model_train_' +
-                                sampleName + '_test_' + sampleName + '_cv' + str(index + 1) + '.hdf5')
+        model_fn = os.path.join(outDir, 'model_train_cv' + str(index + 1) + '.hdf5')
 
         # if os.path.exists(model_fn):
         #
@@ -558,7 +550,7 @@ def cross_validation(sampleName, outDir, npz_mode, sv_caller):
         model, history, train_set_size, validation_set_size = train(sampleName, model_fn,
                                                                     params, X_train, y_train, y_train_binary)
 
-        # model.save(model_fn)
+        model.save(model_fn)
 
         results = pd.DataFrame()
 
@@ -660,57 +652,59 @@ def main():
                         help='File in which to write logs.')
     parser.add_argument('-sv', '--sv_caller', type=str,
                         default='gridss',
-                        help="Specify svcaller"
-                        )
+                        help="Specify svcaller")
     parser.add_argument('-m', '--mode', type=str, default='training',
                         help="training/test mode")
+    parser.add_argument('-k', '--kfold', type=int, default=10,
+                        help="Specify [k]-fold cross validation")
     parser.add_argument('-npz', '--load_npz', type=bool, default=True,
                         help="load npz?")
 
     args = parser.parse_args()
 
-    cmd_name = 'cnn'
+    cmd_name = 'train_model_with_fit'
 
     # get_channel_labels()
 
     training_sample = args.training_sample
     test_sample = args.test_sample
-    samples_list = ['NA12878', 'NA24385', 'CHM1_CHM13']
+    #samples_list = ['NA12878', 'NA24385', 'CHM1_CHM13']
 
-    for training_sample in samples_list:
-        for test_sample in samples_list:
+    #for training_sample in samples_list:
+    #    for test_sample in samples_list:
 
-            output_dir = os.path.join(args.outputpath, training_sample, cmd_name)
-            create_dir(output_dir)
-            logfilename = os.path.join(output_dir, args.logfile)
-            # output_file = os.path.join(output_dir, args.out)
+    output_dir = os.path.join(args.outputpath, cmd_name)
+    create_dir(output_dir)
+    logfilename = os.path.join(output_dir, args.logfile)
+    # output_file = os.path.join(output_dir, args.out)
 
-            FORMAT = '%(asctime)s %(message)s'
-            logging.basicConfig(
-                format=FORMAT,
-                filename=logfilename,
-                filemode='w',
-                level=logging.INFO)
+    FORMAT = '%(asctime)s %(message)s'
+    logging.basicConfig(
+        format=FORMAT,
+        filename=logfilename,
+        filemode='w',
+        level=logging.INFO)
 
-            print('Writing log file to {}'.format(logfilename))
+    print('Writing log file to {}'.format(logfilename))
 
-            t0 = time()
+    t0 = time()
 
-            if training_sample != test_sample:
+    if training_sample != test_sample:
 
-                train_and_test_model(sampleName_training=training_sample,
-                                     sampleName_test=test_sample,
-                                     outDir=output_dir,
-                                     npz_mode=args.load_npz,
-                                     sv_caller=args.sv_caller
-                                     )
-            else:
+        train_and_test_model(sampleName_training=training_sample,
+                             sampleName_test=test_sample,
+                             outDir=output_dir,
+                             npz_mode=args.load_npz,
+                             sv_caller=args.sv_caller
+                             )
+    else:
 
-                cross_validation(sampleName=training_sample,
-                                 outDir=output_dir,
-                                 npz_mode=args.load_npz,
-                                 sv_caller=args.sv_caller
-                                 )
+        cross_validation(sampleName=training_sample,
+                         outDir=output_dir,
+                         npz_mode=args.load_npz,
+                         sv_caller=args.sv_caller,
+                         kfold=args.kfold
+                         )
 
     # print('Elapsed time channel_maker_real on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))
     logging.info('Elapsed time training and testing = %f seconds' % (time() - t0))
