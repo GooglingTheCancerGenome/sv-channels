@@ -532,7 +532,7 @@ def cross_validation(sampleName, outDir, npz_mode, sv_caller, kfold):
         params = {'dim': X_train.shape[1],
                   'batch_size': batch_size,
                   'epochs': epochs,
-                  'val_split': 0.2,
+                  'val_split': 0.5,
                   'n_classes': len(mapclasses.keys()),
                   'n_channels': X_train.shape[2],
                   'shuffle': True}
