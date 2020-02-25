@@ -46,20 +46,20 @@ class Alignment(object):
     def __init__(self, bam_file):
         self.alignment = pysam.AlignmentFile(bam_file, "rb")
 
-    def get_length(self, chrom):
-        """Get the chromosome's length from the BAM header."""
+    def get_length(self):
+        """Get chromosome lenghts from the BAM header."""
+        chr_len = {}
         for d in self.alignment.header["SQ"]:
-            if d["SN"] == chrom:
-                return d["LN"]
+            chr_len[d['SN']] = d['LN']
+        return chr_len
 
-    def get_coverage(self, chrom):
-        """Compute sequence coverage per chromosomal position."""
-        chr_len = self.get_length(chrom)
-        start, end = 0, chr_len
-        cov = np.zeros(chr_len, dtype=int)
-        for pile in self.alignment.pileup(chrom, start, end, truncate=True):
-            cov[pile.pos] = pile.n
-        return cov
+    def get_coverage(self):
+        """Compute sequence coverage per position."""
+        for chr, len in self.get_length().items():
+            cov = np.zeros(len, dtype=int)
+            for pile in self.alignment.pileup(chr, 0, len, truncate=True):
+                cov[pile.pos] = pile.n
+            yield (chr, cov)
 
     def get_clipped_reads(self, chrom, min_mapq=30):
         """Count clipped reads per position."""

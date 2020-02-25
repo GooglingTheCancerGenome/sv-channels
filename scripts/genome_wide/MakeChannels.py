@@ -2,13 +2,12 @@
 
 """
 Description:
-  MakeChannels.py is a command-line tool to generate different 'channels' from
-  whole-genome sequencing (WGS) data for Deep Learning.
+  MakeChannels.py is a command-line tool to generate 'channels' from a BAM file.
 
 Usage:
   MakeChannels.py -h|--help
   MakeChannels.py -v|--version
-  MakeChannels.py -t TYPE [-c CHR] [-o OUT_FILE] [-m MODE] BAM_FILE
+  MakeChannels.py [-t TYPE] [-c CHR] [-o OUT_FILE] BAM
 
 Arguments:
   BAM_FILE         Input file in BAM format.
@@ -23,15 +22,16 @@ Options:
                      crd = clipped read distance
                      srd = split read distance
                      cov = per-base coverage
-  -c CHROM         Select a chromosome. [default: 17]
-  -o OUT_FILE      Specify the output file. [default: all.npy.bz2]
-  -m MODE          Run the tool using (s)imulated or (r)eal data. [default: r]
+  -c CHROM         Select a chromosome. [default: all]
+  -o OUTFILE       Specify the output file. [default: all.npz]
 """
 
 from __future__ import print_function
 from docopt import docopt
 from pprint import pprint
 from extras import Alignment
+
+import numpy as np
 
 
 __authors__ = ["Arnold Kuzniar", "Luca Santuari"]
@@ -42,14 +42,14 @@ __status__ = "alpha"
 
 def main():
     args = docopt(__doc__, version=__version__)
-    bam_file = args["BAM_FILE"]
+    bamfile = args["BAM"]
+    outfile = args["-o"]
     chrom = args["-c"]
     pprint(args)
-    aln = Alignment(bam_file)
-    print(aln.get_length(chrom))
-    cov = aln.get_coverage(chrom)
-    pprint(cov)
-    print(time.asctime(time.localtime(time.time())))
+    aln = Alignment(bamfile)
+    for chr, cov in aln.get_coverage():
+        outfile = str(chr) + '.npy'
+        np.save(outfile, cov)
     #clr = aln.get_clipped_reads(chrom)
     #pprint(clr)
     #print(time.asctime(time.localtime(time.time())))
