@@ -16,7 +16,7 @@ class Alignment(AlignmentFile):
     def get_seqcov(self):
         """Compute sequence coverage per position."""
         for seqid, len in self.get_seqlen().items():
-            cov = np.zeros(len, dtype=int)
+            cov = np.zeros(len, dtype=np.uint)
             for pile in self.pileup(seqid, 0, len):
                 cov[pile.pos] = pile.n
             yield (seqid, cov)
