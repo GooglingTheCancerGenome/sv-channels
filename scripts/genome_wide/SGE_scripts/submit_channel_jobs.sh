@@ -9,6 +9,13 @@ OUTPATH=$6
 
 CHRARRAY=(`seq 1 22` 'X' 'Y')
 
+if [ SAMPLE == 'CHM1_CHM13' ]
+then
+    for i in 0..${#CHRARRAY[@]}; do
+        CHRARRAY[$i]='chr'CHRARRAY[$i]
+    done
+fi
+
 OUTDIR=$OUTPATH"/"$SAMPLE
 
 [ ! -d $OUTDIR ] && mkdir -p $OUTDIR
@@ -17,7 +24,7 @@ for PRG in clipped_read_pos clipped_reads split_reads; do
 
     JOB_NAME=$SAMPLE"_channels"
 
-    qsub -wd $OUTDIR -v SAMPLEARG=$SAMPLE,BAMARG=$BAM_SV,PRGARG=${PRG},OUTARG=$OUTDIR \
+    qsub -wd $OUTDIR -v SAMPLEARG=$SAMPLE,BAMARG=$BAM_SV,PRGARG=${PRG},OUTARG=$OUTDIR,CHRLIST=${CHRARRAY[@]} \
         -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_channel.sge
 done
 
@@ -49,25 +56,20 @@ for CHROMOSOME in ${CHRARRAY[@]}; do
 
 done
 
+
+
 PRG='chr_array'
 
-for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
+OUTPUTDIR=${OUTPATH}"/"$SAMPLE"/"$PRG
+[ ! -d $OUTPUTDIR ] && mkdir -p $OUTPUTDIR
 
-	SAMPLE=${SAMPLE_ARRAY[$i]}
-	BAM=${BAM_ARRAY[$i]}
+for CHROMOSOME in ${CHRARRAY[@]}; do
+#for CHROMOSOME in 1; do
 
-    OUTPUTDIR=${OUTPATH}"/"$SAMPLE"/"$PRG
-    [ ! -d $OUTPUTDIR ] && mkdir -p $OUTPUTDIR
+    OUTDIR=$OUTPATH
+    JOB_NAME=$SAMPLE"_carray"
+    JOB_NAME_HOLD=$SAMPLE"_channels"
 
-	for CHROMOSOME in ${CHRARRAY[@]}; do
-	#for CHROMOSOME in 1; do
-
-		OUTDIR=$OUTPATH
-		JOB_NAME=$SAMPLE"_carray"
-		JOB_NAME_HOLD=$SAMPLE"_channels"
-
-		qsub -wd $OUTDIR -hold_jid $JOB_NAME_HOLD -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=${OUTDIR},TWOBIT=$TWOBIT,MAP=$MAP \
-			-N $JOB_NAME -o $OUTDIR"/"$SAMPLE"/"${PRG}"/"$JOB_NAME".out" -e $OUTDIR"/"$SAMPLE"/"${PRG}"/"$JOB_NAME".err" make_channel.sge
-    done
-
+    qsub -wd $OUTDIR -hold_jid $JOB_NAME_HOLD -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=${OUTDIR},TWOBIT=$TWOBIT,MAP=$MAP \
+        -N $JOB_NAME -o $OUTDIR"/"$SAMPLE"/"${PRG}"/"$JOB_NAME".out" -e $OUTDIR"/"$SAMPLE"/"${PRG}"/"$JOB_NAME".err" make_channel.sge
 done

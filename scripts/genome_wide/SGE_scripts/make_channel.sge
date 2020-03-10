@@ -32,9 +32,11 @@ RUNDIR="/hpc/cog_bioinf/ridder/users/lsantuari/Git/DeepSV_working/CNN/scripts/ge
 
 echo "Running ${PRGARG} for ${BAMARG} ${CHRARG}"
 
+DEBUG="echo"
+
 # coverage.py will output file with extension '.npy.bz2'
 if [ ${PRGARG} == 'coverage' ]; then
-        python "${RUNDIR}/${PRGARG}.py" \
+        $DEBUG python "${RUNDIR}/${PRGARG}.py" \
                 --bam ${BAMARG} \
                 --chr ${CHRARG} \
                 --out ${PRGARG}".npy" \
@@ -43,7 +45,7 @@ if [ ${PRGARG} == 'coverage' ]; then
 
 # snv.py will output file with extension '.npz.gz'
 elif [ ${PRGARG} == 'snv' ]; then
-        python "${RUNDIR}/${PRGARG}.py" \
+        $DEBUG python "${RUNDIR}/${PRGARG}.py" \
                 --bam ${BAMARG} \
                 --twobit ${TWOBIT} \
                 --chr ${CHRARG} \
@@ -53,7 +55,7 @@ elif [ ${PRGARG} == 'snv' ]; then
 
 
 elif [ ${PRGARG} == 'chr_array' ]; then
-        python "${RUNDIR}/${PRGARG}.py" \
+        $DEBUG python "${RUNDIR}/${PRGARG}.py" \
                 --bam ${BAMARG} \
                 --twobit ${TWOBIT} \
                 --map ${MAP} \
@@ -65,7 +67,7 @@ elif [ ${PRGARG} == 'chr_array' ]; then
 
 elif [ ${PRGARG} == 'clipped_read_distance' ]; then
 # generic execution
-	    python "${RUNDIR}/${PRGARG}.py" \
+	    $DEBUG python "${RUNDIR}/${PRGARG}.py" \
                 --bam ${BAMARG} \
                 --chr ${CHRARG} \
                 --out ${PRGARG}".json.gz" \
@@ -74,8 +76,9 @@ elif [ ${PRGARG} == 'clipped_read_distance' ]; then
 
 else
 # generic execution
-	    python "${RUNDIR}/${PRGARG}.py" \
+	    $DEBUG python "${RUNDIR}/${PRGARG}.py" \
                 --bam ${BAMARG} \
+                --chrlist ${CHRLIST} \
                 --out ${PRGARG}".json.gz" \
                 --outputpath ${OUTARG} \
                 --logfile ${PRGARG}".log"
