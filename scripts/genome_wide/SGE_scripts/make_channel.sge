@@ -44,6 +44,7 @@ if [ ${PRGARG} == 'coverage' ]; then
 elif [ ${PRGARG} == 'snv' ]; then
         python "${RUNDIR}/${PRGARG}.py" \
                 --bam ${BAMARG} \
+                --twobit ${TWOBIT} \
                 --chr ${CHRARG} \
                 --out ${PRGARG}".npy" \
                 --outputpath ${OUTARG} \
@@ -53,6 +54,8 @@ elif [ ${PRGARG} == 'snv' ]; then
 elif [ ${PRGARG} == 'chr_array' ]; then
         python "${RUNDIR}/${PRGARG}.py" \
                 --bam ${BAMARG} \
+                --twobit ${TWOBIT} \
+                --map ${MAP} \
                 --chr ${CHRARG} \
                 --sample ${SAMPLEARG} \
                 --out ${SAMPLEARG}"_"${CHRARG}".hdf5" \

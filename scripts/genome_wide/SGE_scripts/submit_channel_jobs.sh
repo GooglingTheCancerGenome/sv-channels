@@ -3,7 +3,9 @@
 SAMPLE=$1
 BAM=$2
 BAM_SV=$3
-OUTPATH=$4
+TWOBIT=$4
+MAP=$5
+OUTPATH=$6
 
 CHRARRAY=(`seq 1 22` 'X' 'Y')
 
@@ -19,11 +21,19 @@ done
 
 for CHROMOSOME in ${CHRARRAY[@]}; do
 
-    for PRG in coverage snv; do
+    for PRG in coverage; do
 
         JOB_NAME=$SAMPLE"_channels"
 
         qsub -wd $OUTDIR -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=$OUTDIR \
+            -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_channel.sge
+    done
+
+    for PRG in snv; do
+
+        JOB_NAME=$SAMPLE"_channels"
+
+        qsub -wd $OUTDIR -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=$OUTDIR,TWOBIT=$TWOBIT \
             -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_channel.sge
     done
 
@@ -54,7 +64,7 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
 		JOB_NAME=$SAMPLE"_carray"
 		JOB_NAME_HOLD=$SAMPLE"_channels"
 
-		qsub -wd $OUTDIR -hold_jid $JOB_NAME_HOLD -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=${OUTDIR} \
+		qsub -wd $OUTDIR -hold_jid $JOB_NAME_HOLD -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=${OUTDIR},TWOBIT=$TWOBIT,MAP=$MAP \
 			-N $JOB_NAME -o $OUTDIR"/"$SAMPLE"/"${PRG}"/"$JOB_NAME".out" -e $OUTDIR"/"$SAMPLE"/"${PRG}"/"$JOB_NAME".err" make_channel.sge
     done
 
