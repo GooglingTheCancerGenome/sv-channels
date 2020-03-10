@@ -1,108 +1,41 @@
 #!/bin/bash -x
 
-# This script generate the channel data for the somatic and the germline categories of the Training data.
-# The NoSV category is also added here, but for the moment it is generated using the channel_maker_real_somatic.py script
+SAMPLE=$1
+BAM=$2
+BAM_SV=$3
+OUTPATH=$4
 
-OUTPATH='/hpc/cog_bioinf/ridder/users/lsantuari/Processed/DeepSV/channel_data/'
-
-#Add path to BAM files
-# NA12878_BAM='/hpc/cog_bioinf/diagnostiek/projects/na12878_wgs_trio/GIAB12878/mapping/GIAB12878_dedup.bam'
-NA12878_BAM="/hpc/cog_bioinf/ridder/users/akuzniar/NA12878/bam/RMNISTHS_30xdownsample.bam"
-
-NA24385_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/GiaB/HG002_NA24385_son/NIST_Illumina_2x250bps/bam/NA24385/mapping/NA24385_dedup.bam"
-
-CHM1_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/CHM1/bam_GRCh38/CHM1/mapping/CHM1_dedup.bam"
-CHM13_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/CHM13/bam_GRCh38/CHM13/mapping/CHM13_dedup.bam"
-CHM1_CHM13_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/CHM1_CHM13/bam_GRCh38/CHM1_CHM13_dedup.bam"
-
-HG00514_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/1KP/HGSVC/HG00514/HG00514.alt_bwamem_GRCh38DH.20150715.CHS.high_coverage.bam"
-HG00733_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/1KP/HGSVC/HG00733/HG00733.alt_bwamem_GRCh38DH.20150715.PUR.high_coverage.bam"
-NA19240_BAM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/1KP/HGSVC/NA19240/NA19240.alt_bwamem_GRCh38DH.20150715.YRI.high_coverage.bam"
-
-ART_INDEL_HET="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL_HET/samples/G1/BAM/G1/mapping/G1_dedup.bam"
-ART_INDEL_HOM="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL_HOM/samples/G1/BAM/G1/mapping/G1_dedup.bam"
-
-#BAM_ARRAY=(${NA12878_BAM} ${NA12892_BAM} ${NA12891_BAM} ${PATIENT1_BAM} ${PATIENT2_BAM})
-#SAMPLE_ARRAY=('NA12878' 'NA12892' 'NA12891' 'PATIENT1' 'PATIENT2')
-
-#BAM_ARRAY=(${NA12878_BAM})
-#SAMPLE_ARRAY=('NA12878')
-
-BAM_ARRAY=(${HG00514_BAM} ${HG00733_BAM} ${NA19240_BAM})
-SAMPLE_ARRAY=('HG00514' 'HG00733' 'NA19240')
-
-#BAM_ARRAY=(${ART_INDEL_HET}, ${ART_INDEL_HOM})
-#SAMPLE_ARRAY=('ART_INDEL_HET', 'ART_INDEL_HOM')
-
-#BAM_ARRAY=(${NA24385_BAM})
-#SAMPLE_ARRAY=('NA24385')
-
-#BAM_ARRAY=(${CHM1_BAM} ${CHM13_BAM})
-#SAMPLE_ARRAY=('CHM1' 'CHM13')
-
-#BAM_ARRAY=(${NA12878_BAM} ${NA24385_BAM} ${CHM1_BAM} ${CHM13_BAM})
-#SAMPLE_ARRAY=('NA12878' 'NA24385' 'CHM1' 'CHM13')
-
-# BAM_ARRAY=(${PATIENT1_BAM} ${PATIENT2_BAM})
-# SAMPLE_ARRAY=('PATIENT1' 'PATIENT2')
-
-#BAM_ARRAY=(${NA24385_BAM} ${CHM1_CHM13_BAM})
-#SAMPLE_ARRAY=('NA24385' 'CHM1_CHM13')
-
-#CHRARRAY=(`seq 1 22` 'X' 'Y' 'MT')
 CHRARRAY=(`seq 1 22` 'X' 'Y')
-#CHRARRAY=('17')
 
-# Run single channel scripts (0) or ChannelMaker (1)
-RUNALL=0
+OUTDIR=$OUTPATH$SAMPLE
 
-# RUN_MODE_0: The scripts "clipped_read_pos", "clipped_reads" and "split_reads" are run on the entire BAM file across
-# chromosomes 1 to 22, plus X and Y
-if [ $RUNALL == 0 ]; then
+for PRG in clipped_read_pos clipped_reads split_reads; do
 
-for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
+    JOB_NAME=$SAMPLE"_channels"
 
-    SAMPLE=${SAMPLE_ARRAY[$i]}
-    BAM=${BAM_ARRAY[$i]}
-    OUTDIR=$OUTPATH$SAMPLE
+    qsub -v SAMPLEARG=$SAMPLE,BAMARG=$BAM_SV,PRGARG=${PRG},OUTARG=$OUTDIR \
+        -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_channel.sge
+done
 
-    for PRG in clipped_read_pos clipped_reads split_reads; do
-        JOB_NAME=$SAMPLE"_"${PRG}
+for CHROMOSOME in ${CHRARRAY[@]}; do
 
-        qsub -v SAMPLEARG=$SAMPLE,BAMARG=$BAM,PRGARG=${PRG},OUTARG=$OUTDIR \
+    for PRG in coverage snv; do
+
+        JOB_NAME=$SAMPLE"_channels"
+
+        qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=$OUTDIR \
+            -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_channel.sge
+    done
+
+    for PRG in clipped_read_distance; do
+
+        JOB_NAME=$SAMPLE"_channels"
+
+        qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM_SV,PRGARG=${PRG},OUTARG=$OUTDIR \
             -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_channel.sge
     done
 
 done
-
-# RUN_MODE_1: The scripts "coverage", "snv" and "clipped_read_distance" are run per each chromosome
-elif [ $RUNALL == 1 ]; then
-
-for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
-
-    SAMPLE=${SAMPLE_ARRAY[$i]}
-    BAM=${BAM_ARRAY[$i]}
-    OUTDIR=$OUTPATH$SAMPLE
-
-#    LOGDIR=${SAMPLE}"/log"
-#    [ ! -d "$LOGDIR" ] && mkdir -p "$LOGDIR"
-
-    for CHROMOSOME in ${CHRARRAY[@]}; do
-    #for CHROMOSOME in '1'; do
-        for PRG in coverage snv clipped_read_distance; do
-	#for PRG in snv; do
-            JOB_NAME=$SAMPLE"_"$CHROMOSOME"_"${PRG}
-
-            qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=$OUTDIR \
-            	-N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_channel.sge
-        done
-    done
-    #mv ${SAMPLE}"*.err" ${LOGDIR}
-    #mv ${SAMPLE}"*.out" ${LOGDIR}
-done
-
-# RUN_MODE_2: Generate the chromosome array in the format "bcolz carray" per each chromosome
-elif [ $RUNALL == 2 ]; then
 
 PRG='chr_array'
 
@@ -118,11 +51,11 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
 	#for CHROMOSOME in 1; do
 
 		OUTDIR=$OUTPATH
-		JOB_NAME=$SAMPLE"_"$CHROMOSOME"_"${PRG}
-		qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=${OUTDIR} \
+		JOB_NAME=$SAMPLE"_carray"
+		JOB_NAME_HOLD=$SAMPLE"_channels"
+
+		qsub -hold_jid $JOB_NAME_HOLD -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=${OUTDIR} \
 			-N $JOB_NAME -o $OUTDIR"/"$SAMPLE"/"${PRG}"/"$JOB_NAME".out" -e $OUTDIR"/"$SAMPLE"/"${PRG}"/"$JOB_NAME".err" make_channel.sge
     done
 
 done
-
-fi
