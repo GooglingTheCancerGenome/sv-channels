@@ -11,7 +11,7 @@ CHRARRAY=(`seq 1 22` 'X' 'Y')
 
 OUTDIR=$OUTPATH"/"$SAMPLE
 
-echo $OUTDIR
+[ ! -d ${$OUTDIR} ] && mkdir -p ${$OUTDIR}
 
 for PRG in clipped_read_pos clipped_reads split_reads; do
 
