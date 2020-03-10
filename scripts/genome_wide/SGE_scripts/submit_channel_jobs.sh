@@ -13,7 +13,7 @@ for PRG in clipped_read_pos clipped_reads split_reads; do
 
     JOB_NAME=$SAMPLE"_channels"
 
-    qsub -v SAMPLEARG=$SAMPLE,BAMARG=$BAM_SV,PRGARG=${PRG},OUTARG=$OUTDIR \
+    qsub -wd $OUTDIR -v SAMPLEARG=$SAMPLE,BAMARG=$BAM_SV,PRGARG=${PRG},OUTARG=$OUTDIR \
         -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_channel.sge
 done
 
@@ -23,7 +23,7 @@ for CHROMOSOME in ${CHRARRAY[@]}; do
 
         JOB_NAME=$SAMPLE"_channels"
 
-        qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=$OUTDIR \
+        qsub -wd $OUTDIR -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=$OUTDIR \
             -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_channel.sge
     done
 
@@ -31,7 +31,7 @@ for CHROMOSOME in ${CHRARRAY[@]}; do
 
         JOB_NAME=$SAMPLE"_channels"
 
-        qsub -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM_SV,PRGARG=${PRG},OUTARG=$OUTDIR \
+        qsub -wd $OUTDIR -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM_SV,PRGARG=${PRG},OUTARG=$OUTDIR \
             -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_channel.sge
     done
 
@@ -54,7 +54,7 @@ for (( i=0; i<${#SAMPLE_ARRAY[@]}; i++)); do
 		JOB_NAME=$SAMPLE"_carray"
 		JOB_NAME_HOLD=$SAMPLE"_channels"
 
-		qsub -hold_jid $JOB_NAME_HOLD -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=${OUTDIR} \
+		qsub -wd $OUTDIR -hold_jid $JOB_NAME_HOLD -v SAMPLEARG=$SAMPLE,CHRARG=$CHROMOSOME,BAMARG=$BAM,PRGARG=${PRG},OUTARG=${OUTDIR} \
 			-N $JOB_NAME -o $OUTDIR"/"$SAMPLE"/"${PRG}"/"$JOB_NAME".out" -e $OUTDIR"/"$SAMPLE"/"${PRG}"/"$JOB_NAME".err" make_channel.sge
     done
 
