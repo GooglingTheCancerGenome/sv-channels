@@ -34,7 +34,7 @@ echo "Running ${PRGARG} for ${BAMARG} ${CHRARG}"
 
 # coverage.py will output file with extension '.npy.bz2'
 if [ ${PRGARG} == 'coverage' ]; then
-        echo python "${RUNDIR}/${PRGARG}.py" \
+        python "${RUNDIR}/${PRGARG}.py" \
                 --bam ${BAMARG} \
                 --chr ${CHRARG} \
                 --out ${PRGARG}".npy" \
@@ -43,7 +43,7 @@ if [ ${PRGARG} == 'coverage' ]; then
 
 # snv.py will output file with extension '.npz.gz'
 elif [ ${PRGARG} == 'snv' ]; then
-        echo python "${RUNDIR}/${PRGARG}.py" \
+        python "${RUNDIR}/${PRGARG}.py" \
                 --bam ${BAMARG} \
                 --twobit ${TWOBIT} \
                 --chr ${CHRARG} \
@@ -53,7 +53,7 @@ elif [ ${PRGARG} == 'snv' ]; then
 
 
 elif [ ${PRGARG} == 'chr_array' ]; then
-        echo python "${RUNDIR}/${PRGARG}.py" \
+        python "${RUNDIR}/${PRGARG}.py" \
                 --bam ${BAMARG} \
                 --twobit ${TWOBIT} \
                 --map ${MAP} \
@@ -65,7 +65,7 @@ elif [ ${PRGARG} == 'chr_array' ]; then
 
 elif [ ${PRGARG} == 'clipped_read_distance' ]; then
 # generic execution
-	echo python "${RUNDIR}/${PRGARG}.py" \
+	    python "${RUNDIR}/${PRGARG}.py" \
                 --bam ${BAMARG} \
                 --chr ${CHRARG} \
                 --out ${PRGARG}".json.gz" \
@@ -74,7 +74,7 @@ elif [ ${PRGARG} == 'clipped_read_distance' ]; then
 
 else
 # generic execution
-	echo python "${RUNDIR}/${PRGARG}.py" \
+	    python "${RUNDIR}/${PRGARG}.py" \
                 --bam ${BAMARG} \
                 --out ${PRGARG}".json.gz" \
                 --outputpath ${OUTARG} \
