@@ -7,7 +7,7 @@ OUTPATH=$4
 
 CHRARRAY=(`seq 1 22` 'X' 'Y')
 
-OUTDIR=$OUTPATH$SAMPLE
+OUTDIR=$OUTPATH"/"$SAMPLE
 
 for PRG in clipped_read_pos clipped_reads split_reads; do
 
