@@ -10,7 +10,7 @@ import pysam
 from functions import *
 
 
-def get_clipped_read_positions(ibam, chrName, outFile):
+def get_clipped_read_positions(ibam, chr_list, outFile):
     '''
     
     :param ibam: input BAM alignment file
@@ -29,8 +29,6 @@ def get_clipped_read_positions(ibam, chrName, outFile):
 
     # Load the BAM file
     bamfile = pysam.AlignmentFile(ibam, "rb")
-
-    chr_list = [chrName]  # get_chr_list()
 
     # List to store the clipped read positions
     right_clipped_pos = defaultdict(list, {k: [] for k in chr_list})
@@ -136,8 +134,8 @@ def main():
     parser.add_argument('-b', '--bam', type=str,
                         default=inputBAM,
                         help="Specify input file (BAM)")
-    parser.add_argument('-c', '--chr', type=str, default='17',
-                        help="Specify chromosome")
+    parser.add_argument('-chrlist', nargs='+', default=['17'],
+                        help="List of chromosomes to consider")
     parser.add_argument('-o', '--out', type=str, default='clipped_read_pos.json.gz',
                         help="Specify output")
     parser.add_argument('-p', '--outputpath', type=str,
@@ -163,7 +161,7 @@ def main():
         level=logging.INFO)
 
     t0 = time()
-    get_clipped_read_positions(ibam=args.bam, chrName=args.chr, outFile=output_file)
+    get_clipped_read_positions(ibam=args.bam, chr_list=args.chrlist, outFile=output_file)
     logging.info('Time: clipped read positions on BAM %s: %f' % (args.bam, (time() - t0)))
 
 

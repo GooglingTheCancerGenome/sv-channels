@@ -27,7 +27,7 @@ def append_coord(split_pos_coord, chrName, refpos, chr, pos):
     return split_pos_coord
 
 
-def get_split_read_positions(ibam, chrName, outFile):
+def get_split_read_positions(ibam, chr_list, outFile):
     # Check if the BAM file in input exists
     assert os.path.isfile(ibam)
 
@@ -45,7 +45,6 @@ def get_split_read_positions(ibam, chrName, outFile):
     bamfile = pysam.AlignmentFile(ibam, "rb")
 
     chrlen_dict = get_chr_len_dict(ibam)
-    chr_list = [chrName]  # get_chr_list()
 
     n_indels = 0
     n_split = 0
@@ -262,8 +261,8 @@ def main():
     parser.add_argument('-b', '--bam', type=str,
                         default=inputBAM,
                         help="Specify input file (BAM)")
-    parser.add_argument('-c', '--chr', type=str, default='17',
-                        help="Specify chromosome")
+    parser.add_argument('-chrlist', nargs='+', default=['17'],
+                        help="List of chromosomes to consider")
     parser.add_argument('-o', '--out', type=str, default='split_reads.json.gz',
                         help="Specify output")
     parser.add_argument('-p', '--outputpath', type=str,
@@ -289,7 +288,7 @@ def main():
         level=logging.INFO)
 
     t0 = time()
-    get_split_read_positions(ibam=args.bam, chrName=args.chr, outFile=output_file)
+    get_split_read_positions(ibam=args.bam, chr_list=args.chrlist, outFile=output_file)
     logging.info('Time: split read positions on BAM %s: %f' % (args.bam, (time() - t0)))
 
 
