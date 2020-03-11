@@ -9,8 +9,8 @@ env:
   global:
     - PREFIX=gtcg/xenon
     - TAG=dev
-    - BAM=data/test/chr22.bam
-    - CHR=22
+    - BAM=data/test/chr12_chr22.44Mb_45Mb.GRCh37.bam
+    - CHR=12
   matrix:
     - PORT=10022 SCH=gridengine
     - PORT=10023 SCH=slurm
