@@ -9,12 +9,14 @@ OUTPATH=$6
 
 CHRARRAY=(`seq 1 22` 'X' 'Y')
 
-if [ SAMPLE == 'CHM1_CHM13' ]
+if [[ $SAMPLE == 'CHM1_CHM13' ]]
 then
-    for i in 0..${#CHRARRAY[@]}; do
-        CHRARRAY[$i]='chr'CHRARRAY[$i]
+    for (( i=0; i<${#CHRARRAY[@]}; i++ )); do
+        CHRARRAY[$i]='chr'${CHRARRAY[$i]}
     done
 fi
+
+CHRLIST=\"${CHRARRAY[@]}\"
 
 OUTDIR=$OUTPATH"/"$SAMPLE
 
@@ -24,7 +26,7 @@ for PRG in clipped_read_pos clipped_reads split_reads; do
 
     JOB_NAME=$SAMPLE"_channels"
 
-    qsub -wd $OUTDIR -v SAMPLEARG=$SAMPLE,BAMARG=$BAM_SV,PRGARG=${PRG},OUTARG=$OUTDIR,CHRLIST=${CHRARRAY[@]} \
+    qsub -wd $OUTDIR -v SAMPLEARG=$SAMPLE,BAMARG=$BAM_SV,PRGARG=${PRG},OUTARG=$OUTDIR,CHRLIST=$CHRLIST \
         -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_channel.sge
 done
 
