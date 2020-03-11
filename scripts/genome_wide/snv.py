@@ -20,16 +20,8 @@ minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
 
 def get_snvs(ibam, itwobit, chrName, outFile):
     def get_2bit_genome():
-        if HPC_MODE:
-            # Path on the HPC of the 2bit version of the human reference genome (hg19)
-            genome = twobit.TwoBitFile(os.path.join('/hpc/cog_bioinf/ridder/users',
-                                                    'lsantuari/Datasets/genomes', REF_GENOME+'.2bit'))
-        else:
-            # Path on the local machine of the 2bit version of the human reference genome (hg19)
-            genome = twobit.TwoBitFile(os.path.join('/Users/lsantuari/Documents',
-                                                    'Data/GiaB/reference', REF_GENOME+'.2bit'))(reference)
+        genome = twobit.TwoBitFile(itwobit)
         return genome
-
 
     def get_snv_number(query_seq_list, reference_base):
 
@@ -100,7 +92,7 @@ def get_snvs(ibam, itwobit, chrName, outFile):
             try:
 
                 query_seq_list = pileupcolumn.get_query_sequences()
-                chrName_2bit = chrName.replace('chr', '') if REF_GENOME == 'GRCh38' else 'chr' + chrName
+                #chrName_2bit = chrName.replace('chr', '') #if REF_GENOME == 'GRCh38' else 'chr' + chrName
                 snv_number = get_snv_number(query_seq_list, reference_sequence[chrName][pileupcolumn.pos])
                 snv_array[snv_dict['SNV'], pileupcolumn.pos] = snv_number/pileupcolumn.nsegments \
                     if pileupcolumn.nsegments != 0 else 0
