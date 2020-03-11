@@ -16,7 +16,7 @@ conda activate cm
 
 CHRARRAY=(`seq 1 22` 'X' 'Y')
 
-if [[ $SAMPLE == 'CHM1_CHM13' ]]
+if [[ $SAMPLEARG == 'CHM1_CHM13' ]]
 then
     for (( i=0; i<${#CHRARRAY[@]}; i++ )); do
         CHRARRAY[$i]='chr'${CHRARRAY[$i]}
@@ -43,7 +43,7 @@ RUNDIR="/hpc/cog_bioinf/ridder/users/lsantuari/Git/DeepSV_working/CNN/scripts/ge
 
 echo "Running ${PRGARG} for ${BAMARG} ${CHRARG}"
 
-DEBUG="echo"
+DEBUG=""
 
 # coverage.py will output file with extension '.npy.bz2'
 if [ ${PRGARG} == 'coverage' ]; then
