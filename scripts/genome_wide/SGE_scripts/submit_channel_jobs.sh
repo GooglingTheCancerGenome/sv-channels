@@ -28,6 +28,7 @@ for PRG in clipped_read_pos clipped_reads split_reads; do
         -N $JOB_NAME -o $JOB_NAME".out" -e $JOB_NAME".err" make_channel.sge
 done
 
+<<COMMENT
 for CHROMOSOME in ${CHRARRAY[@]}; do
 
     for PRG in coverage; do
@@ -55,7 +56,7 @@ for CHROMOSOME in ${CHRARRAY[@]}; do
     done
 
 done
-
+COMMENT
 
 
 PRG='chr_array'
