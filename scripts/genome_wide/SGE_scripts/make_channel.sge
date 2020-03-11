@@ -14,6 +14,17 @@ echo "Load python"
 
 conda activate cm
 
+CHRARRAY=(`seq 1 22` 'X' 'Y')
+
+if [[ $SAMPLE == 'CHM1_CHM13' ]]
+then
+    for (( i=0; i<${#CHRARRAY[@]}; i++ )); do
+        CHRARRAY[$i]='chr'${CHRARRAY[$i]}
+    done
+fi
+
+CHRLIST=${CHRARRAY[@]}
+
 # If directory for script used to store per chromosome output files does not exist, create it
 [ ! -d ${OUTARG}"/"${PRGARG} ] && mkdir -p ${OUTARG}"/"${PRGARG}
 
