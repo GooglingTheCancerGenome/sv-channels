@@ -134,7 +134,7 @@ def main():
     parser.add_argument('-b', '--bam', type=str,
                         default=inputBAM,
                         help="Specify input file (BAM)")
-    parser.add_argument('-chrlist', nargs='+', default=['17'],
+    parser.add_argument('-c', '--chrlist', nargs='+', default=['17'],
                         help="List of chromosomes to consider")
     parser.add_argument('-o', '--out', type=str, default='clipped_read_pos.json.gz',
                         help="Specify output")
