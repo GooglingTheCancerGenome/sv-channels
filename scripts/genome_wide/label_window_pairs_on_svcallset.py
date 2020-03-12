@@ -22,15 +22,6 @@ with open('parameters.json', 'r') as f:
 HPC_MODE = config["DEFAULT"]["HPC_MODE"]
 
 
-def get_chr_list():
-
-    chrlist = list(map(str, range(1, 23)))
-    chrlist.extend(['X'])
-    #chrlist = ['17']
-
-    return chrlist
-
-
 def read_vcf(invcf):
 
     # Check file existence
@@ -121,60 +112,6 @@ def filter_bedpe(inbedpe, sv_id_list, outDir):
                 fout.write(line)
 
         logging.info('{} SVs written'.format(len(lines_to_keep)))
-
-
-def read_survivor_simsv_output(insur):
-    # Check file existence
-    assert os.path.isfile(insur), insur + ' not found!'
-    # Dictionary with chromosome keys to store SVs
-    sv_list = []
-
-    with(open(insur, 'r')) as bed:
-        for line in bed:
-            columns = line.rstrip().split("\t")
-            chrom1, pos1_start, pos1_end = str(columns[0]), int(columns[1]) - 1, int(columns[1])
-            chrom2, pos2_start, pos2_end = str(columns[2]), int(columns[3]) - 1, int(columns[3])
-            svtype = columns[-1]
-
-            if svtype == "DEL":
-                sv_list.append((
-                    chrom1, pos1_start, pos1_end,
-                    chrom2, pos2_start, pos2_end,
-                    svtype
-                ))
-
-    logging.info('{} SVs'.format(len(sv_list)))
-
-    return sv_list
-
-
-def filter_survivor_output(insur, sv_id_list, outDir):
-    # Check file existence
-    assert os.path.isfile(insur), insur + ' not found!'
-
-    logging.info('{} SVs to filter out'.format(len(sv_id_list)))
-    lines_to_keep = []
-
-    with(open(insur, 'r')) as bed:
-        for line in bed:
-            columns = line.rstrip().split("\t")
-            chrom1, pos1_start, pos1_end = str(columns[0]), int(columns[1]) - 1, int(columns[1])
-            chrom2, pos2_start, pos2_end = str(columns[2]), int(columns[3]) - 1, int(columns[3])
-            svtype = columns[-1]
-
-            sv_id = '_'.join((svtype, chrom1, str(pos1_start), chrom2, str(pos2_start)))
-
-            if svtype == "DEL" and sv_id not in sv_id_list:
-                lines_to_keep.append(line)
-
-    fileout = os.path.join(outDir, 'uncaptured_SVs.sur')
-    logging.info('Writing {}'.format(fileout))
-
-    with(open(fileout, 'w')) as fout:
-        for line in lines_to_keep:
-            fout.write(line)
-
-    logging.info('{} SVs written'.format(len(lines_to_keep)))
 
 
 def read_svcaller_bedpe(inbedpe):
@@ -375,91 +312,13 @@ def overlap(sv_list, cpos_list, win_hlen, ground_truth, outDir):
 
 
 # Get labels
-def get_labels(ibam, chrName, win_len, svtype, ground_truth, sv_caller,
+def get_labels(ibam, chrlist, win_len, svtype, ground_truth, sv_caller,
                channelDataDir, outFile, outDir):
-
-    logging.info('running {}'.format(chrName))
-
-    def make_gtrees_from_truth_set(truth_set, file_ext):
-
-        # Using IntervalTree for interval search
-        trees_start = defaultdict(IntervalTree)
-        trees_end = defaultdict(IntervalTree)
-
-        if file_ext == 'VCF':
-
-            for var in sv_list:
-                # cipos[0] and ciend[0] are negative in the VCF file
-                id_start = var.svtype + '_start'
-                id_end = var.svtype + '_end'
-
-                assert var.start <= var.end, "Start: " + str(var.start) + " End: " + str(var.end)
-
-                # logging.info('var start -> %s:%d CIPOS: (%d, %d)' % (
-                # var.chrom, var.start, var.cipos[0], var.cipos[1])
-                # )
-                # logging.info('var end -> %s:%d CIEND: (%d, %d)' % (
-                # var.chrom2, var.end, var.ciend[0], var.ciend[1])
-                # )
-
-                trees_start['chr' + var.chrom][var.start + var.cipos[0]:var.start + var.cipos[1] + 1] = id_start
-                trees_end['chr' + var.chrom2][var.end + var.ciend[0]:var.end + var.ciend[1] + 1] = id_end
-
-        elif file_ext in ['BEDPE', 'SUR']:
-
-            for sv in sv_list:
-                chrom1, pos1_start, pos1_end, chrom2, pos2_start, pos2_end, svtype = sv
-
-                id_start = svtype + '_start'
-                id_end = svtype + '_end'
-
-                trees_start['chr' + chrom1][pos1_start:pos1_end + 1] = id_start
-                trees_end['chr' + chrom2][pos2_start:pos2_end + 1] = id_end
-
-        return trees_start, trees_end
-
-    def get_crpos_overlap_with_sv_callsets(sv_dict, cr_pos_dict):
-
-        logging.info('Creating crpos_overlap_with_sv_callsets')
-        crpos_all_sv = dict()
-
-        for chrName in chrom_lengths.keys():
-
-            logging.info('Considering Chr{}'.format(chrName))
-
-            # Build two sets: crpos_full_all_sv and crpos_partial_all_sv with clipped read positions that
-            # fully/partially overlap at least one SV callset of the caller_list_all_sv
-            sv_list_all_sv = dict()
-            crpos_full_all_sv_per_caller = dict()
-            crpos_partial_all_sv_per_caller = dict()
-            caller_list_all_sv = ['manta', 'gridss', 'lumpy', 'delly', 'nanosv']
-
-            for caller in caller_list_all_sv:
-                logging.info(caller)
-                sv_list_all_sv[caller] = [var for var in sv_dict[caller] if var.chrom == chrName]
-                crpos_full_all_sv_per_caller[caller], crpos_partial_all_sv_per_caller[caller] = \
-                    get_crpos_win_with_ci_overlap(sv_list_all_sv[caller], cr_pos_dict[chrName], win_hlen)
-
-            crpos_full_all_sv = set()
-            crpos_partial_all_sv = set()
-
-            for caller in caller_list_all_sv:
-                crpos_full_all_sv = crpos_full_all_sv.union(set(crpos_full_all_sv_per_caller[caller]))
-                crpos_partial_all_sv = crpos_partial_all_sv.union(set(crpos_partial_all_sv_per_caller[caller]))
-
-            crpos_all_sv[chrName] = crpos_full_all_sv | crpos_partial_all_sv
-
-        logging.info('Finished crpos_overlap_with_sv_callsets')
-
-        return crpos_all_sv
 
     # windows half length
     win_hlen = int(int(win_len) / 2)
     # get chromosome lengths
     chr_dict = get_chr_len_dict(ibam)
-    chrlist = get_chr_list()
-
-    # cpos_list = load_all_clipped_read_positions(sampleName, win_hlen, chr_dict, channelDataDir)
 
     if sv_caller == 'manta_gridss':
 
@@ -485,8 +344,6 @@ def get_labels(ibam, chrName, win_len, svtype, ground_truth, sv_caller,
     filename, file_extension = os.path.splitext(ground_truth)
     if file_extension == '.bedpe':
         sv_list = read_bedpe(ground_truth)
-    elif file_extension == '.sur':
-        sv_list = read_survivor_simsv_output(ground_truth)
     elif file_extension == '.vcf' or file_extension == '.gz':
         sv_list = read_vcf(ground_truth)
 
@@ -517,8 +374,8 @@ def main():
                         help="Specify input file (BAM)")
     parser.add_argument('-l', '--logfile', type=str, default='labels.log',
                         help="Specify log file")
-    parser.add_argument('-c', '--chr', type=str, default='17',
-                        help="Specify chromosome")
+    parser.add_argument('-c', '--chrlist', nargs='+', default=['17'],
+                        help="List of chromosomes to consider")
     parser.add_argument('-w', '--window', type=str, default=200,
                         help="Specify window size")
     parser.add_argument('-s', '--svtype', type=str, default='DEL',
@@ -546,7 +403,7 @@ def main():
     parser.add_argument('-o', '--out', type=str, default='labels.json.gz',
                         help="Specify output")
     parser.add_argument('-p', '--outputpath', type=str,
-                        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
+                        default='/Users/lsantuari/Documents/Processed/channel_maker_output/NA12878',
                         help="Specify output path")
 
     args = parser.parse_args()
@@ -567,7 +424,7 @@ def main():
     t0 = time()
 
     get_labels(ibam=args.bam,
-               chrName=args.chr,
+               chrlist=args.chrlist,
                win_len=args.window,
                svtype=args.svtype,
                ground_truth=args.ground_truth,
