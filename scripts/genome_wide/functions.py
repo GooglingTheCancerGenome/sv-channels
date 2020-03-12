@@ -309,8 +309,9 @@ def get_chr_len_dict(ibam):
 
 
 def load_clipped_read_positions_by_chr(sampleName, chrName, chr_dict, win_hlen, channel_dir):
+
     def get_filepath(vec_type):
-        fn = os.path.join(channel_dir, sampleName, vec_type, chrName + '_' + vec_type + '.json.gz')
+        fn = os.path.join(channel_dir, sampleName, vec_type, vec_type + '.json.gz')
         return fn
 
     logging.info('Loading SR positions for Chr%s' % chrName)
@@ -345,6 +346,7 @@ def load_clipped_read_positions_by_chr(sampleName, chrName, chr_dict, win_hlen, 
 
 
 def load_all_clipped_read_positions_by_chr(sampleName, win_hlen, chr_dict, output_dir):
+
     cr_pos_file = os.path.join(output_dir, sampleName, 'candidate_positions_' + sampleName + '.json.gz')
 
     if os.path.exists(cr_pos_file):
@@ -380,58 +382,70 @@ def load_all_clipped_read_positions_by_chr(sampleName, win_hlen, chr_dict, outpu
         return cpos_list
 
 
-def load_all_clipped_read_positions(win_hlen, chr_dict, output_dir, clipped_type="SR"):
+def load_all_clipped_read_positions(win_hlen, svtype, chr_dict, output_dir, clipped_type="SR"):
 
     config = get_config_file()
     min_CR_support = config["DEFAULT"]["MIN_CR_SUPPORT"]
 
-    cr_pos_file = os.path.join(output_dir, 'candidate_positions_' + clipped_type + '.json.gz')
+    # cr_pos_file = os.path.join(output_dir, svtype + '_candidate_positions_' + clipped_type + '.json.gz')
+    #
+    # if os.path.exists(cr_pos_file):
+    #
+    #     logging.info('Loading existing candidate positions file...')
+    #
+    #     with gzip.GzipFile(cr_pos_file, 'rb') as fin:
+    #         cpos_list = json.loads(fin.read().decode('utf-8'))
+    #     fin.close()
+    #
+    #     return cpos_list
+    #
+    # else:
 
-    if os.path.exists(cr_pos_file):
+    def get_filepath(vec_type):
+        fn = os.path.join(output_dir, vec_type, vec_type + '.json.gz')
+        return fn
 
-        logging.info('Loading existing candidate positions file...')
+    logging.info('Loading SR positions')
 
-        with gzip.GzipFile(cr_pos_file, 'rb') as fin:
-            cpos_list = json.loads(fin.read().decode('utf-8'))
-        fin.close()
+    chrlist = get_chr_list()
+    chr_list = chrlist # if sampleName != 'T1' else ['17']
 
-        return cpos_list
+    with gzip.GzipFile(get_filepath('split_reads'), 'rb') as fin:
+        positions_with_min_support_ls, positions_with_min_support_rs, total_reads_coord_min_support_json, \
+        split_reads, split_read_distance = json.loads(fin.read().decode('utf-8'))
 
+    with gzip.GzipFile(get_filepath('clipped_read_pos'), 'rb') as fin:
+        left_clipped_pos_cnt, right_clipped_pos_cnt = json.loads(fin.read().decode('utf-8'))
+
+    if svtype == 'DEL':
+        total_reads_coord_min_support = total_reads_coord_min_support_json['DEL'] + \
+            total_reads_coord_min_support_json['INDEL_DEL']
+    elif svtype == 'INS':
+        total_reads_coord_min_support = total_reads_coord_min_support_json['INS'] + \
+            total_reads_coord_min_support_json['INDEL_INS']
     else:
+        total_reads_coord_min_support = total_reads_coord_min_support_json[svtype]
 
-        def get_filepath(vec_type):
-            fn = os.path.join(output_dir, vec_type, vec_type + '.json.gz')
-            return fn
+    # print(locations)
+    locations_sr = dict()
+    locations_cr_r = dict()
+    locations_cr_l = dict()
 
-        logging.info('Loading SR positions')
+    positions_cr = dict()
 
-        chrlist = get_chr_list()
-        chr_list = chrlist # if sampleName != 'T1' else ['17']
+    for chrom in chr_list:
 
-        with gzip.GzipFile(get_filepath('split_reads'), 'rb') as fin:
-            positions_with_min_support_ls, positions_with_min_support_rs, total_reads_coord_min_support, \
-            split_reads, split_read_distance = json.loads(fin.read().decode('utf-8'))
+        if clipped_type == 'SR':
 
-        with gzip.GzipFile(get_filepath('clipped_read_pos'), 'rb') as fin:
-            left_clipped_pos_cnt, right_clipped_pos_cnt = json.loads(fin.read().decode('utf-8'))
+            locations_sr[chrom] = [(chr1, pos1, chr2, pos2) for chr1, pos1, chr2, pos2 in total_reads_coord_min_support
+                                if chr1 in chr_dict.keys() and chr2 in chr_dict.keys() and
+                                chr1 == chrom and
+                                win_hlen <= pos1 <= (chr_dict[chr1] - win_hlen) and
+                                win_hlen <= pos2 <= (chr_dict[chr2] - win_hlen)
+                                ]
 
-        # print(locations)
-        locations_sr = dict()
-        locations_cr_r = dict()
-        locations_cr_l = dict()
+            if svtype == 'DEL':
 
-        positions_cr = dict()
-
-        for chrom in chr_list:
-
-            if clipped_type == 'SR':
-
-                locations_sr[chrom] = [(chr1, pos1, chr2, pos2) for chr1, pos1, chr2, pos2 in total_reads_coord_min_support
-                                    if chr1 in chr_dict.keys() and chr2 in chr_dict.keys() and
-                                    chr1 == chrom and
-                                    win_hlen <= pos1 <= (chr_dict[chr1] - win_hlen) and
-                                    win_hlen <= pos2 <= (chr_dict[chr2] - win_hlen)
-                                    ]
                 if chrom in left_clipped_pos_cnt.keys():
                     positions_cr_l = set([int(k) for k, v in left_clipped_pos_cnt[chrom].items()
                                           if v >= min_CR_support])
@@ -455,62 +469,62 @@ def load_all_clipped_read_positions(win_hlen, chr_dict, output_dir, clipped_type
 
                 logging.info('Chr{}: {} positions'.format(chrom, len(locations_sr[chrom])))
 
-            elif clipped_type == 'CR':
-
-                if chrom in left_clipped_pos_cnt.keys():
-                    positions_cr_l = set([int(k) for k, v in left_clipped_pos_cnt[chrom].items()
-                                          if v >= min_CR_support])
-                else:
-                    positions_cr_l = set()
-
-                if chrom in right_clipped_pos_cnt.keys():
-                    positions_cr_r = set([int(k) for k, v in right_clipped_pos_cnt[chrom].items()
-                                          if v >= min_CR_support])
-                else:
-                    positions_cr_r = set()
-
-                if len(positions_cr_r) > 0:
-                    locations_cr_r[chrom] = [(chrom, pos) for pos in sorted(list(positions_cr_r))]
-                if len(positions_cr_l) > 0:
-                    locations_cr_l[chrom] = [(chrom, pos) for pos in sorted(list(positions_cr_l))]
-
-        if clipped_type == 'SR':
-
-            cpos_list = []
-            for chrom in chr_list:
-                if chrom in locations_sr.keys():
-                    cpos_list.extend(locations_sr[chrom])
-
-            logging.info('{} candidate positions'.format(len(cpos_list)))
-
-            logging.info('Writing candidate positions file {}'.format(cr_pos_file))
-
-            with gzip.GzipFile(cr_pos_file, 'wb') as f:
-                f.write(json.dumps(cpos_list).encode('utf-8'))
-            f.close()
-
-            return cpos_list
-
         elif clipped_type == 'CR':
 
-            cpos_list_right = []
-            cpos_list_left = []
+            if chrom in left_clipped_pos_cnt.keys():
+                positions_cr_l = set([int(k) for k, v in left_clipped_pos_cnt[chrom].items()
+                                      if v >= min_CR_support])
+            else:
+                positions_cr_l = set()
 
-            for chrom in chr_list:
-                if chrom in locations_cr_r.keys():
-                    cpos_list_right.extend(locations_cr_r[chrom])
+            if chrom in right_clipped_pos_cnt.keys():
+                positions_cr_r = set([int(k) for k, v in right_clipped_pos_cnt[chrom].items()
+                                      if v >= min_CR_support])
+            else:
+                positions_cr_r = set()
 
-            for chrom in chr_list:
-                if chrom in locations_cr_l.keys():
-                    cpos_list_left.extend(locations_cr_l[chrom])
+            if len(positions_cr_r) > 0:
+                locations_cr_r[chrom] = [(chrom, pos) for pos in sorted(list(positions_cr_r))]
+            if len(positions_cr_l) > 0:
+                locations_cr_l[chrom] = [(chrom, pos) for pos in sorted(list(positions_cr_l))]
 
-            logging.info('Right-clipped: {} candidate positions'.format(len(cpos_list_right)))
-            logging.info('Left-clipped: {} candidate positions'.format(len(cpos_list_left)))
+    if clipped_type == 'SR':
 
-            logging.info('Writing candidate positions file {}'.format(cr_pos_file))
+        cpos_list = []
+        for chrom in chr_list:
+            if chrom in locations_sr.keys():
+                cpos_list.extend(locations_sr[chrom])
 
-            with gzip.GzipFile(cr_pos_file, 'wb') as f:
-                f.write(json.dumps((cpos_list_right, cpos_list_left)).encode('utf-8'))
-            f.close()
+        logging.info('{} candidate positions'.format(len(cpos_list)))
 
-            return cpos_list_right, cpos_list_left
+        # logging.info('Writing candidate positions file {}'.format(cr_pos_file))
+
+        # with gzip.GzipFile(cr_pos_file, 'wb') as f:
+        #     f.write(json.dumps(cpos_list).encode('utf-8'))
+        # f.close()
+
+        return cpos_list
+
+    elif clipped_type == 'CR':
+
+        cpos_list_right = []
+        cpos_list_left = []
+
+        for chrom in chr_list:
+            if chrom in locations_cr_r.keys():
+                cpos_list_right.extend(locations_cr_r[chrom])
+
+        for chrom in chr_list:
+            if chrom in locations_cr_l.keys():
+                cpos_list_left.extend(locations_cr_l[chrom])
+
+        logging.info('Right-clipped: {} candidate positions'.format(len(cpos_list_right)))
+        logging.info('Left-clipped: {} candidate positions'.format(len(cpos_list_left)))
+
+        logging.info('Writing candidate positions file {}'.format(cr_pos_file))
+
+        # with gzip.GzipFile(cr_pos_file, 'wb') as f:
+        #     f.write(json.dumps((cpos_list_right, cpos_list_left)).encode('utf-8'))
+        # f.close()
+
+        return cpos_list_right, cpos_list_left

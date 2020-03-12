@@ -375,7 +375,7 @@ def overlap(sv_list, cpos_list, win_hlen, ground_truth, outDir):
 
 
 # Get labels
-def get_labels(ibam, chrName, win_len, ground_truth, sv_caller,
+def get_labels(ibam, chrName, win_len, svtype, ground_truth, sv_caller,
                channelDataDir, outFile, outDir):
 
     logging.info('running {}'.format(chrName))
@@ -521,6 +521,8 @@ def main():
                         help="Specify chromosome")
     parser.add_argument('-w', '--window', type=str, default=200,
                         help="Specify window size")
+    parser.add_argument('-s', '--svtype', type=str, default='DEL',
+                        help="Specify window size")
     parser.add_argument('-sv', '--sv_caller', type=str,
                         default=os.path.join('manta_gridss'),
                         help="Specify Manta/GRIDSS BEDPE file"
@@ -567,6 +569,7 @@ def main():
     get_labels(ibam=args.bam,
                chrName=args.chr,
                win_len=args.window,
+               svtype=args.svtype,
                ground_truth=args.ground_truth,
                sv_caller=args.sv_caller,
                channelDataDir=args.outputpath,
