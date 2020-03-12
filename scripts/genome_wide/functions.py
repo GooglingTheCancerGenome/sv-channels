@@ -97,11 +97,16 @@ def get_suppl_aln(read):
         start_sa = int(sa_info[1])
         strand_sa = sa_info[2]
         cigar_sa = sa_info[3]
+        mapq_sa = sa_info[4]
+        nm_sa = sa_info[5]
+
+        if int(mapq_sa) < 10:
+            return None
 
         # print('{} {} {}'.format(chr_sa, start_sa, strand_sa))
         start_sa -= 1
 
-        return chr_sa, start_sa, strand_sa
+        return chr_sa, start_sa, strand_sa, cigar_sa
     else:
         return None
 
