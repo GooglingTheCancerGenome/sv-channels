@@ -261,8 +261,8 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
     trees_start, trees_end = make_gtrees_from_svlist(sv_list)
     lookup_start, lookup_end = search_tree_with_cpos(cpos_list, trees_start, trees_end)
 
-    print([l for l in lookup_start if len(l) > 0])
-    print([l for l in lookup_end if len(l) > 0])
+    #print([l for l in lookup_start if len(l) > 0])
+    #print([l for l in lookup_end if len(l) > 0])
 
     labels = dict()
 
