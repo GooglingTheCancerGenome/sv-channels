@@ -10,15 +10,18 @@ fi
 
 # set variables
 SCH=$1  # scheduler type
-BAM=$(realpath -s $2)
-BASE_DIR=$(dirname $BAM)
-SAMPLE=$(basename $BAM .bam)
-SEQ_IDS=${@:3}
-TWOBIT=${BASE_DIR}/${SAMPLE}.2bit
-BIGWIG=${BASE_DIR}/${SAMPLE}.bw
-BEDPE=${BASE_DIR}/${SAMPLE}.bedpe
+# set variables
+BAM=$(realpath -s "$1")
+BASE_DIR=$(dirname "$BAM")
+SAMPLE=$(basename "$BAM" .bam)
+SEQ_IDS=${@:2}
+PREFIX="${BASE_DIR}/${SAMPLE}"
+TWOBIT="${PREFIX}.2bit"
+BIGWIG="${PREFIX}.bw"
+TSV="${PREFIX}.tsv"
+BEDPE="${PREFIX}.bedpe"
 WORK_DIR=scripts/genome_wide
-NUMEXPR_MAX_THREADS=128  # required by py-bcolz
+#NUMEXPR_MAX_THREADS=128  # required by py-bcolz
 STARTTIME=$(date +%s)
 JOBS=() # array of job IDs
 JOBS_LOG=jobs.json # job accounting log
@@ -28,7 +31,7 @@ MY_ENV=wf # conda env
 
 submit () {  # submit a job via Xenon CLI
   xenon -v scheduler $SCH --location local:// submit \
-    --name $SAMPLE_$p --cores-per-task 1 --inherit-env --max-run-time $RTIME \
+    --name "$SAMPLE_$p" --cores-per-task 1 --inherit-env --max-run-time $RTIME \
     --working-directory . --stderr stderr-%j.log --stdout stdout-%j.log "$1"
 }
 
@@ -45,27 +48,27 @@ conda list
 cd $WORK_DIR
 
 for s in ${SEQ_IDS[@]}; do  # per chromosome
-  p=clipped_read_distance && JOB="python $p.py -b $BAM -c $s -o $p.json.gz -p . -l $p.log"
+  p=clipped_read_distance && JOB="python $p.py -b "$BAM" -c $s -o $p.json.gz -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 
-  p=clipped_reads && JOB="python $p.py -b $BAM -c $s -o $p.json.gz -p . -l $p.log"
+  p=clipped_reads && JOB="python $p.py -b "$BAM" -c $s -o $p.json.gz -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 
-  p=clipped_read_pos && JOB="python $p.py -b $BAM -c $s -o $p.json.gz -p . -l $p.log"
+  p=clipped_read_pos && JOB="python $p.py -b "$BAM" -c $s -o $p.json.gz -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 
-  p=split_reads && JOB="python $p.py -b $BAM -c $s -o $p.json.gz -p . -l $p.log"
+  p=split_reads && JOB="python $p.py -b "$BAM" -c $s -o $p.json.gz -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 
-  p=snv && JOB="python $p.py -b $BAM -c $s -t $TWOBIT -o $p.npy -p . -l $p.log"
+  p=snv && JOB="python $p.py -b "$BAM" -c $s -t "$TWOBIT" -o $p.npy -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 
-  p=coverage && JOB="python $p.py -b $BAM -c $s -o $p.npy -p . -l $p.log"
+  p=coverage && JOB="python $p.py -b "$BAM" -c $s -o $p.npy -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 done
@@ -79,18 +82,18 @@ done
 
 # generate chromosome arrays from the channels as well as label window pairs
 for s in ${SEQ_IDS[@]}; do
-  p=chr_array && JOB="python $p.py -b $BAM -c $s -t $TWOBIT -m $BIGWIG \
+  p=chr_array && JOB="python $p.py -b "$BAM" -c $s -t "$TWOBIT" -m "$BIGWIG" \
     -o $p.npy -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 
-  p=label_window_pairs_on_split_read_positions && JOB="python $p.py -b $BAM \
-    -c $s -w 200 -gt $BEDPE -o $p.json.gz -p . -l $p.log"
+  p=label_window_pairs_on_split_read_positions && JOB="python $p.py -b "$BAM" \
+    -c $s -w 200 -gt "$BEDPE" -o $p.json.gz -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 
-  p=label_window_pairs_on_svcallset && JOB="python $p.py -b $BAM -c $s -w 200 \
-    -gt $BEDPE -sv $BASE_DIR/gridss -o $p.json.gz -p . -l $p.log"
+  p=label_window_pairs_on_svcallset && JOB="python $p.py -b "$BAM" -c $s -w 200 \
+    -gt "$BEDPE" -sv "$BASE_DIR/gridss" -o $p.json.gz -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 done
@@ -103,7 +106,7 @@ done
 
 # generate window pairs
 for s in ${SEQ_IDS[@]}; do
-  p=create_window_pairs && JOB="python $p.py -b $BAM -c $s -sv gridss -w 200 \
+  p=create_window_pairs && JOB="python $p.py -b "$BAM" -c $s -sv gridss -w 200 \
     -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
