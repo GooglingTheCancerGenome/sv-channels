@@ -133,7 +133,7 @@ while true; do
 done
 
 ENDTIME=$(date +%s)
-echo "Processing took $((ENDTIME - STARTTIME)) seconds to complete."
+echo "Processing $JOBS jobs took $((ENDTIME - STARTTIME)) seconds to complete."
 
 # collect job accounting info
 for j in ${JOBS[@]}; do
