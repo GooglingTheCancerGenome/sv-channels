@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -xe
+set -e
 
 # check input arg(s)
 if [ $# -lt "3" ]; then
@@ -133,7 +133,7 @@ while true; do
 done
 
 ENDTIME=$(date +%s)
-echo "Processing $JOBS jobs took $((ENDTIME - STARTTIME)) seconds to complete."
+echo "Processing ${#JOBS[@]} jobs took $((ENDTIME - STARTTIME)) seconds to complete."
 
 # collect job accounting info
 for j in ${JOBS[@]}; do
