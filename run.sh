@@ -29,8 +29,8 @@ MY_ENV=wf # conda env
 
 submit () {  # submit a job via Xenon CLI
   xenon -v scheduler $SCH --location local:// submit \
-    --name "${SAMPLE}_$p" --cores-per-task 1 --inherit-env --max-run-time $RTIME \
-    --working-directory . --stderr stderr-%j.log --stdout stdout-%j.log "$1"
+    --name "${1}-${2}" --cores-per-task 1 --inherit-env --max-run-time $RTIME \
+    --working-directory . --stderr stderr-%j.log --stdout stdout-%j.log "$3"
 }
 
 monitor () {  # monitor a job via Xenon CLI
@@ -48,32 +48,32 @@ cd $WORK_DIR
 for s in "${SEQ_IDS[@]}"; do  # per chromosome
   p=clipped_read_distance
   JOB="python $p.py -b \"$BAM\" -c $s -o $p.json.gz -p . -l $p.log"
-  JOB_ID=$(submit "$JOB")
+  JOB_ID=$(submit "$p" "$s" "$JOB")
   JOBS+=($JOB_ID)
 
   p=clipped_reads
   JOB="python $p.py -b \"$BAM\" -c $s -o $p.json.gz -p . -l $p.log"
-  JOB_ID=$(submit "$JOB")
+  JOB_ID=$(submit "$p" "$s" "$JOB")
   JOBS+=($JOB_ID)
 
   p=clipped_read_pos
   JOB="python $p.py -b \"$BAM\" -c $s -o $p.json.gz -p . -l $p.log"
-  JOB_ID=$(submit "$JOB")
+  JOB_ID=$(submit "$p" "$s" "$JOB")
   JOBS+=($JOB_ID)
 
   p=split_reads
   JOB="python $p.py -b \"$BAM\" -c $s -o $p.json.gz -p . -l $p.log"
-  JOB_ID=$(submit "$JOB")
+  JOB_ID=$(submit "$p" "$s" "$JOB")
   JOBS+=($JOB_ID)
 
   p=snv
   JOB="python $p.py -b \"$BAM\" -c $s -t \"$TWOBIT\" -o $p.npy -p . -l $p.log"
-  JOB_ID=$(submit "$JOB")
+  JOB_ID=$(submit "$p" "$s" "$JOB")
   JOBS+=($JOB_ID)
 
   p=coverage
   JOB="python $p.py -b \"$BAM\" -c $s -o $p.npy -p . -l $p.log"
-  JOB_ID=$(submit "$JOB")
+  JOB_ID=$(submit "$p" "$s" "$JOB")
   JOBS+=($JOB_ID)
 done
 
@@ -90,19 +90,19 @@ for s in "${SEQ_IDS[@]}"; do
   p=chr_array
   JOB="python $p.py -b \"$BAM\" -c $s -t \"$TWOBIT\" -m \"$BIGWIG\" -o $p.npy \
     -p . -l $p.log"
-  JOB_ID=$(submit "$JOB")
+  JOB_ID=$(submit "$p" "$s" "$JOB")
   JOBS+=($JOB_ID)
 
   p=label_window_pairs_on_split_read_positions
   JOB="python $p.py -b \"$BAM\" -c $s -w 200 -gt \"$BEDPE\" -o $p.json.gz -p . \
     -l $p.log"
-  JOB_ID=$(submit "$JOB")
+  JOB_ID=$(submit "$p" "$s" "$JOB")
   JOBS+=($JOB_ID)
 
   p=label_window_pairs_on_svcallset
   JOB="python $p.py -b \"$BAM\" -c $s -w 200 -gt \"$BEDPE\" \
     -sv "${BASE_DIR}/gridss" -o $p.json.gz -p . -l $p.log"
-  JOB_ID=$(submit "$JOB")
+  JOB_ID=$(submit "$p" "$s" "$JOB")
   JOBS+=($JOB_ID)
 done
 
@@ -116,7 +116,7 @@ done
 for s in "${SEQ_IDS[@]}"; do
   p=create_window_pairs
   JOB="python $p.py -b \"$BAM\" -c $s -sv gridss -w 200 -p . -l $p.log"
-  JOB_ID=$(submit "$JOB")
+  JOB_ID=$(submit "$p" "$s" "$JOB")
   JOBS+=($JOB_ID)
 done
 
@@ -130,7 +130,7 @@ done
 for s in "${SEQ_IDS[@]}"; do
   p=train_model_with_fit
   JOB="python $p.py -k 3 -p . -l $p.log --test_sample . --training_sample ."
-  JOB_ID=$(submit "$JOB")
+  JOB_ID=$(submit "$p" "$s" "$JOB")
   JOBS+=($JOB_ID)
 done
 
