@@ -157,7 +157,7 @@ def get_windows(outDir, chrom, win, cmd_name, sv_caller, mode, npz_mode):
 
         logging.info('Creating dask_arrays_win1 and dask_arrays_win2...')
         for chr1, pos1, chr2, pos2 in map(unfold_win_id, labs.keys()):
-
+            logging.info("chr1={} pos1={} chr2={} pos2={}".format(chr1, pos1, chr2, pos2))
             if not i % n_r:
                 # Record the current time
                 now_t = time()
