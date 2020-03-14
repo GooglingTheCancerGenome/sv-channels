@@ -67,11 +67,11 @@ for s in "${SEQ_IDS[@]}"; do  # per chromosome
 
   p=create_window_pairs
   python $p.py -b "$BAM" -c $s -sv gridss -w 200 -p . -l $p.log
-
-  p=train_model_with_fit
-  # use "dummy" path for test/training samples
-  python $p.py --test_sample . --training_sample . -k 3 -p . -l $p.log
 done
+
+# # use "dummy" path for test/training samples
+# p=train_model_with_fit
+# python $p.py --test_sample . --training_sample . -k 3 -p . -l $p.log
 
 echo -e "\nLog files:"
 find -type f -name "*.log"
