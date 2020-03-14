@@ -10,11 +10,10 @@ fi
 
 # set variables
 SCH=$1  # scheduler type
-# set variables
-BAM=$(realpath -s "$1")
+BAM=$(realpath -s "$2")
 BASE_DIR=$(dirname "$BAM")
 SAMPLE=$(basename "$BAM" .bam)
-SEQ_IDS=(${@:2})
+SEQ_IDS=(${@:3})
 PREFIX="${BASE_DIR}/${SAMPLE}"
 TWOBIT="${PREFIX}.2bit"
 BIGWIG="${PREFIX}.bw"
