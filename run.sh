@@ -14,11 +14,10 @@ SCH=$1  # scheduler type
 BAM=$(realpath -s "$1")
 BASE_DIR=$(dirname "$BAM")
 SAMPLE=$(basename "$BAM" .bam)
-SEQ_IDS=${@:2}
+SEQ_IDS=(${@:2})
 PREFIX="${BASE_DIR}/${SAMPLE}"
 TWOBIT="${PREFIX}.2bit"
 BIGWIG="${PREFIX}.bw"
-TSV="${PREFIX}.tsv"
 BEDPE="${PREFIX}.bedpe"
 WORK_DIR=scripts/genome_wide
 #NUMEXPR_MAX_THREADS=128  # required by py-bcolz
@@ -31,7 +30,7 @@ MY_ENV=wf # conda env
 
 submit () {  # submit a job via Xenon CLI
   xenon -v scheduler $SCH --location local:// submit \
-    --name "$SAMPLE_$p" --cores-per-task 1 --inherit-env --max-run-time $RTIME \
+    --name "${SAMPLE}_$p" --cores-per-task 1 --inherit-env --max-run-time $RTIME \
     --working-directory . --stderr stderr-%j.log --stdout stdout-%j.log "$1"
 }
 
@@ -47,53 +46,63 @@ conda list
 # submit jobs to output "channel" files (*.json.gz and *.npy.gz)
 cd $WORK_DIR
 
-for s in ${SEQ_IDS[@]}; do  # per chromosome
-  p=clipped_read_distance && JOB="python $p.py -b "$BAM" -c $s -o $p.json.gz -p . -l $p.log"
+for s in "${SEQ_IDS[@]}"; do  # per chromosome
+  p=clipped_read_distance
+  JOB="python $p.py -b \"$BAM\" -c $s -o $p.json.gz -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 
-  p=clipped_reads && JOB="python $p.py -b "$BAM" -c $s -o $p.json.gz -p . -l $p.log"
+  p=clipped_reads
+  JOB="python $p.py -b \"$BAM\" -c $s -o $p.json.gz -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 
-  p=clipped_read_pos && JOB="python $p.py -b "$BAM" -c $s -o $p.json.gz -p . -l $p.log"
+  p=clipped_read_pos
+  JOB="python $p.py -b \"$BAM\" -c $s -o $p.json.gz -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 
-  p=split_reads && JOB="python $p.py -b "$BAM" -c $s -o $p.json.gz -p . -l $p.log"
+  p=split_reads
+  JOB="python $p.py -b \"$BAM\" -c $s -o $p.json.gz -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 
-  p=snv && JOB="python $p.py -b "$BAM" -c $s -t "$TWOBIT" -o $p.npy -p . -l $p.log"
+  p=snv
+  JOB="python $p.py -b \"$BAM\" -c $s -t \"$TWOBIT\" -o $p.npy -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 
-  p=coverage && JOB="python $p.py -b "$BAM" -c $s -o $p.npy -p . -l $p.log"
+  p=coverage
+  JOB="python $p.py -b \"$BAM\" -c $s -o $p.npy -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 done
 
 # wait until the jobs are done
-for j in ${JOBS[@]}; do
+for j in "${JOBS[@]}"; do
   while true; do
-    [[ $(monitor $j | jq '.statuses | .[] | select(.done==true)') ]] && break || sleep ${STIME}m
+    [[ $(monitor $j | jq '.statuses | .[] | select(.done==true)') ]] && \
+      break || sleep ${STIME}m
   done
 done
 
 # generate chromosome arrays from the channels as well as label window pairs
-for s in ${SEQ_IDS[@]}; do
-  p=chr_array && JOB="python $p.py -b "$BAM" -c $s -t "$TWOBIT" -m "$BIGWIG" \
-    -o $p.npy -p . -l $p.log"
+for s in "${SEQ_IDS[@]}"; do
+  p=chr_array
+  JOB="python $p.py -b \"$BAM\" -c $s -t \"$TWOBIT\" -m \"$BIGWIG\" -o $p.npy \
+    -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 
-  p=label_window_pairs_on_split_read_positions && JOB="python $p.py -b "$BAM" \
-    -c $s -w 200 -gt "$BEDPE" -o $p.json.gz -p . -l $p.log"
+  p=label_window_pairs_on_split_read_positions
+  JOB="python $p.py -b \"$BAM\" -c $s -w 200 -gt \"$BEDPE\" -o $p.json.gz -p . \
+    -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 
-  p=label_window_pairs_on_svcallset && JOB="python $p.py -b "$BAM" -c $s -w 200 \
-    -gt "$BEDPE" -sv "$BASE_DIR/gridss" -o $p.json.gz -p . -l $p.log"
+  p=label_window_pairs_on_svcallset
+  JOB="python $p.py -b \"$BAM\" -c $s -w 200 -gt \"$BEDPE\" \
+    -sv "${BASE_DIR}/gridss" -o $p.json.gz -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 done
@@ -105,9 +114,9 @@ while true; do
 done
 
 # generate window pairs
-for s in ${SEQ_IDS[@]}; do
-  p=create_window_pairs && JOB="python $p.py -b "$BAM" -c $s -sv gridss -w 200 \
-    -p . -l $p.log"
+for s in "${SEQ_IDS[@]}"; do
+  p=create_window_pairs
+  JOB="python $p.py -b \"$BAM\" -c $s -sv gridss -w 200 -p . -l $p.log"
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 done
@@ -119,9 +128,9 @@ while true; do
 done
 
 # train/test models
-for s in ${SEQ_IDS[@]}; do
-  p=train_model_with_fit && JOB="python $p.py -k 3 -p . -l $p.log \
-    --test_sample . --training_sample ."
+for s in "${SEQ_IDS[@]}"; do
+  p=train_model_with_fit
+  JOB="python $p.py -k 3 -p . -l $p.log --test_sample . --training_sample ."
   JOB_ID=$(submit "$JOB")
   JOBS+=($JOB_ID)
 done
@@ -133,10 +142,10 @@ while true; do
 done
 
 ENDTIME=$(date +%s)
-echo "Processing ${#JOBS[@]} jobs took $((ENDTIME - STARTTIME)) seconds to complete."
+echo "Processing ${#JOBS[@]} jobs took $((ENDTIME - STARTTIME)) sec to complete."
 
 # collect job accounting info
-for j in ${JOBS[@]}; do
+for j in "${JOBS[@]}"; do
   monitor $j >> $JOBS_LOG
 done
 cat $JOBS_LOG
