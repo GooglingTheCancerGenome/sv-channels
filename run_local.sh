@@ -35,18 +35,20 @@ done
 cd $WORK_DIR
 printenv
 
+# clipped_reads, clipped_read_pos and split_reads are run per BAM file, not per chromosome
+p=clipped_reads
+python $p.py -b "$BAM" -c $s -o $p.json.gz -p . -l $p.log
+
+p=clipped_read_pos
+python $p.py -b "$BAM" -c $s -o $p.json.gz -p . -l $p.log
+
+p=split_reads
+python $p.py -b "$BAM" -c $s -o $p.json.gz -p . -l $p.log
+
 # write channels into *.json.gz and *.npy.gz files
 for s in "${SEQ_IDS[@]}"; do  # per chromosome
+
   p=clipped_read_distance
-  python $p.py -b "$BAM" -c $s -o $p.json.gz -p . -l $p.log
-
-  p=clipped_reads
-  python $p.py -b "$BAM" -c $s -o $p.json.gz -p . -l $p.log
-
-  p=clipped_read_pos
-  python $p.py -b "$BAM" -c $s -o $p.json.gz -p . -l $p.log
-
-  p=split_reads
   python $p.py -b "$BAM" -c $s -o $p.json.gz -p . -l $p.log
 
   p=snv
@@ -58,16 +60,18 @@ for s in "${SEQ_IDS[@]}"; do  # per chromosome
   p=chr_array
   python $p.py -b "$BAM" -c $s -t "$TWOBIT" -m "$BIGWIG" -o $p.npy -p . -l $p.log
 
-  p=label_window_pairs_on_split_read_positions
-  python $p.py -b "$BAM" -c $s -w 200 -gt "$BEDPE" -o $p.json.gz -p . -l $p.log
-
-  p=label_window_pairs_on_svcallset
-  python $p.py -b "$BAM" -c $s -w 200 -gt "$BEDPE" -sv "$BASE_DIR/gridss" \
-    -o $p.json.gz -p . -l $p.log
-
-  p=create_window_pairs
-  python $p.py -b "$BAM" -c $s -sv gridss -w 200 -p . -l $p.log
 done
+
+p=label_window_pairs_on_split_read_positions
+python $p.py -b "$BAM" -c $s -w 200 -gt "$BEDPE" -o $p.json.gz -p . -l $p.log
+
+p=label_window_pairs_on_svcallset
+python $p.py -b "$BAM" -c $s -w 200 -gt "$BEDPE" -sv "$BASE_DIR/gridss" \
+-o $p.json.gz -p . -l $p.log
+
+p=create_window_pairs
+python $p.py -b "$BAM" -c $s -sv gridss -w 200 -p . -l $p.log
+
 
 # # use "dummy" path for test/training samples
 # p=train_model_with_fit
