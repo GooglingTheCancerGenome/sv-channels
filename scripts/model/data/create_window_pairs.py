@@ -40,8 +40,8 @@ def get_chr_list(chrom):
     return [chrom]
 
 
-def load_chr_array(channel_data_dir, chrom):
-    chrlist = get_chr_list(chrom)
+def load_chr_array(channel_data_dir, chrlist):
+
     chr_array = dict()
 
     for c in chrlist:
@@ -96,7 +96,7 @@ def get_window_by_id(win_id, chr_array, padding, win_hlen):
     return da.concatenate(dask_arrays, axis=0)
 
 
-def get_windows(outDir, chrom, win, cmd_name, sv_caller, mode, npz_mode):
+def get_windows(outDir, chrom_list, win, cmd_name, sv_caller, mode, npz_mode):
 
     def same_chr_in_winid(win_id):
         chr1, pos1, chr2, pos2 = win_id.split('_')
@@ -104,8 +104,8 @@ def get_windows(outDir, chrom, win, cmd_name, sv_caller, mode, npz_mode):
 
     outfile_dir = os.path.join(outDir, cmd_name)
 
-    chr_array = load_chr_array(outDir, chrom)
-    n_channels = chr_array[chrom].shape[1]
+    chr_array = load_chr_array(outDir, chrom_list)
+    n_channels = chr_array[chrom_list[0]].shape[1]
     logging.info('{} channels'.format(n_channels))
 
     labels = get_labels(outDir, win, sv_caller)
@@ -223,8 +223,8 @@ def main():
     parser.add_argument('-b', '--bam', type=str,
                         default=inputBAM,
                         help="Specify input file (BAM)")
-    parser.add_argument('-c', '--chr', type=str, default='17',
-                        help="Specify chromosome")
+    parser.add_argument('-c', '--chrlist', nargs='+', default=['17'],
+                        help="List of chromosomes to consider")
     parser.add_argument('-p', '--outputpath', type=str,
                         default='/Users/lsantuari/Documents/Processed/channel_maker_output',
                         help="Specify output path")
@@ -259,7 +259,7 @@ def main():
     t0 = time()
 
     get_windows(outDir=args.outputpath,
-                chrom=args.chr,
+                chrom_list=args.chrlist,
                 win=args.window,
                 cmd_name=cmd_name,
                 sv_caller=args.sv_caller,
