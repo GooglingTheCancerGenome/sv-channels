@@ -26,7 +26,7 @@ awk '{OFS="\t"}{if($5 ~ /DEL|INS/){print $1,$2,$2+1,$1,$4,$4+1,$5}}' \
   "$TSV" > "$BEDPE"
 
 # convert sv-callers output in VCF to BEDPE files
-for vcf in $(find data -mindepth 5 -name \*.vcf); do
+for vcf in $(find data -mindepth 5 -name "*.vcf"); do
   prefix=$(basename $vcf .vcf)
   bedpe="${BASE_DIR}/${prefix}.bedpe"
   scripts/R/vcf2bedpe.R -i "$vcf" -o "$bedpe"
@@ -35,15 +35,15 @@ done
 cd $WORK_DIR
 printenv
 
-# clipped_reads, clipped_read_pos and split_reads are run per BAM file, not per chromosome
+# run per BAM file
 p=clipped_reads
-python $p.py -b "$BAM" -c $s -o $p.json.gz -p . -l $p.log
+python $p.py -b "$BAM" -o $p.json.gz -p . -l $p.log
 
 p=clipped_read_pos
-python $p.py -b "$BAM" -c $s -o $p.json.gz -p . -l $p.log
+python $p.py -b "$BAM" -o $p.json.gz -p . -l $p.log
 
 p=split_reads
-python $p.py -b "$BAM" -c $s -o $p.json.gz -p . -l $p.log
+python $p.py -b "$BAM" -o $p.json.gz -p . -l $p.log
 
 # write channels into *.json.gz and *.npy.gz files
 for s in "${SEQ_IDS[@]}"; do  # per chromosome
