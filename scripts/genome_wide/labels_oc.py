@@ -1,28 +1,26 @@
 # Imports
 import argparse
-import re
-import glob
-
-import pysam
-from pysam import VariantFile
-
-from collections import Counter
-from intervaltree import IntervalTree
-from intervaltree_bio import GenomeIntervalTree
-from collections import defaultdict
-import numpy as np
-import gzip
-import bz2file
-import os, errno
-import pickle
-from time import time
-import pandas as pd
-from plotnine import *
-import pprint
-
-import logging
 import csv
+import errno
+import glob
+import gzip
+import logging
+import os
+import pickle
+import pprint
+import re
 import statistics
+from collections import Counter, defaultdict
+from time import time
+
+import bz2file
+import numpy as np
+import pandas as pd
+import pysam
+from intervaltree import IntervalTree
+from plotnine import *
+
+from intervaltree_bio import GenomeIntervalTree
 
 # Default BAM file for testing
 # On the HPC
@@ -52,11 +50,10 @@ win_len = win_hlen * 2
 __bpRE__ = None
 __symbolicRE__ = None
 
-
 # Classes
 
-class SVRecord_generic:
 
+class SVRecord_generic:
     def __init__(self, record, sv_caller):
 
         if type(record) != pysam.VariantRecord:
@@ -112,9 +109,9 @@ class SVRecord_generic:
                 if ct == '3to5':
                     self.svtype = 'DEL'
                 elif ct == '5to5' or ct == '3to3':
-                        self.svtype = 'INV'
+                    self.svtype = 'INV'
                 elif ct == '5to3':
-                        self.svtype = 'DUP'
+                    self.svtype = 'DUP'
                 else:
                     self.svtype = record.info['SVTYPE']
             elif self.start == self.end:
@@ -195,14 +192,13 @@ class SVRecord_generic:
         resultBP = re.match(__bpRE__, altstr)
 
         if resultBP:
-            ct, chr2, pos2, indellen = self.locFromBkpt(str(record.ref), resultBP.group(1),
-                                                        resultBP.group(2), resultBP.group(3), resultBP.group(4),
-                                                        resultBP.group(5))
+            ct, chr2, pos2, indellen = self.locFromBkpt(
+                str(record.ref), resultBP.group(1), resultBP.group(2),
+                resultBP.group(3), resultBP.group(4), resultBP.group(5))
         return (ct, chr2, pos2, indellen)
 
 
 class SVRecord_SUR:
-
     def __init__(self, record):
         if type(record) != pysam.VariantRecord:
             raise TypeError('VCF record is not of type pysam.VariantRecord')
@@ -217,7 +213,6 @@ class SVRecord_SUR:
 
 
 class SVRecord_nanosv:
-
     def __init__(self, record, sv_caller):
 
         if type(record) != pysam.VariantRecord:
@@ -314,9 +309,9 @@ class SVRecord_nanosv:
         resultBP = re.match(__bpRE__, altstr)
 
         if resultBP:
-            ct, chr2, pos2, indellen = self.locFromBkpt(str(record.ref), resultBP.group(1),
-                                                        resultBP.group(2), resultBP.group(3), resultBP.group(4),
-                                                        resultBP.group(5))
+            ct, chr2, pos2, indellen = self.locFromBkpt(
+                str(record.ref), resultBP.group(1), resultBP.group(2),
+                resultBP.group(3), resultBP.group(4), resultBP.group(5))
         return (ct, chr2, pos2, indellen)
 
 
@@ -338,7 +333,9 @@ def setupREs():
     global __bpRE__
     if __symbolicRE__ is None or __bpRE__ is None:
         __symbolicRE__ = re.compile(r'.*<([A-Z:]+)>.*')
-        __bpRE__ = re.compile(r'([ACGTNactgn\.]*)([\[\]])([a-zA-Z0-9\.]+:\d+)([\[\]])([ACGTNacgtn\.]*)')
+        __bpRE__ = re.compile(
+            r'([ACGTNactgn\.]*)([\[\]])([a-zA-Z0-9\.]+:\d+)([\[\]])([ACGTNacgtn\.]*)'
+        )
 
 
 def get_chr_len_by_chr(ibam, chrName):
@@ -367,19 +364,6 @@ def get_chr_len_dict(ibam):
     return chr_dict
 
 
-def create_dir(directory):
-    '''
-    Create a directory if it does not exist. Raises an exception if the directory exists.
-    :param directory: directory to create
-    :return: None
-    '''
-    try:
-        os.makedirs(directory)
-    except OSError as e:
-        if e.errno != errno.EEXIST:
-            raise
-
-
 def load_clipped_read_positions_TN_support(sampleName, chrName):
 
     sampleName = sampleName.split('--')[0]
@@ -389,10 +373,12 @@ def load_clipped_read_positions_TN_support(sampleName, chrName):
     # Load files
     if HPC_MODE:
         channel_dir = '/hpc/cog_bioinf/ridder/users/lsantuari/Git/DeepSV_runs/041018/CNN/scripts/OC'
-        fn = os.path.join(channel_dir, sampleName, vec_type, chrName + '_' + vec_type + '.pbz2')
+        fn = os.path.join(channel_dir, sampleName, vec_type,
+                          chrName + '_' + vec_type + '.pbz2')
     else:
         channel_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth'
-        fn = '/'.join((channel_dir, sampleName, vec_type, chrName + '_' + vec_type + '.pbz2'))
+        fn = '/'.join((channel_dir, sampleName, vec_type,
+                       chrName + '_' + vec_type + '.pbz2'))
 
     with bz2file.BZ2File(fn, 'rb') as f:
         cpos = pickle.load(f)
@@ -402,7 +388,10 @@ def load_clipped_read_positions_TN_support(sampleName, chrName):
 
     # Remove positions with windows falling off chromosome boundaries
     # print(f'win_hlen = {win_hlen}, chrom_lengths[{chrName}] = {chrom_lengths[chrName]}')
-    cr_pos = [pos for pos in cr_pos if win_hlen <= pos <= (chrom_lengths[chrName] - win_hlen)]
+    cr_pos = [
+        pos for pos in cr_pos
+        if win_hlen <= pos <= (chrom_lengths[chrName] - win_hlen)
+    ]
 
     return cr_pos
 
@@ -423,10 +412,12 @@ def load_clipped_read_positions(sampleName, chrName):
         # Load files
         if HPC_MODE:
             channel_dir = 'OC'
-            fn = os.path.join(channel_dir, sample, vec_type, chrName + '_' + vec_type + '.pbz2')
+            fn = os.path.join(channel_dir, sample, vec_type,
+                              chrName + '_' + vec_type + '.pbz2')
         else:
             channel_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth'
-            fn = '/'.join((channel_dir, sample, vec_type, chrName + '_' + vec_type + '.pbz2'))
+            fn = '/'.join((channel_dir, sample, vec_type,
+                           chrName + '_' + vec_type + '.pbz2'))
 
         with bz2file.BZ2File(fn, 'rb') as f:
             cpos[sample] = pickle.load(f)
@@ -437,20 +428,29 @@ def load_clipped_read_positions(sampleName, chrName):
         # else:
         #     cr_pos[sample] = [elem for elem, cnt in cpos[sample].items() if cnt >= 1]
 
-        print('Length of cr_pos for sample %s: %d' % (sample, len(cpos[sample])))
-        cr_pos[sample] = [elem for elem, cnt in cpos[sample].items() if cnt >= min_cr_support]
+        print('Length of cr_pos for sample %s: %d' %
+              (sample, len(cpos[sample])))
+        cr_pos[sample] = [
+            elem for elem, cnt in cpos[sample].items() if cnt >= min_cr_support
+        ]
         print('Length of cr_pos for sample %s after min support = %d: %d' %
               (sample, min_cr_support, len(cr_pos[sample])))
         # Remove positions with windows falling off chromosome boundaries
         # print(f'win_hlen = {win_hlen}, chrom_lengths[{chrName}] = {chrom_lengths[chrName]}')
-        cr_pos[sample] = [pos for pos in cr_pos[sample] if win_hlen <= pos <= (chrom_lengths[chrName] - win_hlen)]
-        print('Length of cr_pos for sample %s after extremes removed: %d' % (sample, len(cr_pos[sample])))
+        cr_pos[sample] = [
+            pos for pos in cr_pos[sample]
+            if win_hlen <= pos <= (chrom_lengths[chrName] - win_hlen)
+        ]
+        print('Length of cr_pos for sample %s after extremes removed: %d' %
+              (sample, len(cr_pos[sample])))
     assert set(cr_pos[sample_list[0]]) != set(cr_pos[sample_list[1]])
 
     cr_pos_keep = set(cr_pos[sample_list[0]]) - set(cr_pos[sample_list[1]])
     print('Length of cr_pos_keep: %d' % len(cr_pos_keep))
 
-    cr_pos_final = [pos for pos in cr_pos[sample_list[0]] if pos in cr_pos_keep]
+    cr_pos_final = [
+        pos for pos in cr_pos[sample_list[0]] if pos in cr_pos_keep
+    ]
     print('Length of cr_pos_final: %d' % len(cr_pos_final))
     print('Length of cr_pos tumor: %d' % len(cr_pos[sample_list[0]]))
     print('Length of cr_pos normal: %d' % len(cr_pos[sample_list[1]]))
@@ -473,43 +473,51 @@ def initialize_nanosv_vcf_paths(sampleName):
 
         if sampleName[:7] == 'NA12878':
 
-            vcf_dir = '/hpc/cog_bioinf/kloosterman/shared/nanosv_comparison/' + sampleName[:7]
+            vcf_dir = '/hpc/cog_bioinf/kloosterman/shared/nanosv_comparison/' + sampleName[:
+                                                                                           7]
 
             for mapper in ['bwa', 'minimap2', 'ngmlr', 'last']:
 
                 vcf_files[mapper] = dict()
 
-                vcf_files[mapper]['nanosv'] = vcf_dir + '/' + mapper + '/' + mapper + '_nanosv.sorted.vcf'
+                vcf_files[mapper][
+                    'nanosv'] = vcf_dir + '/' + mapper + '/' + mapper + '_nanosv.sorted.vcf'
                 assert os.path.isfile(vcf_files[mapper]['nanosv'])
 
                 vcf_files[mapper]['nanosv_sniffles_settings'] = vcf_dir + '/' + mapper + '/' + \
                                                                 mapper + '_nanosv_with_sniffles_settings.sorted.vcf'
-                assert os.path.isfile(vcf_files[mapper]['nanosv_sniffles_settings'])
+                assert os.path.isfile(
+                    vcf_files[mapper]['nanosv_sniffles_settings'])
 
                 if mapper in ['bwa', 'ngmlr']:
-                    vcf_files[mapper]['sniffles'] = vcf_dir + '/' + mapper + '/' + mapper + '_sniffles.sorted.vcf'
+                    vcf_files[mapper][
+                        'sniffles'] = vcf_dir + '/' + mapper + '/' + mapper + '_sniffles.sorted.vcf'
                     assert os.path.isfile(vcf_files[mapper]['sniffles'])
 
                     vcf_files[mapper]['sniffles_nanosv_settings'] = vcf_dir + '/' + mapper + '/' + \
                                                                     mapper + '_sniffles_with_nanosv_settings.sorted.vcf'
-                    assert os.path.isfile(vcf_files[mapper]['sniffles_nanosv_settings'])
+                    assert os.path.isfile(
+                        vcf_files[mapper]['sniffles_nanosv_settings'])
 
     else:
 
         if sampleName[:7] == 'NA12878':
 
-            vcf_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth/' + sampleName[:7] + '/SV'
+            vcf_dir = '/Users/lsantuari/Documents/Data/HPC/DeepSV/GroundTruth/' + sampleName[:
+                                                                                             7] + '/SV'
             vcf_files = dict()
 
             for mapper in ['bwa', 'last']:
 
                 vcf_files[mapper] = dict()
 
-                vcf_files[mapper]['nanosv'] = vcf_dir + '/' + mapper + '/' + mapper + '_nanosv_pysam.sorted.vcf'
+                vcf_files[mapper][
+                    'nanosv'] = vcf_dir + '/' + mapper + '/' + mapper + '_nanosv_pysam.sorted.vcf'
                 assert os.path.isfile(vcf_files[mapper]['nanosv'])
 
                 if mapper in ['bwa']:
-                    vcf_files[mapper]['sniffles'] = vcf_dir + '/' + mapper + '/' + mapper + '_sniffles.sorted.vcf'
+                    vcf_files[mapper][
+                        'sniffles'] = vcf_dir + '/' + mapper + '/' + mapper + '_sniffles.sorted.vcf'
                     assert os.path.isfile(vcf_files[mapper]['sniffles'])
 
         elif sampleName == 'Patient1' or sampleName == 'Patient2':
@@ -520,7 +528,8 @@ def initialize_nanosv_vcf_paths(sampleName):
             for mapper in ['last']:
                 vcf_files[mapper] = dict()
 
-                vcf_files[mapper]['nanosv'] = vcf_dir + '/' + mapper + '/' + mapper + '_nanosv.sorted.vcf'
+                vcf_files[mapper][
+                    'nanosv'] = vcf_dir + '/' + mapper + '/' + mapper + '_nanosv.sorted.vcf'
                 assert os.path.isfile(vcf_files[mapper]['nanosv'])
 
     return vcf_files
@@ -540,11 +549,12 @@ def read_nanosv_vcf(sampleName):
     # Setup locations of VCF files
     vcf_files = initialize_nanosv_vcf_paths(sampleName)
 
-    if sampleName[:7] == 'NA12878' or sampleName == 'Patient1' or sampleName == 'Patient2':
+    if sampleName[:
+                  7] == 'NA12878' or sampleName == 'Patient1' or sampleName == 'Patient2':
 
         # Reading the Last-mapped NanoSV VCF file
         filename = vcf_files['last']['nanosv']
-        vcf_in = VariantFile(filename, 'r')
+        vcf_in = pysam.VariantFile(filename, 'r')
 
         sv = []
 
@@ -603,11 +613,13 @@ def read_vcf(sampleName, sv_caller):
         filename = '/Users/lsantuari/Documents/Data/germline/patients/' + \
                    sampleName + '/SV/Filtered/' + sv_caller + '.sym.vcf'
     else:
-        filename = glob.glob(os.path.join('/hpc/cog_bioinf/ridder/users/akuzniar/HMF_data/bam','*',
-                   sampleName,sv_caller+'_out',sv_caller+'.vcf'))[0]
+        filename = glob.glob(
+            os.path.join('/hpc/cog_bioinf/ridder/users/akuzniar/HMF_data/bam',
+                         '*', sampleName, sv_caller + '_out',
+                         sv_caller + '.vcf'))[0]
 
     print('Reading VCF file %s\nfor SV caller %s' % (filename, sv_caller))
-    vcf_in = VariantFile(filename, 'r')
+    vcf_in = pysam.VariantFile(filename, 'r')
 
     sv = []
 
@@ -620,10 +632,11 @@ def read_vcf(sampleName, sv_caller):
     print(Counter([svrec.svtype for svrec in sv]))
 
     # Select good quality (no LowQual, only 'PASS') deletions (DEL)
-    sv = [svrec for svrec in sv if svrec.svtype == 'DEL'
-          # if 'LowQual' not in list(svrec.filter)]
-          # if 'PASS' in list(svrec.filter)
-          ]
+    sv = [
+        svrec for svrec in sv if svrec.svtype == 'DEL'
+        # if 'LowQual' not in list(svrec.filter)]
+        # if 'PASS' in list(svrec.filter)
+    ]
 
     return sv
 
@@ -641,11 +654,12 @@ def read_bpi(sampleName, sv_caller):
 
     # Setup locations of VCF files
 
-    filename = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/OC_COMPARISONS/snakemake_bpi',
-                            sampleName, 'bpi_out', sv_caller + '.vcf')
+    filename = os.path.join(
+        '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/OC_COMPARISONS/snakemake_bpi',
+        sampleName, 'bpi_out', sv_caller + '.vcf')
 
     print('Reading VCF file %s\nfor SV caller %s' % (filename, sv_caller))
-    vcf_in = VariantFile(filename, 'r')
+    vcf_in = pysam.VariantFile(filename, 'r')
 
     sv = []
 
@@ -738,7 +752,8 @@ def get_labels_from_nanosv_vcf(sampleName):
 
             # id_start = '_'.join((var.chrom, str(var.start+var.cipos[0]),  str(var.start+var.cipos[1])))
             # id_end = '_'.join((var.chrom, str(var.end + var.ciend[0]), str(var.end+var.ciend[1])))
-            assert var.start <= var.end, "Start: " + str(var.start) + " End: " + str(var.end)
+            assert var.start <= var.end, "Start: " + str(
+                var.start) + " End: " + str(var.end)
 
             # print('var start -> %s:%d CIPOS: (%d, %d)' % (chrName, var.start, var.cipos[0], var.cipos[1]))
             # print('var end -> %s:%d CIEND: (%d, %d)' % (chrName, var.end, var.ciend[0], var.ciend[1]))
@@ -749,16 +764,20 @@ def get_labels_from_nanosv_vcf(sampleName):
             # t[var.start - confint:var.start + confint + 1] = var.svtype + '_start'
             # t[var.end - confint:var.end + confint + 1] = var.svtype + '_end'
 
-        label_search = [sorted(t[p - win_hlen: p + win_hlen + 1]) for p in cr_pos]
+        label_search = [
+            sorted(t[p - win_hlen:p + win_hlen + 1]) for p in cr_pos
+        ]
 
-        crpos_full_ci, crpos_partial_ci = get_crpos_win_with_ci_overlap(sv_list_chr, cr_pos)
+        crpos_full_ci, crpos_partial_ci = get_crpos_win_with_ci_overlap(
+            sv_list_chr, cr_pos)
 
         # print('Clipped read positions with complete CI overlap: %s' % crpos_full_ci)
         # print('Clipped read positions with partial CI overlap: %s' % crpos_partial_ci)
         # crpos_ci_isec = set(crpos_full_ci) & set(crpos_partial_ci)
         # print('Intersection: %s' % crpos_ci_isec)
 
-        print('# CRPOS in CI: %d' % len([l for l in label_search if len(l) != 0]))
+        print('# CRPOS in CI: %d' %
+              len([l for l in label_search if len(l) != 0]))
 
         count_zero_hits = 0
         count_multiple_hits = 0
@@ -806,12 +825,15 @@ def get_labels_from_nanosv_vcf(sampleName):
         else:
             channel_dir = ''
 
-        output_dir = '/'.join((channel_dir, sampleName, 'label'))
-        create_dir(output_dir)
+        output_dir = os.path.join(channel_dir, sampleName, 'label')
+        os.makedirs(output_dir)
 
         # print(output_dir)
 
-        with gzip.GzipFile('/'.join((output_dir, chrName + '_label_ci_full_overlap.npy.gz')), "w") as f:
+        with gzip.GzipFile(
+                '/'.join(
+                    (output_dir, chrName + '_label_ci_full_overlap.npy.gz')),
+                "w") as f:
             np.save(file=f, arr=label_ci_full_overlap)
         f.close()
 
@@ -837,7 +859,10 @@ def write_sv_without_cr(sampleName, ibam):
     # Load SV list
     sv_list = read_nanosv_vcf(sampleName)
     # Select deletions
-    sv_list = [sv for sv in sv_list if sv.svtype == 'DEL' if sv.chrom == sv.chrom2 if sv.start < sv.end]
+    sv_list = [
+        sv for sv in sv_list if sv.svtype == 'DEL' if sv.chrom == sv.chrom2
+        if sv.start < sv.end
+    ]
     # list of chromosomes
     chr_list = set([var.chrom for var in sv_list])
 
@@ -887,13 +912,13 @@ def write_sv_without_cr(sampleName, ibam):
                                         str(var.start + var.cipos[0]),
                                         str(var.start + var.cipos[1]))) + '\n')
             if var.end + var.ciend[0] not in end_var_list:
-                bedout.write('\t'.join((var.chrom,
-                                        str(var.end + var.ciend[0]),
+                bedout.write('\t'.join((var.chrom, str(var.end + var.ciend[0]),
                                         str(var.end + var.ciend[1]))) + '\n')
 
     bedout.close()
 
-    print('VCF entries with CR on both sides: %d/%d' % (var_with_cr, len(sv_list)))
+    print('VCF entries with CR on both sides: %d/%d' %
+          (var_with_cr, len(sv_list)))
 
 
 def plot_ci_dist(sv_list, sampleName):
@@ -906,8 +931,10 @@ def plot_ci_dist(sv_list, sampleName):
 
     # Plot distribution of CIPOS and CIEND
     df = pd.DataFrame({
-        "cipos": np.array([var.cipos[1] + abs(var.cipos[0]) for var in sv_list]),
-        "ciend": np.array([var.ciend[1] + abs(var.ciend[0]) for var in sv_list])
+        "cipos":
+        np.array([var.cipos[1] + abs(var.cipos[0]) for var in sv_list]),
+        "ciend":
+        np.array([var.ciend[1] + abs(var.ciend[0]) for var in sv_list])
     })
 
     print('Max CIPOS:%d, max CIEND:%d' % (max(df['cipos']), max(df['ciend'])))
@@ -916,11 +943,13 @@ def plot_ci_dist(sv_list, sampleName):
     # the histogram of the data
     p = ggplot(aes(x='cipos'), data=df) + \
         geom_histogram(binwidth=1) + ggtitle(' '.join((sampleName, 'CIPOS', 'distribution')))
-    p.save(filename='_'.join((sampleName, 'CIPOS', 'distribution')), path=output_dir)
+    p.save(filename='_'.join((sampleName, 'CIPOS', 'distribution')),
+           path=output_dir)
 
     p = ggplot(aes(x='ciend'), data=df) + \
         geom_histogram(binwidth=1) + ggtitle(' '.join((sampleName, 'CIEND', 'distribution')))
-    p.save(filename='_'.join((sampleName, 'CIEND', 'distribution')), path=output_dir)
+    p.save(filename='_'.join((sampleName, 'CIEND', 'distribution')),
+           path=output_dir)
 
 
 def get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName):
@@ -945,8 +974,10 @@ def get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName):
                 assert len(coord_list) == 4
                 common_sv[coord_list[0]].append(int(coord_list[1]))
     # print(common_sv.keys())
-    sv_nanosv_manta = [sv for sv in sv_nanosv
-                       if sv.chrom in common_sv.keys() if sv.start in common_sv[sv.chrom]]
+    sv_nanosv_manta = [
+        sv for sv in sv_nanosv if sv.chrom in common_sv.keys()
+        if sv.start in common_sv[sv.chrom]
+    ]
     # print(common_sv['1'])
     # print(len(sv_nanosv_manta))
     return sv_nanosv_manta
@@ -956,18 +987,20 @@ def get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName):
 
 # START: BED specific functions
 
+
 def read_bed_sv(inbed):
     # Check file existence
     assert os.path.isfile(inbed)
     # Dictionary with chromosome keys to store SVs
     sv_dict = defaultdict(list)
 
-    with(open(inbed, 'r')) as bed:
+    with (open(inbed, 'r')) as bed:
         for line in bed:
             columns = line.rstrip().split("\t")
             chrom = str(columns[0])
             if columns[3][:3] == "DEL":
-                sv_dict[chrom].append((int(columns[1]), int(columns[2]), columns[3]))
+                sv_dict[chrom].append(
+                    (int(columns[1]), int(columns[2]), columns[3]))
 
     # print(sv_dict)
     return sv_dict
@@ -1010,9 +1043,12 @@ def get_labels_from_bed(sampleName, ibam, inbed):
         for start, end, lab in sv_list_chr:
             t[chrName][start:end + 1] = lab
 
-        label = [sorted(t[chrName][p - win_hlen: p + win_hlen + 1]) for p in cr_pos]
+        label = [
+            sorted(t[chrName][p - win_hlen:p + win_hlen + 1]) for p in cr_pos
+        ]
 
-        crpos_full_ci, crpos_partial_ci = get_crpos_win_with_bed_overlap(sv_list_chr, cr_pos)
+        crpos_full_ci, crpos_partial_ci = get_crpos_win_with_bed_overlap(
+            sv_list_chr, cr_pos)
 
         # print('Clipped read positions with complete CI overlap: %s' % crpos_full_ci)
         # print('Clipped read positions with partial CI overlap: %s' % crpos_partial_ci)
@@ -1082,7 +1118,6 @@ def get_crpos_win_with_ci_overlap(sv_list, cr_pos):
     :return: list, list of clipped read positions whose window completely overlap either the CIPOS interval
     or the CIEND interval
     '''
-
     def get_tree(cr_pos):
         # Tree with windows for CR positions
         tree = IntervalTree()
@@ -1094,11 +1129,15 @@ def get_crpos_win_with_ci_overlap(sv_list, cr_pos):
     def search_tree_with_sv(sv_list, tree, citype):
 
         if citype == 'CIPOS':
-            return [sorted(tree[var.start + var.cipos[0]: var.start + var.cipos[1] + 1])
-                    for var in sv_list]
+            return [
+                sorted(tree[var.start + var.cipos[0]:var.start + var.cipos[1] +
+                            1]) for var in sv_list
+            ]
         elif citype == 'CIEND':
-            return [sorted(tree[var.end + var.ciend[0]: var.end + var.ciend[1] + 1])
-                    for var in sv_list]
+            return [
+                sorted(tree[var.end + var.ciend[0]:var.end + var.ciend[1] + 1])
+                for var in sv_list
+            ]
 
     def get_overlap(tree, sv_list, citype):
 
@@ -1132,7 +1171,8 @@ def get_crpos_win_with_ci_overlap(sv_list, cr_pos):
     cr_full_overlap = sorted(full_cipos + full_ciend)
     cr_partial_overlap = sorted(partial_cipos + partial_ciend)
 
-    return sorted(list(set(cr_full_overlap))), sorted(list(set(cr_partial_overlap) - set(cr_full_overlap)))
+    return sorted(list(set(cr_full_overlap))), sorted(
+        list(set(cr_partial_overlap) - set(cr_full_overlap)))
 
 
 def get_crpos_win_with_bed_overlap(sv_list, cr_pos):
@@ -1151,7 +1191,7 @@ def get_crpos_win_with_bed_overlap(sv_list, cr_pos):
     cr_full_overlap = []
     cr_partial_overlap = []
 
-    rg_overlap = [sorted(t_cr[start: end + 1]) for start, end, lab in sv_list]
+    rg_overlap = [sorted(t_cr[start:end + 1]) for start, end, lab in sv_list]
     # print('Range overlap: %s' % rg_overlap)
 
     for rg, start, end in zip(rg_overlap,
@@ -1167,10 +1207,12 @@ def get_crpos_win_with_bed_overlap(sv_list, cr_pos):
     cr_full_overlap = sorted(cr_full_overlap)
     cr_partial_overlap = sorted(cr_partial_overlap)
 
-    return sorted(list(set(cr_full_overlap))), sorted(list(set(cr_partial_overlap) - set(cr_full_overlap)))
+    return sorted(list(set(cr_full_overlap))), sorted(
+        list(set(cr_partial_overlap) - set(cr_full_overlap)))
 
 
 # END: BED specific functions
+
 
 def read_SURVIVOR_merge_VCF(sampleName):
     '''
@@ -1192,7 +1234,7 @@ def read_SURVIVOR_merge_VCF(sampleName):
             survivor_vcf = '/Users/lsantuari/Documents/Data/germline/' + context + \
                            '/' + sampleName + '/SV/Filtered/survivor_merge.vcf'
 
-    vcf_in = VariantFile(survivor_vcf)
+    vcf_in = pysam.VariantFile(survivor_vcf)
     samples_list = list((vcf_in.header.samples))
     samples = samples_list
     # samples = [w.split('_')[0].split('/')[1] for w in samples_list]
@@ -1203,7 +1245,8 @@ def read_SURVIVOR_merge_VCF(sampleName):
     # create sv list with SVRecord_SUR objects
     for rec in vcf_in.fetch():
         # avoid SVs on chromosomes Y and MT
-        if rec.chrom not in ['Y', 'MT'] and rec.info['CHR2'] not in ['Y', 'MT']:
+        if rec.chrom not in ['Y', 'MT'
+                             ] and rec.info['CHR2'] not in ['Y', 'MT']:
             # print(rec)
             # print(dir(rec))
             sv.append(SVRecord_SUR(rec))
@@ -1228,6 +1271,7 @@ def load_NoCR_positions():
 
 # Methods to save to BED format
 
+
 def clipped_read_positions_to_bed(sampleName, ibam):
     chrlist = list(map(str, range(1, 23)))
     chrlist.extend(['X', 'Y'])
@@ -1236,8 +1280,10 @@ def clipped_read_positions_to_bed(sampleName, ibam):
     lines = []
     for chrName in chrlist:
         crpos_list = load_clipped_read_positions(sampleName, chrName)
-        lines.extend(
-            [bytes(chrName + '\t' + str(crpos) + '\t' + str(crpos + 1) + '\n', 'utf-8') for crpos in crpos_list])
+        lines.extend([
+            bytes(chrName + '\t' + str(crpos) + '\t' + str(crpos + 1) + '\n',
+                  'utf-8') for crpos in crpos_list
+        ])
 
     crout = sampleName + '_clipped_read_pos.bed.gz'
     f = gzip.open(crout, 'wb')
@@ -1255,7 +1301,10 @@ def nanosv_vcf_to_bed(sampleName):
     # sv_list = get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName)
 
     # Select deletions
-    sv_list = [sv for sv in sv_list if sv.svtype == 'DEL' if sv.chrom == sv.chrom2 if sv.start < sv.end]
+    sv_list = [
+        sv for sv in sv_list if sv.svtype == 'DEL' if sv.chrom == sv.chrom2
+        if sv.start < sv.end
+    ]
 
     lines = []
     for sv in sv_list:
@@ -1307,8 +1356,10 @@ def get_labels(sampleName):
             # print('var start -> %s:%d CIPOS: (%d, %d)' % (chrName, var.start, var.cipos[0], var.cipos[1]))
             # print('var end -> %s:%d CIEND: (%d, %d)' % (chrName, var.end, var.ciend[0], var.ciend[1]))
 
-            t[var.chrom][var.start + var.cipos[0]:var.start + var.cipos[1] + 1] = id_start
-            t[var.chrom2][var.end + var.ciend[0]:var.end + var.ciend[1] + 1] = id_end
+            t[var.chrom][var.start + var.cipos[0]:var.start + var.cipos[1] +
+                         1] = id_start
+            t[var.chrom2][var.end + var.ciend[0]:var.end + var.ciend[1] +
+                          1] = id_end
 
         return t
 
@@ -1316,10 +1367,13 @@ def get_labels(sampleName):
 
         sv_dict = dict()
 
-        if sampleName[:7] == 'NA12878' or sampleName == 'PATIENT1' or sampleName == 'PATIENT2':
+        if sampleName[:
+                      7] == 'NA12878' or sampleName == 'PATIENT1' or sampleName == 'PATIENT2':
 
             sv_dict['nanosv'] = read_nanosv_vcf(sampleName)
-            sv_dict['nanosv_manta'] = get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(sampleName)
+            sv_dict[
+                'nanosv_manta'] = get_nanosv_manta_sv_from_SURVIVOR_merge_VCF(
+                    sampleName)
 
             for sv_caller in ['manta', 'delly', 'lumpy', 'gridss']:
                 # for sv_caller in ['gridss']:
@@ -1349,19 +1403,25 @@ def get_labels(sampleName):
 
                 inbed = '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/' + \
                         'Mills2011_pacbio_moleculo_nanosv_full_inclusion.bed'
-                sv_dict['Mills2011_PacBio_Moleculo_nanosv'] = read_bed_sv(inbed)
+                sv_dict['Mills2011_PacBio_Moleculo_nanosv'] = read_bed_sv(
+                    inbed)
 
                 inbed = '/Users/lsantuari/Documents/Processed/NA12878/Overlap_diagrams/' + \
                         'NA12878_nanosv_Mills2011-DEL.pacbio_moleculo.bed'
-                sv_dict['nanosv_Mills2011_PacBio_Moleculo'] = read_bed_sv(inbed)
+                sv_dict['nanosv_Mills2011_PacBio_Moleculo'] = read_bed_sv(
+                    inbed)
 
                 inbed = '/Users/lsantuari/Documents/Processed/' + sampleName[:7] + '/Long_read_validation/' + \
                         'lumpy-Mills2011_pacbio_moleculo_manta_nanosv.bed'
-                sv_dict['Mills2011_PacBio_Moleculo_nanosv_manta'] = read_bed_sv(inbed)
+                sv_dict[
+                    'Mills2011_PacBio_Moleculo_nanosv_manta'] = read_bed_sv(
+                        inbed)
 
                 inbed = '/Users/lsantuari/Documents/Processed/NA12878/Long_read_validation/Data_sources/Lumpy_paper_2014/' + \
                         'lumpy-GASVPro-DELLY-Pindel-Mills2011_PacBio_Moleculo.bed'
-                sv_dict['Mills2011_PacBio_Moleculo_Lumpy_GASVPro_DELLY_Pindel'] = read_bed_sv(inbed)
+                sv_dict[
+                    'Mills2011_PacBio_Moleculo_Lumpy_GASVPro_DELLY_Pindel'] = read_bed_sv(
+                        inbed)
 
         else:
 
@@ -1392,7 +1452,9 @@ def get_labels(sampleName):
 
             for caller in caller_list_all_sv:
                 print(caller)
-                sv_list_all_sv[caller] = [var for var in sv_dict[caller] if var.chrom == chrName]
+                sv_list_all_sv[caller] = [
+                    var for var in sv_dict[caller] if var.chrom == chrName
+                ]
                 crpos_full_all_sv_per_caller[caller], crpos_partial_all_sv_per_caller[caller] = \
                     get_crpos_win_with_ci_overlap(sv_list_all_sv[caller], cr_pos_dict[chrName])
 
@@ -1400,8 +1462,10 @@ def get_labels(sampleName):
             crpos_partial_all_sv = set()
 
             for caller in caller_list_all_sv:
-                crpos_full_all_sv = crpos_full_all_sv.union(set(crpos_full_all_sv_per_caller[caller]))
-                crpos_partial_all_sv = crpos_partial_all_sv.union(set(crpos_partial_all_sv_per_caller[caller]))
+                crpos_full_all_sv = crpos_full_all_sv.union(
+                    set(crpos_full_all_sv_per_caller[caller]))
+                crpos_partial_all_sv = crpos_partial_all_sv.union(
+                    set(crpos_partial_all_sv_per_caller[caller]))
 
             crpos_all_sv[chrName] = crpos_full_all_sv | crpos_partial_all_sv
 
@@ -1468,7 +1532,8 @@ def get_labels(sampleName):
                 sv_list_chr = [var for var in sv_list if var.chrom == chrName]
                 tree = make_tree_from_vcf(sv_list_chr)
 
-                crpos_full, crpos_partial = get_crpos_win_with_ci_overlap(sv_list_chr, cr_pos)
+                crpos_full, crpos_partial = get_crpos_win_with_ci_overlap(
+                    sv_list_chr, cr_pos)
 
             # BED file SVs
             else:
@@ -1476,12 +1541,16 @@ def get_labels(sampleName):
                 sv_list_chr = sv_list[chrName]
                 tree = make_tree_from_bed(sv_list_chr)
 
-                crpos_full, crpos_partial = get_crpos_win_with_bed_overlap(sv_list_chr, cr_pos)
+                crpos_full, crpos_partial = get_crpos_win_with_bed_overlap(
+                    sv_list_chr, cr_pos)
 
             # print(f'crpos_full = {crpos_full}')
             # print(f'crpos_partial = {crpos_partial}')
 
-            label_search = [sorted(tree[chrName][p - win_hlen: p + win_hlen + 1]) for p in cr_pos]
+            label_search = [
+                sorted(tree[chrName][p - win_hlen:p + win_hlen + 1])
+                for p in cr_pos
+            ]
 
             # print(tree)
             # print(label_search)
@@ -1528,11 +1597,11 @@ def get_labels(sampleName):
     else:
         channel_dir = 'OC_COMPARISONS'
 
-    output_dir = '/'.join((channel_dir, sampleName.replace('--', '_'), 'label'))
-    create_dir(output_dir)
+    output_dir = os.path.join(channel_dir, sampleName.replace('--', '_'),
+                              'label')
+    os.makedirs(output_dir)
 
-    data_file = '/'.join((output_dir, 'labels.pickle'))
-    # print(output_dir)
+    data_file = os.path.join(output_dir, 'labels.pickle')
     pickle.dump(labels, open(data_file, "wb"))
 
     os.system('gzip -f ' + data_file)
@@ -1574,13 +1643,22 @@ def main():
     :return: None
     '''
 
-    parser = argparse.ArgumentParser(description='Create channels from saved data')
-    parser.add_argument('-b', '--bam', type=str,
+    parser = argparse.ArgumentParser(
+        description='Create channels from saved data')
+    parser.add_argument('-b',
+                        '--bam',
+                        type=str,
                         default=inputBAM,
                         help="Specify input file (BAM)")
-    parser.add_argument('-o', '--out', type=str, default='channel_maker.npy.gz',
+    parser.add_argument('-o',
+                        '--out',
+                        type=str,
+                        default='channel_maker.npy.gz',
                         help="Specify output")
-    parser.add_argument('-s', '--sample', type=str, default='NA12878',
+    parser.add_argument('-s',
+                        '--sample',
+                        type=str,
+                        default='NA12878',
                         help="Specify sample")
 
     args = parser.parse_args()

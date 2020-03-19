@@ -1,17 +1,18 @@
-import os
-import numpy as np
-from keras.utils.np_utils import to_categorical
-import keras
 import gzip
+import os
 from collections import Counter
+
+import keras
+import numpy as np
 import pandas as pd
+from keras.utils.np_utils import to_categorical
 
 # Auxiliary functions
 
 
 def transposeDataset(X):
     image = []
-    for i in range (0, len(X -1)):
+    for i in range(0, len(X - 1)):
         tr = X[i].transpose()
         image.append(tr)
     return np.array(image)
@@ -28,8 +29,9 @@ def real_data():
 
     def get_label_dict():
         # Load label dictionary
-        dico_file = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test',
-                                 date, 'TestData_' + date, sample_name, 'MultiLabelData/labels.pickle.gz')
+        dico_file = os.path.join(
+            '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test', date,
+            'TestData_' + date, sample_name, 'MultiLabelData/labels.pickle.gz')
         with gzip.GzipFile(dico_file, "rb") as f:
             dico = np.load(f)
         f.close()
@@ -48,8 +50,9 @@ def real_data():
     training_labels = []
     training_id = []
 
-    datapath = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test',
-                             date, 'TestData_'+date, sample_name, 'ChannelData')
+    datapath = os.path.join(
+        '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test', date,
+        'TestData_' + date, sample_name, 'ChannelData')
 
     for i in chr_list:
         print('Loading data for Chr%s' % i)
@@ -60,7 +63,9 @@ def real_data():
         f.close()
 
         training_labels.extend(dico[label_type][i])
-        training_id.extend([d['chromosome'] + '_' + str(d['position']) for d in dico['id'][i]])
+        training_id.extend([
+            d['chromosome'] + '_' + str(d['position']) for d in dico['id'][i]
+        ])
 
     print(Counter(training_labels))
 
@@ -78,15 +83,17 @@ def artificial_data():
     training_data = []
     training_labels = []
 
-    base_dir = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test',
-                            date, 'TrainingData_'+date)
+    base_dir = os.path.join(
+        '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test', date,
+        'TrainingData_' + date)
     sample = 'G1'
 
     for svtype in ['INDEL', 'INDEL_HOM']:
 
         datapath = os.path.join(base_dir, svtype, sample)
-        data_file = os.path.join(datapath, 'ChannelData', sample+'.npy.gz')
-        label_file = os.path.join(datapath, 'LabelData', sample+'_17_label.npy.gz')
+        data_file = os.path.join(datapath, 'ChannelData', sample + '.npy.gz')
+        label_file = os.path.join(datapath, 'LabelData',
+                                  sample + '_17_label.npy.gz')
 
         with gzip.GzipFile(data_file, "rb") as f:
             data_mat = np.load(f)
@@ -106,7 +113,7 @@ def artificial_data():
     return training_data, training_labels
 
 
-def remove_label(training_data, training_labels, training_id, label = 'UK'):
+def remove_label(training_data, training_labels, training_id, label='UK'):
 
     # Remove windows labelled as label
     keep = np.where(np.array(training_labels) != label)
@@ -143,4 +150,3 @@ def balance_dataset(training_data, training_labels, training_id):
     z = np.array(id_balanced)
 
     return X, y, z
-

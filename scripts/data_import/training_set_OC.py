@@ -1,9 +1,9 @@
-import os
-import numpy as np
 import gzip
-from collections import Counter
 import logging
+import os
+from collections import Counter
 
+import numpy as np
 
 # def get_channels():
 #
@@ -31,10 +31,9 @@ def main():
 
     logfilename = 'training_set_OC.log'
     FORMAT = '%(asctime)s %(message)s'
-    logging.basicConfig(
-        format=FORMAT,
-        filename=logfilename,
-        level=logging.INFO)
+    logging.basicConfig(format=FORMAT,
+                        filename=logfilename,
+                        level=logging.INFO)
 
     # channel_list = get_channels()
 
@@ -48,7 +47,7 @@ def main():
 
     label_output_file = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/all_labels.npy'
 
-    if not os.path.isfile(label_output_file+'.gz'):
+    if not os.path.isfile(label_output_file + '.gz'):
 
         ids = []
         labels = []
@@ -60,8 +59,11 @@ def main():
             f.close()
             for chrom_name in chr_list:
                 if chrom_name in dico[label_type].keys():
-                    assert len(dico[label_type][chrom_name]) == len(dico['id'][chrom_name])
-                    logging.info('Chr%s:%d labels' % (chrom_name, len(dico[label_type][chrom_name])))
+                    assert len(dico[label_type][chrom_name]) == len(
+                        dico['id'][chrom_name])
+                    logging.info(
+                        'Chr%s:%d labels' %
+                        (chrom_name, len(dico[label_type][chrom_name])))
                     labels.extend(dico[label_type][chrom_name])
                     ids.extend(dico['id'][chrom_name])
 
@@ -85,7 +87,7 @@ def main():
 
         base_dir = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/' + \
                            'intermediate_data/' + sample_name
-        data_output_file =  base_dir + '_data.npy'
+        data_output_file = base_dir + '_data.npy'
         label_output_file = base_dir + '_labels.npy'
         id_output_file = base_dir + '_ids.npy'
 
@@ -113,28 +115,33 @@ def main():
             for i in chr_list:
                 if i in dico[label_type].keys():
                     # if not (sample_name == 'O16_B16' and i == '2'):
-                        logging.info('Loading data for Chr%s' % i)
+                    logging.info('Loading data for Chr%s' % i)
 
-                        labels_chr = dico[label_type][i]
-                        partial_labels.extend(labels_chr)
-                        id_chr = [d['chromosome'] + '_' + str(d['position']) for d in dico['id'][i]]
-                        partial_id.extend(id_chr)
+                    labels_chr = dico[label_type][i]
+                    partial_labels.extend(labels_chr)
+                    id_chr = [
+                        d['chromosome'] + '_' + str(d['position'])
+                        for d in dico['id'][i]
+                    ]
+                    partial_id.extend(id_chr)
 
-                        assert len(id_chr) == len(labels_chr)
+                    assert len(id_chr) == len(labels_chr)
 
-                        data_file = datapath + '/ChannelData/' + str(i) + '_channel_maker_real_germline.npy.gz'
-                        with gzip.GzipFile(data_file, "rb") as f:
-                            data_mat = np.load(f)
-                            logging.info(data_mat.shape)
-                            assert data_mat.shape[0] == len(labels_chr)
-                            partial_data.extend(data_mat)
-                            del data_mat
-                        f.close()
+                    data_file = datapath + '/ChannelData/' + str(
+                        i) + '_channel_maker_real_germline.npy.gz'
+                    with gzip.GzipFile(data_file, "rb") as f:
+                        data_mat = np.load(f)
+                        logging.info(data_mat.shape)
+                        assert data_mat.shape[0] == len(labels_chr)
+                        partial_data.extend(data_mat)
+                        del data_mat
+                    f.close()
 
             partial_data = np.array(partial_data)
             logging.info('partial data shape: %s' % str(partial_data.shape))
             partial_labels = np.array(partial_labels)
-            logging.info('partial labels shape: %s' % str(partial_labels.shape))
+            logging.info('partial labels shape: %s' %
+                         str(partial_labels.shape))
             partial_id = np.array(partial_id)
             logging.info('partial ids shape: %s' % str(partial_id.shape))
 
@@ -142,21 +149,31 @@ def main():
             logging.info('Number of noSV labels: %d' % len(i_nosv))
             # logging.info(i_nosv)
 
-            i_nosv_idx = np.random.choice(a=i_nosv,
-                                          # size=int(np.round(i_nosv.shape[0]/100)),
-                                          size=100,
-                                          replace=False)
+            i_nosv_idx = np.random.choice(
+                a=i_nosv,
+                # size=int(np.round(i_nosv.shape[0]/100)),
+                size=100,
+                replace=False)
             logging.info('Sampled noSV labels: %d' % len(i_nosv_idx))
 
             i_sv = np.where(partial_labels != 'noSV')[0]
             logging.info('Number of !noSV labels: %d' % len(i_sv))
 
-            partial_data = np.append(partial_data[i_sv,:,:], partial_data[i_nosv_idx,:,:], axis = 0)
-            logging.info('partial data shape after append: %s' % str(partial_data.shape))
-            partial_labels = np.append(partial_labels[i_sv], partial_labels[i_nosv_idx], axis = 0)
-            logging.info('partial labels shape after append: %s' % str(partial_labels.shape))
-            partial_id = np.append(partial_id[i_sv], partial_id[i_nosv_idx], axis = 0)
-            logging.info('partial ids shape after append: %s' % str(partial_id.shape))
+            partial_data = np.append(partial_data[i_sv, :, :],
+                                     partial_data[i_nosv_idx, :, :],
+                                     axis=0)
+            logging.info('partial data shape after append: %s' %
+                         str(partial_data.shape))
+            partial_labels = np.append(partial_labels[i_sv],
+                                       partial_labels[i_nosv_idx],
+                                       axis=0)
+            logging.info('partial labels shape after append: %s' %
+                         str(partial_labels.shape))
+            partial_id = np.append(partial_id[i_sv],
+                                   partial_id[i_nosv_idx],
+                                   axis=0)
+            logging.info('partial ids shape after append: %s' %
+                         str(partial_id.shape))
 
             intermediate_data_dir = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/' +\
                      'intermediate_data/'
@@ -177,11 +194,11 @@ def main():
 
             logging.info('Loading sample: %s...' % sample_name)
 
-            with gzip.GzipFile(data_output_file+'.gz', "rb") as f:
+            with gzip.GzipFile(data_output_file + '.gz', "rb") as f:
                 partial_data = np.load(f)
-            with gzip.GzipFile(label_output_file+'.gz', "rb") as f:
+            with gzip.GzipFile(label_output_file + '.gz', "rb") as f:
                 partial_labels = np.load(f)
-            with gzip.GzipFile(id_output_file+'.gz', "rb") as f:
+            with gzip.GzipFile(id_output_file + '.gz', "rb") as f:
                 partial_id = np.load(f)
 
             logging.info(partial_data.shape)

@@ -1,22 +1,17 @@
 import argparse
-import sys, os
+import os
+import sys
 
 import numpy as np
 import pandas as pd
 
+from genome_wide.label_classes import SVRecord
+from T0_S1_generate_training_data import get_truth_set_trees
+
 # add scripts folder in path
 sys.path.append(
     os.path.dirname(
-        os.path.dirname(
-            os.path.dirname(
-                os.path.realpath(__file__)
-            )
-        )
-    )
-)
-from genome_wide.label_classes import SVRecord
-
-from T0_S1_generate_training_data import get_truth_set_trees
+        os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
 
 
 def read_vcf(invcf):
@@ -40,11 +35,8 @@ def read_vcf(invcf):
         svtype = var.svtype
 
         if svtype == "DEL":
-            sv_list.append((
-                chrom1, pos1_start, pos1_end,
-                chrom2, pos2_start, pos2_end,
-                svtype
-            ))
+            sv_list.append((chrom1, pos1_start, pos1_end, chrom2, pos2_start,
+                            pos2_end, svtype))
 
     print('{} SVs'.format(len(sv_list)))
 
@@ -52,7 +44,6 @@ def read_vcf(invcf):
 
 
 def compare(args):
-
     def write_bed(hit_ids):
 
         lines = []
@@ -61,7 +52,11 @@ def compare(args):
         for i in hit_ids:
             c1, s1 = i.split('_')
             s1 = int(s1)
-            lines.append('\t'.join([str(c1), str(int(s1) - half_interval), str(s1 + half_interval)]) + '\n')
+            lines.append('\t'.join([
+                str(c1),
+                str(int(s1) - half_interval),
+                str(s1 + half_interval)
+            ]) + '\n')
 
         f = open(args.outputbed, 'w')
         try:
@@ -122,15 +117,23 @@ def compare(args):
         # Look for matches
         for c in args.chrlist:
             if c in sv_bp1_tree.keys() and c in bp1_list.keys():
-                bp1_hits[c] = [sv_bp1_tree[c][p - win_hlen:p + win_hlen] for p in bp1_list[c]]
+                bp1_hits[c] = [
+                    sv_bp1_tree[c][p - win_hlen:p + win_hlen]
+                    for p in bp1_list[c]
+                ]
             if c in sv_bp2_tree.keys() and c in bp2_list.keys():
-                bp2_hits[c] = [sv_bp2_tree[c][p - win_hlen:p + win_hlen] for p in bp2_list[c]]
+                bp2_hits[c] = [
+                    sv_bp2_tree[c][p - win_hlen:p + win_hlen]
+                    for p in bp2_list[c]
+                ]
 
         hit_ids_bp1 = hit_ids_bp1 | get_hit_ids(bp1_hits)
         hit_ids_bp2 = hit_ids_bp2 | get_hit_ids(bp2_hits)
 
-        ids_bp1 = ids_bp1 | set([c + '_' + str(p) for c in bp1_list.keys() for p in bp1_list[c]])
-        ids_bp2 = ids_bp2 | set([c + '_' + str(p) for c in bp2_list.keys() for p in bp2_list[c]])
+        ids_bp1 = ids_bp1 | set(
+            [c + '_' + str(p) for c in bp1_list.keys() for p in bp1_list[c]])
+        ids_bp2 = ids_bp2 | set(
+            [c + '_' + str(p) for c in bp2_list.keys() for p in bp2_list[c]])
 
     # writing BED output
     write_bed(ids_bp1 | ids_bp2)
@@ -149,46 +152,55 @@ def compare(args):
     n_svs = len([l for l in sv_list if l[0] in args.chrlist])
 
     # write CSV output file
-    df = pd.DataFrame({'bp1_num': [hit_ids_bp1_len],
-                       'bp1_sv_rec': [hit_ids_bp1_len / n_svs * 100],
-                       'bp1_sv_prec': [hit_ids_bp1_len / ids_bp1_len * 100],
-                       'bp2_num': [hit_ids_bp2_len],
-                       'bp2_sv_rec': [hit_ids_bp2_len / n_svs * 100],
-                       'bp2_sv_prec': [hit_ids_bp2_len / ids_bp2_len * 100],
-                       'bp1_bp2_sv_rec': [hits_bp1_bp2_union_len / n_svs * 100],
-                       'bp1_bp2_sv_prec': [hits_bp1_bp2_union_len / bp1_bp2_union_len * 100]
-                       })
+    df = pd.DataFrame({
+        'bp1_num': [hit_ids_bp1_len],
+        'bp1_sv_rec': [hit_ids_bp1_len / n_svs * 100],
+        'bp1_sv_prec': [hit_ids_bp1_len / ids_bp1_len * 100],
+        'bp2_num': [hit_ids_bp2_len],
+        'bp2_sv_rec': [hit_ids_bp2_len / n_svs * 100],
+        'bp2_sv_prec': [hit_ids_bp2_len / ids_bp2_len * 100],
+        'bp1_bp2_sv_rec': [hits_bp1_bp2_union_len / n_svs * 100],
+        'bp1_bp2_sv_prec': [hits_bp1_bp2_union_len / bp1_bp2_union_len * 100]
+    })
     df.to_csv(path_or_buf=args.output, index=False)
 
 
 def main():
 
     truth_sets = {
-        'NA24385': os.path.join(
+        'NA24385':
+        os.path.join(
             '/Users/lsantuari/Documents/Data/germline/NA24385/NIST_SVs_Integration_v0.6/processed',
             'HG002_SVs_Tier1_v0.6.PASS.vcf.gz')
     }
 
-    parser = argparse.ArgumentParser(
-        description='Train model',
-        usage='''T0_S2_training.py [<args>]
+    parser = argparse.ArgumentParser(description='Train model',
+                                     usage='''T0_S2_training.py [<args>]
             ''')
-    parser.add_argument('-truthset', type=str,
+    parser.add_argument('-truthset',
+                        type=str,
                         default=truth_sets['NA24385'],
                         help="Positive set file(s)")
-    parser.add_argument('-chrlist', nargs='+', default=['17'],
+    parser.add_argument('-chrlist',
+                        nargs='+',
+                        default=['17'],
                         help="List of chromosomes to consider")
-    parser.add_argument('-win', type=int, default=200,
-                        help="Window length")
-    parser.add_argument('-inputdirlist', nargs='+',
+    parser.add_argument('-win', type=int, default=200, help="Window length")
+    parser.add_argument('-inputdirlist',
+                        nargs='+',
                         default=[''],
                         help="Positive set file(s)")
-    parser.add_argument('-output', type=str,
+    parser.add_argument('-output',
+                        type=str,
                         default='results.csv',
                         help="Specify output")
-    parser.add_argument('-outputbed', type=str,
-                        default='regions_of_interest.bed',
-                        help="Specify output file for regions of interest for GRIDSS targeted approach")
+    parser.add_argument(
+        '-outputbed',
+        type=str,
+        default='regions_of_interest.bed',
+        help=
+        "Specify output file for regions of interest for GRIDSS targeted approach"
+    )
 
     args = parser.parse_args()
     compare(args)

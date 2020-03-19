@@ -2,23 +2,26 @@
 Generic functions used in the channel scripts
 '''
 
-import pysam
 import os
 from collections import defaultdict
+
+import pysam
 import twobitreader as twobit
 
 del_min_size = 30
+
 
 def get_ref_sequence(chrname, pos):
 
     # Path on the HPC of the 2bit version of the human reference genome (hg19)
     #genome = twobit.TwoBitFile('/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/genomes/hg19.2bit')
     # Local path
-    genome = twobit.TwoBitFile('/Users/lsantuari/Documents/Data/GiaB/reference/hg19.2bit')
+    genome = twobit.TwoBitFile(
+        '/Users/lsantuari/Documents/Data/GiaB/reference/hg19.2bit')
 
-    ref_pos = int(pos)-1
+    ref_pos = int(pos) - 1
     if chrname[:2] == 'chr' or chrname[:2] == 'Chr':
-        ref_base = genome['chr'+chrname[3:]][ref_pos].upper()
+        ref_base = genome['chr' + chrname[3:]][ref_pos].upper()
     else:
         ref_base = genome['chr' + chrname][ref_pos].upper()
     return ref_base
@@ -52,9 +55,9 @@ def get_indels(read):
         for ct in read.cigartuples:
             # D is 2, I is 1
             if ct[0] == 2 and ct[1] >= del_min_size:
-                dels.append(('D', pos, pos+ct[0]))
+                dels.append(('D', pos, pos + ct[0]))
             if ct[0] == 1:
-                ins.append(('I', pos, pos+ct[0]))
+                ins.append(('I', pos, pos + ct[0]))
             pos = pos + ct[1]
 
     return dels, ins
@@ -65,7 +68,7 @@ def has_indels(read):
     if read.cigartuples is not None:
         cigar_set = set([ct[0] for ct in read.cigartuples])
         # D is 2, I is 1
-        if len(set([1,2]) & cigar_set) > 0:
+        if len(set([1, 2]) & cigar_set) > 0:
             return True
         else:
             return False
@@ -144,6 +147,7 @@ def strand_type(strand, mate_strand):
     else:
         return 'opposite'
 
+
 # Return chromosome and starting position of a supplementary alignment (split reads)
 def get_suppl_aln(read):
     '''
@@ -170,7 +174,7 @@ def read_breakpoints(bed_file):
     print('Reading BED file for breakpoints')
     assert os.path.isfile(bed_file)
     breakpoints = defaultdict(list)
-    with(open(bed_file, 'r')) as bed:
+    with (open(bed_file, 'r')) as bed:
         for line in bed:
             columns = line.rstrip().split("\t")
             chrom = str(columns[0])
@@ -187,7 +191,7 @@ def read_breakpoints_single_position(bed_file):
     print('Reading BED file for breakpoints')
     assert os.path.isfile(bed_file)
     breakpoints = defaultdict(list)
-    with(open(bed_file, 'r')) as bed:
+    with (open(bed_file, 'r')) as bed:
         for line in bed:
             columns = line.rstrip().split("\t")
             if columns[3][:3] == "DEL":

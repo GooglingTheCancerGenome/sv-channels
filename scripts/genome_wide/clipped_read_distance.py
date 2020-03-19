@@ -1,19 +1,17 @@
-
-# Imports
-
 import argparse
-import pysam
-import json
 import gzip
-from time import time
-from functions import *
+import json
 import logging
-from collections import defaultdict
 import os
+from collections import defaultdict
+from time import time
+
+import pysam
+
+from functions import *
 
 
 def get_clipped_read_distance(ibam, chrName, outFile):
-
     '''
 
     :param ibam: BAM file in input
@@ -42,7 +40,8 @@ def get_clipped_read_distance(ibam, chrName, outFile):
         clipped_read_distance[direction] = dict()
         # For left- and right-clipped reads
         for clipped_arrangement in ['left', 'right', 'all']:
-            clipped_read_distance[direction][clipped_arrangement] = defaultdict(list)
+            clipped_read_distance[direction][
+                clipped_arrangement] = defaultdict(list)
 
     def set_distance(direction, read, dist):
         '''
@@ -79,7 +78,7 @@ def get_clipped_read_distance(ibam, chrName, outFile):
     iter = bamfile.fetch(chrName, start_pos, stop_pos)
 
     # Log information every n_r reads
-    n_r = 10 ** 6
+    n_r = 10**6
     # print(n_r)
     last_t = time()
     # print(type(last_t))
@@ -88,9 +87,8 @@ def get_clipped_read_distance(ibam, chrName, outFile):
         if not i % n_r:
             now_t = time()
             # print(type(now_t))
-            logging.info("%d alignments processed (%f alignments / s)" % (
-                i,
-                n_r / (now_t - last_t)))
+            logging.info("%d alignments processed (%f alignments / s)" %
+                         (i, n_r / (now_t - last_t)))
             last_t = time()
 
         # Both read and mate should be mapped
@@ -125,38 +123,55 @@ def main():
     wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
     inputBAM = wd + "T1_dedup.bam"
 
-    parser = argparse.ArgumentParser(description='Create channels with distance between clipped/non-clipped reads')
-    parser.add_argument('-b', '--bam', type=str,
+    parser = argparse.ArgumentParser(
+        description=
+        'Create channels with distance between clipped/non-clipped reads')
+    parser.add_argument('-b',
+                        '--bam',
+                        type=str,
                         default=inputBAM,
                         help="Specify input file (BAM)")
-    parser.add_argument('-c', '--chr', type=str, default='17',
+    parser.add_argument('-c',
+                        '--chr',
+                        type=str,
+                        default='17',
                         help="Specify chromosome")
-    parser.add_argument('-o', '--out', type=str, default='clipped_read_distance.json.gz',
+    parser.add_argument('-o',
+                        '--out',
+                        type=str,
+                        default='clipped_read_distance.json.gz',
                         help="Specify output")
-    parser.add_argument('-p', '--outputpath', type=str,
-                        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
-                        help="Specify output path")
-    parser.add_argument('-l', '--logfile', default='clipped_read_distance.log',
+    parser.add_argument(
+        '-p',
+        '--outputpath',
+        type=str,
+        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
+        help="Specify output path")
+    parser.add_argument('-l',
+                        '--logfile',
+                        default='clipped_read_distance.log',
                         help='File in which to write logs.')
 
     args = parser.parse_args()
 
     cmd_name = 'clipped_read_distance'
     output_dir = os.path.join(args.outputpath, cmd_name)
-    create_dir(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
     logfilename = os.path.join(output_dir, '_'.join((args.chr, args.logfile)))
     output_file = os.path.join(output_dir, '_'.join((args.chr, args.out)))
 
     FORMAT = '%(asctime)s %(message)s'
-    logging.basicConfig(
-        format=FORMAT,
-        filename=logfilename,
-        filemode='w',
-        level=logging.INFO)
+    logging.basicConfig(format=FORMAT,
+                        filename=logfilename,
+                        filemode='w',
+                        level=logging.INFO)
 
     t0 = time()
-    get_clipped_read_distance(ibam=args.bam, chrName=args.chr, outFile=output_file)
-    logging.info('Time: clipped read distance on BAM %s and Chr %s: %f' % (args.bam, args.chr, (time() - t0)))
+    get_clipped_read_distance(ibam=args.bam,
+                              chrName=args.chr,
+                              outFile=output_file)
+    logging.info('Time: clipped read distance on BAM %s and Chr %s: %f' %
+                 (args.bam, args.chr, (time() - t0)))
 
 
 if __name__ == '__main__':

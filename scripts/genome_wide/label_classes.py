@@ -1,5 +1,6 @@
-from pysam import VariantRecord
 import re
+
+from pysam import VariantRecord
 
 # Classes
 
@@ -8,13 +9,16 @@ __symbolicRE__ = None
 
 
 class SVRecord:
-
     def __init__(self, record, svcaller):
 
         ci_slop = 0
 
         # For CHM[1|13] SVs
-        svtype_dict = {'deletion': 'DEL', 'insertion': 'INS', 'inversion': 'INV'}
+        svtype_dict = {
+            'deletion': 'DEL',
+            'insertion': 'INS',
+            'inversion': 'INV'
+        }
 
         if type(record) != VariantRecord:
             raise TypeError('VCF record is not of type pysam.VariantRecord')
@@ -154,9 +158,9 @@ class SVRecord:
         resultBP = re.match(__bpRE__, altstr)
 
         if resultBP:
-            ct, chr2, pos2, indellen = self.locFromBkpt(str(record.ref), resultBP.group(1),
-                                                        resultBP.group(2), resultBP.group(3), resultBP.group(4),
-                                                        resultBP.group(5))
+            ct, chr2, pos2, indellen = self.locFromBkpt(
+                str(record.ref), resultBP.group(1), resultBP.group(2),
+                resultBP.group(3), resultBP.group(4), resultBP.group(5))
         return (ct, chr2, pos2, indellen)
 
 
@@ -169,4 +173,6 @@ def setupREs():
     global __bpRE__
     if __symbolicRE__ is None or __bpRE__ is None:
         __symbolicRE__ = re.compile(r'.*<([A-Z:]+)>.*')
-        __bpRE__ = re.compile(r'([ACGTNactgn\.]*)([\[\]])([a-zA-Z0-9\.]+:\d+)([\[\]])([ACGTNacgtn\.]*)')
+        __bpRE__ = re.compile(
+            r'([ACGTNactgn\.]*)([\[\]])([a-zA-Z0-9\.]+:\d+)([\[\]])([ACGTNacgtn\.]*)'
+        )
