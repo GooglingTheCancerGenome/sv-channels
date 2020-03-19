@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e
+set -xe
 
 # check input arg(s)
 if [ $# -lt "3" ]; then
@@ -46,18 +46,19 @@ conda list
 cd $WORK_DIR
 
 p=clipped_reads
-JOB="python $p.py -b \"$BAM\" -c "${SEQ_IDS[@]}" -o $p.json.gz -p . -l $p.log"
-JOB_ID=$(submit "$p" "$s" "$JOB")
+JOB="python $p.py -b \"$BAM\" -c \"${SEQ_IDS[*]}\" -o $p.json.gz -p . -l $p.log"
+JOB_ID=$(submit "$p" "all" "$JOB")
 JOBS+=($JOB_ID)
 
 p=clipped_read_pos
-JOB="python $p.py -b \"$BAM\" -c "${SEQ_IDS[@]}" -o $p.json.gz -p . -l $p.log"
-JOB_ID=$(submit "$p" "$s" "$JOB")
+JOB="python $p.py -b \"$BAM\" -c \"${SEQ_IDS[*]}\" -o $p.json.gz -p . -l $p.log"
+JOB_ID=$(submit "$p" "all" "$JOB")
 JOBS+=($JOB_ID)
 
 p=split_reads
-JOB="python $p.py -b "$BAM" -c "${SEQ_IDS[@]}" -o $p.json.gz -ob $p.bedpe.gz -p . -l $p.log"
-JOB_ID=$(submit "$p" "$s" "$JOB")
+JOB="python $p.py -b \"$BAM\" -c \"${SEQ_IDS[*]}\" -o $p.json.gz \
+  -ob $p.bedpe.gz -p . -l $p.log"
+JOB_ID=$(submit "$p" "all" "$JOB")
 JOBS+=($JOB_ID)
 
 for s in "${SEQ_IDS[@]}"; do  # per chromosome
@@ -116,14 +117,15 @@ JOBS+=($JOB_ID)
 
 # generate window pairs
 p=create_window_pairs
-JOB="python $p.py -b "$BAM" -c "${SEQ_IDS[@]}" -sv gridss -w 200 -p . -l $p.log"
-JOB_ID=$(submit "$p" "$s" "$JOB")
+JOB="python $p.py -b \"$BAM\" -c \"${SEQ_IDS[*]}\" -sv gridss -w 200 -p . \
+  -l $p.log"
+JOB_ID=$(submit "$p" "all" "$JOB")
 JOBS+=($JOB_ID)
 
 # train/test models
 p=train_model_with_fit
 JOB="python $p.py --test_sample . --training_sample . -k 3 -p . -l $p.log"
-JOB_ID=$(submit "$p" "$s" "$JOB")
+JOB_ID=$(submit "$p" "all" "$JOB")
 JOBS+=($JOB_ID)
 
 # wait until the jobs are done
@@ -150,7 +152,7 @@ cat $JOBS_LOG
 # output logs in std{out,err}-[jobid].log
 echo "----------"
 echo "Log files:"
-for f in $(find -type f -name \*.log); do
+for f in $(find -type f -name "*.log"); do
   echo "### $f ###"
   cat $f
 done
@@ -159,8 +161,8 @@ done
 echo "-------------"
 echo "Output files:"
 #ls
-find -type f -name \*.json.gz | grep "." || exit 1
-find -type f -name \*.npy.gz | grep "." || exit 1
+find -type f -name "*.json.gz" | grep "." || exit 1
+find -type f -name "*.npy.gz" | grep "." || exit 1
 
 # exit with non-zero if there are failed jobs
 [[ $(jq ".statuses | .[] | select(.done==true and .exitCode!=0)" $JOBS_LOG) ]] \
