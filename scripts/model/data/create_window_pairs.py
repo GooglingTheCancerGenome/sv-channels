@@ -16,19 +16,6 @@ def get_range(dictionary, begin, end):
     return dict(itertools.islice(dictionary.items(), begin, end))
 
 
-def create_dir(directory):
-    '''
-    Create a directory if it does not exist. Raises an exception if the directory exists.
-    :param directory: directory to create
-    :return: None
-    '''
-    try:
-        os.makedirs(directory)
-    except OSError as e:
-        if e.errno != errno.EEXIST:
-            raise
-
-
 def get_chr_list(chrom):
 
     # if sampleName in ['T1', 'G1', 'ART_INDEL_HET', 'ART_INDEL_HOM']:
@@ -245,7 +232,7 @@ def main():
 
     cmd_name = 'windows'
     output_dir = os.path.join(args.outputpath, cmd_name)
-    create_dir(output_dir)
+    os.makedirs(output_dir)
     logfilename = os.path.join(output_dir, args.logfile)
     # output_file = os.path.join(output_dir, args.out)
 
