@@ -56,7 +56,7 @@ JOB_ID=$(submit "$p" "$s" "$JOB")
 JOBS+=($JOB_ID)
 
 p=split_reads
-JOB="python $p.py -b \"$BAM\" -c "${SEQ_IDS[@]}" -o $p.json.gz -p . -l $p.log"
+JOB="python $p.py -b "$BAM" -c "${SEQ_IDS[@]}" -o $p.json.gz -ob $p.bedpe.gz -p . -l $p.log"
 JOB_ID=$(submit "$p" "$s" "$JOB")
 JOBS+=($JOB_ID)
 

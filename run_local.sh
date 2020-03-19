@@ -44,7 +44,7 @@ p=clipped_read_pos
 python $p.py -b "$BAM" -c "${SEQ_IDS[@]}" -o $p.json.gz -p . -l $p.log
 
 p=split_reads
-python $p.py -b "$BAM" -c "${SEQ_IDS[@]}" -o $p.json.gz -p . -l $p.log
+python $p.py -b "$BAM" -c "${SEQ_IDS[@]}" -o $p.json.gz -ob $p.bedpe.gz -p . -l $p.log
 
 # write channels into *.json.gz and *.npy.gz files
 for s in "${SEQ_IDS[@]}"; do  # per chromosome
@@ -64,10 +64,10 @@ for s in "${SEQ_IDS[@]}"; do  # per chromosome
 done
 
 p=label_window_pairs_on_split_read_positions
-python $p.py -b "$BAM" -w 200 -gt "$BEDPE" -o $p.json.gz -p . -l $p.log
+python $p.py -b "$BAM" -w 200 -c "${SEQ_IDS[@]}" -gt "$BEDPE" -o $p.json.gz -p . -l $p.log
 
 p=label_window_pairs_on_svcallset
-python $p.py -b "$BAM" -w 200 -gt "$BEDPE" -sv "$BASE_DIR/gridss" \
+python $p.py -b "$BAM" -w 200 -c "${SEQ_IDS[@]}" -gt "$BEDPE" -sv "$BASE_DIR/gridss" \
 -o $p.json.gz -p . -l $p.log
 
 p=create_window_pairs
@@ -75,8 +75,8 @@ python $p.py -b "$BAM" -c "${SEQ_IDS[@]}" -sv gridss -w 200 -p . -l $p.log
 
 
 # # use "dummy" path for test/training samples
- p=train_model_with_fit
- python $p.py --test_sample . --training_sample . -k 3 -p . -l $p.log
+p=train_model_with_fit
+python $p.py --test_sample . --training_sample . -k 3 -p . -l $p.log
 
 echo -e "\nLog files:"
 find -type f -name "*.log"

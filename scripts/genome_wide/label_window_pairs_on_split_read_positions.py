@@ -417,12 +417,9 @@ def main():
     :return: None
     '''
 
-    wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
-    inputBAM = wd + "T1_dedup.bam"
-
     parser = argparse.ArgumentParser(description='Create labels')
     parser.add_argument('-b', '--bam', type=str,
-                        default=inputBAM,
+                        default='',
                         help="Specify input file (BAM)")
     parser.add_argument('-c', '--chrlist', nargs='+', default=['17'],
                         help="List of chromosomes to consider")
@@ -432,28 +429,15 @@ def main():
     #                     help="Specify sample")
     parser.add_argument('-w', '--window', type=str, default=200,
                         help="Specify window size")
-    parser.add_argument('-s', '--svtype', type=str, default='DEL',
-                        help="Specify window size")
+    parser.add_argument('-s', '--svtype', type=str, default='INS',
+                        help="Specify SV type")
     parser.add_argument('-gt', '--ground_truth', type=str,
-                        # default=os.path.join('/Users/lsantuari/Documents/Data/germline/NA24385',
-                        #                      'NIST_SVs_Integration_v0.6/processed/HG002_SVs_Tier1_v0.6.PASS.vcf.gz'),
-                        # default=os.path.join('/Users/lsantuari/Documents/Data/germline/NA24385',
-                        #                      'NIST_SVs_Integration_v0.6/HG002_SVs_Tier1_v0.6.vcf.gz'),
-                        # default=os.path.join('/Users/lsantuari/Documents/Data/germline/CHM/Huddleston2016',
-                        #                     'structural_variants/CHM1_CHM13_pseudodiploid_SVs.vcf.gz'),
-                        # default=os.path.join('/Users/lsantuari/Documents/Data/svclassify',
-                        #                      'Personalis_1000_Genomes_deduplicated_deletions.bedpe'),
-                        # default=os.path.join('/Users/lsantuari/Documents/External_GitHub/sv_benchmark/',
-                        #                      'input.na12878/lumpy-Mills2011-call-set.nanosv.sorted.bedpe'),
-                        default=os.path.join('/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data',
-                                             'run_test_INDEL/SV/chr17_INDEL.bedpe'),
-                        # default=os.path.join('/Users/lsantuari/Documents/Data/germline/NA12878/SV',
-                        #                      'Filtered/gridss.vcf'),
+                        default='',
                         help="Specify ground truth VCF/BEDPE file")
     parser.add_argument('-o', '--out', type=str, default='labels.json.gz',
                         help="Specify output")
     parser.add_argument('-p', '--outputpath', type=str,
-                        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
+                        default='',
                         help="Specify output path")
 
     args = parser.parse_args()
