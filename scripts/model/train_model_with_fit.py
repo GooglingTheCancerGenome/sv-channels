@@ -489,6 +489,7 @@ def train(sampleName, model_fn, params, X_train, y_train, y_train_binary):
     callbacks = [earlystop, tbCallBack, csv_logger, checkpoint]
 
     logging.info('Fitting model...')
+
     # Train model on dataset
     history = model.fit(X_train, y_train_binary,
                         validation_split=params['val_split'],
@@ -517,7 +518,7 @@ def cross_validation(sampleName, outDir, npz_mode, sv_caller, kfold):
 
     # Loop through the indices the split() method returns
     for index, (train_indices, test_indices) in enumerate(skf.split(X, y)):
-        print("Training on fold " + str(index + 1) + "/10...")
+        print("Training on fold " + str(index + 1) + "/"+str(kfold)+"...")
 
         # Generate batches from indices
         X_train, X_test = X[train_indices], X[test_indices]
@@ -526,13 +527,13 @@ def cross_validation(sampleName, outDir, npz_mode, sv_caller, kfold):
         win_ids_train, win_ids_test = win_ids[train_indices], win_ids[test_indices]
 
         batch_size = 32
-        epochs = 50
+        epochs = 10
 
         # Parameters
         params = {'dim': X_train.shape[1],
                   'batch_size': batch_size,
                   'epochs': epochs,
-                  'val_split': 0.5,
+                  'val_split': 0.2,
                   'n_classes': len(mapclasses.keys()),
                   'n_channels': X_train.shape[2],
                   'shuffle': True}
@@ -584,7 +585,7 @@ def train_and_test_model(sampleName_training, sampleName_test, outDir, npz_mode,
         X_test, y_test, win_ids_test = data(sampleName_test, npz_mode, sv_caller)
 
     batch_size = 32
-    epochs = 50
+    epochs = 10
 
     # Parameters
     params = {'dim': X_train.shape[1],
@@ -655,7 +656,7 @@ def main():
                         help="Specify svcaller")
     parser.add_argument('-m', '--mode', type=str, default='training',
                         help="training/test mode")
-    parser.add_argument('-k', '--kfold', type=int, default=10,
+    parser.add_argument('-k', '--kfold', type=int, default=3,
                         help="Specify [k]-fold cross validation")
     parser.add_argument('-npz', '--load_npz', type=bool, default=True,
                         help="load npz?")
