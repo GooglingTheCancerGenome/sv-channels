@@ -22,6 +22,7 @@ REF_GENOME = config["DEFAULT"]["REF_GENOME"]
 
 
 def get_chr_len(ibam, chrName):
+
     # check if the BAM file exists
     assert os.path.isfile(ibam), ibam + " file not existent!"
     # open the BAM file
@@ -136,7 +137,7 @@ def load_channel(chr_list, outDir, ch):
     return channel_data
 
 
-def create_hdf5(ibam, chrom, twobit, bigwig, outDir, cmd_name):
+def create_carray(ibam, chrom, twobit, bigwig, outDir, cmd_name):
     chrlen = get_chr_len(ibam, chrom)
     n_channels = 46
     chr_array = np.zeros(shape=(chrlen, n_channels), dtype=np.float32)  # bz.zeros
@@ -267,8 +268,10 @@ def create_hdf5(ibam, chrom, twobit, bigwig, outDir, cmd_name):
     current_channel = 'mappability'
     logging.info("Adding channel %s at index %d" % (current_channel, channel_index))
 
-    bw_chrom = chrom.replace('chr', '')
-    chr_array[:, channel_index] = np.array(bw_map.values(bw_chrom, 0, chrlen), dtype=np.float32)
+    # bw_chrom = chrom.replace('chr', '')
+    # start and end position hard coded at the moment, to be updated with (0, chrlen)
+    chr_array[:, channel_index] = np.array(bw_map.values(chrom, 44000000, 45000000),
+                                           dtype=np.float32)
     channel_index += 1
 
     current_channel = 'one_hot_encoding'
@@ -347,13 +350,13 @@ def main():
 
     t0 = time()
 
-    create_hdf5(ibam=args.bam,
-                chrom=args.chr,
-                twobit=args.twobit,
-                bigwig=args.map,
-                outDir=args.outputpath,
-                cmd_name=cmd_name
-    )
+    create_carray(ibam=args.bam,
+                  chrom=args.chr,
+                  twobit=args.twobit,
+                  bigwig=args.map,
+                  outDir=args.outputpath,
+                  cmd_name=cmd_name
+                  )
     logging.info('Elapsed time channel_maker_real = %f mins' % (time() - t0))
 
 

@@ -352,8 +352,7 @@ def overlap(sv_list, cpos_list, win_hlen, ground_truth, outDir):
 
 
 # Get labels
-def get_labels(ibam, chrName, win_len, ground_truth, channelDataDir, outFile, outDir):
-    logging.info('running {}'.format(chrName))
+def get_labels(ibam, win_len, ground_truth, channelDataDir, outFile, outDir):
 
     def make_gtrees_from_truth_set(truth_set, file_ext):
 
@@ -476,8 +475,6 @@ def main():
     parser.add_argument('-b', '--bam', type=str,
                         default=inputBAM,
                         help="Specify input file (BAM)")
-    parser.add_argument('-c', '--chr', type=str, default='17',
-                        help="Specify chromosome")
     parser.add_argument('-l', '--logfile', type=str, default='labels.log',
                         help="Specify log file")
     # parser.add_argument('-s', '--sample', type=str, default='NA24385',
@@ -524,7 +521,6 @@ def main():
     t0 = time()
 
     get_labels(ibam=args.bam,
-               chrName=args.chr,
                win_len=args.window,
                ground_truth=args.ground_truth,
                channelDataDir=args.outputpath,
