@@ -74,8 +74,6 @@ def load_channel(chr_list, outDir, ch):
     if ch in channel_names_wg:
         suffix = '.json.gz'
         filename = os.path.join(outDir, ch, ch + suffix)
-        assert os.path.isfile(filename), filename + " does not exists!"
-
         with gzip.GzipFile(filename, 'r') as fin:
             logging.info('Reading %s...' % ch)
             if ch == 'split_reads':
