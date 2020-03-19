@@ -10,7 +10,7 @@ conda env create -n cm -f environment.yaml
 conda activate cm
 
 SCH=gridengine  # or slurm
-BAM=data/test/chr12_chr22.44Mb_45Mb.GRCh37.2bit
+BAM=data/test/chr12_chr22.44Mb_45Mb.GRCh37.bam
 CHRS="12 22"
 ./run_local.sh $BAM $CHRS  # run locally
 ./run.sh $SCH $BAM         # submit jobs to GridEngine/Slurm cluster
