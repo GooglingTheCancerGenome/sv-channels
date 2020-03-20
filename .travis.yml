@@ -8,7 +8,7 @@ services:
   - docker
 env:
   global:
-    - HOME=/home/xenon
+    - XENON_HOME=/home/xenon
     - PREFIX=gtcg/xenon
     - TAG=dev
     - BAM=data/test/chr12_chr22.44Mb_45Mb.GRCh37.bam
@@ -21,8 +21,8 @@ before_install:
   - sleep 10
   - docker ps -a
 install:
-  - docker cp ./ $SCH:$HOME
-  - docker exec -t $SCH chown -R xenon.xenon $HOME
+  - docker cp ./ $SCH:$XENON_HOME
+  - docker exec -t $SCH chown -R xenon.xenon $XENON_HOME
   - docker exec -u xenon -t $SCH ./install.sh
 script:
   - docker exec -u xenon -t $SCH ./run.sh $SCH $BAM $CHROM
