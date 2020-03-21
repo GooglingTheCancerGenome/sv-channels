@@ -46,42 +46,43 @@ conda list
 cd $WORK_DIR
 
 p=clipped_reads
-JOB="python $p.py -b \"$BAM\" -c \"${SEQ_IDS[*]}\" -o $p.json.gz -p . -l $p.log"
-JOB_ID=$(submit "$p" "all" "$JOB")
+JOB="python $p.py -b $BAM -c '${SEQ_IDS[*]}' -o $p.json.gz -p . -l $p.log"
+JOB_ID=$(submit $p all "$JOB")
 JOBS+=($JOB_ID)
 
 p=clipped_read_pos
-JOB="python $p.py -b \"$BAM\" -c \"${SEQ_IDS[*]}\" -o $p.json.gz -p . -l $p.log"
-JOB_ID=$(submit "$p" "all" "$JOB")
+JOB="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -o $p.json.gz -p . -l $p.log"
+JOB_ID=$(submit $p all "$JOB")
 JOBS+=($JOB_ID)
 
 p=split_reads
-JOB="python $p.py -b \"$BAM\" -c \"${SEQ_IDS[*]}\" -o $p.json.gz \
-  -ob $p.bedpe.gz -p . -l $p.log"
-JOB_ID=$(submit "$p" "all" "$JOB")
+JOB="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -o $p.json.gz -ob $p.bedpe.gz \
+  -p . -l $p.log"
+JOB_ID=$(submit $p all "$JOB")
 JOBS+=($JOB_ID)
 
 for s in "${SEQ_IDS[@]}"; do  # per chromosome
   p=clipped_read_distance
-  JOB="python $p.py -b \"$BAM\" -c $s -o $p.json.gz -p . -l $p.log"
-  JOB_ID=$(submit "$p" "$s" "$JOB")
+  JOB="python $p.py -b '$BAM' -c $s -o $p.json.gz -p . -l $p.log"
+  JOB_ID=$(submit $p $s "$JOB")
   JOBS+=($JOB_ID)
 
   p=snv
-  JOB="python $p.py -b \"$BAM\" -c $s -t \"$TWOBIT\" -o $p.npy -p . -l $p.log"
-  JOB_ID=$(submit "$p" "$s" "$JOB")
+  JOB="python $p.py -b '$BAM' -c $s -t '$TWOBIT' -o $p.npy -p . -l $p.log"
+  JOB_ID=$(submit $p $s "$JOB")
   JOBS+=($JOB_ID)
 
   p=coverage
-  JOB="python $p.py -b \"$BAM\" -c $s -o $p.npy -p . -l $p.log"
-  JOB_ID=$(submit "$p" "$s" "$JOB")
+  JOB="python $p.py -b '$BAM' -c $s -o $p.npy -p . -l $p.log"
+  JOB_ID=$(submit $p $s "$JOB")
   JOBS+=($JOB_ID)
 done
 
 # wait until the jobs are done
 for j in "${JOBS[@]}"; do
   while true; do
-    [[ $(monitor $j | jq '.statuses | .[] | select(.done==true)') ]] && \
+    [[ $(monitor $j | jq \
+    '.statuses | .[] | select(.done==true)') ]] && \
       break || sleep ${STIME}m
   done
 done
@@ -89,9 +90,9 @@ done
 # generate chromosome arrays from the channels as well as label window pairs
 for s in "${SEQ_IDS[@]}"; do
   p=chr_array
-  JOB="python $p.py -b \"$BAM\" -c $s -t \"$TWOBIT\" -m \"$BIGWIG\" -o $p.npy \
+  JOB="python $p.py -b '$BAM' -c $s -t '$TWOBIT' -m '$BIGWIG' -o $p.npy \
     -p . -l $p.log"
-  JOB_ID=$(submit "$p" "$s" "$JOB")
+  JOB_ID=$(submit $p $s "$JOB")
   JOBS+=($JOB_ID)
 done
 
@@ -104,28 +105,26 @@ for j in "${JOBS[@]}"; do
 done
 
 p=label_window_pairs_on_split_read_positions
-JOB="python $p.py -b \"$BAM\" -w 200 -gt \"$BEDPE\" -o $p.json.gz -p . \
--l $p.log"
-JOB_ID=$(submit "$p" "$s" "$JOB")
+JOB="python $p.py -b '$BAM' -w 200 -gt '$BEDPE' -o $p.json.gz -p . -l $p.log"
+JOB_ID=$(submit $p $s "$JOB")
 JOBS+=($JOB_ID)
 
 p=label_window_pairs_on_svcallset
-JOB="python $p.py -b \"$BAM\" -w 200 -gt \"$BEDPE\" \
--sv "${BASE_DIR}/gridss" -o $p.json.gz -p . -l $p.log"
-JOB_ID=$(submit "$p" "$s" "$JOB")
+JOB="python $p.py -b '$BAM' -w 200 -gt '$BEDPE' -sv '${BASE_DIR}/gridss' \
+  -o $p.json.gz -p . -l $p.log"
+JOB_ID=$(submit $p $s "$JOB")
 JOBS+=($JOB_ID)
 
 # generate window pairs
 p=create_window_pairs
-JOB="python $p.py -b \"$BAM\" -c \"${SEQ_IDS[*]}\" -sv gridss -w 200 -p . \
-  -l $p.log"
-JOB_ID=$(submit "$p" "all" "$JOB")
+JOB="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -sv gridss -w 200 -p . -l $p.log"
+JOB_ID=$(submit $p all "$JOB")
 JOBS+=($JOB_ID)
 
 # train/test models
 p=train_model_with_fit
 JOB="python $p.py --test_sample . --training_sample . -k 3 -p . -l $p.log"
-JOB_ID=$(submit "$p" "all" "$JOB")
+JOB_ID=$(submit $p all "$JOB")
 JOBS+=($JOB_ID)
 
 # wait until the jobs are done
