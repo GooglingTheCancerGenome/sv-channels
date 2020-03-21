@@ -171,7 +171,7 @@ def main():
 
     cmd_name = 'clipped_read_pos'
     output_dir = os.path.join(args.outputpath, cmd_name)
-    os.makedirs(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
     logfilename = os.path.join(output_dir, args.logfile)
     output_file = os.path.join(output_dir, args.out)
 
