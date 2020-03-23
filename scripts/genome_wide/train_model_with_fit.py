@@ -40,18 +40,6 @@ sess = tf.compat.v1.Session(
                                     allow_soft_placement=True))
 tf.compat.v1.keras.backend.set_session(sess)
 
-mapclasses_all = {
-    'DEL': 0,
-    'noDEL': 1,
-    'UK_other': 2,
-    'UK_single_partial': 3,
-    'UK_multiple_on_either_windows': 4
-}
-mapclasses = {'DEL': 0, 'noDEL': 1}
-
-mapclasses_single = {'DEL_start': 0, 'DEL_end': 1, 'noDEL': 2}
-
-
 def get_channel_labels():
     # Fill labels for legend
 
@@ -146,7 +134,7 @@ def plot_channels(outDir, X, z, l):
 
 def create_plots(sampleName, X_train, y_train, win_ids_train):
     plots_dir = os.path.join(sampleName, 'plots')
-    os.makedirs(plots_dir)
+    os.makedirs(plots_dir, exist_ok=True)
 
     # idx_positive = [i for i, v in enumerate(y_train) if v == mapclasses['DEL']]
     # # idx_positive = [i for i, v in enumerate(y_train) if v == mapclasses['DEL_start'] or v == mapclasses['DEL_end']]
@@ -197,10 +185,10 @@ def get_labels(channel_data_dir, win):
     return labels
 
 
-def data(out_dir, npz_mode, sv_caller):
+def get_data(out_dir, npz_mode, sv_caller, svtype):
     def filter_labels(X, y, win_ids):
         # print(y)
-        keep = [i for i, v in enumerate(y) if v in ['DEL', 'noDEL']]
+        keep = [i for i, v in enumerate(y) if v in [svtype, 'no'+svtype]]
         # print(keep)
         X = X[np.array(keep)]
         # print(y)
@@ -317,9 +305,9 @@ def data(out_dir, npz_mode, sv_caller):
     return X, y, win_ids
 
 
-def train_and_test_data(sampleName, npz_mode, sv_caller):
+def train_and_test_data(sampleName, npz_mode, sv_caller, svtype):
     # Datasets
-    X, y, win_ids = data(sampleName, npz_mode, sv_caller)
+    X, y, win_ids = get_data(sampleName, npz_mode, sv_caller, svtype)
 
     X = np.array(X)
     y = np.array(y)
@@ -518,9 +506,9 @@ def train(sampleName, model_fn, params, X_train, y_train, y_train_binary):
                                                  params['val_split'])
 
 
-def cross_validation(sampleName, outDir, npz_mode, sv_caller, kfold):
+def cross_validation(sampleName, outDir, npz_mode, sv_caller, svtype, kfold):
 
-    X, y, win_ids = data(sampleName, npz_mode, sv_caller)
+    X, y, win_ids = get_data(sampleName, npz_mode, sv_caller, svtype)
     y_binary = to_categorical(y, num_classes=len(mapclasses.keys()))
 
     create_plots(sampleName, X, y, win_ids)
@@ -597,16 +585,16 @@ def cross_validation(sampleName, outDir, npz_mode, sv_caller, kfold):
 
 
 def train_and_test_model(sampleName_training, sampleName_test, outDir,
-                         npz_mode, sv_caller):
+                         npz_mode, sv_caller, svtype):
 
     if sampleName_training == sampleName_test:
         X_train, X_test, y_train, y_test, win_ids_train, win_ids_test = train_and_test_data(
-            sampleName_training, npz_mode, sv_caller)
+            sampleName_training, npz_mode, sv_caller, svtype)
     else:
-        X_train, y_train, win_ids_train = data(sampleName_training, npz_mode,
-                                               sv_caller)
-        X_test, y_test, win_ids_test = data(sampleName_test, npz_mode,
-                                            sv_caller)
+        X_train, y_train, win_ids_train = get_data(sampleName_training, npz_mode,
+                                               sv_caller, svtype)
+        X_test, y_test, win_ids_test = get_data(sampleName_test, npz_mode,
+                                            sv_caller, svtype)
 
     batch_size = 32
     epochs = 10
@@ -699,6 +687,11 @@ def main():
                         type=str,
                         default='gridss',
                         help="Specify svcaller")
+    parser.add_argument('-s',
+                        '--svtype',
+                        type=str,
+                        default='INS',
+                        help="Specify SV type")
     parser.add_argument('-m',
                         '--mode',
                         type=str,
@@ -728,8 +721,13 @@ def main():
     #for training_sample in samples_list:
     #    for test_sample in samples_list:
 
+    global mapclasses
+    mapclasses = {args.svtype: 0, 'no'+args.svtype: 1}
+
     output_dir = os.path.join(args.outputpath, cmd_name)
-    os.makedirs(output_dir)
+
+    os.makedirs(output_dir, exist_ok=True)
+
     logfilename = os.path.join(output_dir, args.logfile)
     # output_file = os.path.join(output_dir, args.out)
 
@@ -749,13 +747,15 @@ def main():
                              sampleName_test=test_sample,
                              outDir=output_dir,
                              npz_mode=args.load_npz,
-                             sv_caller=args.sv_caller)
+                             sv_caller=args.sv_caller,
+                             svtype=args.svtype)
     else:
 
         cross_validation(sampleName=training_sample,
                          outDir=output_dir,
                          npz_mode=args.load_npz,
                          sv_caller=args.sv_caller,
+                         svtype=args.svtype,
                          kfold=args.kfold)
 
     # print('Elapsed time channel_maker_real on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))

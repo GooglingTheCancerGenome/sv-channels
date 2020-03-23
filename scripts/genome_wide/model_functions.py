@@ -76,7 +76,7 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test, results, cv_iter,
         #print(class_labels)
 
         outdir = os.path.join(output_dir, 'predictions')
-        os.makedirs(outdir)
+        os.makedirs(outdir, exist_ok=True)
 
         outfile = os.path.join(
             outdir,
@@ -116,7 +116,7 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test, results, cv_iter,
         # print(class_labels)
 
         outdir = os.path.join(output_dir, 'predictions')
-        os.makedirs(outdir)
+        os.makedirs(outdir, exist_ok=True)
 
         outfile = os.path.join(
             outdir,
@@ -162,7 +162,9 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test, results, cv_iter,
 
     # save model
     outdir = os.path.join(output_dir, 'models')
-    os.makedirs(outdir)
+
+    os.makedirs(outdir, exist_ok=True)
+
     model.save(
         os.path.join(
             outdir, '{0}_model_{1}.hdf5'.format(output,
@@ -183,7 +185,7 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test, results, cv_iter,
 
     # print(y_index)
     outdir = os.path.join(output_dir, 'confusion_matrix')
-    os.makedirs(outdir)
+    os.makedirs(outdir, exist_ok=True)
 
     confusion_matrix = pd.crosstab(pd.Series(y_index), pd.Series(predicted))
     confusion_matrix.index = [class_labels[i] for i in confusion_matrix.index]
@@ -247,7 +249,7 @@ def plot_precision_recall(cv_iter, mapclasses, precision, recall,
                           average_precision, output, output_dir):
 
     outdir = os.path.join(output_dir, 'plots')
-    os.makedirs(outdir)
+    os.makedirs(outdir, exist_ok=True)
 
     from itertools import cycle
     # setup plot details
