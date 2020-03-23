@@ -71,8 +71,9 @@ python $p.py -b "$BAM" -w 200 -c "${SEQ_IDS[@]}" -gt "$BEDPE" -s "DEL" -sv "$BAS
 -o $p.json.gz -p . -l $p.log
 
 p=create_window_pairs
-python $p.py -b "$BAM" -c "${SEQ_IDS[@]}" -sv gridss -w 200 -p . -l $p.log
-
+for lb in label_window_pairs_on_split_read_positions label_window_pairs_on_svcallset; do
+    python $p.py -b "$BAM" -c "${SEQ_IDS[@]}" -lb ${lb}.json.gz -w 200 -p . -l $p.log
+done
 
 # # use "dummy" path for test/training samples
 p=train_model_with_fit

@@ -105,12 +105,12 @@ for j in "${JOBS[@]}"; do
 done
 
 p=label_window_pairs_on_split_read_positions
-JOB="python $p.py -b '$BAM' -w 200 -gt '$BEDPE' -s 'DEL' -o $p.json.gz -p . -l $p.log"
+JOB="python $p.py -b '$BAM' -c "${SEQ_IDS[*]}" -w 200 -gt '$BEDPE' -s 'DEL' -o $p.json.gz -p . -l $p.log"
 JOB_ID=$(submit $p $s "$JOB")
 JOBS+=($JOB_ID)
 
 p=label_window_pairs_on_svcallset
-JOB="python $p.py -b '$BAM' -w 200 -gt '$BEDPE' -s 'DEL' -sv '${BASE_DIR}/gridss' \
+JOB="python $p.py -b '$BAM' -c "${SEQ_IDS[*]}" -w 200 -gt '$BEDPE' -s 'DEL' -sv '${BASE_DIR}/gridss' \
   -o $p.json.gz -p . -l $p.log"
 JOB_ID=$(submit $p $s "$JOB")
 JOBS+=($JOB_ID)
