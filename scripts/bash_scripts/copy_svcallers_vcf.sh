@@ -5,5 +5,5 @@
 
 cp $1/all.vcf $2/vcf/all.vcf
 for s in gridss manta delly lumpy; do
-	cp $1/$s_out/$s.vcf $2/vcf/$s_out/$s.vcf
+	cp $1/$s\_out/$s.vcf $2/vcf/$s\_out/$s.vcf
 done
