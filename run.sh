@@ -46,17 +46,17 @@ conda list
 cd $WORK_DIR
 
 p=clipped_reads
-JOB="python $p.py -b $BAM -c '${SEQ_IDS[*]}' -o $p.json.gz -p . -l $p.log"
+JOB="python $p.py -b $BAM -c "${SEQ_IDS[*]}" -o $p.json.gz -p . -l $p.log"
 JOB_ID=$(submit $p all "$JOB")
 JOBS+=($JOB_ID)
 
 p=clipped_read_pos
-JOB="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -o $p.json.gz -p . -l $p.log"
+JOB="python $p.py -b '$BAM' -c "${SEQ_IDS[*]}" -o $p.json.gz -p . -l $p.log"
 JOB_ID=$(submit $p all "$JOB")
 JOBS+=($JOB_ID)
 
 p=split_reads
-JOB="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -o $p.json.gz -ob $p.bedpe.gz \
+JOB="python $p.py -b '$BAM' -c "${SEQ_IDS[*]}" -o $p.json.gz -ob $p.bedpe.gz \
   -p . -l $p.log"
 JOB_ID=$(submit $p all "$JOB")
 JOBS+=($JOB_ID)
@@ -117,7 +117,7 @@ JOBS+=($JOB_ID)
 
 # generate window pairs
 p=create_window_pairs
-JOB="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -sv gridss -w 200 -p . -l $p.log"
+JOB="python $p.py -b '$BAM' -c "${SEQ_IDS[*]}" -sv gridss -w 200 -p . -l $p.log"
 JOB_ID=$(submit $p all "$JOB")
 JOBS+=($JOB_ID)
 
