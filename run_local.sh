@@ -12,6 +12,9 @@ fi
 BAM=$(realpath -s "$1")
 BASE_DIR=$(dirname "$BAM")
 SAMPLE=$(basename "$BAM" .bam)
+SV_TYPES=(INS DEL)
+SV_CALLS=(gridss manta delly lumpy)  # AK: +split_reads?
+WIN_SZ=200  # in bp
 SEQ_IDS=(${@:2})
 PREFIX="${BASE_DIR}/${SAMPLE}"
 TWOBIT="${PREFIX}.2bit"
@@ -64,36 +67,36 @@ for s in "${SEQ_IDS[@]}"; do  # per chromosome
 done
 
 
-for svtype in DEL INS; do
+for sv in "${SV_TYPES[@]}"; do
 
     p=label_window_pairs_on_split_read_positions
-    win=200
-    python $p.py -b "$BAM" -w $win -c "${SEQ_IDS[@]}" -gt "$BEDPE" -s $svtype -o labels.json.gz -p . -l $p.log
+    python $p.py -b "$BAM" -w $WIN_SZ -c "${SEQ_IDS[@]}" -gt "$BEDPE" -s $sv \
+      -o labels.json.gz -p . -l $p.log
 
     p=create_window_pairs
-    outdir=labels/win$win/$svtype/split_reads
-    labs=$outdir/labels.json.gz
-    python $p.py -b "$BAM" -c "${SEQ_IDS[@]}" -lb $labs -ca .  -w $win -p $outdir -l $p.log
-
-    echo $outdir
+    out="labels/win$WIN_SZ/$sv/split_reads"
+    lb="$out/labels.json.gz"
+    python $p.py -b "$BAM" -c "${SEQ_IDS[@]}" -lb "$lb" -ca .  -w $WIN_SZ \
+      -p "$out" -l $p.log
 
     p=train_model_with_fit
-    python $p.py --test_sample . --training_sample . -k 3 -p $outdir -s $svtype -l $p.log
+    python $p.py --test_sample . --training_sample . -k 3 -p "$out" -s $sv -l $p.log
 
-    for svcaller in gridss manta delly lumpy; do
+    for c in "${SV_CALLS[@]}"; do
 
         p=label_window_pairs_on_svcallset
-        python $p.py -b "$BAM" -w $win -c "${SEQ_IDS[@]}" -gt "$BEDPE" -s $svtype \
-        -sv "$BASE_DIR/$svcaller" \
-        -o labels.json.gz -p . -l $p.log
+        python $p.py -b "$BAM" -w $WIN_SZ -c "${SEQ_IDS[@]}" -gt "$BEDPE" \
+          -s $sv -sv "$BASE_DIR/$c" -o labels.json.gz -p . -l $p.log
 
         p=create_window_pairs
-        outdir=labels/win$win/$svtype/$svcaller
-        labs=$outdir/labels.json.gz
-        python $p.py -b "$BAM" -c "${SEQ_IDS[@]}" -lb $labs -ca .  -w $win -p $outdir -l $p.log
+        out="labels/win$WIN_SZ/$sv/$c"
+        lb="$out/labels.json.gz"
+        python $p.py -b "$BAM" -c "${SEQ_IDS[@]}" -lb "$lb" -ca . -w $WIN_SZ \
+          -p "$out" -l $p.log
 
         p=train_model_with_fit
-        python $p.py --test_sample . --training_sample . -k 3 -p $outdir -s $svtype -l $p.log
+        python $p.py --test_sample . --training_sample . -k 3 -p "$out" -s $sv \
+          -l $p.log
 
     done
 done
