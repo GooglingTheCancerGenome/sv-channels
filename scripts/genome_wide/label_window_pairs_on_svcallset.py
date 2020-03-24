@@ -50,7 +50,7 @@ def read_vcf(invcf):
     return sv_list
 
 
-def read_bedpe(inbedpe):
+def read_bedpe(inbedpe, svtype_to_select):
     # Check file existence
     assert os.path.isfile(inbedpe), inbedpe + ' not found!'
     # Dictionary with chromosome keys to store SVs
@@ -68,9 +68,13 @@ def read_bedpe(inbedpe):
             if svtype == "TYPE:DELETION":
                 svtype = "DEL"
 
-            if svtype == "DEL":
-                sv_list.append((chrom1, pos1_start, pos1_end, chrom2,
-                                pos2_start, pos2_end, svtype))
+            if svtype_to_select == svtype:
+                if svtype == "DEL":
+                    sv_list.append((chrom1, pos1_start, pos1_end, chrom2,
+                                    pos2_start, pos2_end, svtype))
+                elif svtype == "INS":
+                    sv_list.append((chrom1, pos1_start, pos1_end, chrom1,
+                                    pos1_start + 1, pos1_end + 1, svtype))
 
     logging.info('{} SVs'.format(len(sv_list)))
 
@@ -133,7 +137,7 @@ def read_svcaller_bedpe(inbedpe):
     return cr_pos
 
 
-def overlap(sv_list, cpos_list, win_hlen, ground_truth, outDir):
+def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
     '''
 
     :param sv_list: list, list of SVs
@@ -269,7 +273,7 @@ def overlap(sv_list, cpos_list, win_hlen, ground_truth, outDir):
 
         elif l1 == 0 and l1 == l2:
             # logging.info('CPOS->Partial: %s\t%d\t%d' % (elem, start, end))
-            labels[pos_id] = 'noDEL'
+            labels[pos_id] = 'no'+svtype
 
         elif (l1 == 1 and l2 > 1) or (l2 == 1 and l1 > 1):
 
@@ -291,7 +295,7 @@ def overlap(sv_list, cpos_list, win_hlen, ground_truth, outDir):
 
         else:
             # (l1 == 1 and l2 == 0) or (l1 == 0 and l2 == 1)
-            labels[pos_id] = 'noDEL'
+            labels[pos_id] = 'no'+svtype
 
     logging.info(Counter(labels.values()))
     sv_coverage = int(len(sv_covered) / len(sv_list) * 100)
@@ -343,7 +347,7 @@ def get_labels(ibam, chrlist, win_len, svtype, ground_truth, sv_caller,
 
     filename, file_extension = os.path.splitext(ground_truth)
     if file_extension == '.bedpe':
-        sv_list = read_bedpe(ground_truth)
+        sv_list = read_bedpe(ground_truth, svtype)
     elif file_extension == '.vcf' or file_extension == '.gz':
         sv_list = read_vcf(ground_truth)
 
@@ -353,7 +357,7 @@ def get_labels(ibam, chrlist, win_len, svtype, ground_truth, sv_caller,
     # filename, file_extension = os.path.splitext(ground_truth)
     # trees_start, trees_end = make_gtrees_from_truth_set(sv_list, file_extension.upper())
     # print(sv_list)
-    labels = overlap(sv_list, cpos_list, win_hlen, ground_truth, outDir)
+    labels = overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir)
 
     with gzip.GzipFile(outFile, 'wb') as fout:
         fout.write(json.dumps(labels).encode('utf-8'))
