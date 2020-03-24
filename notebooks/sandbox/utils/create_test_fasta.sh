@@ -6,8 +6,9 @@ BW=$3
 CHRSIZES=$4
 OUTDIR=$5
 
-conda activate sv-gen_utils
+# conda activate sv-gen_utils
 
+CMDDIR=$PWD
 [ ! -d $OUTDIR ] && mkdir -p $OUTDIR
 cd $OUTDIR
 
@@ -16,7 +17,7 @@ awk '{if($1~/^>/){split($1,a,":"); print a[1]}else{print}}' test.tmp.fasta > tes
 
 faToTwoBit test.fasta test.2bit
 
-python ./bigwig_from_bed.py --bigwig $BW \
+python $CMDDIR/bigwig_from_bed.py --bigwig $BW \
     --bigwigout test.bw \
     --bed $BED \
     --chromsizes $CHRSIZES
