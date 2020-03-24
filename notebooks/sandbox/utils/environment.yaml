@@ -1,0 +1,6 @@
+channels:
+  - bioconda
+dependencies:
+  - pybigwig
+  - ucsc-fatotwobit
+  - bedtools
