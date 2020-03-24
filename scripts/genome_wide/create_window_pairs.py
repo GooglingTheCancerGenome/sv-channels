@@ -16,7 +16,6 @@ def get_range(dictionary, begin, end):
 
 
 def get_chr_list(chrom):
-
     # if sampleName in ['T1', 'G1', 'ART_INDEL_HET', 'ART_INDEL_HOM']:
     #     chrlist = ['17']
     # else:
@@ -27,7 +26,6 @@ def get_chr_list(chrom):
 
 
 def load_chr_array(channel_data_dir, chrlist):
-
     chr_array = dict()
 
     for c in chrlist:
@@ -41,13 +39,9 @@ def load_chr_array(channel_data_dir, chrlist):
     return chr_array
 
 
-def get_labels(channel_data_dir, win, sv_caller):
-    label_file = os.path.join(
-        channel_data_dir,
-        'labels',
-        'win' + str(win),
-        #'label_window_pairs_on_svcallset.json.gz')
-        'label_window_pairs_on_split_read_positions.json.gz')
+def get_labels(label_file):
+    # 'label_window_pairs_on_svcallset.json.gz')
+    # 'label_window_pairs_on_split_read_positions.json.gz')
     with gzip.GzipFile(label_file, 'r') as fin:
         labels = json.loads(fin.read().decode('utf-8'))
 
@@ -74,7 +68,6 @@ def unfold_win_id(win_id):
 
 
 def get_window_by_id(win_id, chr_array, padding, win_hlen):
-
     chr1, pos1, chr2, pos2 = win_id.split('_')
     pos1 = int(pos1)
     pos2 = int(pos2)
@@ -86,18 +79,16 @@ def get_window_by_id(win_id, chr_array, padding, win_hlen):
     return da.concatenate(dask_arrays, axis=0)
 
 
-def get_windows(outDir, chrom_list, win, cmd_name, sv_caller, mode, npz_mode):
+def get_windows(carrays_dir, outDir, chrom_list, win, label_file_path, mode, npz_mode):
     def same_chr_in_winid(win_id):
         chr1, pos1, chr2, pos2 = win_id.split('_')
         return chr1 == chr2
 
-    outfile_dir = os.path.join(outDir, cmd_name)
-
-    chr_array = load_chr_array(outDir, chrom_list)
+    chr_array = load_chr_array(carrays_dir, chrom_list)
     n_channels = chr_array[chrom_list[0]].shape[1]
     logging.info('{} channels'.format(n_channels))
 
-    labels = get_labels(outDir, win, sv_caller)
+    labels = get_labels(label_file_path)
     # labels = get_range(labels, 0, 10000)
 
     # if sampleName == 'T1':
@@ -126,12 +117,12 @@ def get_windows(outDir, chrom_list, win, cmd_name, sv_caller, mode, npz_mode):
 
         logging.info('Creating {}...'.format(labs_name))
 
-        n_r = 10**5
+        n_r = 10 ** 5
         # print(n_r)
         last_t = time()
         i = 1
 
-        outfile = os.path.join(outfile_dir, 'windows')
+        outfile = os.path.join(outDir, 'windows')
 
         bcolz_array = bcolz.carray(bcolz.zeros(shape=(0, int(win) * 2 +
                                                       padding_len, n_channels),
@@ -147,8 +138,8 @@ def get_windows(outDir, chrom_list, win, cmd_name, sv_caller, mode, npz_mode):
 
         logging.info('Creating dask_arrays_win1 and dask_arrays_win2...')
         for chr1, pos1, chr2, pos2 in map(unfold_win_id, labs.keys()):
-            logging.info("chr1={} pos1={} chr2={} pos2={}".format(
-                chr1, pos1, chr2, pos2))
+            # logging.info("chr1={} pos1={} chr2={} pos2={}".format(
+            #    chr1, pos1, chr2, pos2))
             if not i % n_r:
                 # Record the current time
                 now_t = time()
@@ -191,7 +182,7 @@ def get_windows(outDir, chrom_list, win, cmd_name, sv_caller, mode, npz_mode):
         if npz_mode:
             numpy_array = np.stack(numpy_array, axis=0)
             logging.info('Numpy array shape: {}'.format(numpy_array.shape))
-            np.savez(file=os.path.join(outfile_dir, 'windows'),
+            np.savez(file=os.path.join(outDir, 'windows'),
                      data=numpy_array,
                      labels=labs)
 
@@ -223,11 +214,16 @@ def main():
                         nargs='+',
                         default=['17'],
                         help="List of chromosomes to consider")
+    parser.add_argument('-ca',
+                        '--carraydir',
+                        type=str,
+                        default='',
+                        help="chr_array directory")
     parser.add_argument(
         '-p',
         '--outputpath',
         type=str,
-        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
+        default='',
         help="Specify output path")
     parser.add_argument('-l',
                         '--logfile',
@@ -238,11 +234,11 @@ def main():
                         type=str,
                         default=200,
                         help="Specify window size")
-    parser.add_argument('-sv',
-                        '--sv_caller',
+    parser.add_argument('-lb',
+                        '--labels',
                         type=str,
-                        default='manta',
-                        help="Specify svcaller")
+                        default='labels.json.gz',
+                        help="Specify label file")
     parser.add_argument('-m',
                         '--mode',
                         type=str,
@@ -270,11 +266,11 @@ def main():
 
     t0 = time()
 
-    get_windows(outDir=args.outputpath,
+    get_windows(carrays_dir=args.carraydir,
+                outDir=output_dir,
                 chrom_list=args.chrlist,
                 win=args.window,
-                cmd_name=cmd_name,
-                sv_caller=args.sv_caller,
+                label_file_path=args.labels,
                 mode=args.mode,
                 npz_mode=args.save_npz)
 

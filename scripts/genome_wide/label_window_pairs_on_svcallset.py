@@ -352,7 +352,7 @@ def get_labels(ibam, chrlist, win_len, svtype, ground_truth, sv_caller,
 
     # filename, file_extension = os.path.splitext(ground_truth)
     # trees_start, trees_end = make_gtrees_from_truth_set(sv_list, file_extension.upper())
-
+    # print(sv_list)
     labels = overlap(sv_list, cpos_list, win_hlen, ground_truth, outDir)
 
     with gzip.GzipFile(outFile, 'wb') as fout:
@@ -369,7 +369,7 @@ def main():
     parser.add_argument('-b',
                         '--bam',
                         type=str,
-                        default='',
+                        default='../../data/test/chr12_chr22.44Mb_45Mb.GRCh37.bam',
                         help="Specify input file (BAM)")
     parser.add_argument('-l',
                         '--logfile',
@@ -379,7 +379,7 @@ def main():
     parser.add_argument('-c',
                         '--chrlist',
                         nargs='+',
-                        default=['17'],
+                        default=['12', '22'],
                         help="List of chromosomes to consider")
     parser.add_argument('-w',
                         '--window',
@@ -389,17 +389,17 @@ def main():
     parser.add_argument('-s',
                         '--svtype',
                         type=str,
-                        default='INS',
+                        default='DEL',
                         help="Specify SV type")
     parser.add_argument('-sv',
                         '--sv_caller',
                         type=str,
-                        default=os.path.join('manta_gridss'),
+                        default=os.path.join('..','..','data','test','gridss'),
                         help="Specify Manta/GRIDSS BEDPE file")
     parser.add_argument('-gt',
                         '--ground_truth',
                         type=str,
-                        default='',
+                        default='../../data/test/chr12_chr22.44Mb_45Mb.GRCh37.bedpe',
                         help="Specify ground truth VCF/BEDPE file")
     parser.add_argument('-o',
                         '--out',
@@ -415,8 +415,14 @@ def main():
     args = parser.parse_args()
 
     # Log file
+    assert os.path.exists(args.sv_caller+'.bedpe')
+
+    sv_caller_name = os.path.basename(args.sv_caller)
     output_dir = os.path.join(args.outputpath, 'labels',
-                              'win' + str(args.window))
+                              'win' + str(args.window),
+                              args.svtype,
+                              sv_caller_name
+                              )
     os.makedirs(output_dir, exist_ok=True)
     logfilename = os.path.join(output_dir, args.logfile)
     output_file = os.path.join(output_dir, args.out)

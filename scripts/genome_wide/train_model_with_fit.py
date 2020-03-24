@@ -185,7 +185,7 @@ def get_labels(channel_data_dir, win):
     return labels
 
 
-def get_data(out_dir, npz_mode, sv_caller, svtype):
+def get_data(out_dir, npz_mode, svtype):
     def filter_labels(X, y, win_ids):
         # print(y)
         keep = [i for i, v in enumerate(y) if v in [svtype, 'no'+svtype]]
@@ -307,7 +307,7 @@ def get_data(out_dir, npz_mode, sv_caller, svtype):
 
 def train_and_test_data(sampleName, npz_mode, sv_caller, svtype):
     # Datasets
-    X, y, win_ids = get_data(sampleName, npz_mode, sv_caller, svtype)
+    X, y, win_ids = get_data(sampleName, npz_mode, svtype)
 
     X = np.array(X)
     y = np.array(y)
@@ -508,7 +508,7 @@ def train(sampleName, model_fn, params, X_train, y_train, y_train_binary):
 
 def cross_validation(sampleName, outDir, npz_mode, sv_caller, svtype, kfold):
 
-    X, y, win_ids = get_data(sampleName, npz_mode, sv_caller, svtype)
+    X, y, win_ids = get_data(os.path.join(outDir, '..'), npz_mode, svtype)
     y_binary = to_categorical(y, num_classes=len(mapclasses.keys()))
 
     create_plots(sampleName, X, y, win_ids)
@@ -591,10 +591,8 @@ def train_and_test_model(sampleName_training, sampleName_test, outDir,
         X_train, X_test, y_train, y_test, win_ids_train, win_ids_test = train_and_test_data(
             sampleName_training, npz_mode, sv_caller, svtype)
     else:
-        X_train, y_train, win_ids_train = get_data(sampleName_training, npz_mode,
-                                               sv_caller, svtype)
-        X_test, y_test, win_ids_test = get_data(sampleName_test, npz_mode,
-                                            sv_caller, svtype)
+        X_train, y_train, win_ids_train = get_data(sampleName_training, npz_mode, svtype)
+        X_test, y_test, win_ids_test = get_data(sampleName_test, npz_mode, svtype)
 
     batch_size = 32
     epochs = 10

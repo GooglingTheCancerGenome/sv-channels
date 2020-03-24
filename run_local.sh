@@ -63,21 +63,42 @@ for s in "${SEQ_IDS[@]}"; do  # per chromosome
 
 done
 
-p=label_window_pairs_on_split_read_positions
-python $p.py -b "$BAM" -w 200 -c "${SEQ_IDS[@]}" -gt "$BEDPE" -s "DEL" -o $p.json.gz -p . -l $p.log
 
-p=label_window_pairs_on_svcallset
-python $p.py -b "$BAM" -w 200 -c "${SEQ_IDS[@]}" -gt "$BEDPE" -s "DEL" -sv "$BASE_DIR/gridss" \
--o $p.json.gz -p . -l $p.log
+for svtype in DEL INS; do
 
-p=create_window_pairs
-for lb in label_window_pairs_on_split_read_positions label_window_pairs_on_svcallset; do
-    python $p.py -b "$BAM" -c "${SEQ_IDS[@]}" -lb ${lb}.json.gz -w 200 -p . -l $p.log
+    p=label_window_pairs_on_split_read_positions
+    win=200
+    python $p.py -b "$BAM" -w $win -c "${SEQ_IDS[@]}" -gt "$BEDPE" -s $svtype -o labels.json.gz -p . -l $p.log
+
+    p=create_window_pairs
+    outdir=labels/win$win/$svtype/split_reads
+    labs=$outdir/labels.json.gz
+    python $p.py -b "$BAM" -c "${SEQ_IDS[@]}" -lb $labs -ca .  -w $win -p $outdir -l $p.log
+
+    echo $outdir
+
+    p=train_model_with_fit
+    python $p.py --test_sample . --training_sample . -k 3 -p $outdir -s $svtype -l $p.log
+
+    for svcaller in gridss manta delly lumpy; do
+
+        p=label_window_pairs_on_svcallset
+        python $p.py -b "$BAM" -w $win -c "${SEQ_IDS[@]}" -gt "$BEDPE" -s $svtype \
+        -sv "$BASE_DIR/$svcaller" \
+        -o labels.json.gz -p . -l $p.log
+
+        p=create_window_pairs
+        outdir=labels/win$win/$svtype/$svcaller
+        labs=$outdir/labels.json.gz
+        python $p.py -b "$BAM" -c "${SEQ_IDS[@]}" -lb $labs -ca .  -w $win -p $outdir -l $p.log
+
+        p=train_model_with_fit
+        python $p.py --test_sample . --training_sample . -k 3 -p $outdir -s $svtype -l $p.log
+
+    done
 done
 
-# # use "dummy" path for test/training samples
-p=train_model_with_fit
-python $p.py --test_sample . --training_sample . -k 3 -p . -s "DEL" -l $p.log
+
 
 echo -e "\nLog files:"
 find -type f -name "*.log"

@@ -104,33 +104,65 @@ for j in "${JOBS[@]}"; do
   done
 done
 
-p=label_window_pairs_on_split_read_positions
-JOB="python $p.py -b '$BAM' -c "${SEQ_IDS[*]}" -w 200 -gt '$BEDPE' -s 'DEL' -o $p.json.gz -p . -l $p.log"
-JOB_ID=$(submit $p $s "$JOB")
-JOBS+=($JOB_ID)
+# Create labels
+for svtype in DEL INS; do
 
-p=label_window_pairs_on_svcallset
-JOB="python $p.py -b '$BAM' -c "${SEQ_IDS[*]}" -w 200 -gt '$BEDPE' -s 'DEL' -sv '${BASE_DIR}/gridss' \
-  -o $p.json.gz -p . -l $p.log"
-JOB_ID=$(submit $p $s "$JOB")
-JOBS+=($JOB_ID)
+    p=label_window_pairs_on_split_read_positions
+    win=200
+    JOB="python $p.py -b '$BAM' -c "${SEQ_IDS[*]}" -w $win -gt '$BEDPE' -s $svtype -o labels.json.gz -p . -l $p.log"
+    JOB_ID=$(submit $p $s "$JOB")
+    JOBS+=($JOB_ID)
 
-# generate window pairs
-p=create_window_pairs
-JOB="python $p.py -b '$BAM' -c "${SEQ_IDS[*]}" -sv gridss -w 200 -p . -l $p.log"
-JOB_ID=$(submit $p all "$JOB")
-JOBS+=($JOB_ID)
+    for svcaller in gridss manta delly lumpy; do
 
-# train/test models
-p=train_model_with_fit
-JOB="python $p.py --test_sample . --training_sample . -k 3 -p . -s 'DEL' -l $p.log"
-JOB_ID=$(submit $p all "$JOB")
-JOBS+=($JOB_ID)
+        p=label_window_pairs_on_svcallset
+        JOB="python $p.py -b '$BAM' -c "${SEQ_IDS[*]}" -w $win -gt '$BEDPE' -s $svtype \
+        -sv $BASE_DIR/$svcaller -o labels.json.gz -p . -l $p.log"
+        JOB_ID=$(submit $p $s "$JOB")
+        JOBS+=($JOB_ID)
+
+    done
+done
 
 # wait until the jobs are done
 while true; do
   [[ $(monitor ${JOBS[-1]} | jq '.statuses | .[] | select(.done==true)') ]] \
     && break || sleep ${STIME}m
+done
+
+# Create windows
+for svtype in DEL INS; do
+
+    for svcaller in split_reads gridss manta delly lumpy; do
+
+        p=create_window_pairs
+        outdir=labels/win$win/$svtype/$svcaller
+        labs=$outdir/labels.json.gz
+        JOB="python $p.py -b "$BAM" -c "${SEQ_IDS[@]}" -lb $labs -ca .  -w $win -p $outdir -l $p.log"
+        JOB_ID=$(submit $p all "$JOB")
+        JOBS+=($JOB_ID)
+
+    done
+done
+
+# wait until the jobs are done
+while true; do
+  [[ $(monitor ${JOBS[-1]} | jq '.statuses | .[] | select(.done==true)') ]] \
+    && break || sleep ${STIME}m
+done
+
+# Train and test model
+for svtype in DEL INS; do
+
+    for svcaller in split_reads gridss manta delly lumpy; do
+
+        p=train_model_with_fit
+        outdir=labels/win$win/$svtype/$svcaller
+        JOB="python $p.py --test_sample . --training_sample . -k 3 -p $outdir -s $svtype -l $p.log"
+        JOB_ID=$(submit $p all "$JOB")
+        JOBS+=($JOB_ID)
+
+    done
 done
 
 # wait until the jobs are done

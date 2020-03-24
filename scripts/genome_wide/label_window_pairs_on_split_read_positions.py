@@ -467,7 +467,9 @@ def main():
 
     # Log file
     output_dir = os.path.join(args.outputpath, 'labels',
-                              'win' + str(args.window))
+                              'win' + str(args.window),
+                              args.svtype,
+                              'split_reads')
     os.makedirs(output_dir, exist_ok=True)
     logfilename = os.path.join(output_dir, args.logfile)
     output_file = os.path.join(output_dir, args.out)
