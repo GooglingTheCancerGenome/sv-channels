@@ -14,6 +14,9 @@ BAM=$(realpath -s "$2")
 BASE_DIR=$(dirname "$BAM")
 SAMPLE=$(basename "$BAM" .bam)
 SEQ_IDS=(${@:3})
+SV_TYPES=(INS DEL)
+SV_CALLS=(gridss manta delly lumpy)  # AK: +split_reads?
+WIN_SZ=200  # in bp
 PREFIX="${BASE_DIR}/${SAMPLE}"
 TWOBIT="${PREFIX}.2bit"
 BIGWIG="${PREFIX}.bw"
@@ -21,11 +24,11 @@ BEDPE="${PREFIX}.bedpe"
 WORK_DIR=scripts/genome_wide
 #NUMEXPR_MAX_THREADS=128  # required by py-bcolz
 STARTTIME=$(date +%s)
-JOBS=() # array of job IDs
-JOBS_LOG=jobs.json # job accounting log
-RTIME=10  # runtime in minutes
-STIME=1 # sleep X minutes
-MY_ENV=wf # conda env
+JOBS=()  # array of job IDs
+JOBS_LOG=jobs.json  # job accounting log
+RTIME=10   # runtime in minutes
+STIME=1  # sleep X minutes
+MY_ENV=wf  # conda env
 
 submit () {  # submit a job via Xenon CLI
   xenon -v scheduler $SCH --location local:// submit \
@@ -46,43 +49,42 @@ conda list
 cd $WORK_DIR
 
 p=clipped_reads
-JOB="python $p.py -b $BAM -c "${SEQ_IDS[*]}" -o $p.json.gz -p . -l $p.log"
-JOB_ID=$(submit $p all "$JOB")
+cmd="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -o $p.json.gz -p . -l $p.log"
+JOB_ID=$(submit $p all "$cmd")
 JOBS+=($JOB_ID)
 
 p=clipped_read_pos
-JOB="python $p.py -b '$BAM' -c "${SEQ_IDS[*]}" -o $p.json.gz -p . -l $p.log"
-JOB_ID=$(submit $p all "$JOB")
+cmd="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -o $p.json.gz -p . -l $p.log"
+JOB_ID=$(submit $p all "$cmd")
 JOBS+=($JOB_ID)
 
 p=split_reads
-JOB="python $p.py -b '$BAM' -c "${SEQ_IDS[*]}" -o $p.json.gz -ob $p.bedpe.gz \
+cmd="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -o $p.json.gz -ob $p.bedpe.gz \
   -p . -l $p.log"
-JOB_ID=$(submit $p all "$JOB")
+JOB_ID=$(submit $p all "$cmd")
 JOBS+=($JOB_ID)
 
 for s in "${SEQ_IDS[@]}"; do  # per chromosome
   p=clipped_read_distance
-  JOB="python $p.py -b '$BAM' -c $s -o $p.json.gz -p . -l $p.log"
-  JOB_ID=$(submit $p $s "$JOB")
+  cmd="python $p.py -b '$BAM' -c $s -o $p.json.gz -p . -l $p.log"
+  JOB_ID=$(submit $p $s "$cmd")
   JOBS+=($JOB_ID)
 
   p=snv
-  JOB="python $p.py -b '$BAM' -c $s -t '$TWOBIT' -o $p.npy -p . -l $p.log"
-  JOB_ID=$(submit $p $s "$JOB")
+  cmd="python $p.py -b '$BAM' -c $s -t '$TWOBIT' -o $p.npy -p . -l $p.log"
+  JOB_ID=$(submit $p $s "$cmd")
   JOBS+=($JOB_ID)
 
   p=coverage
-  JOB="python $p.py -b '$BAM' -c $s -o $p.npy -p . -l $p.log"
-  JOB_ID=$(submit $p $s "$JOB")
+  cmd="python $p.py -b '$BAM' -c $s -o $p.npy -p . -l $p.log"
+  JOB_ID=$(submit $p $s "$cmd")
   JOBS+=($JOB_ID)
 done
 
 # wait until the jobs are done
 for j in "${JOBS[@]}"; do
   while true; do
-    [[ $(monitor $j | jq \
-    '.statuses | .[] | select(.done==true)') ]] && \
+    [[ $(monitor $j | jq '.statuses | .[] | select(.done==true)') ]] && \
       break || sleep ${STIME}m
   done
 done
@@ -90,9 +92,9 @@ done
 # generate chromosome arrays from the channels as well as label window pairs
 for s in "${SEQ_IDS[@]}"; do
   p=chr_array
-  JOB="python $p.py -b '$BAM' -c $s -t '$TWOBIT' -m '$BIGWIG' -o $p.npy \
-    -p . -l $p.log"
-  JOB_ID=$(submit $p $s "$JOB")
+  cmd="python $p.py -b '$BAM' -c $s -t '$TWOBIT' -m '$BIGWIG' -o $p.npy -p . \
+    -l $p.log"
+  JOB_ID=$(submit $p $s "$cmd")
   JOBS+=($JOB_ID)
 done
 
@@ -105,20 +107,18 @@ for j in "${JOBS[@]}"; do
 done
 
 # Create labels
-for svtype in DEL INS; do
-
+for sv in "${SV_TYPES[@]}"; do
     p=label_window_pairs_on_split_read_positions
-    win=200
-    JOB="python $p.py -b '$BAM' -c "${SEQ_IDS[*]}" -w $win -gt '$BEDPE' -s $svtype -o labels.json.gz -p . -l $p.log"
-    JOB_ID=$(submit $p $s "$JOB")
+    cmd="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -w $WIN_SZ -gt '$BEDPE' \
+      -s $sv -o labels.json.gz -p . -l $p.log"
+    JOB_ID=$(submit $p $s "$cmd")
     JOBS+=($JOB_ID)
 
-    for svcaller in gridss manta delly lumpy; do
-
+    for c in "${SV_CALLS[@]}"; do
         p=label_window_pairs_on_svcallset
-        JOB="python $p.py -b '$BAM' -c "${SEQ_IDS[*]}" -w $win -gt '$BEDPE' -s $svtype \
-        -sv $BASE_DIR/$svcaller -o labels.json.gz -p . -l $p.log"
-        JOB_ID=$(submit $p $s "$JOB")
+        cmd="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -w $WIN_SZ -gt '$BEDPE' \
+          -s $sv -sv '$BASE_DIR/$c' -o labels.json.gz -p . -l $p.log"
+        JOB_ID=$(submit $p $s "$cmd")
         JOBS+=($JOB_ID)
 
     done
@@ -131,15 +131,14 @@ while true; do
 done
 
 # Create windows
-for svtype in DEL INS; do
-
-    for svcaller in split_reads gridss manta delly lumpy; do
-
+for sv in "${SV_TYPES[@]}"; do
+    for c in "${SV_CALLS[@]}"; do
         p=create_window_pairs
-        outdir=labels/win$win/$svtype/$svcaller
-        labs=$outdir/labels.json.gz
-        JOB="python $p.py -b "$BAM" -c "${SEQ_IDS[@]}" -lb $labs -ca .  -w $win -p $outdir -l $p.log"
-        JOB_ID=$(submit $p all "$JOB")
+        out="labels/win$WIN_SZ/$sv/$c"
+        lb="$out/labels.json.gz"
+        cmd="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -lb '$lb' -ca . \
+          -w $WIN_SZ -p '$out' -l $p.log"
+        JOB_ID=$(submit $p all "$cmd")
         JOBS+=($JOB_ID)
 
     done
@@ -152,14 +151,14 @@ while true; do
 done
 
 # Train and test model
-for svtype in DEL INS; do
-
-    for svcaller in split_reads gridss manta delly lumpy; do
-
+SV_CALLS+=(split_reads)  # AK: ok?
+for sv in "${SV_TYPES[@]}"; do
+    for c in "${SV_CALLS[@]}"; do
         p=train_model_with_fit
-        outdir=labels/win$win/$svtype/$svcaller
-        JOB="python $p.py --test_sample . --training_sample . -k 3 -p $outdir -s $svtype -l $p.log"
-        JOB_ID=$(submit $p all "$JOB")
+        out="labels/win$WIN_SZ/$sv/$c"
+        cmd="python $p.py --test_sample . --training_sample . -k 3 -p '$out' \
+          -s $sv -l $p.log"
+        JOB_ID=$(submit $p all "$cmd")
         JOBS+=($JOB_ID)
 
     done
