@@ -17,6 +17,6 @@ dependencies:
   - tensorflow
   - r-argparser
   - bioconductor-structuralvariantannotation
-  - xenon-cli
+  - xenon-cli=3.0.5
   - jq
   - cigar
