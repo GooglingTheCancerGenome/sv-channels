@@ -382,9 +382,9 @@ def main():
                         help="Specify log file")
     parser.add_argument('-c',
                         '--chrlist',
-                        nargs='+',
-                        default=['12', '22'],
-                        help="List of chromosomes to consider")
+                        type=str,
+                        default='12,22',
+                        help="Comma separated list of chromosomes to consider")
     parser.add_argument('-w',
                         '--window',
                         type=str,
@@ -440,7 +440,7 @@ def main():
     t0 = time()
 
     get_labels(ibam=args.bam,
-               chrlist=args.chrlist,
+               chrlist=args.chrlist.split(','),
                win_len=args.window,
                svtype=args.svtype,
                ground_truth=args.ground_truth,

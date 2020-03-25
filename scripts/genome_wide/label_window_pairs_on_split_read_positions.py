@@ -427,9 +427,9 @@ def main():
                         help="Specify input file (BAM)")
     parser.add_argument('-c',
                         '--chrlist',
-                        nargs='+',
-                        default=['17'],
-                        help="List of chromosomes to consider")
+                        type=str,
+                        default='17',
+                        help="Comma separated list of chromosomes to consider")
     parser.add_argument('-l',
                         '--logfile',
                         type=str,
@@ -484,7 +484,7 @@ def main():
 
     get_labels(
         ibam=args.bam,
-        chrlist=args.chrlist,
+        chrlist=args.chrlist.split(','),
         win_len=args.window,
         svtype=args.svtype,
         ground_truth=args.ground_truth,

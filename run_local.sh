@@ -24,6 +24,8 @@ BEDPE="${PREFIX}.bedpe"
 WORK_DIR=scripts/genome_wide
 # NUMEXPR_MAX_THREADS=128  # required by py-bcolz
 
+function join { local IFS="$1"; shift; echo "$*"; }
+
 # convert SV truth set in TSV to BEDPE file (only INDELs considered)
 awk '{OFS="\t"}{if($5 ~ /DEL|INS/){print $1,$2,$2+1,$1,$4,$4+1,$5}}' \
   "$TSV" > "$BEDPE"
@@ -38,16 +40,18 @@ done
 cd $WORK_DIR
 printenv
 
+SEQ_IDS_CSV=$(join , ${SEQ_IDS[@]})
 
 # run per BAM file
 p=clipped_reads
-python $p.py -b "$BAM" -c "${SEQ_IDS[@]}" -o $p.json.gz -p . -l $p.log
+python $p.py -b "$BAM" -c "${SEQ_IDS_CSV}" -o $p.json.gz -p . -l $p.log
 
 p=clipped_read_pos
-python $p.py -b "$BAM" -c "${SEQ_IDS[@]}" -o $p.json.gz -p . -l $p.log
+python $p.py -b "$BAM" -c "${SEQ_IDS_CSV}" -o $p.json.gz -p . -l $p.log
 
 p=split_reads
-python $p.py -b "$BAM" -c "${SEQ_IDS[@]}" -o $p.json.gz -ob $p.bedpe.gz -p . -l $p.log
+python $p.py -b "$BAM" -c "${SEQ_IDS_CSV}" -o $p.json.gz -ob $p.bedpe.gz -p . -l $p.log
+
 
 # write channels into *.json.gz and *.npy.gz files
 for s in "${SEQ_IDS[@]}"; do  # per chromosome
@@ -70,13 +74,13 @@ done
 for sv in "${SV_TYPES[@]}"; do
 
     p=label_window_pairs_on_split_read_positions
-    python $p.py -b "$BAM" -w $WIN_SZ -c "${SEQ_IDS[@]}" -gt "$BEDPE" -s $sv \
+    python $p.py -b "$BAM" -w $WIN_SZ -c "${SEQ_IDS_CSV}" -gt "$BEDPE" -s $sv \
       -o labels.json.gz -p . -l $p.log
 
     p=create_window_pairs
     out="labels/win$WIN_SZ/$sv/split_reads"
     lb="$out/labels.json.gz"
-    python $p.py -b "$BAM" -c "${SEQ_IDS[@]}" -lb "$lb" -ca .  -w $WIN_SZ \
+    python $p.py -b "$BAM" -c "${SEQ_IDS_CSV}" -lb "$lb" -ca .  -w $WIN_SZ \
       -p "$out" -l $p.log
 
     p=train_model_with_fit
@@ -85,13 +89,13 @@ for sv in "${SV_TYPES[@]}"; do
     for c in "${SV_CALLS[@]}"; do
 
         p=label_window_pairs_on_svcallset
-        python $p.py -b "$BAM" -w $WIN_SZ -c "${SEQ_IDS[@]}" -gt "$BEDPE" \
+        python $p.py -b "$BAM" -w $WIN_SZ -c "${SEQ_IDS_CSV}" -gt "$BEDPE" \
           -s $sv -sv "$BASE_DIR/$c" -o labels.json.gz -p . -l $p.log
 
         p=create_window_pairs
         out="labels/win$WIN_SZ/$sv/$c"
         lb="$out/labels.json.gz"
-        python $p.py -b "$BAM" -c "${SEQ_IDS[@]}" -lb "$lb" -ca . -w $WIN_SZ \
+        python $p.py -b "$BAM" -c "${SEQ_IDS_CSV}" -lb "$lb" -ca . -w $WIN_SZ \
           -p "$out" -l $p.log
 
         p=train_model_with_fit

@@ -211,20 +211,19 @@ def main():
                         help="Specify input file (BAM)")
     parser.add_argument('-c',
                         '--chrlist',
-                        nargs='+',
-                        default=['17'],
+                        type=str,
+                        default='17',
                         help="List of chromosomes to consider")
     parser.add_argument('-ca',
                         '--carraydir',
                         type=str,
                         default='',
                         help="chr_array directory")
-    parser.add_argument(
-        '-p',
-        '--outputpath',
-        type=str,
-        default='',
-        help="Specify output path")
+    parser.add_argument('-p',
+                        '--outputpath',
+                        type=str,
+                        default='',
+                        help="Specify output path")
     parser.add_argument('-l',
                         '--logfile',
                         default='windows.log',
@@ -268,7 +267,7 @@ def main():
 
     get_windows(carrays_dir=args.carraydir,
                 outDir=output_dir,
-                chrom_list=args.chrlist,
+                chrom_list=args.chrlist.split(','),
                 win=args.window,
                 label_file_path=args.labels,
                 mode=args.mode,

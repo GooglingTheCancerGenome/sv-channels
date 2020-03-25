@@ -368,9 +368,9 @@ def main():
                         help="Specify input file (BAM)")
     parser.add_argument('-c',
                         '--chrlist',
-                        nargs='+',
-                        default=['17'],
-                        help="List of chromosomes to consider")
+                        type=str,
+                        default='17',
+                        help="Comma separated list of chromosomes to consider")
     parser.add_argument('-o',
                         '--out',
                         type=str,
@@ -411,7 +411,7 @@ def main():
     t0 = time()
 
     get_split_read_positions(ibam=args.bam,
-                             chr_list=args.chrlist,
+                             chr_list=args.chrlist.split(','),
                              outFile=output_file,
                              outBedpe=output_file_bedpe)
 
