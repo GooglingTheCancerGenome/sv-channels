@@ -19,6 +19,6 @@ install:
   - conda update -q conda
   - conda info -a
   - conda env create -n $MY_ENV -f environment.yaml
-  - conda activate -n $MY_ENV
+  - conda activate $MY_ENV
 script:
   - ./run_local.sh $BAM $CHROM
