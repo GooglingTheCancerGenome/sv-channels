@@ -438,7 +438,6 @@ def load_all_clipped_read_positions(win_hlen,
         total_reads_coord_min_support = total_reads_coord_min_support_json[
             svtype]
 
-    # print(locations)
     locations_sr = dict()
     locations_cr_r = dict()
     locations_cr_l = dict()
@@ -457,7 +456,7 @@ def load_all_clipped_read_positions(win_hlen,
                 and win_hlen <= pos2 <= (chr_dict[chr2] - win_hlen)
             ]
 
-            if svtype == 'DEL':
+            if svtype in ['DEL', 'INV', 'DUP', 'TRA']:
 
                 if chrom in left_clipped_pos_cnt.keys():
                     positions_cr_l = set([

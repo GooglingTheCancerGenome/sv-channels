@@ -257,8 +257,8 @@ def create_carray(ibam, chrom, twobit, bigwig, outDir, cmd_name):
     # bw_chrom = chrom.replace('chr', '')
     # start and end position hard coded at the moment, to be updated with (0, chrlen)
     chr_array[:, channel_index] = np.array(bw_map.values(
-        chrom, 44000000, 45000000),
-                                           dtype=np.float32)
+        chrom, 44000000, 46000000),
+        dtype=np.float32)
     channel_index += 1
 
     current_channel = 'one_hot_encoding'

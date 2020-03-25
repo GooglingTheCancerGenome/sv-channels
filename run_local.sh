@@ -12,7 +12,7 @@ fi
 BAM=$(realpath -s "$1")
 BASE_DIR=$(dirname "$BAM")
 SAMPLE=$(basename "$BAM" .bam)
-SV_TYPES=(INS DEL)
+SV_TYPES=(TRA)
 SV_CALLS=(gridss manta delly lumpy)  # AK: +split_reads?
 WIN_SZ=200  # in bp
 SEQ_IDS=(${@:2})
@@ -27,8 +27,9 @@ WORK_DIR=scripts/genome_wide
 function join { local IFS="$1"; shift; echo "$*"; }
 
 # convert SV truth set in TSV to BEDPE file (only INDELs considered)
-awk '{OFS="\t"}{if($5 ~ /DEL|INS/){print $1,$2,$2+1,$1,$4,$4+1,$5}}' \
+awk '{OFS="\t"}{if($5 ~ /DEL|INS|INV|DUP|TRA/){print $1,$2,$2+1,$1,$4,$4+1,$5}}' \
   "$TSV" > "$BEDPE"
+
 
 # convert sv-callers output in VCF to BEDPE files
 for vcf in $(find data -mindepth 5 -name "*.vcf"); do
@@ -48,6 +49,7 @@ python $p.py -b "$BAM" -c "${SEQ_IDS_CSV}" -o $p.json.gz -p . -l $p.log
 
 p=clipped_read_pos
 python $p.py -b "$BAM" -c "${SEQ_IDS_CSV}" -o $p.json.gz -p . -l $p.log
+
 
 p=split_reads
 python $p.py -b "$BAM" -c "${SEQ_IDS_CSV}" -o $p.json.gz -ob $p.bedpe.gz -p . -l $p.log
