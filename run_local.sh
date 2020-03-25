@@ -16,15 +16,13 @@ SV_TYPES=(TRA)
 SV_CALLS=(gridss manta delly lumpy)  # AK: +split_reads?
 WIN_SZ=200  # in bp
 SEQ_IDS=(${@:2})
+SEQ_IDS_CSV=$(IFS=, ; echo "${SEQ_IDS[*]}")  # stringify
 PREFIX="${BASE_DIR}/${SAMPLE}"
 TWOBIT="${PREFIX}.2bit"
 BIGWIG="${PREFIX}.bw"
 TSV="${PREFIX}.tsv"
 BEDPE="${PREFIX}.bedpe"
 WORK_DIR=scripts/genome_wide
-# NUMEXPR_MAX_THREADS=128  # required by py-bcolz
-
-function join { local IFS="$1"; shift; echo "$*"; }
 
 # convert SV truth set in TSV to BEDPE file (only INDELs considered)
 awk '{OFS="\t"}{if($5 ~ /DEL|INS|INV|DUP|TRA/){print $1,$2,$2+1,$1,$4,$4+1,$5}}' \
@@ -41,8 +39,6 @@ done
 cd $WORK_DIR
 printenv
 
-SEQ_IDS_CSV=$(join , ${SEQ_IDS[@]})
-
 # run per BAM file
 p=clipped_reads
 python $p.py -b "$BAM" -c "${SEQ_IDS_CSV}" -o $p.json.gz -p . -l $p.log
@@ -57,7 +53,6 @@ python $p.py -b "$BAM" -c "${SEQ_IDS_CSV}" -o $p.json.gz -ob $p.bedpe.gz -p . -l
 
 # write channels into *.json.gz and *.npy.gz files
 for s in "${SEQ_IDS[@]}"; do  # per chromosome
-
   p=clipped_read_distance
   python $p.py -b "$BAM" -c $s -o $p.json.gz -p . -l $p.log
 
@@ -69,12 +64,9 @@ for s in "${SEQ_IDS[@]}"; do  # per chromosome
 
   p=chr_array
   python $p.py -b "$BAM" -c $s -t "$TWOBIT" -m "$BIGWIG" -o $p.npy -p . -l $p.log
-
 done
 
-
 for sv in "${SV_TYPES[@]}"; do
-
     p=label_window_pairs_on_split_read_positions
     python $p.py -b "$BAM" -w $WIN_SZ -c "${SEQ_IDS_CSV}" -gt "$BEDPE" -s $sv \
       -o labels.json.gz -p . -l $p.log
@@ -89,7 +81,6 @@ for sv in "${SV_TYPES[@]}"; do
     python $p.py --test_sample . --training_sample . -k 3 -p "$out" -s $sv -l $p.log
 
     for c in "${SV_CALLS[@]}"; do
-
         p=label_window_pairs_on_svcallset
         python $p.py -b "$BAM" -w $WIN_SZ -c "${SEQ_IDS_CSV}" -gt "$BEDPE" \
           -s $sv -sv "$BASE_DIR/$c" -o labels.json.gz -p . -l $p.log
@@ -103,11 +94,8 @@ for sv in "${SV_TYPES[@]}"; do
         p=train_model_with_fit
         python $p.py --test_sample . --training_sample . -k 3 -p "$out" -s $sv \
           -l $p.log
-
     done
 done
-
-
 
 echo -e "\nLog files:"
 find -type f -name "*.log"
