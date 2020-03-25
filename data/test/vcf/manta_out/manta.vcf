@@ -44,7 +44,7 @@
 ##ALT=<ID=DUP:TANDEM,Description="Tandem Duplication">
 ##cmdline=/hpc/cog_bioinf/ridder/users/lsantuari/Software/sv-callers_art/snakemake/.snakemake/conda/b246e2e6/bin/configManta.py --runDir data/bam/htz-sv/htz-sv/manta_out --reference data/fasta/chr12_chr22.44Mb_45Mb.GRCh37.fasta --bam data/bam/htz-sv/htz-sv.bam
 ##bcftools_filterVersion=1.9+htslib-1.9
-##bcftools_filterCommand=filter -O v -o manta.vcf -i 'FILTER == 'PASS'' results/variants/diploidSV.vcf.gz; Date=Mon Mar 23 17:07:36 2020
+##bcftools_filterCommand=filter -O v -o manta.vcf -i 'FILTER == 'PASS'' results/variants/diploidSV.vcf.gz; Date=Wed Mar 25 17:08:05 2020
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	htz-sv
 12	533	MantaINS:2:0:0:0:10:0	A	<INS>	999	PASS	END=533;SVTYPE=INS;LEFT_SVINSSEQ=AGGGATGAAATCAATAAGTGTGGAAGTCCACCGAAGTGGTGGATGTTGCGACCTCCCAAGAAATAACTGAGAGGTA;RIGHT_SVINSSEQ=TTGAATAAATAAGCCGTTATGACCGTAGTCCGATGATGATGCTAGAAGACCGCGATGACCGGTGGCTCTTACAAGTAGCATGT	GT:FT:GQ:PL:PR:SR	0/1:PASS:999:999,0,999:8,1:32,38
 12	1716	MantaINS:3:0:0:0:0:0	A	ACGAGATCGGCCGGGCCTAGTATGCGAGACTTGCTACGGTCTATCGAGGCCCC	956	PASS	END=1716;SVTYPE=INS;SVLEN=52;CIGAR=1M52I	GT:FT:GQ:PL:PR:SR	0/1:PASS:956:999,0,999:0,0:29,28
