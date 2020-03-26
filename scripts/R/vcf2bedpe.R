@@ -35,7 +35,7 @@ apply_svtype <- function(gr, p_inslen)
   gr$svtype <-
     ifelse(
       seqnames(gr) != seqnames(partner(gr)),
-      "BP",
+      "TRA",
       ifelse(
         gr$insLen >= abs(gr$svLen) * p_inslen,
         "INS",
@@ -73,7 +73,7 @@ gr <- breakpointRanges(sv_callset_vcf)
 
 gr <- apply_svtype(gr, p_inslen=argv$p)
 # select SVs >= 50 bp. svLen==NA for svtype=='BP'
-gr <- gr[abs(gr$svLen) >= argv$l | gr$svtype == 'BP']
+gr <- gr[abs(gr$svLen) >= argv$l | gr$svtype == 'TRA']
 
 bedpe <- breakpointgr2bedpe(gr)
 
@@ -86,7 +86,7 @@ bedpe_keys <- as.vector(bedpe[,7])
 bedpe_svtype <- cbind(bedpe[,1:6], svtype_vec[bedpe_keys])
 
 # check that all SVs with svtype==BP have breakpoints on different chromosomes
-if(any(bedpe_svtype[,1]==bedpe_svtype[,4]&bedpe_svtype[,7]=='BP'))
+if(any(bedpe_svtype[,1]==bedpe_svtype[,4]&bedpe_svtype[,7]=='TRA'))
 {
   stop("Some SVs with svtype BP contain breakpoints that are both on the same chromosomes")
 }
