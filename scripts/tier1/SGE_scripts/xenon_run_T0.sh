@@ -15,17 +15,18 @@ SCH=$1  # scheduler type
 TRUTHSET_NAME=$2
 TRUTHSET_TRAINING=$(realpath $3)
 
-USERDIR="/hpc/cog_bioinf/ridder/users/lsantuari"
-CHANNELDIR=$USERDIR"/Processed/DeepSV/channel_data"
+USERDIR=$4
+CHANNELDIR=$5
+OUTPUTDIR=$6
 
-#Named after the truth set used
-OUTPUTDIR=$USERDIR"/Processed/DeepSV/two_tier/"$TRUTHSET_NAME
+WORK_DIR=$7
+
 [ ! -d $OUTPUTDIR ] && mkdir -p $OUTPUTDIR
 
 SAMPLE_TRAINING="NA12878"
 
 SAMPLE_TEST="NA24385"
-TRUTHSET_TEST=$USERDIR"/Datasets/GiaB/HG002_NA24385_son/NIST_SVs_Integration_v0.6/processed/HG002_SVs_Tier1_v0.6.PASS.vcf.gz"
+TRUTHSET_TEST="HG002_SVs_Tier1_v0.6.PASS.vcf.gz"
 
 CHANNELDIR_TRAINING=$CHANNELDIR"/"$SAMPLE_TRAINING
 CHANNELDIR_TEST=$CHANNELDIR"/"$SAMPLE_TEST
@@ -36,7 +37,6 @@ SHIFT=0
 CHRARRAY=(`seq 1 22` 'X' 'Y')
 CHRLIST=${CHRARRAY[@]}
 
-WORK_DIR="/hpc/cog_bioinf/ridder/users/lsantuari/Git/DeepSV_refactoring/CNN/scripts/model/tier1"
 
 RTIME=30  # runtime in minutes
 STIME=1   # sleep X minutes
