@@ -12,8 +12,9 @@ fi
 BAM=$(realpath -s "$1")
 BASE_DIR=$(dirname "$BAM")
 SAMPLE=$(basename "$BAM" .bam)
-SV_TYPES=(TRA)
-SV_CALLS=(gridss manta delly lumpy)  # AK: +split_reads?
+SV_TYPES=(DEL)
+SV_CALLS=(gridss)  # to speed up exclude callers: manta delly lumpy
+KFOLD=2            # k-fold cross validation
 WIN_SZ=200  # in bp
 SEQ_IDS=(${@:2})
 SEQ_IDS_CSV=$(IFS=, ; echo "${SEQ_IDS[*]}")  # stringify
@@ -78,7 +79,8 @@ for sv in "${SV_TYPES[@]}"; do
       -p "$out" -l $p.log
 
     p=train_model_with_fit
-    python $p.py --test_sample . --training_sample . -k 3 -p "$out" -s $sv -l $p.log
+    python $p.py --test_sample . --training_sample . -k $KFOLD -p "$out" \
+      -s $sv -l $p.log
 
     for c in "${SV_CALLS[@]}"; do
         p=label_window_pairs_on_svcallset
@@ -92,8 +94,8 @@ for sv in "${SV_TYPES[@]}"; do
           -p "$out" -l $p.log
 
         p=train_model_with_fit
-        python $p.py --test_sample . --training_sample . -k 3 -p "$out" -s $sv \
-          -l $p.log
+        python $p.py --test_sample . --training_sample . -k $KFOLD -p "$out" \
+          -s $sv -l $p.log
     done
 done
 
