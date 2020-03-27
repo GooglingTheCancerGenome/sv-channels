@@ -1,23 +1,14 @@
 #!/bin/bash -x
-#$ -S /bin/bash
-#$ -l h_rt=48:00:00
-#$ -l h_vmem=64G
-#$ -q all.q
-#$ -wd /hpc/cog_bioinf/ridder/users/lsantuari/Git/DeepSV_refactoring/CNN/scripts/model/tier1
 
-USERDIR="/hpc/cog_bioinf/ridder/users/lsantuari"
-CHANNELDIR=$USERDIR"/Processed/DeepSV/channel_data"
+USERDIR=$1
+CHANNELDIR=$2
+OUTPUTDIR=$3
 
-#Named after the truth set used
-OUTPUTDIR=$USERDIR"/Processed/DeepSV/two_tier_train_NA24385_test_CHM1_CHM13/sv_integration"
+SAMPLE_TRAINING="NA12878"
+TRUTHSET_TRAINING="Personalis_1000_Genomes_deduplicated_deletions.bed"
 
-SAMPLE_TRAINING="NA24385"
-TRUTHSET_TRAINING=$USERDIR"/Datasets/GiaB/HG002_NA24385_son/NIST_SVs_Integration_v0.6/processed/HG002_SVs_Tier1_v0.6.PASS.vcf.gz"
-#TRUTHSET_TRAINING=$USERDIR"/Processed/sv_callers_results/NA24385/gridss_out/gridss.vcf"
-#TRUTHSET_TRAINING=$USERDIR"/Processed/sv_callers_results/NA24385/manta_out/manta.vcf"
-
-SAMPLE_TEST="CHM1_CHM13"
-TRUTHSET_TEST="/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/CHM/Huddleston2016/structural_variants/CHM1_CHM13_pseudodiploid_SVs.vcf.gz"
+SAMPLE_TEST="NA24385"
+TRUTHSET_TEST="HG002_SVs_Tier1_v0.6.PASS.vcf.gz"
 
 CHANNELDIR_TRAINING=$CHANNELDIR"/"$SAMPLE_TRAINING
 CHANNELDIR_TEST=$CHANNELDIR"/"$SAMPLE_TEST
@@ -33,14 +24,14 @@ conda activate mcfly
 
 echo "Running T0_S1_generate_training_data..."
 
-python T0_S1_generate_training_data.py positive \
+python ../T0_S1_generate_training_data.py positive \
     -chrlist $CHRLIST \
     -win $WINDOW \
     -truthset $TRUTHSET_TRAINING \
     -inputdir $CHANNELDIR_TRAINING \
     -output $OUTPUTDIR"/positive.npz"
 
-python T0_S1_generate_training_data.py negative \
+python ../T0_S1_generate_training_data.py negative \
     -chrlist $CHRLIST \
     -win $WINDOW \
     -truthset $TRUTHSET_TRAINING \
@@ -49,7 +40,7 @@ python T0_S1_generate_training_data.py negative \
 
 echo "Running T0_S2_train..."
 
-python T0_S2_train.py \
+python ../T0_S2_train.py \
     -positive $OUTPUTDIR"/positive.npz" \
     -negative $OUTPUTDIR"/negative.npz" \
     -output $OUTPUTDIR"/model.hdf5"
@@ -61,7 +52,7 @@ for CHROMOSOME in ${CHRARRAY[@]}; do
 
     echo "Running chromosome "$CHROMOSOME"..."
 
-    python T0_S3_scan_chromosome.py \
+    python ../T0_S3_scan_chromosome.py \
         -inputdir $CHANNELDIR_TEST \
         -window $WINDOW \
         -chr $CHROMOSOME \
@@ -73,9 +64,10 @@ done
 
 echo "Running T0_S4_compare..."
 
-python T0_S4_compare.py \
+python ../T0_S4_compare.py \
     -truthset $TRUTHSET_TEST \
     -chrlist $CHRLIST \
     -win $WINDOW \
     -inputdirlist $OUTPUTDIR \
-    -output $OUTPUTDIR"/results.csv"
+    -output $OUTPUTDIR"/results.csv" \
+    -outputbed $OUTPUTDIR"/regions_of_interest.bed"
