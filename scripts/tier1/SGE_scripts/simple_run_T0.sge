@@ -3,20 +3,16 @@
 #$ -l h_rt=48:00:00
 #$ -l h_vmem=64G
 #$ -q all.q
-#$ -wd /hpc/cog_bioinf/ridder/users/lsantuari/Git/DeepSV_refactoring/CNN/scripts/model/tier1
 
-USERDIR="/hpc/cog_bioinf/ridder/users/lsantuari"
-CHANNELDIR=$USERDIR"/Processed/DeepSV/channel_data"
+USERDIR=$1
+CHANNELDIR=$2
+OUTPUTDIR=$3
 
-SAMPLE_TRAINING="CHM1_CHM13"
-SAMPLE_TEST="NA12878"
+SAMPLE_TRAINING="NA12878"
+TRUTHSET_TRAINING="Personalis_1000_Genomes_deduplicated_deletions.bed"
 
-#Named after the truth set used
-UTPUTDIR=$USERDIR"/Processed/DeepSV/two_tier_train_"$SAMPLE_TRAINING"_test_"$SAMPLE_TEST"/huddleston"
-
-TRUTHSET_TRAINING=$USERDIR"/Datasets/CHM/Huddleston2016/structural_variants/CHM1_CHM13_pseudodiploid_SVs.vcf.gz"
-
-TRUTHSET_TEST=$USERDIR"/Datasets/truth_sets/NA12878/Personalis_1000_Genomes_deduplicated_deletions.bed"
+SAMPLE_TEST="NA24385"
+TRUTHSET_TEST="HG002_SVs_Tier1_v0.6.PASS.vcf.gz"
 
 CHANNELDIR_TRAINING=$CHANNELDIR"/"$SAMPLE_TRAINING
 CHANNELDIR_TEST=$CHANNELDIR"/"$SAMPLE_TEST
@@ -77,4 +73,5 @@ python T0_S4_compare.py \
     -chrlist $CHRLIST \
     -win $WINDOW \
     -inputdirlist $OUTPUTDIR \
-    -output $OUTPUTDIR"/results.csv"
+    -output $OUTPUTDIR"/results.csv" \
+    -outputbed $OUTPUTDIR"/regions_of_interest.bed"
