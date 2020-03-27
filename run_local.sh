@@ -25,13 +25,8 @@ TSV="${PREFIX}.tsv"
 BEDPE="${PREFIX}.bedpe"
 WORK_DIR=scripts/genome_wide
 
-# convert SV truth set in TSV to BEDPE file (only INDELs considered)
-awk '{OFS="\t"}{if($5 ~ /DEL|INS|INV|DUP|TRA/){print $1,$2,$2+1,$1,$4,$4+1,$5}}' \
-  "$TSV" > "$BEDPE"
-
-
 # convert sv-callers output in VCF to BEDPE files
-for vcf in $(find data -mindepth 5 -name "*.vcf"); do
+for vcf in $(find data -name "*.vcf" | grep -v htz-sv); do
   prefix=$(basename $vcf .vcf)
   bedpe="${BASE_DIR}/${prefix}.bedpe"
   scripts/R/vcf2bedpe.R -i "$vcf" -o "$bedpe"
