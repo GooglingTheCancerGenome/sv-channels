@@ -7,7 +7,7 @@ env:
   global:
     - MY_ENV=cnn
     - URL=https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
-    - BAM=data/test/test.bam
+    - BAM=data/test.bam
     - CHROM="12 22"
 install:
   - sudo apt-get update
