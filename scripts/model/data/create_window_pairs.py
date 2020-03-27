@@ -1,32 +1,21 @@
-import dask.array as da
-import os, errno
-import logging
-import json
 import argparse
-from time import time
+import errno
 import gzip
-import numpy as np
-from collections import Counter
 import itertools
+import json
+import logging
+import os
+from collections import Counter
+from time import time
+
 # import sparse
 import bcolz
+import dask.array as da
+import numpy as np
 
 
 def get_range(dictionary, begin, end):
     return dict(itertools.islice(dictionary.items(), begin, end))
-
-
-def create_dir(directory):
-    '''
-    Create a directory if it does not exist. Raises an exception if the directory exists.
-    :param directory: directory to create
-    :return: None
-    '''
-    try:
-        os.makedirs(directory)
-    except OSError as e:
-        if e.errno != errno.EEXIST:
-            raise
 
 
 def get_chr_list(chrom):
@@ -36,16 +25,17 @@ def get_chr_list(chrom):
     # else:
     #     chrlist = list(map(str, range(1, 23)))
     #     chrlist.extend(['X'])
-    # 
+    #
     return [chrom]
 
 
-def load_chr_array(channel_data_dir, chrom):
-    chrlist = get_chr_list(chrom)
+def load_chr_array(channel_data_dir, chrlist):
+
     chr_array = dict()
 
     for c in chrlist:
-        carray_file = os.path.join(channel_data_dir, 'chr_array', c + '_carray')
+        carray_file = os.path.join(channel_data_dir, 'chr_array',
+                                   c + '_carray')
         logging.info('Loading file: {}'.format(carray_file))
         assert os.path.exists(carray_file), carray_file + ' not found'
         chr_array[c] = bcolz.open(rootdir=carray_file)
@@ -55,9 +45,12 @@ def load_chr_array(channel_data_dir, chrom):
 
 
 def get_labels(channel_data_dir, win, sv_caller):
-    label_file = os.path.join(channel_data_dir, 'labels', 'win' + str(win),
-    #'label_window_pairs_on_svcallset.json.gz')
-    'label_window_pairs_on_split_read_positions.json.gz')
+    label_file = os.path.join(
+        channel_data_dir,
+        'labels',
+        'win' + str(win),
+        #'label_window_pairs_on_svcallset.json.gz')
+        'label_window_pairs_on_split_read_positions.json.gz')
     with gzip.GzipFile(label_file, 'r') as fin:
         labels = json.loads(fin.read().decode('utf-8'))
 
@@ -96,16 +89,15 @@ def get_window_by_id(win_id, chr_array, padding, win_hlen):
     return da.concatenate(dask_arrays, axis=0)
 
 
-def get_windows(outDir, chrom, win, cmd_name, sv_caller, mode, npz_mode):
-
+def get_windows(outDir, chrom_list, win, cmd_name, sv_caller, mode, npz_mode):
     def same_chr_in_winid(win_id):
         chr1, pos1, chr2, pos2 = win_id.split('_')
         return chr1 == chr2
 
     outfile_dir = os.path.join(outDir, cmd_name)
 
-    chr_array = load_chr_array(outDir, chrom)
-    n_channels = chr_array[chrom].shape[1]
+    chr_array = load_chr_array(outDir, chrom_list)
+    n_channels = chr_array[chrom_list[0]].shape[1]
     logging.info('{} channels'.format(n_channels))
 
     labels = get_labels(outDir, win, sv_caller)
@@ -114,13 +106,15 @@ def get_windows(outDir, chrom, win, cmd_name, sv_caller, mode, npz_mode):
     # if sampleName == 'T1':
     #     labels = {k: v for k, v in labels.items() if same_chr_in_winid(k)}
 
-    logging.info('{} labels found: {}'.format(len(labels), Counter(labels.values())))
+    logging.info('{} labels found: {}'.format(len(labels),
+                                              Counter(labels.values())))
 
     if mode == 'training':
 
         labels_positive = {k: v for k, v in labels.items() if v == 'DEL'}
         labels_negative = {k: v for k, v in labels.items() if v == 'noDEL'}
-        labels_negative = get_range(labels_negative, 0, len(labels_positive.keys()))
+        labels_negative = get_range(labels_negative, 0,
+                                    len(labels_positive.keys()))
         labels_set = {'positive': labels_positive, 'negative': labels_negative}
         # labels_set = {'negative': labels_negative}
 
@@ -135,36 +129,36 @@ def get_windows(outDir, chrom, win, cmd_name, sv_caller, mode, npz_mode):
 
         logging.info('Creating {}...'.format(labs_name))
 
-        n_r = 10 ** 5
+        n_r = 10**5
         # print(n_r)
         last_t = time()
         i = 1
 
         outfile = os.path.join(outfile_dir, 'windows')
 
-        bcolz_array = bcolz.carray(bcolz.zeros(shape=(0,
-                                                      int(win)*2+padding_len,
-                                                      n_channels
-                                                      ),
+        bcolz_array = bcolz.carray(bcolz.zeros(shape=(0, int(win) * 2 +
+                                                      padding_len, n_channels),
                                                dtype=np.float32),
                                    mode='w',
                                    rootdir=outfile + '_carray')
 
-        padding = bcolz.zeros(shape=(padding_len, n_channels), dtype=np.float32)
+        padding = bcolz.zeros(shape=(padding_len, n_channels),
+                              dtype=np.float32)
 
         if npz_mode:
             numpy_array = []
 
         logging.info('Creating dask_arrays_win1 and dask_arrays_win2...')
         for chr1, pos1, chr2, pos2 in map(unfold_win_id, labs.keys()):
-
+            logging.info("chr1={} pos1={} chr2={} pos2={}".format(
+                chr1, pos1, chr2, pos2))
             if not i % n_r:
                 # Record the current time
                 now_t = time()
                 # print(type(now_t))
-                logging.info("%d window pairs processed (%f window pairs / s)" % (
-                    i,
-                    n_r / (now_t - last_t)))
+                logging.info(
+                    "%d window pairs processed (%f window pairs / s)" %
+                    (i, n_r / (now_t - last_t)))
                 last_t = time()
 
             dask_array = list()
@@ -201,7 +195,8 @@ def get_windows(outDir, chrom, win, cmd_name, sv_caller, mode, npz_mode):
             numpy_array = np.stack(numpy_array, axis=0)
             logging.info('Numpy array shape: {}'.format(numpy_array.shape))
             np.savez(file=os.path.join(outfile_dir, 'windows'),
-                     data=numpy_array, labels=labs)
+                     data=numpy_array,
+                     labels=labs)
 
 
 def main():
@@ -219,53 +214,72 @@ def main():
     wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
     inputBAM = wd + "T1_dedup.bam"
 
-    parser = argparse.ArgumentParser(description='Create windows from chromosome arrays')
-    parser.add_argument('-b', '--bam', type=str,
+    parser = argparse.ArgumentParser(
+        description='Create windows from chromosome arrays')
+    parser.add_argument('-b',
+                        '--bam',
+                        type=str,
                         default=inputBAM,
                         help="Specify input file (BAM)")
-    parser.add_argument('-c', '--chr', type=str, default='17',
-                        help="Specify chromosome")
-    parser.add_argument('-p', '--outputpath', type=str,
-                        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
-                        help="Specify output path")
-    parser.add_argument('-l', '--logfile', default='windows.log',
+    parser.add_argument('-c',
+                        '--chrlist',
+                        nargs='+',
+                        default=['17'],
+                        help="List of chromosomes to consider")
+    parser.add_argument(
+        '-p',
+        '--outputpath',
+        type=str,
+        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
+        help="Specify output path")
+    parser.add_argument('-l',
+                        '--logfile',
+                        default='windows.log',
                         help='File in which to write logs.')
-    parser.add_argument('-w', '--window', type=str, default=200,
+    parser.add_argument('-w',
+                        '--window',
+                        type=str,
+                        default=200,
                         help="Specify window size")
-    parser.add_argument('-sv', '--sv_caller', type=str,
+    parser.add_argument('-sv',
+                        '--sv_caller',
+                        type=str,
                         default='manta',
-                        help="Specify svcaller"
-                        )
-    parser.add_argument('-m', '--mode', type=str, default='test',
+                        help="Specify svcaller")
+    parser.add_argument('-m',
+                        '--mode',
+                        type=str,
+                        default='test',
                         help="training/test mode")
-    parser.add_argument('-npz', '--save_npz', type=bool, default=True,
+    parser.add_argument('-npz',
+                        '--save_npz',
+                        type=bool,
+                        default=True,
                         help="save in npz format?")
 
     args = parser.parse_args()
 
     cmd_name = 'windows'
     output_dir = os.path.join(args.outputpath, cmd_name)
-    create_dir(output_dir)
+    os.makedirs(output_dir)
     logfilename = os.path.join(output_dir, args.logfile)
     # output_file = os.path.join(output_dir, args.out)
 
     FORMAT = '%(asctime)s %(message)s'
-    logging.basicConfig(
-        format=FORMAT,
-        filename=logfilename,
-        filemode='w',
-        level=logging.INFO)
+    logging.basicConfig(format=FORMAT,
+                        filename=logfilename,
+                        filemode='w',
+                        level=logging.INFO)
 
     t0 = time()
 
     get_windows(outDir=args.outputpath,
-                chrom=args.chr,
+                chrom_list=args.chrlist,
                 win=args.window,
                 cmd_name=cmd_name,
                 sv_caller=args.sv_caller,
                 mode=args.mode,
-                npz_mode=args.save_npz
-    )
+                npz_mode=args.save_npz)
 
     # print('Elapsed time channel_maker_real on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))
     logging.info('Elapsed time create_windows = %f seconds' % (time() - t0))

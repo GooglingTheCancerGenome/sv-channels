@@ -1,36 +1,28 @@
-import os
 import argparse
 import glob
-
-from pysam import VariantFile
-
+import gzip
+import json
+import os
 import sys
-
-# add scripts folder in path
-sys.path.append(
-    os.path.dirname(
-        os.path.dirname(
-            os.path.dirname(
-                os.path.realpath(__file__)
-            )
-        )
-    )
-)
-from genome_wide.label_classes import SVRecord
-
-# Threadpool configuration
-# avoid bcolz error: nthreads cannot be larger than environment variable
-os.environ["NUMEXPR_MAX_THREADS"] = "128"
+from collections import Counter, defaultdict
+from random import sample
 
 import bcolz
 import numpy as np
 import tensorflow as tf
-from random import sample
 from intervaltree import IntervalTree
-from collections import defaultdict, Counter
+from pysam import VariantFile
 
-import gzip
-import json
+from genome_wide.label_classes import SVRecord
+
+# add scripts folder in path
+sys.path.append(
+    os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
+
+# Threadpool configuration
+# avoid bcolz error: nthreads cannot be larger than environment variable
+os.environ["NUMEXPR_MAX_THREADS"] = "128"
 
 # set GPU options
 # allow_growth allows fair share of GPU memory across processes
@@ -41,8 +33,8 @@ tf.keras.backend.set_session(sess)
 
 def get_chr_array(channels_dir, chrom):
 
-    carray_fname = glob.glob(os.path.join(channels_dir, 'chr_array',
-                                          '*_' + chrom + '_carray'))
+    carray_fname = glob.glob(
+        os.path.join(channels_dir, 'chr_array', '*_' + chrom + '_carray'))
 
     assert len(carray_fname) == 1, 'Not a single carray folder found!'
 
@@ -59,7 +51,6 @@ def get_nchannels(genome_array):
 
 
 def get_truth_set_trees(truth_set_file):
-
     def read_vcf(invcf):
 
         # Check file existence
@@ -85,26 +76,18 @@ def get_truth_set_trees(truth_set_file):
             svtype = var.svtype
 
             if chrom1 < chrom2:
-                sv_entry = (
-                        chrom1, pos1_start, pos1_bp, pos1_end,
-                        chrom2, pos2_start, pos2_bp, pos2_end
-                    )
+                sv_entry = (chrom1, pos1_start, pos1_bp, pos1_end, chrom2,
+                            pos2_start, pos2_bp, pos2_end)
             elif chrom1 > chrom2:
-                sv_entry = (
-                    chrom2, pos2_start, pos2_bp, pos2_end,
-                    chrom1, pos1_start, pos1_bp, pos1_end
-                )
+                sv_entry = (chrom2, pos2_start, pos2_bp, pos2_end, chrom1,
+                            pos1_start, pos1_bp, pos1_end)
             elif chrom1 == chrom2:
                 if pos1_bp < pos2_bp:
-                    sv_entry = (
-                        chrom1, pos1_start, pos1_bp, pos1_end,
-                        chrom2, pos2_start, pos2_bp, pos2_end
-                    )
+                    sv_entry = (chrom1, pos1_start, pos1_bp, pos1_end, chrom2,
+                                pos2_start, pos2_bp, pos2_end)
                 else:
-                    sv_entry = (
-                        chrom2, pos2_start, pos2_bp, pos2_end,
-                        chrom1, pos1_start, pos1_bp, pos1_end
-                    )
+                    sv_entry = (chrom2, pos2_start, pos2_bp, pos2_end, chrom1,
+                                pos1_start, pos1_bp, pos1_end)
 
             # choose only deletions?
             if svtype == "DEL" and sv_entry not in sv_list:
@@ -196,7 +179,9 @@ def get_truth_set_trees(truth_set_file):
         bp2_tree = defaultdict(IntervalTree)
 
         for c1, s1, p1, e1, c2, s2, p2, e2 in sv_list:
-            interval_id = '_'.join([c1, str(s1), str(e1), c2, str(s2), str(e2)])
+            interval_id = '_'.join(
+                [c1, str(s1), str(e1), c2,
+                 str(s2), str(e2)])
             bp1_tree[c1][s1:e1 + 1] = interval_id
             bp2_tree[c2][s2:e2 + 1] = interval_id
 
@@ -273,11 +258,17 @@ def generate_negative_set(win, sv_list, bp1_tree, bp2_tree, genome_array):
                 idx_matches = np.where(chrom_choice == c)[0]
                 while True:
                     # print('Chr{}, idx_matches: {}'.format(c, idx_matches))
-                    pos_choice[idx_matches] = np.random.randint(0, chr_len, len(idx_matches))
+                    pos_choice[idx_matches] = np.random.randint(
+                        0, chr_len, len(idx_matches))
 
-                    matches = [bp_tree[c][p - win_hlen:p + win_hlen] for p in list(pos_choice[idx_matches])]
+                    matches = [
+                        bp_tree[c][p - win_hlen:p + win_hlen]
+                        for p in list(pos_choice[idx_matches])
+                    ]
 
-                    matches_j = [i for i, l in enumerate(matches) if len(l) > 0]
+                    matches_j = [
+                        i for i, l in enumerate(matches) if len(l) > 0
+                    ]
 
                     if len(matches_j) == 0:
                         break
@@ -317,15 +308,17 @@ def generate_negative_set(win, sv_list, bp1_tree, bp2_tree, genome_array):
 
 
 def positive(args):
-
     def save_positive_windows(outfile, start_array, end_array):
         np.savez_compressed(outfile,
                             start=np.array(start_array),
                             end=np.array(end_array))
         size_in_bytes = os.path.getsize(outfile)
-        print('{} MB'.format(size_in_bytes / 10 ** 6))
+        print('{} MB'.format(size_in_bytes / 10**6))
 
-    genome_array = {chrom: get_chr_array(args.inputdir, chrom) for chrom in args.chrlist}
+    genome_array = {
+        chrom: get_chr_array(args.inputdir, chrom)
+        for chrom in args.chrlist
+    }
     # print(genome_array)
 
     sv_list, bp1_tree, bp2_tree = get_truth_set_trees(args.truthset)
@@ -338,22 +331,23 @@ def positive(args):
 
 
 def negative(args):
-
     def save_negative_windows(outfile, array):
-        np.savez_compressed(outfile,
-                            neg=np.array(array)
-                            )
+        np.savez_compressed(outfile, neg=np.array(array))
         size_in_bytes = os.path.getsize(outfile)
-        print('{} MB'.format(size_in_bytes / 10 ** 6))
+        print('{} MB'.format(size_in_bytes / 10**6))
 
-    genome_array = {chrom: get_chr_array(args.inputdir, chrom) for chrom in args.chrlist}
+    genome_array = {
+        chrom: get_chr_array(args.inputdir, chrom)
+        for chrom in args.chrlist
+    }
     # print(genome_array)
 
     sv_list, bp1_tree, bp2_tree = get_truth_set_trees(args.truthset)
     # only keep SVs on chromosomes from chrlist
     sv_list = [e for e in sv_list if e[0] in args.chrlist]
 
-    b = generate_negative_set(args.win, sv_list, bp1_tree, bp2_tree, genome_array)
+    b = generate_negative_set(args.win, sv_list, bp1_tree, bp2_tree,
+                              genome_array)
 
     save_negative_windows(args.output, b)
 
@@ -361,13 +355,18 @@ def negative(args):
 def main():
 
     truth_sets = {
-        'svclassify': os.path.join('/Users/lsantuari/Documents/Local_GitHub',
-                                   'sv-callers/scripts/data/benchmark/in',
-                                   'Personalis_1000_Genomes_deduplicated_deletions.bed'),
-        'mills_nanosv': os.path.join('/Users/lsantuari/Documents/External_GitHub/sv_benchmark/input.na12878',
-                                     'lumpy-Mills2011-call-set.nanosv.sorted.bed'),
-        'gridss': '/Users/lsantuari/Documents/Data/germline/NA12878/SV/Filtered/gridss.vcf',
-        'manta': '/Users/lsantuari/Documents/Data/germline/NA12878/SV/Filtered/manta.vcf'
+        'svclassify':
+        os.path.join('/Users/lsantuari/Documents/Local_GitHub',
+                     'sv-callers/scripts/data/benchmark/in',
+                     'Personalis_1000_Genomes_deduplicated_deletions.bed'),
+        'mills_nanosv':
+        os.path.join(
+            '/Users/lsantuari/Documents/External_GitHub/sv_benchmark/input.na12878',
+            'lumpy-Mills2011-call-set.nanosv.sorted.bed'),
+        'gridss':
+        '/Users/lsantuari/Documents/Data/germline/NA12878/SV/Filtered/gridss.vcf',
+        'manta':
+        '/Users/lsantuari/Documents/Data/germline/NA12878/SV/Filtered/manta.vcf'
     }
 
     parser = argparse.ArgumentParser(
@@ -384,17 +383,25 @@ def main():
     # create the parser for the "positive" command
     parser_pos = subparsers.add_parser('positive', help='positive help')
 
-    parser_pos.add_argument('-chrlist', nargs='+', default=['17'],
+    parser_pos.add_argument('-chrlist',
+                            nargs='+',
+                            default=['17'],
                             help="List of chromosomes to consider")
-    parser_pos.add_argument('-win', type=int, default=200,
+    parser_pos.add_argument('-win',
+                            type=int,
+                            default=200,
                             help="Window length")
-    parser_pos.add_argument('-truthset', type=str,
+    parser_pos.add_argument('-truthset',
+                            type=str,
                             default=truth_sets['gridss'],
                             help="Truth set file")
-    parser_pos.add_argument('-inputdir', type=str,
-                            default='/Users/lsantuari/Documents/Processed/channel_maker_output/T1',
-                            help="Specify input data directory")
-    parser_pos.add_argument('-output', type=str,
+    parser_pos.add_argument(
+        '-inputdir',
+        type=str,
+        default='/Users/lsantuari/Documents/Processed/channel_maker_output/T1',
+        help="Specify input data directory")
+    parser_pos.add_argument('-output',
+                            type=str,
                             default='positive.npz',
                             help="Specify output")
     parser_pos.set_defaults(func=positive)
@@ -402,17 +409,25 @@ def main():
     # create the parser for the "negative" command
     parser_neg = subparsers.add_parser('negative', help='negative help')
 
-    parser_neg.add_argument('-chrlist', nargs='+', default=['17'],
+    parser_neg.add_argument('-chrlist',
+                            nargs='+',
+                            default=['17'],
                             help="List of chromosomes to consider")
-    parser_neg.add_argument('-win', type=int, default=200,
+    parser_neg.add_argument('-win',
+                            type=int,
+                            default=200,
                             help="Window length")
-    parser_neg.add_argument('-truthset', type=str,
+    parser_neg.add_argument('-truthset',
+                            type=str,
                             default=truth_sets['gridss'],
                             help="Truth set file")
-    parser_neg.add_argument('-inputdir', type=str,
-                            default='/Users/lsantuari/Documents/Processed/channel_maker_output/T1',
-                            help="Specify input data directory")
-    parser_neg.add_argument('-output', type=str,
+    parser_neg.add_argument(
+        '-inputdir',
+        type=str,
+        default='/Users/lsantuari/Documents/Processed/channel_maker_output/T1',
+        help="Specify input data directory")
+    parser_neg.add_argument('-output',
+                            type=str,
                             default='negative.npz',
                             help="Specify output")
     parser_neg.set_defaults(func=negative)

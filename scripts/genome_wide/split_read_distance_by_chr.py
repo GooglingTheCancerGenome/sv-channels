@@ -1,13 +1,15 @@
 # Imports
-import os
 import argparse
-import pysam
-import json
 import gzip
-from time import time
+import json
 import logging
-from functions import *
+import os
 from collections import defaultdict
+from time import time
+
+import pysam
+
+from functions import *
 
 
 def get_split_read_distance(ibam, chrName, outFile):
@@ -39,7 +41,7 @@ def get_split_read_distance(ibam, chrName, outFile):
     iter = bamfile.fetch(chrName, start_pos, stop_pos)
 
     # Log information every n_r reads
-    n_r = 10 ** 6
+    n_r = 10**6
     # print(n_r)
     last_t = time()
     # print(type(last_t))
@@ -48,9 +50,8 @@ def get_split_read_distance(ibam, chrName, outFile):
         if not i % n_r:
             now_t = time()
             # print(type(now_t))
-            logging.info("%d alignments processed (%f alignments / s)" % (
-                i,
-                n_r / (now_t - last_t)))
+            logging.info("%d alignments processed (%f alignments / s)" %
+                         (i, n_r / (now_t - last_t)))
             last_t = time()
 
         # Read and mate should be mapped, read should have a minimum mapping quality
@@ -115,7 +116,6 @@ def get_split_read_distance(ibam, chrName, outFile):
                         # print('left=>{}:{} right=>{}:{}'.format(chr, str(pos), read.reference_name, str(refpos)))
                         split_reads['right'][refpos] += 1
 
-
     # Save two dictionaries: split_read_distance and split_reads
     data = (split_read_distance, split_reads)
     with gzip.GzipFile(outFile, 'w') as fout:
@@ -136,38 +136,55 @@ def main():
     wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
     inputBAM = wd + "T1_dedup.bam"
 
-    parser = argparse.ArgumentParser(description='Create channels with split read distance for left/right split reads')
-    parser.add_argument('-b', '--bam', type=str,
+    parser = argparse.ArgumentParser(
+        description=
+        'Create channels with split read distance for left/right split reads')
+    parser.add_argument('-b',
+                        '--bam',
+                        type=str,
                         default=inputBAM,
                         help="Specify input file (BAM)")
-    parser.add_argument('-c', '--chr', type=str, default='17',
+    parser.add_argument('-c',
+                        '--chr',
+                        type=str,
+                        default='17',
                         help="Specify chromosome")
-    parser.add_argument('-o', '--out', type=str, default='split_read_distance.json.gz',
+    parser.add_argument('-o',
+                        '--out',
+                        type=str,
+                        default='split_read_distance.json.gz',
                         help="Specify output")
-    parser.add_argument('-p', '--outputpath', type=str,
-                        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
-                        help="Specify output path")
-    parser.add_argument('-l', '--logfile', default='split_read_distance.log',
+    parser.add_argument(
+        '-p',
+        '--outputpath',
+        type=str,
+        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
+        help="Specify output path")
+    parser.add_argument('-l',
+                        '--logfile',
+                        default='split_read_distance.log',
                         help='File in which to write logs.')
 
     args = parser.parse_args()
 
     cmd_name = 'split_read_distance'
     output_dir = os.path.join(args.outputpath, cmd_name)
-    create_dir(output_dir)
+    os.makedirs(output_dir)
     logfilename = os.path.join(output_dir, '_'.join((args.chr, args.logfile)))
     output_file = os.path.join(output_dir, '_'.join((args.chr, args.out)))
 
     FORMAT = '%(asctime)s %(message)s'
-    logging.basicConfig(
-        format=FORMAT,
-        filename=logfilename,
-        filemode='w',
-        level=logging.INFO)
+    logging.basicConfig(format=FORMAT,
+                        filename=logfilename,
+                        filemode='w',
+                        level=logging.INFO)
 
     t0 = time()
-    get_split_read_distance(ibam=args.bam, chrName=args.chr, outFile=output_file)
-    logging.info('Time: split_read_distance on BAM %s and Chr %s: %f' % (args.bam, args.chr, (time() - t0)))
+    get_split_read_distance(ibam=args.bam,
+                            chrName=args.chr,
+                            outFile=output_file)
+    logging.info('Time: split_read_distance on BAM %s and Chr %s: %f' %
+                 (args.bam, args.chr, (time() - t0)))
 
 
 if __name__ == '__main__':

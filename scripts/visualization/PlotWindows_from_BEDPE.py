@@ -1,10 +1,11 @@
 # adapted from https://github.com/GooglingTheCancerGenome/breakpoint-pairs/blob/master/PlotWindows.py
 
-import numpy as np
-import os
-import gzip
-import matplotlib.pyplot as plt
 import errno
+import gzip
+import os
+
+import matplotlib.pyplot as plt
+import numpy as np
 
 HPC_MODE = True
 
@@ -34,6 +35,7 @@ def create_dir(directory):
     except OSError as e:
         if e.errno != errno.EEXIST:
             raise
+
 
 def get_channel_labels():
     # Fill labels for legend
@@ -106,7 +108,8 @@ def get_channel_labels():
 def data(sample_name, label_type, suffix):
 
     print('Load data...')
-    data_output_file = os.path.join(channel_dir, '_'.join([sample_name, label_type, suffix]))
+    data_output_file = os.path.join(
+        channel_dir, '_'.join([sample_name, label_type, suffix]))
 
     with gzip.GzipFile(data_output_file + '.npz.gz', 'rb') as f:
 
@@ -131,7 +134,7 @@ def load_bedpe():
                      'IGV_snaps/SR_models/020519/CV_results_wrong_predictions_1.bedpe'
 
     content = []
-    with open(input_file)as f:
+    with open(input_file) as f:
         for line in f:
             l = line.strip().split()
             l = ('_'.join([l[0], l[1]]) + ':' + '_'.join([l[3], l[4]]), l[6])
@@ -142,7 +145,7 @@ def load_bedpe():
 
 def plot_channels(X, z, l):
 
-    title_plot = str(z[0]).replace(':', '-')+'_'+l.replace(':', '-')
+    title_plot = str(z[0]).replace(':', '-') + '_' + l.replace(':', '-')
     print('Plotting %s' % title_plot)
 
     number_channels = X.shape[1]
@@ -151,24 +154,30 @@ def plot_channels(X, z, l):
     #print(len(label))
 
     fig = plt.figure(figsize=(6, 4))
-    fig.suptitle(str(z[0])+' '+l, fontsize=20)
+    fig.suptitle(str(z[0]) + ' ' + l, fontsize=20)
 
-    for j in range(number_channels-1, -1, -1):
+    for j in range(number_channels - 1, -1, -1):
 
-        if sum(X[:,j]) != 0:
-            X_win = (X[:,j]-min(X[:,j]))/max(X[:,j])
+        if sum(X[:, j]) != 0:
+            X_win = (X[:, j] - min(X[:, j])) / max(X[:, j])
         else:
-            X_win = X[:,j]
+            X_win = X[:, j]
 
-        Z = [x + j+1 for x in X_win]
+        Z = [x + j + 1 for x in X_win]
         plt.plot(Z, label=label[j], linewidth=0.9)
-        plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., prop={'size': 5})
-        plt.yticks(range(0, len(label)+1, 1))
+        plt.legend(bbox_to_anchor=(1.05, 1),
+                   loc=2,
+                   borderaxespad=0.,
+                   prop={'size': 5})
+        plt.yticks(range(0, len(label) + 1, 1))
         plt.tick_params(axis='both', which='major', labelsize=5)
         plt.axvline(x=200, color='r', linewidth=0.05, alpha=0.5)
         plt.axvline(x=209, color='r', linewidth=0.05, alpha=0.5)
 
-    plt.savefig('plots/'+title_plot+'.png', format='png', dpi=300, bbox_inches='tight')
+    plt.savefig('plots/' + title_plot + '.png',
+                format='png',
+                dpi=300,
+                bbox_inches='tight')
     # plt.show()
     plt.close()
 

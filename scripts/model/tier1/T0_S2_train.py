@@ -1,17 +1,17 @@
+import argparse
 import os
+
 import numpy as np
 import tensorflow as tf
-
+from keras.callbacks import (CSVLogger, EarlyStopping, ModelCheckpoint,
+                             TensorBoard)
+from keras.layers import (LSTM, Activation, BatchNormalization, Convolution1D,
+                          Convolution2D, Dense, Dropout, Flatten, Lambda,
+                          Reshape, TimeDistributed)
 from keras.models import Sequential
-from keras.layers import Dense, Activation, Convolution1D, Lambda, \
-    Convolution2D, Flatten, \
-    Reshape, LSTM, Dropout, TimeDistributed, BatchNormalization
-from keras.regularizers import l2
 from keras.optimizers import Adam
-from keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint, CSVLogger
+from keras.regularizers import l2
 from keras.utils import to_categorical
-
-import argparse
 
 # set GPU options
 # allow_growth allows fair share of GPU memory across processes
@@ -22,11 +22,11 @@ tf.keras.backend.set_session(sess)
 
 def create_model(dim_length, dim_channels, class_number):
 
-    layers = 4 # 2
+    layers = 4  # 2
     filters = [32] * layers  # 4
     fc_hidden_nodes = 8
-    learning_rate = 10 ** (-4)
-    regularization_rate = 10 ** (-1)
+    learning_rate = 10**(-4)
+    regularization_rate = 10**(-1)
     kernel_size = 7
     drp_out1 = 0
     drp_out2 = 0
@@ -36,26 +36,24 @@ def create_model(dim_length, dim_channels, class_number):
     weightinit = 'lecun_uniform'  # weight initialization
 
     model = Sequential()
-    model.add(
-        BatchNormalization(
-            input_shape=(
-                dim_length,
-                dim_channels)))
+    model.add(BatchNormalization(input_shape=(dim_length, dim_channels)))
 
     for filter_number in filters:
-        model.add(Convolution1D(filter_number,
-                                kernel_size=kernel_size,
-                                padding='same',
-                                kernel_regularizer=l2(regularization_rate),
-                                kernel_initializer=weightinit))
+        model.add(
+            Convolution1D(filter_number,
+                          kernel_size=kernel_size,
+                          padding='same',
+                          kernel_regularizer=l2(regularization_rate),
+                          kernel_initializer=weightinit))
         model.add(BatchNormalization())
         model.add(Activation('relu'))
 
     model.add(Flatten())
     model.add(Dropout(drp_out1))
-    model.add(Dense(units=fc_hidden_nodes,
-                    kernel_regularizer=l2(regularization_rate),
-                    kernel_initializer=weightinit))  # Fully connected layer
+    model.add(
+        Dense(units=fc_hidden_nodes,
+              kernel_regularizer=l2(regularization_rate),
+              kernel_initializer=weightinit))  # Fully connected layer
     model.add(Activation('relu'))  # Relu activation
     model.add(Dropout(drp_out2))
     model.add(Dense(units=outputdim, kernel_initializer=weightinit))
@@ -96,7 +94,7 @@ def data(args, mapclasses):
     cnt_lab = Counter(y_train)
 
     # maximum training samples per class
-    max_train = 10 ** 5
+    max_train = 10**5
 
     min_v = min([v for k, v in cnt_lab.items()])
     max_v = max([v for k, v in cnt_lab.items()])
@@ -113,7 +111,9 @@ def data(args, mapclasses):
         iw = np.where(y_train == l)
 
         if sampling == 'oversample':
-            ii = np.random.choice(a=iw[0], size=min(max_v, max_train), replace=True)
+            ii = np.random.choice(a=iw[0],
+                                  size=min(max_v, max_train),
+                                  replace=True)
         elif sampling == 'undersample':
             ii = np.random.choice(a=iw[0], size=min_v, replace=False)
 
@@ -127,7 +127,8 @@ def data(args, mapclasses):
 
     y_train_num = [mapclasses[c] for c in y_train]
     y_train_num = np.array(y_train_num)
-    y_train_binary = to_categorical(y_train_num, num_classes=len(mapclasses.keys()))
+    y_train_binary = to_categorical(y_train_num,
+                                    num_classes=len(mapclasses.keys()))
     y_train_binary.shape
 
     return X_train, y_train_binary
@@ -156,32 +157,33 @@ def train(args, params, X_train, y_train_binary, model):
 
     print('Fitting model...')
     # Train model on dataset
-    history = model.fit(X_train, y_train_binary,
+    history = model.fit(X_train,
+                        y_train_binary,
                         validation_split=params['val_split'],
                         batch_size=params['batch_size'],
                         epochs=params['epochs'],
                         shuffle=True,
                         verbose=1,
-                        callbacks=[earlystop,
-                                   checkpoint]
-                        )
+                        callbacks=[earlystop, checkpoint])
 
 
 def main():
 
-    parser = argparse.ArgumentParser(
-        description='Train model',
-        usage='''T0_S2_training.py [<args>]
+    parser = argparse.ArgumentParser(description='Train model',
+                                     usage='''T0_S2_training.py [<args>]
         ''')
-    parser.add_argument('-positive', nargs='+',
-                            default=['positive.npz'],
-                            help="Positive set file(s)")
-    parser.add_argument('-negative', nargs='+',
-                            default=['negative.npz'],
-                            help="Positive set file(s)")
-    parser.add_argument('-output', type=str,
-                            default='model.hdf5',
-                            help="Specify output")
+    parser.add_argument('-positive',
+                        nargs='+',
+                        default=['positive.npz'],
+                        help="Positive set file(s)")
+    parser.add_argument('-negative',
+                        nargs='+',
+                        default=['negative.npz'],
+                        help="Positive set file(s)")
+    parser.add_argument('-output',
+                        type=str,
+                        default='model.hdf5',
+                        help="Specify output")
 
     args = parser.parse_args()
 
@@ -189,15 +191,18 @@ def main():
     X_train, y_train_binary = data(args, mapclasses)
 
     # Parameters
-    params = {'dim': X_train.shape[1],
-              'batch_size': 32,
-              'epochs': 50,
-              'val_split': 0.2,
-              'n_classes': len(mapclasses.keys()),
-              'n_channels': X_train.shape[2],
-              'shuffle': True}
+    params = {
+        'dim': X_train.shape[1],
+        'batch_size': 32,
+        'epochs': 50,
+        'val_split': 0.2,
+        'n_classes': len(mapclasses.keys()),
+        'n_channels': X_train.shape[2],
+        'shuffle': True
+    }
 
-    model = create_model(params['dim'], params['n_channels'], params['n_classes'])
+    model = create_model(params['dim'], params['n_channels'],
+                         params['n_classes'])
 
     train(args, params, X_train, y_train_binary, model)
 

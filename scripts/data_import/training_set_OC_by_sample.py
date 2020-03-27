@@ -1,11 +1,11 @@
-import os
-import numpy as np
-import gzip
-from collections import Counter
-import logging
 import argparse
-from keras.utils.np_utils import to_categorical
+import gzip
+import logging
+import os
+from collections import Counter
 
+import numpy as np
+from keras.utils.np_utils import to_categorical
 
 chr_list = list(map(str, np.arange(1, 23)))
 chr_list.extend(['X', 'Y'])
@@ -17,7 +17,7 @@ date = '160119'
 def transposeDataset(X):
 
     image = []
-    for i in range (0, len(X -1)):
+    for i in range(0, len(X - 1)):
         tr = X[i].transpose()
         image.append(tr)
     return np.array(image)
@@ -36,7 +36,7 @@ def balance_data(training_data, training_labels, training_id):
 
     for l in cnt_lab.keys():
         #print(l)
-        iw = np.where(training_labels==l)
+        iw = np.where(training_labels == l)
         ii = iw[0][:min_v]
         data_balanced.extend(training_data[ii])
         labels_balanced.extend(training_labels[ii])
@@ -107,12 +107,16 @@ def data(sample_name, label_type):
 
                 labels_chr = dico[label_type][i]
                 partial_labels.extend(labels_chr)
-                id_chr = [d['chromosome'] + '_' + str(d['position']) for d in dico['id'][i]]
+                id_chr = [
+                    d['chromosome'] + '_' + str(d['position'])
+                    for d in dico['id'][i]
+                ]
                 partial_id.extend(id_chr)
 
                 assert len(id_chr) == len(labels_chr)
 
-                data_file = datapath + '/ChannelData/' + str(i) + '_channel_maker_real_germline.npy.gz'
+                data_file = datapath + '/ChannelData/' + str(
+                    i) + '_channel_maker_real_germline.npy.gz'
                 with gzip.GzipFile(data_file, "rb") as f:
                     data_mat = np.load(f)
                     logging.info(data_mat.shape)
@@ -132,21 +136,31 @@ def data(sample_name, label_type):
         logging.info('Number of noSV labels: %d' % len(i_nosv))
         # logging.info(i_nosv)
 
-        i_nosv_idx = np.random.choice(a=i_nosv,
-                                      # size=int(np.round(i_nosv.shape[0]/100)),
-                                      size=100,
-                                      replace=False)
+        i_nosv_idx = np.random.choice(
+            a=i_nosv,
+            # size=int(np.round(i_nosv.shape[0]/100)),
+            size=100,
+            replace=False)
         logging.info('Sampled noSV labels: %d' % len(i_nosv_idx))
 
         i_sv = np.where(partial_labels != 'noSV')[0]
         logging.info('Number of !noSV labels: %d' % len(i_sv))
 
-        partial_data = np.append(partial_data[i_sv, :, :], partial_data[i_nosv_idx, :, :], axis=0)
-        logging.info('partial data shape after append: %s' % str(partial_data.shape))
-        partial_labels = np.append(partial_labels[i_sv], partial_labels[i_nosv_idx], axis=0)
-        logging.info('partial labels shape after append: %s' % str(partial_labels.shape))
-        partial_id = np.append(partial_id[i_sv], partial_id[i_nosv_idx], axis=0)
-        logging.info('partial ids shape after append: %s' % str(partial_id.shape))
+        partial_data = np.append(partial_data[i_sv, :, :],
+                                 partial_data[i_nosv_idx, :, :],
+                                 axis=0)
+        logging.info('partial data shape after append: %s' %
+                     str(partial_data.shape))
+        partial_labels = np.append(partial_labels[i_sv],
+                                   partial_labels[i_nosv_idx],
+                                   axis=0)
+        logging.info('partial labels shape after append: %s' %
+                     str(partial_labels.shape))
+        partial_id = np.append(partial_id[i_sv],
+                               partial_id[i_nosv_idx],
+                               axis=0)
+        logging.info('partial ids shape after append: %s' %
+                     str(partial_id.shape))
 
         intermediate_data_dir = '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test/' + date + '/TestData/' + \
                                 'intermediate_data/'
@@ -221,7 +235,9 @@ def combine_data(label_type):
         training_labels = np.array(labels)
         training_id = np.array(ids)
 
-        out_dir = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test', date, 'TestData', label_type)
+        out_dir = os.path.join(
+            '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test', date,
+            'TestData', label_type)
         if not os.path.isdir(out_dir):
             os.makedirs(out_dir, exist_ok=True)
 
@@ -267,8 +283,9 @@ def combine_data(label_type):
         logging.info('y shape: %s' % y.shape)
         logging.info('y_binary shape: %s' % y_binary.shape)
 
-        datapath_training = os.path.join('/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test',
-                                         date, 'TrainingData', label_type)
+        datapath_training = os.path.join(
+            '/hpc/cog_bioinf/ridder/users/lsantuari/Processed/Test', date,
+            'TrainingData', label_type)
 
         if not os.path.isdir(datapath_training):
             os.makedirs(base_dir, datapath_training=True)
@@ -280,12 +297,21 @@ def combine_data(label_type):
 
 def main():
 
-    parser = argparse.ArgumentParser(description='Create channels from saved data')
-    parser.add_argument('-s', '--sample', type=str, default='COMBINE',
+    parser = argparse.ArgumentParser(
+        description='Create channels from saved data')
+    parser.add_argument('-s',
+                        '--sample',
+                        type=str,
+                        default='COMBINE',
                         help="Specify sample")
-    parser.add_argument('-t', '--label_type', type=str, default='bpi',
+    parser.add_argument('-t',
+                        '--label_type',
+                        type=str,
+                        default='bpi',
                         help="Specify sample")
-    parser.add_argument('-l', '--logfile', default='my.log',
+    parser.add_argument('-l',
+                        '--logfile',
+                        default='my.log',
                         help='File in which to write logs.')
 
     args = parser.parse_args()
@@ -293,17 +319,16 @@ def main():
     logfilename = args.logfile
 
     FORMAT = '%(asctime)s %(message)s'
-    logging.basicConfig(
-        format=FORMAT,
-        filename=logfilename,
-        level=logging.INFO)
+    logging.basicConfig(format=FORMAT,
+                        filename=logfilename,
+                        level=logging.INFO)
 
     # channel_list = get_channels()
     sample_name = args.sample
     if sample_name == 'COMBINE':
         data(sample_name=sample_name, label_type=args.label_type)
     else:
-        combine_data(label_type = args.label_type)
+        combine_data(label_type=args.label_type)
 
 
 if __name__ == '__main__':

@@ -1,12 +1,13 @@
-# Imports
 import argparse
+import gzip
+import json
 import logging
 import os
-import json
-import gzip
 from collections import Counter, defaultdict
 from time import time
+
 import pysam
+
 from functions import *
 
 strand_str = {True: '-', False: '+'}
@@ -20,7 +21,7 @@ def get_split_read_positions(ibam, outFile):
     :param outFile: output file for the dictionary of split read positions
     :return: None. Outputs a dictionary with the positions of split read positions as keys and
     the number of split reads per position as values
-    '''''
+    ''' ''
 
     def overlap(read1, read2):
         if read1.reference_start <= read2.reference_start <= read1.reference_end or \
@@ -107,7 +108,7 @@ def get_split_read_positions(ibam, outFile):
     iter = bamfile.fetch()
 
     # Print every n_r alignments processed
-    n_r = 10 ** 6
+    n_r = 10**6
     # Record the current time
     last_t = time()
 
@@ -124,9 +125,8 @@ def get_split_read_positions(ibam, outFile):
                 # Record the current time
                 now_t = time()
                 # print(type(now_t))
-                logging.info("%d alignments processed (%f alignments / s)" % (
-                    i,
-                    n_r / (now_t - last_t)))
+                logging.info("%d alignments processed (%f alignments / s)" %
+                             (i, n_r / (now_t - last_t)))
                 last_t = time()
 
             # Both read and mate should be mapped, read should have a minimum mapping quality
@@ -139,7 +139,8 @@ def get_split_read_positions(ibam, outFile):
                     dels_start, dels_end, ins = get_indels(read)
                     # dels = dels_start + dels_end + ins
                     left_split_pos[read.reference_name].extend(dels_end)
-                    right_split_pos[read.reference_name].extend(dels_start + ins)
+                    right_split_pos[read.reference_name].extend(dels_start +
+                                                                ins)
 
                     for start, end in zip(dels_start, dels_end):
 
@@ -150,8 +151,11 @@ def get_split_read_positions(ibam, outFile):
                         if del_size > max_cigar_del:
                             max_cigar_del = del_size
 
-                        split_pos_coord = append_coord(split_pos_coord, read.reference_name,
-                                                       start, read.reference_name, end)
+                        split_pos_coord = append_coord(split_pos_coord,
+                                                       read.reference_name,
+                                                       start,
+                                                       read.reference_name,
+                                                       end)
                     # for pos in ins:
                     #     n_indels += 1
                     #     split_pos_coord = append_coord(split_pos_coord, read.reference_name,
@@ -163,35 +167,39 @@ def get_split_read_positions(ibam, outFile):
                     chr_SA, pos_SA, strand_SA = get_suppl_aln(read)
 
                     # A read can be clipped in both directions
-                    pos_r = read.reference_end if is_right_clipped(read) else None
-                    pos_l = read.reference_start + 1 if is_left_clipped(read) else None
+                    pos_r = read.reference_end if is_right_clipped(
+                        read) else None
+                    pos_l = read.reference_start + 1 if is_left_clipped(
+                        read) else None
 
                     # else:
                     #     print('Not clipped!\n{}'.format(read))
 
-                    if (read.query_name, chr_SA, pos_SA) in ls_mate_set[chr_SA]:
+                    if (read.query_name, chr_SA,
+                            pos_SA) in ls_mate_set[chr_SA]:
                         if read.query_name in left_split_pos_by_query.keys():
 
-                            ls_leftmost, ls_rightmost = left_split_pos_by_query[read.query_name]
+                            ls_leftmost, ls_rightmost = left_split_pos_by_query[
+                                read.query_name]
 
-                            if not (read.reference_name == chr_SA and
-                                    ls_leftmost in [pos_l, pos_r]):
+                            if not (read.reference_name == chr_SA
+                                    and ls_leftmost in [pos_l, pos_r]):
                                 # assert is_left_clipped(read)
 
                                 if pos_r is not None:
                                     # print('Right clipped: Adding to {}:{}'.format(read.reference_name, pos_r))
-                                    split_reads[read.reference_name]['right'][pos_l] += 1
+                                    split_reads[read.reference_name]['right'][
+                                        pos_l] += 1
 
                                 if pos_l is not None and pos_r is not None:
                                     # print('Read clipped on both sides:' +
                                     #       ' Adding to {}:{}'.format(read.reference_name, pos_l))
-                                    split_reads[read.reference_name]['left'][pos_l] += 1
+                                    split_reads[read.reference_name]['left'][
+                                        pos_l] += 1
 
                                 # print('Left clipped: Adding to {}:{}'.format(
                                 #     chr_SA, left_split_pos_by_query[read.query_name]))
-                                split_reads[chr_SA]['left'][
-                                    ls_leftmost
-                                ] += 1
+                                split_reads[chr_SA]['left'][ls_leftmost] += 1
 
                                 if read.reference_name == chr_SA and pos_r is not None and \
                                     pos_r < ls_leftmost:
@@ -205,35 +213,38 @@ def get_split_read_positions(ibam, outFile):
                                     #     ))
 
                                     left_split_pos[chr_SA].append(ls_leftmost)
-                                    split_pos_coord = append_coord(split_pos_coord,
-                                                                   read.reference_name,
-                                                                   pos_r,
-                                                                   chr_SA,
-                                                                   ls_leftmost)
-                                    right_split_pos[read.reference_name].append(read.reference_end)
+                                    split_pos_coord = append_coord(
+                                        split_pos_coord, read.reference_name,
+                                        pos_r, chr_SA, ls_leftmost)
+                                    right_split_pos[
+                                        read.reference_name].append(
+                                            read.reference_end)
                                     left_split_pos[chr_SA].append(pos_SA)
 
                                     if read.reference_name == chr_SA:
                                         dist = abs(read.reference_end - pos_SA)
                                         if pos_r is not None:
-                                            split_read_distance[read.reference_name]['right'][pos_r].append(dist)
+                                            split_read_distance[
+                                                read.reference_name]['right'][
+                                                    pos_r].append(dist)
                                         split_read_distance[chr_SA]['left'][
-                                            ls_leftmost
-                                        ].append(dist)
+                                            ls_leftmost].append(dist)
                                     n_split += 1
 
                                     ls_mate_set[chr_SA].remove(
-                                        (read.query_name, chr_SA, pos_SA)
-                                    )
-                                    del left_split_pos_by_query[read.query_name]
+                                        (read.query_name, chr_SA, pos_SA))
+                                    del left_split_pos_by_query[
+                                        read.query_name]
 
-                    elif (read.query_name, chr_SA, pos_SA) in rs_mate_set[chr_SA]:
+                    elif (read.query_name, chr_SA,
+                          pos_SA) in rs_mate_set[chr_SA]:
                         if read.query_name in right_split_pos_by_query.keys():
 
-                            rs_leftmost, rs_rightmost = right_split_pos_by_query[read.query_name]
+                            rs_leftmost, rs_rightmost = right_split_pos_by_query[
+                                read.query_name]
 
-                            if not (read.reference_name == chr_SA and
-                                    rs_rightmost in [pos_l, pos_r]):
+                            if not (read.reference_name == chr_SA
+                                    and rs_rightmost in [pos_l, pos_r]):
                                 # assert is_right_clipped(read)
 
                                 # print('L_R Adding to {}:{}'.format(read.reference_name, pos))
@@ -242,18 +253,18 @@ def get_split_read_positions(ibam, outFile):
 
                                 if pos_l is not None:
                                     # print('Left clipped: Adding to {}:{}'.format(read.reference_name, pos_l))
-                                    split_reads[read.reference_name]['left'][pos_l] += 1
+                                    split_reads[read.reference_name]['left'][
+                                        pos_l] += 1
 
                                 if pos_l is not None and pos_r is not None:
                                     # print('Read clipped on both sides:' +
                                     #       ' Adding to {}:{}'.format(read.reference_name, pos_r))
-                                    split_reads[read.reference_name]['right'][pos_r] += 1
+                                    split_reads[read.reference_name]['right'][
+                                        pos_r] += 1
 
                                 # print('Right clipped: Adding to {}:{}'.format(
                                 #     chr_SA, right_split_pos_by_query[read.query_name]))
-                                split_reads[chr_SA]['right'][
-                                    rs_rightmost
-                                ] += 1
+                                split_reads[chr_SA]['right'][rs_rightmost] += 1
 
                                 if read.reference_name == chr_SA and pos_l is not None and \
                                         rs_rightmost < pos_l:
@@ -267,30 +278,29 @@ def get_split_read_positions(ibam, outFile):
                                     #     ))
 
                                     right_split_pos[chr_SA].append(
-                                        rs_rightmost
-                                    )
-                                    split_pos_coord = append_coord(split_pos_coord,
-                                                                   read.reference_name,
-                                                                   pos_l,
-                                                                   chr_SA,
-                                                                   rs_rightmost)
-                                    left_split_pos[read.reference_name].append(read.reference_end)
+                                        rs_rightmost)
+                                    split_pos_coord = append_coord(
+                                        split_pos_coord, read.reference_name,
+                                        pos_l, chr_SA, rs_rightmost)
+                                    left_split_pos[read.reference_name].append(
+                                        read.reference_end)
                                     right_split_pos[chr_SA].append(pos_SA)
 
                                     if read.reference_name == chr_SA:
                                         dist = abs(read.reference_end - pos_SA)
                                         if pos_l is not None:
-                                            split_read_distance[read.reference_name]['left'][pos_l].append(dist)
+                                            split_read_distance[
+                                                read.reference_name]['left'][
+                                                    pos_l].append(dist)
                                         split_read_distance[chr_SA]['right'][
-                                            rs_rightmost
-                                        ].append(dist)
+                                            rs_rightmost].append(dist)
 
                                     n_split += 1
 
                                     rs_mate_set[chr_SA].remove(
-                                        (read.query_name, chr_SA, pos_SA)
-                                    )
-                                    del right_split_pos_by_query[read.query_name]
+                                        (read.query_name, chr_SA, pos_SA))
+                                    del right_split_pos_by_query[
+                                        read.query_name]
 
                     else:
 
@@ -298,21 +308,21 @@ def get_split_read_positions(ibam, outFile):
                             # print('Adding {} => {}:{} to rs_mate_set'.format(read.query_name,
                             #                                                  read.reference_name,
                             #                                                  read.reference_start))
-                            right_split_pos_by_query[read.query_name] = (read.reference_start + 1,
-                                                                         read.reference_end)
-                            rs_mate_set[read.reference_name].add((read.query_name,
-                                                                  read.reference_name,
-                                                                  read.reference_start))
+                            right_split_pos_by_query[read.query_name] = (
+                                read.reference_start + 1, read.reference_end)
+                            rs_mate_set[read.reference_name].add(
+                                (read.query_name, read.reference_name,
+                                 read.reference_start))
 
                         elif is_left_clipped(read):
                             # print('Adding {} => {}:{} to ls_mate_set'.format(read.query_name,
                             #                                               read.reference_name,
                             #                                               read.reference_start))
-                            left_split_pos_by_query[read.query_name] = (read.reference_start + 1,
-                                                                        read.reference_end)
-                            ls_mate_set[read.reference_name].add((read.query_name,
-                                                                  read.reference_name,
-                                                                  read.reference_start))
+                            left_split_pos_by_query[read.query_name] = (
+                                read.reference_start + 1, read.reference_end)
+                            ls_mate_set[read.reference_name].add(
+                                (read.query_name, read.reference_name,
+                                 read.reference_start))
 
                 # if not read.mate_is_unmapped and ( not read.is_proper_pair or is_clipped(read) ):
                 #     n_discordant += 1
@@ -367,29 +377,27 @@ def get_split_read_positions(ibam, outFile):
 
     logging.info('Largest CIGAR "D" DEL={}'.format(max_cigar_del))
 
-    logging.info('INDELs={}, split_reads={}, discordant_reads={}'.format(n_indels,
-                                                                         n_split,
-                                                                         n_discordant))
+    logging.info('INDELs={}, split_reads={}, discordant_reads={}'.format(
+        n_indels, n_split, n_discordant))
 
     for chrom in chr_list:
-        logging.info('Number of unique left split read positions on Chr{}: {}'.format(chrom,
-                                                                                    len(
-                                                                                        [p for p, c in
-                                                                                         left_split_pos_cnt[
-                                                                                             chrom].items() if
-                                                                                         c >= min_support]
-                                                                                    )
-                                                                                    ))
-        logging.info('Number of unique right split read positions on Chr{}: {}'.format(chrom,
-                                                                                     len(
-                                                                                         [p for p, c in
-                                                                                          right_split_pos_cnt[
-                                                                                              chrom].items() if
-                                                                                          c >= min_support]
-                                                                                     )
-                                                                                     ))
+        logging.info(
+            'Number of unique left split read positions on Chr{}: {}'.format(
+                chrom,
+                len([
+                    p for p, c in left_split_pos_cnt[chrom].items()
+                    if c >= min_support
+                ])))
+        logging.info(
+            'Number of unique right split read positions on Chr{}: {}'.format(
+                chrom,
+                len([
+                    p for p, c in right_split_pos_cnt[chrom].items()
+                    if c >= min_support
+                ])))
 
-    logging.info('Number of unique pair of split read positions: %d' % len(split_pos_coord))
+    logging.info('Number of unique pair of split read positions: %d' %
+                 len(split_pos_coord))
 
     # discordant_reads_cnt = Counter(discordant_reads_pos)
     # discordant_reads_coord = set(discordant_reads_coord)
@@ -406,37 +414,49 @@ def get_split_read_positions(ibam, outFile):
         total_reads_cnt_ls[chrom] = Counter(left_split_pos[chrom])
         total_reads_cnt_rs[chrom] = Counter(right_split_pos[chrom])
 
-    total_reads_coord = list(set(split_pos_coord))  # | discordant_reads_coord))
+    total_reads_coord = list(
+        set(split_pos_coord))  # | discordant_reads_coord))
 
     positions_with_min_support_ls = dict.fromkeys(chr_list)
     positions_with_min_support_rs = dict.fromkeys(chr_list)
 
     for chrom in chr_list:
-        positions_with_min_support_ls[chrom] = [p for p, c in total_reads_cnt_ls[chrom].items() if c >= min_support]
-        positions_with_min_support_rs[chrom] = [p for p, c in total_reads_cnt_rs[chrom].items() if c >= min_support]
+        positions_with_min_support_ls[chrom] = [
+            p for p, c in total_reads_cnt_ls[chrom].items() if c >= min_support
+        ]
+        positions_with_min_support_rs[chrom] = [
+            p for p, c in total_reads_cnt_rs[chrom].items() if c >= min_support
+        ]
 
-        logging.info('Number of LS positions on Chr%s with min %d support: %d' % (chrom, min_support,
-                                                                         len(positions_with_min_support_ls[chrom])))
-        logging.info('Number of RS positions on Chr%s with min %d support: %d' % (chrom, min_support,
-                                                                         len(positions_with_min_support_rs[chrom])))
+        logging.info(
+            'Number of LS positions on Chr%s with min %d support: %d' %
+            (chrom, min_support, len(positions_with_min_support_ls[chrom])))
+        logging.info(
+            'Number of RS positions on Chr%s with min %d support: %d' %
+            (chrom, min_support, len(positions_with_min_support_rs[chrom])))
 
-    logging.info('Number of unique pair of total positions: %d' % len(total_reads_coord))
+    logging.info('Number of unique pair of total positions: %d' %
+                 len(total_reads_coord))
 
     positions_with_min_support_set = dict.fromkeys(chr_list)
 
     for chrom in chr_list:
-        positions_with_min_support_set[chrom] = set(positions_with_min_support_ls[chrom] +
-                                                    positions_with_min_support_rs[chrom])
+        positions_with_min_support_set[chrom] = set(
+            positions_with_min_support_ls[chrom] +
+            positions_with_min_support_rs[chrom])
 
-    total_reads_coord_min_support = [(chr1, pos1, chr2, pos2) for chr1, pos1, chr2, pos2
-                                     in total_reads_coord
-                                     if pos1 in positions_with_min_support_set[chr1] or
-                                     pos2 in positions_with_min_support_set[chr2]]
+    total_reads_coord_min_support = [
+        (chr1, pos1, chr2, pos2)
+        for chr1, pos1, chr2, pos2 in total_reads_coord
+        if pos1 in positions_with_min_support_set[chr1]
+        or pos2 in positions_with_min_support_set[chr2]
+    ]
 
-    logging.info('Number of total pairs of positions with min support: %d' % len(total_reads_coord_min_support))
+    logging.info('Number of total pairs of positions with min support: %d' %
+                 len(total_reads_coord_min_support))
 
-    data = (positions_with_min_support_ls, positions_with_min_support_rs, total_reads_coord_min_support,
-            split_reads, split_read_distance)
+    data = (positions_with_min_support_ls, positions_with_min_support_rs,
+            total_reads_coord_min_support, split_reads, split_read_distance)
     # Write
     with gzip.GzipFile(outFile, 'w') as fout:
         fout.write(json.dumps(data).encode('utf-8'))
@@ -463,15 +483,25 @@ def main():
 
     # Parse the arguments of the script
     parser = argparse.ArgumentParser(description='Get split reads positions')
-    parser.add_argument('-b', '--bam', type=str,
+    parser.add_argument('-b',
+                        '--bam',
+                        type=str,
                         default=inputBAM,
                         help="Specify input file (BAM)")
-    parser.add_argument('-o', '--out', type=str, default='split_reads.json.gz',
+    parser.add_argument('-o',
+                        '--out',
+                        type=str,
+                        default='split_reads.json.gz',
                         help="Specify output")
-    parser.add_argument('-p', '--outputpath', type=str,
-                        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
-                        help="Specify output path")
-    parser.add_argument('-l', '--logfile', default='split_reads.log',
+    parser.add_argument(
+        '-p',
+        '--outputpath',
+        type=str,
+        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
+        help="Specify output path")
+    parser.add_argument('-l',
+                        '--logfile',
+                        default='split_reads.log',
                         help='File in which to write logs.')
 
     args = parser.parse_args()
@@ -479,20 +509,20 @@ def main():
     # Log file
     cmd_name = 'split_reads'
     output_dir = os.path.join(args.outputpath, cmd_name)
-    create_dir(output_dir)
+    os.makedirs(output_dir)
     logfilename = os.path.join(output_dir, args.logfile)
     output_file = os.path.join(output_dir, args.out)
 
     FORMAT = '%(asctime)s %(message)s'
-    logging.basicConfig(
-        format=FORMAT,
-        filename=logfilename,
-        filemode='w',
-        level=logging.INFO)
+    logging.basicConfig(format=FORMAT,
+                        filename=logfilename,
+                        filemode='w',
+                        level=logging.INFO)
 
     t0 = time()
     get_split_read_positions(ibam=args.bam, outFile=output_file)
-    logging.info('Time: split read positions on BAM %s: %f' % (args.bam, (time() - t0)))
+    logging.info('Time: split read positions on BAM %s: %f' % (args.bam,
+                                                               (time() - t0)))
 
 
 if __name__ == '__main__':

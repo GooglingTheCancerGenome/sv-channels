@@ -1,12 +1,13 @@
-# Imports
 import argparse
+import gzip
+import json
 import logging
 import os
-import json
-import gzip
 from collections import Counter
 from time import time
+
 import pysam
+
 from functions import *
 
 
@@ -18,7 +19,7 @@ def get_clipped_read_positions(ibam, chrName, outFile):
     :param outFile: output file for the dictionary of clipped read positions
     :return: None. Outputs a dictionary with the positions of clipped read positions as keys and
     the number of clipped reads per position as values
-    '''''
+    ''' ''
 
     # Check if the BAM file in input exists
     assert os.path.isfile(ibam)
@@ -44,7 +45,7 @@ def get_clipped_read_positions(ibam, chrName, outFile):
     iter = bamfile.fetch(chrName, start_pos, stop_pos)
 
     # Print every n_r alignments processed
-    n_r = 10 ** 6
+    n_r = 10**6
     # Record the current time
     last_t = time()
 
@@ -55,9 +56,8 @@ def get_clipped_read_positions(ibam, chrName, outFile):
             # Record the current time
             now_t = time()
             # print(type(now_t))
-            logging.info("%d alignments processed (%f alignments / s)" % (
-                i,
-                n_r / (now_t - last_t)))
+            logging.info("%d alignments processed (%f alignments / s)" %
+                         (i, n_r / (now_t - last_t)))
             last_t = time()
 
         # Both read and mate should be mapped, read should have a minimum mapping quality
@@ -95,6 +95,7 @@ def get_clipped_read_positions(ibam, chrName, outFile):
     # with gzip.GzipFile(outFile, 'r') as fin:
     #     clipped_pos_cnt = json.loads(fin.read().decode('utf-8'))
 
+
 def main():
 
     # Default BAM file for testing
@@ -111,38 +112,53 @@ def main():
 
     # Parse the arguments of the script
     parser = argparse.ArgumentParser(description='Get clipped reads positions')
-    parser.add_argument('-b', '--bam', type=str,
+    parser.add_argument('-b',
+                        '--bam',
+                        type=str,
                         default=inputBAM,
                         help="Specify input file (BAM)")
-    parser.add_argument('-c', '--chr', type=str, default='17',
+    parser.add_argument('-c',
+                        '--chr',
+                        type=str,
+                        default='17',
                         help="Specify chromosome")
-    parser.add_argument('-o', '--out', type=str, default='clipped_read_pos.json.gz',
+    parser.add_argument('-o',
+                        '--out',
+                        type=str,
+                        default='clipped_read_pos.json.gz',
                         help="Specify output")
-    parser.add_argument('-p', '--outputpath', type=str,
-                        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
-                        help="Specify output path")
-    parser.add_argument('-l', '--logfile', default='clipped_read_pos.log',
+    parser.add_argument(
+        '-p',
+        '--outputpath',
+        type=str,
+        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
+        help="Specify output path")
+    parser.add_argument('-l',
+                        '--logfile',
+                        default='clipped_read_pos.log',
                         help='File in which to write logs.')
 
     args = parser.parse_args()
 
     cmd_name = 'clipped_read_pos'
     output_dir = os.path.join(args.outputpath, cmd_name)
-    create_dir(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
     logfilename = os.path.join(output_dir, '_'.join((args.chr, args.logfile)))
     output_file = os.path.join(output_dir, '_'.join((args.chr, args.out)))
 
     # Log file
     FORMAT = '%(asctime)s %(message)s'
-    logging.basicConfig(
-        format=FORMAT,
-        filename=logfilename,
-        filemode='w',
-        level=logging.INFO)
+    logging.basicConfig(format=FORMAT,
+                        filename=logfilename,
+                        filemode='w',
+                        level=logging.INFO)
 
     t0 = time()
-    get_clipped_read_positions(ibam=args.bam, chrName=args.chr, outFile=output_file)
-    logging.info('Time: clipped read positions on BAM %s and Chr %s: %f' % (args.bam, args.chr, (time() - t0)))
+    get_clipped_read_positions(ibam=args.bam,
+                               chrName=args.chr,
+                               outFile=output_file)
+    logging.info('Time: clipped read positions on BAM %s and Chr %s: %f' %
+                 (args.bam, args.chr, (time() - t0)))
 
 
 if __name__ == '__main__':

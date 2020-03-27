@@ -4,20 +4,21 @@ returns a VCF file of SVs where the breakpoints are connected using paired end i
 and information on clipped read positions.
 '''
 
-import itertools
-import pysam
-import logging
-import os
-from pathlib import Path
 import argparse as ap
-from subprocess import call
-from collections import defaultdict, Counter
-from intervaltree import Interval, IntervalTree
-import numpy as np
-import multiprocessing
 import datetime
+import itertools
+import logging
+import multiprocessing
+import os
 import time
+from collections import Counter, defaultdict
+from pathlib import Path
+from subprocess import call
+
+import numpy as np
+import pysam
 import twobitreader as twobit
+from intervaltree import Interval, IntervalTree
 
 from aux_functions import *
 
@@ -36,15 +37,36 @@ parser.add_argument('--BED', type=str, nargs='?', dest='bed_file',
                     # default='/Users/tschafers/Test_data/CNN/SV/bed/Patient1_94.bed')
                     default='/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/' + \
                             'run_test_INDEL/SV/chr17B_T.proper.bed')
-parser.add_argument('--OUT_DIR', type=str, nargs='?', dest='out_dir',
-                    #default=os.getcwd())
-                    default='/Users/lsantuari/Documents/Processed/Breakpoint2SV/Results/')
-parser.add_argument('--MAX_READ_COUNT', type=int, nargs='?', dest='max_read_count', default=5000)
-parser.add_argument('--MIN_MAPQ', type=int, nargs='?', dest='min_mapq', default=20)
-parser.add_argument('--WIN_H_LEN', type=int, nargs='?', dest='win_h_len', default=250)
-parser.add_argument('--VCF_OUT', type=str, nargs='?', dest='vcf_out',
-                    # default='/Users/tschafers/Test_data/CNN/Results/G1_deepsv_indels.vcf')
-                    default='/Users/lsantuari/Documents/Processed/Breakpoint2SV/Results/G1_DELs.vcf')
+parser.add_argument(
+    '--OUT_DIR',
+    type=str,
+    nargs='?',
+    dest='out_dir',
+    #default=os.getcwd())
+    default='/Users/lsantuari/Documents/Processed/Breakpoint2SV/Results/')
+parser.add_argument('--MAX_READ_COUNT',
+                    type=int,
+                    nargs='?',
+                    dest='max_read_count',
+                    default=5000)
+parser.add_argument('--MIN_MAPQ',
+                    type=int,
+                    nargs='?',
+                    dest='min_mapq',
+                    default=20)
+parser.add_argument('--WIN_H_LEN',
+                    type=int,
+                    nargs='?',
+                    dest='win_h_len',
+                    default=250)
+parser.add_argument(
+    '--VCF_OUT',
+    type=str,
+    nargs='?',
+    dest='vcf_out',
+    # default='/Users/tschafers/Test_data/CNN/Results/G1_deepsv_indels.vcf')
+    default=
+    '/Users/lsantuari/Documents/Processed/Breakpoint2SV/Results/G1_DELs.vcf')
 
 ##################################
 args = parser.parse_args()
@@ -59,14 +81,12 @@ bp_counter_sum = []
 
 
 class Read:
-
     def __init__(self, location, strand):
         self.location = location
         self.strand = strand
 
 
 class Location:
-
     def __init__(self, chrom, position):
         self.chrom = str(chrom)
         self.position = position
@@ -88,7 +108,6 @@ class Location:
 
 
 class Breakpoint:
-
     def __init__(self, chrom, position):
 
         self.location = Location(chrom, position)
@@ -108,20 +127,31 @@ class Breakpoint:
 
     def print(self):
 
-        logging.info('Breakpoint => %s:%d' % (self.location.chrom, self.location.position))
+        logging.info('Breakpoint => %s:%d' %
+                     (self.location.chrom, self.location.position))
 
         for k in self.support.keys():
             if k in ['SR_L', 'SR_R', 'CR_L', 'CR_R']:
-                clipped_read_count = Counter([':'.join([r.location.chrom, str(r.location.position), r.strand])
-                                           for r in self.support[k]])
-                logging.info('Support %s => %s' % (k, clipped_read_count.most_common(1)))
+                clipped_read_count = Counter([
+                    ':'.join(
+                        [r.location.chrom,
+                         str(r.location.position), r.strand])
+                    for r in self.support[k]
+                ])
+                logging.info('Support %s => %s' %
+                             (k, clipped_read_count.most_common(1)))
             else:
                 logging.info('Support %s => %s' % (k, self.support[k]))
 
         if len(self.mate_breakpoints) > 0:
-            mate_read_count = Counter([':'.join([r.location.chrom, str(r.location.position), r.strand])
-                                       for r in self.mate_breakpoints])
-            logging.info('Support mate_breakpoints => %s' % mate_read_count.most_common(1))
+            mate_read_count = Counter([
+                ':'.join(
+                    [r.location.chrom,
+                     str(r.location.position), r.strand])
+                for r in self.mate_breakpoints
+            ])
+            logging.info('Support mate_breakpoints => %s' %
+                         mate_read_count.most_common(1))
 
         logging.info('---------')
 
@@ -148,8 +178,11 @@ def breakpoint_to_sv_v2(chr, breakpoints):
     for handler in logging.root.handlers[:]:
         logging.root.removeHandler(handler)
 
-    logging.basicConfig(filename=log_filename, level=logging.INFO, filemode='w',
-                        format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+    logging.basicConfig(filename=log_filename,
+                        level=logging.INFO,
+                        filemode='w',
+                        format='%(asctime)s %(message)s',
+                        datefmt='%m/%d/%Y %I:%M:%S %p')
 
     logger = logging.getLogger()  # get the root logger
     logger.warning('This should go in the file.')
@@ -175,21 +208,33 @@ def breakpoint_to_sv_v2(chr, breakpoints):
         count_reads = aln.count(current_brkpnt.location.chrom, start, end)
         # Fetch the reads mapped on the chromosome
         if count_reads <= args.max_read_count:
-            logging.info('Fetching %d reads in region %s:%d-%d' % (count_reads, current_brkpnt.location.chrom,
-                                                                   start, end))
-            for read in aln.fetch(current_brkpnt.location.chrom, start, end, multiple_iterators=True):
+            logging.info(
+                'Fetching %d reads in region %s:%d-%d' %
+                (count_reads, current_brkpnt.location.chrom, start, end))
+            for read in aln.fetch(current_brkpnt.location.chrom,
+                                  start,
+                                  end,
+                                  multiple_iterators=True):
                 # Both read and mate should be mapped
                 if not read.is_unmapped and \
                         read.mapping_quality >= args.min_mapq:
 
-                    if is_right_clipped(read) and read.reference_end == current_brkpnt.location.position:
-                        current_brkpnt.support['CR_R'].append(Read(Location(read.reference_name,
-                                                                            read.reference_end),
-                                                                   strand[read.is_reverse]))
-                    elif is_left_clipped(read) and read.reference_start == current_brkpnt.location.position:
-                        current_brkpnt.support['CR_L'].append(Read(Location(read.reference_name,
-                                                                            read.reference_start),
-                                                                   strand[read.is_reverse]))
+                    if is_right_clipped(
+                            read
+                    ) and read.reference_end == current_brkpnt.location.position:
+                        current_brkpnt.support['CR_R'].append(
+                            Read(
+                                Location(read.reference_name,
+                                         read.reference_end),
+                                strand[read.is_reverse]))
+                    elif is_left_clipped(
+                            read
+                    ) and read.reference_start == current_brkpnt.location.position:
+                        current_brkpnt.support['CR_L'].append(
+                            Read(
+                                Location(read.reference_name,
+                                         read.reference_start),
+                                strand[read.is_reverse]))
 
                     # INDEL case
                     if read.reference_start <= current_brkpnt.location.position <= read.reference_end:
@@ -198,42 +243,60 @@ def breakpoint_to_sv_v2(chr, breakpoints):
                             dels, ins = get_indels(read)
 
                             for i in ins:
-                                if i[1] <= current_brkpnt.location.position <= i[2]:
+                                if i[1] <= current_brkpnt.location.position <= i[
+                                        2]:
                                     current_brkpnt.support['I'].append(i)
-                                    current_brkpnt.mate_breakpoints.append(Breakpoint(read.reference_name, i[0]))
+                                    current_brkpnt.mate_breakpoints.append(
+                                        Breakpoint(read.reference_name, i[0]))
 
                             for d in dels:
-                                if d[1] <= current_brkpnt.location.position <= d[2]:
+                                if d[1] <= current_brkpnt.location.position <= d[
+                                        2]:
                                     current_brkpnt.support['D'].append(d)
-                                    current_brkpnt.mate_breakpoints.append(Breakpoint(read.reference_name, d[1]))
+                                    current_brkpnt.mate_breakpoints.append(
+                                        Breakpoint(read.reference_name, d[1]))
 
                     # PE case
                     if is_supporting_pe_read(read, current_brkpnt):
 
                         if read.is_reverse:
-                            current_brkpnt.support['PE_L'].append(current_brkpnt.get_distance_to_breakpoint(read))
+                            current_brkpnt.support['PE_L'].append(
+                                current_brkpnt.get_distance_to_breakpoint(
+                                    read))
                         else:
-                            current_brkpnt.support['PE_R'].append(current_brkpnt.get_distance_to_breakpoint(read))
-                        current_brkpnt.mate_breakpoints.append(Read(Location(read.next_reference_name,
-                                                                             read.next_reference_start),
-                                                                    strand_type(strand[read.is_reverse],
-                                                                                strand[read.mate_is_reverse])
-                                                                    ))
+                            current_brkpnt.support['PE_R'].append(
+                                current_brkpnt.get_distance_to_breakpoint(
+                                    read))
+                        current_brkpnt.mate_breakpoints.append(
+                            Read(
+                                Location(read.next_reference_name,
+                                         read.next_reference_start),
+                                strand_type(strand[read.is_reverse],
+                                            strand[read.mate_is_reverse])))
                     # Supplementary Alignment (SA) case
-                    if current_brkpnt.location.is_clipped_at(read) and has_suppl_aln(read):
+                    if current_brkpnt.location.is_clipped_at(
+                            read) and has_suppl_aln(read):
                         sa_chrom, sa_pos, sa_strand = get_suppl_aln(read)
 
-                        if sa_chrom == current_brkpnt.location.chrom and sa_strand == strand[read.is_reverse]:
+                        if sa_chrom == current_brkpnt.location.chrom and sa_strand == strand[
+                                read.is_reverse]:
 
-                            if is_right_clipped(read) and sa_pos - read.reference_end > 0:
-                                current_brkpnt.support['SR_R'].append(Read(Location(sa_chrom, sa_pos),
-                                                                           strand_type(strand[read.is_reverse],
-                                                                                       sa_strand)))
-                            elif is_left_clipped(read) and sa_pos - read.reference_end < 0:
-                                current_brkpnt.support['SR_L'].append(Read(Location(sa_chrom, sa_pos),
-                                                                           strand_type(strand[read.is_reverse],
-                                                                                       sa_strand)))
-                            current_brkpnt.mate_breakpoints.append(Read(Location(sa_chrom, sa_pos), sa_strand))
+                            if is_right_clipped(
+                                    read) and sa_pos - read.reference_end > 0:
+                                current_brkpnt.support['SR_R'].append(
+                                    Read(
+                                        Location(sa_chrom, sa_pos),
+                                        strand_type(strand[read.is_reverse],
+                                                    sa_strand)))
+                            elif is_left_clipped(
+                                    read) and sa_pos - read.reference_end < 0:
+                                current_brkpnt.support['SR_L'].append(
+                                    Read(
+                                        Location(sa_chrom, sa_pos),
+                                        strand_type(strand[read.is_reverse],
+                                                    sa_strand)))
+                            current_brkpnt.mate_breakpoints.append(
+                                Read(Location(sa_chrom, sa_pos), sa_strand))
 
     for bp in breakpoint_list:
         bp.print()
@@ -246,15 +309,19 @@ def breakpoint_to_sv(chr, breakpoints):
     aln = read_bam()
     ##Logging
     basename = os.path.splitext(os.path.basename(args.bed_file))[0]
-    logging.basicConfig(filename=args.out_dir + basename + '_' + str(chr) + '.log', level=logging.INFO, filemode='w',
-                        format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+    logging.basicConfig(filename=args.out_dir + basename + '_' + str(chr) +
+                        '.log',
+                        level=logging.INFO,
+                        filemode='w',
+                        format='%(asctime)s %(message)s',
+                        datefmt='%m/%d/%Y %I:%M:%S %p')
 
     logging.info('Creating IntervalTree...')
     chr_tree = defaultdict(IntervalTree)
     bp_pos_dict = defaultdict(dict)
     # Create interval windows around candidate breakpoint positions
     for pos in breakpoints[chr]:
-        chr_tree[chr][pos - win_hlen: pos + win_hlen + 1] = int(pos)
+        chr_tree[chr][pos - win_hlen:pos + win_hlen + 1] = int(pos)
     logging.info('IntervalTree created.')
 
     links = []
@@ -273,7 +340,8 @@ def breakpoint_to_sv(chr, breakpoints):
         count_reads = aln.count(chr, start, end)
         # Fetch the reads mapped on the chromosome
         if count_reads <= args.max_read_count:
-            logging.info('Fetching %d reads in region %s:%d-%d' % (count_reads, chr, start, end))
+            logging.info('Fetching %d reads in region %s:%d-%d' %
+                         (count_reads, chr, start, end))
             for read in aln.fetch(chr, start, end, multiple_iterators=True):
                 # Both read and mate should be mapped
                 if not read.is_unmapped and not read.mate_is_unmapped and \
@@ -289,7 +357,8 @@ def breakpoint_to_sv(chr, breakpoints):
                         if start <= cpos <= end:
                             left_clipped_array[cpos - start - 1] += 1
                     if read.query_name not in scanned_reads:
-                        match = chr_tree[read.next_reference_name][read.next_reference_start]
+                        match = chr_tree[read.next_reference_name][
+                            read.next_reference_start]
                         if chr != read.next_reference_name or start > read.next_reference_start or \
                                 end < read.next_reference_start:
                             if match:
@@ -299,9 +368,13 @@ def breakpoint_to_sv(chr, breakpoints):
                                     # Pay attention of double insertions. The same read pair will be added
                                     # from both intervals, leading to double count.
                                     links.append(
-                                        frozenset({chr + '_' + str(pos) + '_' + strand[read.is_reverse],
-                                                   read.next_reference_name + '_' +
-                                                   str(int_data) + '_' + strand[read.mate_is_reverse]}))
+                                        frozenset({
+                                            chr + '_' + str(pos) + '_' +
+                                            strand[read.is_reverse],
+                                            read.next_reference_name + '_' +
+                                            str(int_data) + '_' +
+                                            strand[read.mate_is_reverse]
+                                        }))
                                     scanned_reads.add(read.query_name)
 
         # print('Right clipped:\n%s' % right_clipped_array)
@@ -311,10 +384,12 @@ def breakpoint_to_sv(chr, breakpoints):
             no_cr_pos.append(chr + '_' + str(pos))
         else:
             if max(right_clipped_array) > max(left_clipped_array):
-                bp_pos_dict[chr][pos] = start + np.where(right_clipped_array == max(right_clipped_array))[0][0] + 1
+                bp_pos_dict[chr][pos] = start + np.where(
+                    right_clipped_array == max(right_clipped_array))[0][0] + 1
                 # print('Right: %d -> %s' % (pos, max_i[0]))
             else:
-                bp_pos_dict[chr][pos] = start + np.where(left_clipped_array == max(left_clipped_array))[0][0] + 1
+                bp_pos_dict[chr][pos] = start + np.where(
+                    left_clipped_array == max(left_clipped_array))[0][0] + 1
                 # print('Left: %d -> %s' % (pos, max_i[0]))
 
         npos += 1
@@ -322,12 +397,14 @@ def breakpoint_to_sv(chr, breakpoints):
     links_counts = Counter(links)
     logging.info('Set size: %d' % len(links_counts))
     logging.info('No CR pos: %d' % len(no_cr_pos))
-    logging.info('Connections with min 3 read pairs: %d' % len([v for l, v in links_counts.items() if v > 2]))
+    logging.info('Connections with min 3 read pairs: %d' %
+                 len([v for l, v in links_counts.items() if v > 2]))
 
     i = 0
     while len([v for l, v in links_counts.items() if v > i]) > 5000:
         i += 1
-    logging.info('%d connections with min %d RP' % (len([v for l, v in links_counts.items() if v > i]), i))
+    logging.info('%d connections with min %d RP' %
+                 (len([v for l, v in links_counts.items() if v > i]), i))
     # Return link positions, and counts
     logging.info('Finished breakpoint assembly for chr%s ' % (chr))
     ### Create result dict
@@ -350,15 +427,21 @@ def linksToVcf(links_counts, filename, ibam):
         sv_calls.write('##fileTime=' + now.strftime("%H:%M") + '\n')
         sv_calls.write('##reference=GATK-GRCh-hg19')
         sv_calls.write('##ALT=<ID=DEL,Description="Deletion">\n')
-        sv_calls.write('##FORMAT=<ID=END,Number=1,Type=Integer,Description="End position of the structural variant">\n')
         sv_calls.write(
-            '##FORMAT=<ID=PE,Number=1,Type=Integer,Description="Paired-end support of the structural variant">\n')
-        sv_calls.write('##FORMAT=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">\n')
+            '##FORMAT=<ID=END,Number=1,Type=Integer,Description="End position of the structural variant">\n'
+        )
+        sv_calls.write(
+            '##FORMAT=<ID=PE,Number=1,Type=Integer,Description="Paired-end support of the structural variant">\n'
+        )
+        sv_calls.write(
+            '##FORMAT=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">\n'
+        )
 
         # writing contig info
         chr_dict = get_chr_len_dict(ibam)
         for k in chr_dict.keys():
-            sv_calls.write('##contig=<ID=' + k + ',length=' + str(chr_dict[k]) + '>\n')
+            sv_calls.write('##contig=<ID=' + k + ',length=' +
+                           str(chr_dict[k]) + '>\n')
 
         sv_calls.write(cols)
 
@@ -379,18 +462,22 @@ def linksToVcf(links_counts, filename, ibam):
                 s1[1] = int(s1[1])
                 s2[1] = int(s2[1])
                 # Crashes if differnet from v >= 1
-                if s1[1] in position[chrA] and s2[1] in position[chrB] and v >= 1:
+                if s1[1] in position[chrA] and s2[1] in position[
+                        chrB] and v >= 1:
                     posA = position[chrA][s1[1]]
                     posB = position[chrB][s2[1]]
 
                     strandA = s1[2]
                     strandB = s2[2]
 
-                    fs = frozenset({str(chrA) + '_' + str(posA) + '_' + strandA,
-                                    str(chrB) + '_' + str(posB) + '_' + strandB})
+                    fs = frozenset({
+                        str(chrA) + '_' + str(posA) + '_' + strandA,
+                        str(chrB) + '_' + str(posB) + '_' + strandB
+                    })
 
                     if fs not in sv_evaluated:
-                        logging.info('Writing link => %s:%d-%s:%d' % (chrA, posA, chrB, posB))
+                        logging.info('Writing link => %s:%d-%s:%d' %
+                                     (chrA, posA, chrB, posB))
 
                         sv_evaluated.append(fs)
 
@@ -413,13 +500,15 @@ def linksToVcf(links_counts, filename, ibam):
                         sv_id = 'DEEPSV_' + chrA + '_' + str(start)
 
                         f_line = "SVTYPE:PE:END"
-                        s_line = 'SVTYPE=%s;PE=%s;END=%s;STRAND=%s' % ('DEL', v, stop, strandA + strandB)
-                        line = '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % (chrA, start, sv_id, ref_base,
-                                                                           '<' + svtype + '>', '.', 'PASS',
-                                                                           s_line, '.', '.')
+                        s_line = 'SVTYPE=%s;PE=%s;END=%s;STRAND=%s' % (
+                            'DEL', v, stop, strandA + strandB)
+                        line = '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % (
+                            chrA, start, sv_id, ref_base, '<' + svtype + '>',
+                            '.', 'PASS', s_line, '.', '.')
                         sv_calls.write(line + '\n')
                 else:
-                    logging.info('Link %s:%d-%s:%d considered already' % (chrA, posA, chrB, posB))
+                    logging.info('Link %s:%d-%s:%d considered already' %
+                                 (chrA, posA, chrB, posB))
         print("VCF file written!")
 
 
@@ -432,7 +521,8 @@ def main():
     breakpoints = read_breakpoints_single_position(args.bed_file)
     ##Spawn processes for each chromosome
     print('Found chromosomes:')
-    for k in breakpoints.keys(): print(k)
+    for k in breakpoints.keys():
+        print(k)
     print('Starting assembly')
     ###### Parallel execution ########
     start_time = time.time()

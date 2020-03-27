@@ -1,12 +1,12 @@
-# Imports
-
 import argparse
-import pysam
-from time import time
 import logging
-import numpy as np
 import os
-from functions import create_dir, get_config_file
+from time import time
+
+import numpy as np
+import pysam
+
+from functions import get_config_file
 
 config = get_config_file()
 minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
@@ -88,7 +88,7 @@ def get_coverage(ibam, chrName, outFile):
     read_quality_count = np.zeros(chrLen, dtype=np.uint32)
 
     # Log information every n_r base pair positions
-    n_r = 10 ** 6
+    n_r = 10**6
     # print(n_r)
     last_t = time()
     # print(type(last_t))
@@ -103,9 +103,8 @@ def get_coverage(ibam, chrName, outFile):
             # Record the current time
             now_t = time()
             # print(type(now_t))
-            logging.info("%d alignments processed (%f alignments / s)" % (
-                i,
-                n_r / (now_t - last_t)))
+            logging.info("%d alignments processed (%f alignments / s)" %
+                         (i, n_r / (now_t - last_t)))
             last_t = time()
 
         if check_read(read):
@@ -118,8 +117,10 @@ def get_coverage(ibam, chrName, outFile):
         if not read.is_unmapped and read.mapping_quality >= minMAPQ:
 
             # add read mapping quality
-            read_quality_sum[read.reference_start:read.reference_end - 1] += read.mapping_quality
-            read_quality_count[read.reference_start:read.reference_end - 1] += 1
+            read_quality_sum[read.reference_start:read.reference_end -
+                             1] += read.mapping_quality
+            read_quality_count[read.reference_start:read.reference_end -
+                               1] += 1
 
     # # Iterate over the chromosome positions
     # for i, pile in enumerate(bamfile.pileup(chrName, start_pos, stop_pos, truncate=True), start=1):
@@ -171,9 +172,11 @@ def get_coverage(ibam, chrName, outFile):
     #
     # assert np.all(cov == cov_nofilter)
 
-    read_quality = np.divide(read_quality_sum, read_quality_count, where=read_quality_count!=0)
+    read_quality = np.divide(read_quality_sum,
+                             read_quality_count,
+                             where=read_quality_count != 0)
     # where there are no reads, use median mapping quality
-    read_quality[np.where(read_quality_count==0)] = np.median(read_quality)
+    read_quality[np.where(read_quality_count == 0)] = np.median(read_quality)
 
     cov = np.vstack((cov, read_quality))
     logging.info(cov.shape)
@@ -182,7 +185,8 @@ def get_coverage(ibam, chrName, outFile):
     try:
         np.save(file=outFile, arr=cov)
     except MemoryError:
-        logging.info("Out of memory for chr %s and BAM file %s !" % (chrName, ibam))
+        logging.info("Out of memory for chr %s and BAM file %s !" %
+                     (chrName, ibam))
     os.system('gzip -f ' + outFile)
 
     # To load it
@@ -202,37 +206,50 @@ def main():
     # Default chromosome is 17 for the artificial data
 
     parser = argparse.ArgumentParser(description='Create coverage channel')
-    parser.add_argument('-b', '--bam', type=str,
+    parser.add_argument('-b',
+                        '--bam',
+                        type=str,
                         default=inputBAM,
                         help="Specify input file (BAM)")
-    parser.add_argument('-c', '--chr', type=str, default='17',
+    parser.add_argument('-c',
+                        '--chr',
+                        type=str,
+                        default='17',
                         help="Specify chromosome")
-    parser.add_argument('-o', '--out', type=str, default='coverage.npy',
+    parser.add_argument('-o',
+                        '--out',
+                        type=str,
+                        default='coverage.npy',
                         help="Specify output")
-    parser.add_argument('-p', '--outputpath', type=str,
-                        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
-                        help="Specify output path")
-    parser.add_argument('-l', '--logfile', default='coverage.log',
+    parser.add_argument(
+        '-p',
+        '--outputpath',
+        type=str,
+        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
+        help="Specify output path")
+    parser.add_argument('-l',
+                        '--logfile',
+                        default='coverage.log',
                         help='File in which to write logs.')
 
     args = parser.parse_args()
 
     cmd_name = 'coverage'
     output_dir = os.path.join(args.outputpath, cmd_name)
-    create_dir(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
     logfilename = os.path.join(output_dir, '_'.join((args.chr, args.logfile)))
     output_file = os.path.join(output_dir, '_'.join((args.chr, args.out)))
 
     FORMAT = '%(asctime)s %(message)s'
-    logging.basicConfig(
-        format=FORMAT,
-        filename=logfilename,
-        filemode='w',
-        level=logging.INFO)
+    logging.basicConfig(format=FORMAT,
+                        filename=logfilename,
+                        filemode='w',
+                        level=logging.INFO)
 
     t0 = time()
     get_coverage(ibam=args.bam, chrName=args.chr, outFile=output_file)
-    logging.info('Time: coverage on BAM %s and Chr %s: %f' % (args.bam, args.chr, (time() - t0)))
+    logging.info('Time: coverage on BAM %s and Chr %s: %f' %
+                 (args.bam, args.chr, (time() - t0)))
 
 
 if __name__ == '__main__':

@@ -1,13 +1,14 @@
-# Imports
 import argparse
 import logging
 import os
 from collections import Counter
 from time import time
-import pysam
-from functions import *
+
 import numpy as np
+import pysam
 import twobitreader as twobit
+
+from functions import *
 
 config = get_config_file()
 
@@ -20,23 +21,16 @@ minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
 
 def get_snvs(ibam, itwobit, chrName, outFile):
     def get_2bit_genome():
-        if HPC_MODE:
-            # Path on the HPC of the 2bit version of the human reference genome (hg19)
-            genome = twobit.TwoBitFile(os.path.join('/hpc/cog_bioinf/ridder/users',
-                                                    'lsantuari/Datasets/genomes', REF_GENOME+'.2bit'))
-        else:
-            # Path on the local machine of the 2bit version of the human reference genome (hg19)
-            genome = twobit.TwoBitFile(os.path.join('/Users/lsantuari/Documents',
-                                                    'Data/GiaB/reference', REF_GENOME+'.2bit'))(reference)
+        genome = twobit.TwoBitFile(itwobit)
         return genome
-
 
     def get_snv_number(query_seq_list, reference_base):
 
         reference_base = reference_base.upper()
         if len(query_seq_list) > 0 and reference_base != 'N':
             cnt = Counter(list(map(lambda x: x.upper(), query_seq_list)))
-            return cnt['A'] + cnt['T'] + cnt['C'] + cnt['G'] - cnt[reference_base]
+            return cnt['A'] + cnt['T'] + cnt['C'] + cnt['G'] - cnt[
+                reference_base]
         else:
             return 0
 
@@ -83,34 +77,39 @@ def get_snvs(ibam, itwobit, chrName, outFile):
     snv_dict = {v: n for n, v in enumerate(snv_list)}
     # print(snv_dict)
     # Print every n_r alignments processed
-    n_r = 10 ** 6
+    n_r = 10**6
     # Record the current time
     last_t = time()
 
-    for pileupcolumn in bamfile.pileup(chrName, start_pos, stop_pos, stepper='all'):
+    for pileupcolumn in bamfile.pileup(chrName,
+                                       start_pos,
+                                       stop_pos,
+                                       stepper='all'):
         # pileupcolumn.set_min_base_quality(0)
         # print("\ncoverage at base %s = %s" %
         #       (pileupcolumn.pos, pileupcolumn.nsegments))
         if 0 < pileupcolumn.nsegments < MAX_PILEUP_BUFFER_SIZE and start_pos <= pileupcolumn.pos <= stop_pos:
             quals = pileupcolumn.get_query_qualities()
             if len(quals) > 0:
-                snv_array[snv_dict['BQ'], pileupcolumn.pos] = np.median(pileupcolumn.get_query_qualities())
+                snv_array[snv_dict['BQ'], pileupcolumn.pos] = np.median(
+                    pileupcolumn.get_query_qualities())
             # snv_array[snv_dict['nALN'], pileupcolumn.pos] = pileupcolumn.get_num_aligned()
             # snv_array[snv_dict['nSEG'], pileupcolumn.pos] = pileupcolumn.nsegments
             try:
 
                 query_seq_list = pileupcolumn.get_query_sequences()
-                chrName_2bit = chrName.replace('chr', '') if REF_GENOME == 'GRCh38' else 'chr' + chrName
-                snv_number = get_snv_number(query_seq_list, reference_sequence[chrName][pileupcolumn.pos])
+                #chrName_2bit = chrName.replace('chr', '') #if REF_GENOME == 'GRCh38' else 'chr' + chrName
+                snv_number = get_snv_number(
+                    query_seq_list,
+                    reference_sequence[chrName][pileupcolumn.pos])
                 snv_array[snv_dict['SNV'], pileupcolumn.pos] = snv_number/pileupcolumn.nsegments \
                     if pileupcolumn.nsegments != 0 else 0
 
             except AssertionError as error:
                 # Output expected AssertionErrors.
                 logging.info(error)
-                logging.info('Position {}:{} has {} nsegments'.format(chrName,
-                                                                      pileupcolumn.pos,
-                                                                      pileupcolumn.nsegments))
+                logging.info('Position {}:{} has {} nsegments'.format(
+                    chrName, pileupcolumn.pos, pileupcolumn.nsegments))
                 continue
 
     # # Pysam iterator to fetch the reads
@@ -172,10 +171,10 @@ def get_snvs(ibam, itwobit, chrName, outFile):
     #             print(read.mapping_quality)
     #             print(read.query_alignment_qualities)
 
-            # print(cnt)
-            # for k in cnt.keys():
-            #     if k in snv_list and k.upper() != reference_sequence['chr' + chrName][pileupcolumn.pos]:
-            #         snv_array[snv_dict[k], pileupcolumn.pos] = cnt[k]
+    # print(cnt)
+    # for k in cnt.keys():
+    #     if k in snv_list and k.upper() != reference_sequence['chr' + chrName][pileupcolumn.pos]:
+    #         snv_array[snv_dict[k], pileupcolumn.pos] = cnt[k]
 
     # # Close the BAM file
     # bamfile.close()
@@ -210,20 +209,34 @@ def main():
 
     # Parse the arguments of the script
     parser = argparse.ArgumentParser(description='Get snv info')
-    parser.add_argument('-b', '--bam', type=str,
+    parser.add_argument('-b',
+                        '--bam',
+                        type=str,
                         default='hmz-sv.bam',
                         help="Specify input file (BAM)")
-    parser.add_argument('-t', '--twobit', type=str,
+    parser.add_argument('-t',
+                        '--twobit',
+                        type=str,
                         default='hmz-sv.2bit',
                         help="Specify input file (2bit)")
-    parser.add_argument('-c', '--chr', type=str, default='17',
+    parser.add_argument('-c',
+                        '--chr',
+                        type=str,
+                        default='17',
                         help="Specify chromosome")
-    parser.add_argument('-o', '--out', type=str, default='snv.npy',
+    parser.add_argument('-o',
+                        '--out',
+                        type=str,
+                        default='snv.npy',
                         help="Specify output")
-    parser.add_argument('-p', '--outputpath', type=str,
+    parser.add_argument('-p',
+                        '--outputpath',
+                        type=str,
                         default='.',
                         help="Specify output path")
-    parser.add_argument('-l', '--logfile', default='snv.log',
+    parser.add_argument('-l',
+                        '--logfile',
+                        default='snv.log',
                         help='File in which to write logs.')
 
     args = parser.parse_args()
@@ -232,20 +245,23 @@ def main():
 
     cmd_name = 'snv'
     output_dir = os.path.join(args.outputpath, cmd_name)
-    create_dir(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
     logfilename = os.path.join(output_dir, '_'.join((args.chr, args.logfile)))
     output_file = os.path.join(output_dir, '_'.join((args.chr, args.out)))
 
     FORMAT = '%(asctime)s %(message)s'
-    logging.basicConfig(
-        format=FORMAT,
-        filename=logfilename,
-        filemode='w',
-        level=logging.INFO)
+    logging.basicConfig(format=FORMAT,
+                        filename=logfilename,
+                        filemode='w',
+                        level=logging.INFO)
 
     t0 = time()
-    get_snvs(ibam=args.bam, itwobit=args.twobit, chrName=args.chr, outFile=output_file)
-    logging.info('Time: SNVs on BAM %s and Chr %s: %f' % (args.bam, args.chr, (time() - t0)))
+    get_snvs(ibam=args.bam,
+             itwobit=args.twobit,
+             chrName=args.chr,
+             outFile=output_file)
+    logging.info('Time: SNVs on BAM %s and Chr %s: %f' % (args.bam, args.chr,
+                                                          (time() - t0)))
 
 
 if __name__ == '__main__':

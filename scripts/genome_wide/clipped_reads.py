@@ -1,20 +1,18 @@
-# Imports
-
 import argparse
-import pysam
-import os
 import gzip
-from time import time
-import numpy as np
-import logging
-from functions import is_clipped, is_left_clipped, is_right_clipped, has_indels,\
-    get_indels, get_reference_sequence, get_config_file, create_dir
-from collections import defaultdict
 import json
+import logging
+import os
+from collections import defaultdict
+from time import time
+
+import numpy as np
+import pysam
+
 from functions import *
 
 
-def get_clipped_reads(ibam, chrName, outFile):
+def get_clipped_reads(ibam, chr_list, outFile):
     '''
 
     :param ibam: input BAM alignment file
@@ -29,8 +27,6 @@ def get_clipped_reads(ibam, chrName, outFile):
     config = get_config_file()
     minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
 
-    chr_list = [chrName]  # get_chr_list()
-
     # Dictionary to store number of clipped reads per position
     clipped_reads = dict()
     clipped_reads_inversion = dict()
@@ -42,10 +38,11 @@ def get_clipped_reads(ibam, chrName, outFile):
         clipped_reads[chrom] = dict()
 
         # For left- and right-clipped reads
-        for split_direction in ['left_F', 'left_R', 'right_F', 'right_R',
-                                'disc_right_F', 'disc_right_R', 'disc_left_F', 'disc_left_R',
-                                'D_left_F', 'D_left_R', 'D_right_F', 'D_right_R',
-                                'I_F', 'I_R']:
+        for split_direction in [
+                'left_F', 'left_R', 'right_F', 'right_R', 'disc_right_F',
+                'disc_right_R', 'disc_left_F', 'disc_left_R', 'D_left_F',
+                'D_left_R', 'D_right_F', 'D_right_R', 'I_F', 'I_R'
+        ]:
             clipped_reads[chrom][split_direction] = defaultdict(int)
 
         # Dictionary to store number of clipped reads per position for
@@ -94,9 +91,8 @@ def get_clipped_reads(ibam, chrName, outFile):
             if not i % n_r:
                 now_t = time()
                 # print(type(now_t))
-                logging.info("%d alignments processed (%f alignments / s)" % (
-                    i,
-                    n_r / (now_t - last_t)))
+                logging.info("%d alignments processed (%f alignments / s)" %
+                             (i, n_r / (now_t - last_t)))
                 last_t = time()
 
             if not read.is_unmapped and read.mapping_quality >= minMAPQ:
@@ -107,21 +103,26 @@ def get_clipped_reads(ibam, chrName, outFile):
 
                     for del_pos in dels_start:
                         if not read.is_reverse:
-                            clipped_reads[read.reference_name]['D_left_F'][del_pos] += 1
+                            clipped_reads[
+                                read.reference_name]['D_left_F'][del_pos] += 1
                         else:
-                            clipped_reads[read.reference_name]['D_left_R'][del_pos] += 1
+                            clipped_reads[
+                                read.reference_name]['D_left_R'][del_pos] += 1
                     for del_pos in dels_end:
                         if not read.is_reverse:
-                            clipped_reads[read.reference_name]['D_right_F'][del_pos] += 1
+                            clipped_reads[
+                                read.reference_name]['D_right_F'][del_pos] += 1
                         else:
-                            clipped_reads[read.reference_name]['D_right_R'][del_pos] += 1
+                            clipped_reads[
+                                read.reference_name]['D_right_R'][del_pos] += 1
 
                     for ins_pos in ins:
                         if not read.is_reverse:
-                            clipped_reads[read.reference_name]['I_F'][ins_pos] += 1
+                            clipped_reads[
+                                read.reference_name]['I_F'][ins_pos] += 1
                         else:
-                            clipped_reads[read.reference_name]['I_R'][ins_pos] += 1
-
+                            clipped_reads[
+                                read.reference_name]['I_R'][ins_pos] += 1
 
             # Both read and mate should be mapped, with mapping quality greater than minMAPQ
             if not read.is_unmapped and not read.mate_is_unmapped and read.mapping_quality >= minMAPQ:
@@ -145,19 +146,24 @@ def get_clipped_reads(ibam, chrName, outFile):
                             #    clipped_reads['left'][ref_pos] = 1
                             #else:
                             if not read.is_reverse:
-                                clipped_reads[read.reference_name]['left_F'][ref_pos] += 1
+                                clipped_reads[read.reference_name]['left_F'][
+                                    ref_pos] += 1
                                 if not read.is_proper_pair:
-                                    clipped_reads[read.reference_name]['disc_left_F'][ref_pos] += 1
+                                    clipped_reads[read.reference_name][
+                                        'disc_left_F'][ref_pos] += 1
                             else:
-                                clipped_reads[read.reference_name]['left_R'][ref_pos] += 1
+                                clipped_reads[read.reference_name]['left_R'][
+                                    ref_pos] += 1
                                 if not read.is_proper_pair:
-                                    clipped_reads[read.reference_name]['disc_left_R'][ref_pos] += 1
+                                    clipped_reads[read.reference_name][
+                                        'disc_left_R'][ref_pos] += 1
 
                             # DUPlication, channel 2
                             # Read is mapped on the Reverse strand and mate is mapped on the Forward strand
                             if read.is_reverse and not read.mate_is_reverse \
                                 and read.reference_start < read.next_reference_start: # Mate is mapped after read
-                                    clipped_reads_duplication[read.reference_name]['after'][ref_pos] += 1
+                                clipped_reads_duplication[
+                                    read.reference_name]['after'][ref_pos] += 1
 
                         # Read is right-clipped
                         elif is_right_clipped(read):
@@ -168,21 +174,26 @@ def get_clipped_reads(ibam, chrName, outFile):
                             #    clipped_reads['right'][ref_pos] = 1
                             #else:
                             if not read.is_reverse:
-                                clipped_reads[read.reference_name]['right_F'][ref_pos] += 1
+                                clipped_reads[read.reference_name]['right_F'][
+                                    ref_pos] += 1
                                 if not read.is_proper_pair:
-                                    clipped_reads[read.reference_name]['disc_right_F'][ref_pos] += 1
+                                    clipped_reads[read.reference_name][
+                                        'disc_right_F'][ref_pos] += 1
                             else:
-                                clipped_reads[read.reference_name]['right_R'][ref_pos] += 1
+                                clipped_reads[read.reference_name]['right_R'][
+                                    ref_pos] += 1
                                 if not read.is_proper_pair:
-                                    clipped_reads[read.reference_name]['disc_right_R'][ref_pos] += 1
-
+                                    clipped_reads[read.reference_name][
+                                        'disc_right_R'][ref_pos] += 1
 
                             # DUPlication, channel 1
                             # Read is mapped on the Forward strand and mate is mapped on the Reverse strand
                             if not read.is_reverse and read.mate_is_reverse:
                                 # Mate is mapped before read
                                 if read.reference_start > read.next_reference_start:
-                                    clipped_reads_duplication[read.reference_name]['before'][ref_pos] += 1
+                                    clipped_reads_duplication[
+                                        read.
+                                        reference_name]['before'][ref_pos] += 1
 
                         # The following if statement takes care of the inversion channels
                         # Read and mate are mapped on the same strand: either Forward-Forward or Reverse-Reverse
@@ -199,7 +210,8 @@ def get_clipped_reads(ibam, chrName, outFile):
                                 # print('{}:Inversion before at {}:{}'.format(
                                 #     read.query_name,
                                 #     read.reference_name, ref_pos))
-                                clipped_reads_inversion[read.reference_name]['before'][ref_pos] += 1
+                                clipped_reads_inversion[read.reference_name][
+                                    'before'][ref_pos] += 1
                             # Mate is mapped after read
                             else:
                                 #if ref_pos not in clipped_reads_inversion['after'].keys():
@@ -210,7 +222,8 @@ def get_clipped_reads(ibam, chrName, outFile):
                                 # print('{}:Inversion after at {}:{}'.format(
                                 #     read.query_name,
                                 #     read.reference_name, ref_pos))
-                                clipped_reads_inversion[read.reference_name]['after'][ref_pos] += 1
+                                clipped_reads_inversion[
+                                    read.reference_name]['after'][ref_pos] += 1
 
                 else:
                     if is_clipped(read):
@@ -219,14 +232,15 @@ def get_clipped_reads(ibam, chrName, outFile):
                             #     read.query_name,
                             #     read.reference_name, ref_pos,
                             #     read.next_reference_name, read.next_reference_start))
-                            clipped_reads_translocation[read.reference_name]['opposite'][ref_pos] += 1
+                            clipped_reads_translocation[
+                                read.reference_name]['opposite'][ref_pos] += 1
                         else:
                             # print('{}:Translocation same at {}:{}->{}:{}'.format(
                             #     read.query_name,
                             #     read.reference_name, ref_pos,
                             #     read.next_reference_name, read.next_reference_start))
-                            clipped_reads_translocation[read.reference_name]['same'][ref_pos] += 1
-
+                            clipped_reads_translocation[
+                                read.reference_name]['same'][ref_pos] += 1
 
     # for mate_position in ['after', 'before']:
     #     print([(pos, clipped_reads_inversion[mate_position][pos]) \
@@ -234,8 +248,8 @@ def get_clipped_reads(ibam, chrName, outFile):
     #                 if clipped_reads_inversion[mate_position][pos] != 0])
 
     # Write clipped reads dictionaries
-    data = (clipped_reads, clipped_reads_inversion,
-             clipped_reads_duplication, clipped_reads_translocation)
+    data = (clipped_reads, clipped_reads_inversion, clipped_reads_duplication,
+            clipped_reads_translocation)
     with gzip.GzipFile(outFile, 'w') as fout:
         fout.write(json.dumps(data).encode('utf-8'))
 
@@ -259,38 +273,54 @@ def main():
 
     # Default chromosome is 17 for the artificial data
 
-    parser = argparse.ArgumentParser(description='Create channels with number of left/right clipped reads')
-    parser.add_argument('-b', '--bam', type=str,
+    parser = argparse.ArgumentParser(
+        description='Create channels with number of left/right clipped reads')
+    parser.add_argument('-b',
+                        '--bam',
+                        type=str,
                         default=inputBAM,
                         help="Specify input file (BAM)")
-    parser.add_argument('-c', '--chr', type=str, default='17',
-                        help="Specify chromosome")
-    parser.add_argument('-o', '--out', type=str, default='clipped_reads.json.gz',
+    parser.add_argument('-c',
+                        '--chrlist',
+                        type=str,
+                        default='17',
+                        help="Comma separated list of chromosomes to consider")
+    parser.add_argument('-o',
+                        '--out',
+                        type=str,
+                        default='clipped_reads.json.gz',
                         help="Specify output")
-    parser.add_argument('-p', '--outputpath', type=str,
-                        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
-                        help="Specify output path")
-    parser.add_argument('-l', '--logfile', default='clipped_reads.log',
+    parser.add_argument(
+        '-p',
+        '--outputpath',
+        type=str,
+        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
+        help="Specify output path")
+    parser.add_argument('-l',
+                        '--logfile',
+                        default='clipped_reads.log',
                         help='File in which to write logs.')
 
     args = parser.parse_args()
 
     cmd_name = 'clipped_reads'
     output_dir = os.path.join(args.outputpath, cmd_name)
-    create_dir(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
     logfilename = os.path.join(output_dir, args.logfile)
     output_file = os.path.join(output_dir, args.out)
 
     FORMAT = '%(asctime)s %(message)s'
-    logging.basicConfig(
-        format=FORMAT,
-        filename=logfilename,
-        filemode='w',
-        level=logging.INFO)
+    logging.basicConfig(format=FORMAT,
+                        filename=logfilename,
+                        filemode='w',
+                        level=logging.INFO)
 
     t0 = time()
-    get_clipped_reads(ibam=args.bam, chrName=args.chr, outFile=output_file)
-    logging.info('Time: clipped reads on BAM %s: %f' % (args.bam, (time() - t0)))
+    get_clipped_reads(ibam=args.bam,
+                      chr_list=args.chrlist.split(','),
+                      outFile=output_file)
+    logging.info('Time: clipped reads on BAM %s: %f' % (args.bam,
+                                                        (time() - t0)))
 
 
 if __name__ == '__main__':

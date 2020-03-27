@@ -1,12 +1,14 @@
 # Imports
 import argparse
+import gzip
+import json
 import logging
 import os
-import json
-import gzip
 from collections import Counter, defaultdict
 from time import time
+
 import pysam
+
 from functions import *
 
 strand_str = {True: '-', False: '+'}
@@ -20,7 +22,7 @@ def get_split_read_positions(ibam, chrName, outFile):
     :param outFile: output file for the dictionary of split read positions
     :return: None. Outputs a dictionary with the positions of split read positions as keys and
     the number of split reads per position as values
-    '''''
+    ''' ''
 
     def overlap(read1, read2):
         if read1.reference_start <= read2.reference_start <= read1.reference_end or \
@@ -97,7 +99,7 @@ def get_split_read_positions(ibam, chrName, outFile):
     iter = bamfile.fetch(chrName, start_pos, stop_pos)
 
     # Print every n_r alignments processed
-    n_r = 10 ** 6
+    n_r = 10**6
     # Record the current time
     last_t = time()
 
@@ -113,9 +115,8 @@ def get_split_read_positions(ibam, chrName, outFile):
             # Record the current time
             now_t = time()
             # print(type(now_t))
-            logging.info("%d alignments processed (%f alignments / s)" % (
-                i,
-                n_r / (now_t - last_t)))
+            logging.info("%d alignments processed (%f alignments / s)" %
+                         (i, n_r / (now_t - last_t)))
             last_t = time()
 
         # Both read and mate should be mapped, read should have a minimum mapping quality
@@ -138,10 +139,12 @@ def get_split_read_positions(ibam, chrName, outFile):
                     if del_size > max_cigar_del:
                         max_cigar_del = del_size
 
-                    split_pos_coord = append_coord(split_pos_coord, chrName, start, chrName, end)
+                    split_pos_coord = append_coord(split_pos_coord, chrName,
+                                                   start, chrName, end)
                 for pos in ins:
                     n_indels += 1
-                    split_pos_coord = append_coord(split_pos_coord, chrName, pos, chrName, pos+1)
+                    split_pos_coord = append_coord(split_pos_coord, chrName,
+                                                   pos, chrName, pos + 1)
 
             if read.has_tag('SA'):
                 n_split += 1
@@ -152,7 +155,9 @@ def get_split_read_positions(ibam, chrName, outFile):
                         split_pos.append(refpos)
                         split_pos.append(pos)
                         # print('{}:{}-{}'.format(chrName, refpos, pos))
-                        split_pos_coord = append_coord(split_pos_coord, chrName, refpos, chr, pos)
+                        split_pos_coord = append_coord(split_pos_coord,
+                                                       chrName, refpos, chr,
+                                                       pos)
                     else:
                         split_pos.append(refpos)
                 elif is_left_clipped(read):
@@ -162,7 +167,9 @@ def get_split_read_positions(ibam, chrName, outFile):
                     else:
                         split_pos.append(refpos)
                         # print('{}:{}-{}'.format(chrName, refpos, pos))
-                        split_pos_coord = append_coord(split_pos_coord, chrName, refpos, chr, pos)
+                        split_pos_coord = append_coord(split_pos_coord,
+                                                       chrName, refpos, chr,
+                                                       pos)
 
             # if not read.mate_is_unmapped and ( not read.is_proper_pair or is_clipped(read) ):
             #     n_discordant += 1
@@ -211,38 +218,46 @@ def get_split_read_positions(ibam, chrName, outFile):
 
     logging.info('Largest CIGAR "D" DEL={}'.format(max_cigar_del))
 
-    logging.info('INDELs={}, split_reads={}, discordant_reads={}'.format(n_indels,
-                                                                         n_split,
-                                                                         n_discordant))
+    logging.info('INDELs={}, split_reads={}, discordant_reads={}'.format(
+        n_indels, n_split, n_discordant))
 
-    logging.info('Number of unique split read positions: %d' % len(
-        [p for p, c in split_pos_cnt.items() if c >= min_support])
-                 )
-    logging.info('Number of unique pair of split read positions: %d' % len(split_pos_coord))
+    logging.info('Number of unique split read positions: %d' %
+                 len([p
+                      for p, c in split_pos_cnt.items() if c >= min_support]))
+    logging.info('Number of unique pair of split read positions: %d' %
+                 len(split_pos_coord))
 
     discordant_reads_cnt = Counter(discordant_reads_pos)
     discordant_reads_coord = set(discordant_reads_coord)
 
-    logging.info('Number of unique discordant positions: %d' % len(
-        [p for p, c in discordant_reads_cnt.items() if c >= min_support])
-                 )
-    logging.info('Number of unique pair of discordant positions: %d' % len(discordant_reads_coord))
+    logging.info(
+        'Number of unique discordant positions: %d' %
+        len([p for p, c in discordant_reads_cnt.items() if c >= min_support]))
+    logging.info('Number of unique pair of discordant positions: %d' %
+                 len(discordant_reads_coord))
 
     total_reads_cnt = Counter(split_pos + discordant_reads_pos)
 
     total_reads_coord = list(set(split_pos_coord | discordant_reads_coord))
 
-    positions_with_min_support = [p for p, c in total_reads_cnt.items() if c >= min_support]
-    logging.info('Number of positions with min %d support: %d' % (min_support, len(positions_with_min_support)))
-    logging.info('Number of unique pair of total positions: %d' % len(total_reads_coord))
+    positions_with_min_support = [
+        p for p, c in total_reads_cnt.items() if c >= min_support
+    ]
+    logging.info('Number of positions with min %d support: %d' %
+                 (min_support, len(positions_with_min_support)))
+    logging.info('Number of unique pair of total positions: %d' %
+                 len(total_reads_coord))
 
     positions_with_min_support_set = set(positions_with_min_support)
-    total_reads_coord_min_support = [(chr1, pos1, chr2, pos2) for chr1, pos1, chr2, pos2
-                                     in total_reads_coord
-                                     if pos1 in positions_with_min_support_set or
-                                     pos2 in positions_with_min_support_set]
+    total_reads_coord_min_support = [
+        (chr1, pos1, chr2, pos2)
+        for chr1, pos1, chr2, pos2 in total_reads_coord
+        if pos1 in positions_with_min_support_set
+        or pos2 in positions_with_min_support_set
+    ]
 
-    logging.info('Number of total pairs of positions with min support: %d' % len(total_reads_coord_min_support))
+    logging.info('Number of total pairs of positions with min support: %d' %
+                 len(total_reads_coord_min_support))
 
     data = (positions_with_min_support, total_reads_coord_min_support)
     # Write
@@ -270,17 +285,30 @@ def main():
 
     # Parse the arguments of the script
     parser = argparse.ArgumentParser(description='Get split reads positions')
-    parser.add_argument('-b', '--bam', type=str,
+    parser.add_argument('-b',
+                        '--bam',
+                        type=str,
                         default=inputBAM,
                         help="Specify input file (BAM)")
-    parser.add_argument('-c', '--chr', type=str, default='17',
+    parser.add_argument('-c',
+                        '--chr',
+                        type=str,
+                        default='17',
                         help="Specify chromosome")
-    parser.add_argument('-o', '--out', type=str, default='split_read_pos.json.gz',
+    parser.add_argument('-o',
+                        '--out',
+                        type=str,
+                        default='split_read_pos.json.gz',
                         help="Specify output")
-    parser.add_argument('-p', '--outputpath', type=str,
-                        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
-                        help="Specify output path")
-    parser.add_argument('-l', '--logfile', default='split_read_pos.log',
+    parser.add_argument(
+        '-p',
+        '--outputpath',
+        type=str,
+        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
+        help="Specify output path")
+    parser.add_argument('-l',
+                        '--logfile',
+                        default='split_read_pos.log',
                         help='File in which to write logs.')
 
     args = parser.parse_args()
@@ -288,20 +316,22 @@ def main():
     # Log file
     cmd_name = 'split_read_pos'
     output_dir = os.path.join(args.outputpath, cmd_name)
-    create_dir(output_dir)
+    os.makedirs(output_dir)
     logfilename = os.path.join(output_dir, '_'.join((args.chr, args.logfile)))
     output_file = os.path.join(output_dir, '_'.join((args.chr, args.out)))
 
     FORMAT = '%(asctime)s %(message)s'
-    logging.basicConfig(
-        format=FORMAT,
-        filename=logfilename,
-        filemode='w',
-        level=logging.INFO)
+    logging.basicConfig(format=FORMAT,
+                        filename=logfilename,
+                        filemode='w',
+                        level=logging.INFO)
 
     t0 = time()
-    get_split_read_positions(ibam=args.bam, chrName=args.chr, outFile=output_file)
-    logging.info('Time: split read positions on BAM %s and Chr %s: %f' % (args.bam, args.chr, (time() - t0)))
+    get_split_read_positions(ibam=args.bam,
+                             chrName=args.chr,
+                             outFile=output_file)
+    logging.info('Time: split read positions on BAM %s and Chr %s: %f' %
+                 (args.bam, args.chr, (time() - t0)))
 
 
 if __name__ == '__main__':
