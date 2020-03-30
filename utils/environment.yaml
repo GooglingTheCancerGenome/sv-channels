@@ -1,6 +1,9 @@
 channels:
   - bioconda
 dependencies:
+  - samtools
+  - gem3-mapper
+  - ucsc-wigtobigwig
   - pybigwig
   - ucsc-fatotwobit
   - bedtools
