@@ -1,5 +1,7 @@
 channels:
   - bioconda
+  - r
 dependencies:
+  - r-dplyr
   - r-ggplot2
   - bioconductor-structuralvariantannotation
