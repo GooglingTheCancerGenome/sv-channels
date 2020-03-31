@@ -1,0 +1,23 @@
+#!/bin/bash -x
+#$ -S /bin/bash
+#$ -l h_rt=24:00:00
+#$ -l h_vmem=128G
+#$ -q all.q
+#$ -wd /hpc/cog_bioinf/ridder/users/lsantuari/Git/DeepSV_runs/060219/CNN/scripts/model
+#$ -pe threaded 8
+
+echo "Load python"
+# conda environment with required Python packages:
+# pysam
+# numpy
+# pickle
+# bz2file
+# logging
+source activate mcfly
+
+python ${PRGARG}".py" \
+	--training_sample ${TRAINING_SAMPLE_ARG} \
+	--test_sample ${TEST_SAMPLE_ARG} \
+	--outputpath ${OUTARG} \
+	--logfile ${PRGARG}"_"${MODEARG}".log" \
+	--mode ${MODEARG}

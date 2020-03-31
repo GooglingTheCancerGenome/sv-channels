@@ -1,0 +1,1 @@
+createBatchFiles.sh requires an IGV session file (XML) and a BEDPE file with the same name.
