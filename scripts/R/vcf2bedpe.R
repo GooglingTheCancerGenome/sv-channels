@@ -63,6 +63,12 @@ apply_svtype <- function(gr, p_inslen)
 
 sv_callset_vcf <- VariantAnnotation::readVcf(argv$i)
 
+# handle SURVIVOR simSV SVTYPE <TRA> as TIGRA <CTX>
+if("TRA" %in% info(sv_callset_vcf)$SVTYPE & !("CT" %in% names(info(sv_callset_vcf))))
+{
+  info(sv_callset_vcf)$SVTYPE[info(sv_callset_vcf)$SVTYPE=="TRA"] <- "CTX"
+}
+
 # Not including breakends (unpaired breakpoints)
 # bpgr <- breakpointRanges(sv_callset_vcf)
 # breakends are excluded
