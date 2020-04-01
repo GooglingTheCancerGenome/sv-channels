@@ -125,7 +125,7 @@ Run tests (including coverage) with:
 Flowchart
 =========
 
-.. image:: FIXME.svg
+.. image:: doc/cnn.svg
   :width: 400
   :alt: Flowchart
 
