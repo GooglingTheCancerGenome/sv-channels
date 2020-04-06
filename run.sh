@@ -96,7 +96,7 @@ done
 # wait until the jobs are done
 for j in "${JOBS[@]}"; do
   while true; do
-    [[ $(monitor $j | jq '.statuses | .[] | select(.done==true)') ]] && \
+    [[ $(monitor $j | grep -v 'WARN' | jq '.statuses | .[] | select(.done==true)') ]] && \
       break || sleep ${STIME}m
   done
 done
@@ -113,7 +113,7 @@ done
 # wait until the jobs are done
 for j in "${JOBS[@]}"; do
   while true; do
-    [[ $(monitor $j | jq '.statuses | .[] | select(.done==true)') ]] && \
+    [[ $(monitor $j | grep -v 'WARN' | jq '.statuses | .[] | select(.done==true)') ]] && \
       break || sleep ${STIME}m
   done
 done
@@ -138,7 +138,7 @@ done
 
 # wait until the jobs are done
 while true; do
-  [[ $(monitor ${JOBS[-1]} | jq '.statuses | .[] | select(.done==true)') ]] \
+  [[ $(monitor ${JOBS[-1]} | grep -v 'WARN' | jq '.statuses | .[] | select(.done==true)') ]] \
     && break || sleep ${STIME}m
 done
 
@@ -158,7 +158,7 @@ done
 
 # wait until the jobs are done
 while true; do
-  [[ $(monitor ${JOBS[-1]} | jq '.statuses | .[] | select(.done==true)') ]] \
+  [[ $(monitor ${JOBS[-1]} | grep -v 'WARN' | jq '.statuses | .[] | select(.done==true)') ]] \
     && break || sleep ${STIME}m
 done
 
@@ -179,7 +179,7 @@ done
 
 # wait until the jobs are done
 while true; do
-  [[ $(monitor ${JOBS[-1]} | jq '.statuses | .[] | select(.done==true)') ]] \
+  [[ $(monitor ${JOBS[-1]} | grep -v 'WARN' | jq '.statuses | .[] | select(.done==true)') ]] \
     && break || sleep ${STIME}m
 done
 
