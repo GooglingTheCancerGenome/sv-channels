@@ -288,7 +288,7 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
             # logging.info('CPOS->Partial: %s\t%d\t%d' % (elem, start, end))
             labels[pos_id] = 'no'+svtype
 
-        elif (l1 == 1 and l2 > 1) or (l2 == 1 and l1 > 1):
+        elif (l1 == 1 and l2 > 1) or (l2 == 1 and l1 > 1) or (l2 > 1 and l1 > 1):
 
             lu_start_set = set()
             lu_end_set = set()
