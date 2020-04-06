@@ -14,6 +14,7 @@ BAM=$(realpath -s "$2")
 BASE_DIR=$(dirname "$BAM")
 SAMPLE=$(basename "$BAM" .bam)
 SEQ_IDS=(${@:3})
+SEQ_IDS_CSV=$(IFS=, ; echo "${SEQ_IDS[*]}")  # stringify
 SV_TYPES=(DEL INS INV DUP TRA)
 SV_CALLS=(gridss manta delly lumpy)  # AK: +split_reads?
 KFOLD=2            # k-fold cross validation
@@ -120,14 +121,14 @@ done
 # Create labels
 for sv in "${SV_TYPES[@]}"; do
     p=label_window_pairs_on_split_read_positions
-    cmd="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -w '${WIN_SZ}' -gt '${BEDPE}' \
+    cmd="python $p.py -b '$BAM' -c '${SEQ_IDS_CSV}' -w '${WIN_SZ}' -gt '${BEDPE}' \
       -s '${sv}' -o labels.json.gz -p . -l '${p}'.log"
     JOB_ID=$(submit $p $s "$cmd")
     JOBS+=($JOB_ID)
 
     for c in "${SV_CALLS[@]}"; do
         p=label_window_pairs_on_svcallset
-        cmd="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -w '${WIN_SZ}' -gt '${BEDPE}' \
+        cmd="python $p.py -b '$BAM' -c '${SEQ_IDS_CSV}' -w '${WIN_SZ}' -gt '${BEDPE}' \
           -s '${sv}' -sv '${BASE_DIR}/${c}' -o labels.json.gz -p . -l '${p}'.log"
         JOB_ID=$(submit $p $s "$cmd")
         JOBS+=($JOB_ID)
@@ -147,7 +148,7 @@ for sv in "${SV_TYPES[@]}"; do
         p=create_window_pairs
         out="labels/win$WIN_SZ/$sv/$c"
         lb="$out/labels.json.gz"
-        cmd="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -lb '$lb' -ca . \
+        cmd="python $p.py -b '$BAM' -c '${SEQ_IDS_CSV}' -lb '$lb' -ca . \
           -w $WIN_SZ -p '$out' -l $p.log"
         JOB_ID=$(submit $p all "$cmd")
         JOBS+=($JOB_ID)
