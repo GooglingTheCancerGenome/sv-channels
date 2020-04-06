@@ -119,7 +119,7 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
 
                     split_pos_coord['INDEL_INS'] = append_coord(
                         split_pos_coord['INDEL_INS'], read.reference_name,
-                        start, read.reference_name, end)
+                        pos, read.reference_name, pos+1)
 
                 for start, end in zip(dels_start, dels_end):
 

@@ -8,6 +8,7 @@ from itertools import groupby
 import numpy as np
 import pysam
 import twobitreader as twobit
+from cigar import Cigar
 
 del_min_size = 50
 ins_min_size = 50
@@ -114,17 +115,25 @@ def get_indels(read):
     dels_end = []
     ins = []
     pos = read.reference_start
-    if read.cigartuples is not None:
-        for ct in read.cigartuples:
+    if read.cigarstring is not None:
+        cigar = Cigar(read.cigarstring)
+        cigar_list = list(cigar.items())
+        # print('{}:{}'.format(read.reference_name, read.reference_start))
+        # print(cigar_list)
+        for ct in cigar_list:
             # D is 2, I is 1
-            if ct[0] == 2 and ct[1] >= del_min_size:
+            if ct[1] == 'D' and ct[0] >= del_min_size:
                 # dels.append(('D', pos, pos+ct[0]))
-                dels_start.append(pos)
-                dels_end.append(pos + ct[1])
-            if ct[0] == 1 and ct[1] >= ins_min_size:
+                dels_start.append(pos + 1)
+                dels_end.append(pos + ct[0])
+                # print('small DEL at pos {}:{}-{}'.format(read.reference_name, pos + 1, pos + ct[0]))
+                # print(cigar_list)
+            elif ct[1] == 'I' and ct[0] >= ins_min_size:
                 # ins.append(('I', pos, pos+ct[0]))
+                # print('small INS at pos {}:{}'.format(read.reference_name, pos))
                 ins.append(pos)
-            pos = pos + ct[1]
+            elif ct[1] in ['M', '=', 'X', 'D']:
+                pos = pos + ct[0]
 
     return dels_start, dels_end, ins
 
