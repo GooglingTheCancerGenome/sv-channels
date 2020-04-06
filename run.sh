@@ -35,6 +35,7 @@ MY_ENV=wf  # conda env
 submit () {  # submit a job via Xenon CLI
   xenon -v scheduler $SCH --location local:// submit \
     --name "${1}-${2}" --cores-per-task 1 --inherit-env --max-run-time $RTIME \
+    --max-memory 8000 \
     --working-directory . --stderr stderr-%j.log --stdout stdout-%j.log "$3"
 }
 
@@ -61,17 +62,17 @@ done
 cd $WORK_DIR
 
 p=clipped_reads
-cmd="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -o $p.json.gz -p . -l $p.log"
+cmd="python $p.py -b '$BAM' -c '${SEQ_IDS_CSV}' -o $p.json.gz -p . -l $p.log"
 JOB_ID=$(submit $p all "$cmd")
 JOBS+=($JOB_ID)
 
 p=clipped_read_pos
-cmd="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -o $p.json.gz -p . -l $p.log"
+cmd="python $p.py -b '$BAM' -c '${SEQ_IDS_CSV}' -o $p.json.gz -p . -l $p.log"
 JOB_ID=$(submit $p all "$cmd")
 JOBS+=($JOB_ID)
 
 p=split_reads
-cmd="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -o $p.json.gz -ob $p.bedpe.gz \
+cmd="python $p.py -b '$BAM' -c '${SEQ_IDS_CSV}' -o $p.json.gz -ob $p.bedpe.gz \
   -p . -l $p.log"
 JOB_ID=$(submit $p all "$cmd")
 JOBS+=($JOB_ID)
