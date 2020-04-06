@@ -38,7 +38,8 @@ submit () {  # submit a job via Xenon CLI
 }
 
 monitor () {  # monitor a job via Xenon CLI
-  xenon -v --json scheduler $SCH --location local:// list --identifier $1
+  xenon -v --json scheduler $SCH --prop xenon.adaptors.schedulers.${SCH}.ignore.version=true \
+  --location local:// list --identifier $1
 }
 
 # activate conda env
@@ -51,7 +52,7 @@ for vcf in $(find data -name "*.vcf" | grep -E "test"); do
   prefix=$(basename $vcf .vcf)
   bedpe="${BASE_DIR}/${prefix}.bedpe"
   cmd="scripts/R/vcf2bedpe.R -i ${vcf} -o ${bedpe}"
-  JOB_ID=$(submit $p all "$cmd")
+  JOB_ID=$(submit vcf2bedpe all "$cmd")
   JOBS+=($JOB_ID)
 done
 
