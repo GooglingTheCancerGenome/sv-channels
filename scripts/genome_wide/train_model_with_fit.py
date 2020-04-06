@@ -14,31 +14,38 @@ import bcolz
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import tensorflow as tf
-from keras.callbacks import (CSVLogger, EarlyStopping, ModelCheckpoint,
-                             TensorBoard)
-from keras.layers import (LSTM, Activation, BatchNormalization, Convolution1D,
-                          Convolution2D, Dense, Dropout, Flatten, Lambda,
-                          MaxPooling1D, Reshape, TimeDistributed)
-from keras.models import Sequential, load_model
-from keras.optimizers import Adam
-from keras.regularizers import l2
-from keras.utils import to_categorical
+
+from tensorflow.keras.models import Sequential
+
+from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.models import load_model
+
+from tensorflow.keras.layers import Dense, Activation, Convolution1D, Lambda, \
+    Convolution2D, Flatten, \
+    Reshape, LSTM, Dropout, TimeDistributed, BatchNormalization
+
+from tensorflow.keras.regularizers import l2
+from tensorflow.keras.optimizers import Adam
+
+from tensorflow.keras.callbacks import (CSVLogger, EarlyStopping, ModelCheckpoint,
+                                        TensorBoard)
+
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from sklearn.utils import class_weight
 
 from model_functions import \
     evaluate_model  # create_model_with_mcfly, train_model_with_mcfly
 
-#from numba import jit
+# from numba import jit
 
-gpu_options = tf.compat.v1.GPUOptions(allow_growth=True)
-sess = tf.compat.v1.Session(
-    config=tf.compat.v1.ConfigProto(gpu_options=gpu_options,
-                                    intra_op_parallelism_threads=0,
-                                    inter_op_parallelism_threads=0,
-                                    allow_soft_placement=True))
-tf.compat.v1.keras.backend.set_session(sess)
+# gpu_options = tf.compat.v1.GPUOptions(allow_growth=True)
+# sess = tf.compat.v1.Session(
+#     config=tf.compat.v1.ConfigProto(gpu_options=gpu_options,
+#                                     intra_op_parallelism_threads=0,
+#                                     inter_op_parallelism_threads=0,
+#                                     allow_soft_placement=True))
+# tf.compat.v1.keras.backend.set_session(sess)
+
 
 def get_channel_labels():
     # Fill labels for legend
@@ -188,7 +195,7 @@ def get_labels(channel_data_dir, win):
 def get_data(out_dir, npz_mode, svtype):
     def filter_labels(X, y, win_ids):
         # print(y)
-        keep = [i for i, v in enumerate(y) if v in [svtype, 'no'+svtype]]
+        keep = [i for i, v in enumerate(y) if v in [svtype, 'no' + svtype]]
         # print(keep)
         X = X[np.array(keep)]
         # print(y)
@@ -305,7 +312,7 @@ def get_data(out_dir, npz_mode, svtype):
     return X, y, win_ids
 
 
-def train_and_test_data(sampleName, npz_mode, sv_caller, svtype):
+def train_and_test_data(sampleName, npz_mode, svtype):
     # Datasets
     X, y, win_ids = get_data(sampleName, npz_mode, svtype)
 
@@ -329,11 +336,11 @@ def create_model(dim_length, dim_channels, class_number):
     # drp_out1 = 0
     # drp_out2 = 0
 
-    layers = 4  # 2
-    filters = [8] * layers  # 4
-    fc_hidden_nodes = 8
-    learning_rate = 10**(-4)
-    regularization_rate = 10**(-1)
+    layers = 4  # 4  # 2
+    filters = [8] * layers  # 8 # 4
+    fc_hidden_nodes = 16  # 8
+    learning_rate = 10 ** (-4)
+    regularization_rate = 10 ** (-1)
     kernel_size = 7
     drp_out1 = 0
     drp_out2 = 0
@@ -391,9 +398,8 @@ def create_model(dim_length, dim_channels, class_number):
     return model
 
 
-def train(sampleName, model_fn, params, X_train, y_train, y_train_binary):
-
-    channel_data_dir = sampleName  #get_data_dir(sampleName)
+def train(sample_folder, model_fn, params, X_train, y_train, y_train_binary):
+    channel_data_dir = sample_folder  # get_data_dir(sampleName)
 
     # win_len = 200
     # padding_len = 10
@@ -412,7 +418,7 @@ def train(sampleName, model_fn, params, X_train, y_train, y_train_binary):
     cnt_lab = Counter(y_train)
 
     # maximum training samples per class
-    max_train = 10**5
+    max_train = 10 ** 5
 
     min_v = min([v for k, v in cnt_lab.items()])
     max_v = max([v for k, v in cnt_lab.items()])
@@ -442,6 +448,7 @@ def train(sampleName, model_fn, params, X_train, y_train, y_train_binary):
 
     X_train = np.array(data_balanced)
     y_train = np.array(labels_balanced)
+
     y_train_binary = to_categorical(y_train, num_classes=params['n_classes'])
 
     # End balancing
@@ -496,7 +503,7 @@ def train(sampleName, model_fn, params, X_train, y_train, y_train_binary):
         batch_size=params['batch_size'],
         epochs=params['epochs'],
         shuffle=True,
-        #class_weight=class_weights,
+        # class_weight=class_weights,
         verbose=1,
         callbacks=callbacks)
 
@@ -506,15 +513,15 @@ def train(sampleName, model_fn, params, X_train, y_train, y_train_binary):
                                                  params['val_split'])
 
 
-def cross_validation(sampleName, outDir, npz_mode, sv_caller, svtype, kfold):
+def cross_validation(sample_name, sample_folder, outDir, npz_mode, svtype, kfold):
 
     X, y, win_ids = get_data(os.path.join(outDir, '..'), npz_mode, svtype)
     y_binary = to_categorical(y, num_classes=len(mapclasses.keys()))
 
-    create_plots(sampleName, X, y, win_ids)
+    create_plots(sample_name, X, y, win_ids)
 
     # Instantiate the cross validator
-    skf = StratifiedKFold(n_splits=kfold, shuffle=True)
+    skf = StratifiedKFold(n_splits=kfold, shuffle=True, random_state=1)
 
     # Loop through the indices the split() method returns
     for index, (train_indices, test_indices) in enumerate(skf.split(X, y)):
@@ -536,7 +543,7 @@ def cross_validation(sampleName, outDir, npz_mode, sv_caller, svtype, kfold):
             'dim': X_train.shape[1],
             'batch_size': batch_size,
             'epochs': epochs,
-            'val_split': 0.2,
+            'val_split': 0.1,
             'n_classes': len(mapclasses.keys()),
             'n_channels': X_train.shape[2],
             'shuffle': True
@@ -552,9 +559,9 @@ def cross_validation(sampleName, outDir, npz_mode, sv_caller, svtype, kfold):
         #
         # else:
 
-        print('Training model on {}...'.format(sampleName))
+        print('Training model on {}...'.format(sample_name))
         model, history, train_set_size, validation_set_size = train(
-            sampleName, model_fn, params, X_train, y_train, y_train_binary)
+            sample_folder, model_fn, params, X_train, y_train, y_train_binary)
 
         model.save(model_fn)
 
@@ -567,32 +574,31 @@ def cross_validation(sampleName, outDir, npz_mode, sv_caller, svtype, kfold):
         # mapclasses = {'DEL': 0, 'noDEL': 1}
 
         outDit_eval = os.path.join(
-            outDir, 'train_' + sampleName + '_test_' + sampleName + '_cv' +
-            str(index + 1))
+            outDir, 'train_' + sample_name + '_test_' + sample_name + '_cv' +
+                    str(index + 1))
 
         intermediate_results, metrics = evaluate_model(model, X_test,
                                                        y_test_binary,
                                                        win_ids_test, results,
                                                        1, 'results',
-                                                       mapclasses, outDit_eval)
+                                                       mapclasses, outDit_eval, svtype)
 
         results = results.append(intermediate_results)
 
         results.to_csv(os.path.join(outDir,
-                                    'train_' + sampleName + '_test_' + \
-                                    sampleName + '_cv' + str(index + 1) + '_results.csv'),
+                                    'train_' + sample_name + '_test_' + \
+                                    sample_name + '_cv' + str(index + 1) + '_results.csv'),
                        sep='\t')
 
 
-def train_and_test_model(sampleName_training, sampleName_test, outDir,
-                         npz_mode, sv_caller, svtype):
-
-    if sampleName_training == sampleName_test:
+def train_and_test_model(training_name, test_name, training_folder, test_folder, outDir,
+                         npz_mode, svtype):
+    if training_name == test_name:
         X_train, X_test, y_train, y_test, win_ids_train, win_ids_test = train_and_test_data(
-            sampleName_training, npz_mode, sv_caller, svtype)
+            training_folder, npz_mode, svtype)
     else:
-        X_train, y_train, win_ids_train = get_data(sampleName_training, npz_mode, svtype)
-        X_test, y_test, win_ids_test = get_data(sampleName_test, npz_mode, svtype)
+        X_train, y_train, win_ids_train = get_data(training_folder, npz_mode, svtype)
+        X_test, y_test, win_ids_test = get_data(test_folder, npz_mode, svtype)
 
     batch_size = 32
     epochs = 10
@@ -602,7 +608,7 @@ def train_and_test_model(sampleName_training, sampleName_test, outDir,
         'dim': X_train.shape[1],
         'batch_size': batch_size,
         'epochs': epochs,
-        'val_split': 0.2,
+        'val_split': 0.1,
         'n_classes': len(mapclasses.keys()),
         'n_channels': X_train.shape[2],
         'shuffle': True
@@ -612,8 +618,8 @@ def train_and_test_model(sampleName_training, sampleName_test, outDir,
     y_test_binary = to_categorical(y_test, num_classes=params['n_classes'])
 
     model_fn = os.path.join(
-        outDir, 'model_train_' + sampleName_training + '_test_' +
-        sampleName_test + '.hdf5')
+        outDir, 'model_train_' + training_name + '_test_' +
+                test_name + '.hdf5')
 
     # if os.path.exists(model_fn):
     #
@@ -622,9 +628,9 @@ def train_and_test_model(sampleName_training, sampleName_test, outDir,
     #
     # else:
 
-    print('Training model on {}...'.format(sampleName_training))
+    print('Training model on {}...'.format(training_name))
     model, history, train_set_size, validation_set_size = train(
-        sampleName_training, model_fn, params, X_train, y_train,
+        training_folder, model_fn, params, X_train, y_train,
         y_train_binary)
 
     # model.save(model_fn)
@@ -638,7 +644,7 @@ def train_and_test_model(sampleName_training, sampleName_test, outDir,
     # mapclasses = {'DEL': 0, 'noDEL': 1}
 
     outDit_eval = os.path.join(
-        outDir, 'train_' + sampleName_training + '_test_' + sampleName_test)
+        outDir, 'train_' + training_name + '_test_' + test_name)
 
     # intermediate_results, metrics = evaluate_model(model, X_test, ytest_binary, win_ids_test,
     #                                                results, 1, 'results', mapclasses, outDit_eval)
@@ -646,14 +652,14 @@ def train_and_test_model(sampleName_training, sampleName_test, outDir,
     intermediate_results, metrics = evaluate_model(model, X_test,
                                                    y_test_binary, win_ids_test,
                                                    results, 1, 'results',
-                                                   mapclasses, outDit_eval)
+                                                   mapclasses, outDit_eval, svtype)
 
     results = results.append(intermediate_results)
 
     results.to_csv(os.path.join(
-        outDir, 'train_' + sampleName_training + '_test_' + sampleName_test +
-        '_results.csv'),
-                   sep='\t')
+        outDir, 'train_' + training_name + '_test_' + test_name +
+                '_results.csv'),
+        sep='\t')
 
     # get_channel_labels()
 
@@ -667,12 +673,22 @@ def main():
         default='/Users/lsantuari/Documents/Processed/channel_maker_output',
         help="Specify output path")
     parser.add_argument('-t',
-                        '--training_sample',
+                        '--training_sample_folder',
                         type=str,
                         default='CHM1_CHM13',
                         help="Specify training sample")
     parser.add_argument('-x',
-                        '--test_sample',
+                        '--test_sample_folder',
+                        type=str,
+                        default='NA24385',
+                        help="Specify training sample")
+    parser.add_argument('-tn',
+                        '--training_sample_name',
+                        type=str,
+                        default='CHM1_CHM13',
+                        help="Specify training sample")
+    parser.add_argument('-xn',
+                        '--test_sample_name',
                         type=str,
                         default='NA24385',
                         help="Specify training sample")
@@ -680,11 +696,6 @@ def main():
                         '--logfile',
                         default='windows.log',
                         help='File in which to write logs.')
-    parser.add_argument('-sv',
-                        '--sv_caller',
-                        type=str,
-                        default='gridss',
-                        help="Specify svcaller")
     parser.add_argument('-s',
                         '--svtype',
                         type=str,
@@ -710,17 +721,8 @@ def main():
 
     cmd_name = 'train_model_with_fit'
 
-    # get_channel_labels()
-
-    training_sample = args.training_sample
-    test_sample = args.test_sample
-    #samples_list = ['NA12878', 'NA24385', 'CHM1_CHM13']
-
-    #for training_sample in samples_list:
-    #    for test_sample in samples_list:
-
     global mapclasses
-    mapclasses = {args.svtype: 0, 'no'+args.svtype: 1}
+    mapclasses = {args.svtype: 0, 'no' + args.svtype: 1}
 
     output_dir = os.path.join(args.outputpath, cmd_name)
 
@@ -739,20 +741,21 @@ def main():
 
     t0 = time()
 
-    if training_sample != test_sample:
+    if args.training_sample_name != args.test_sample_name:
 
-        train_and_test_model(sampleName_training=training_sample,
-                             sampleName_test=test_sample,
+        train_and_test_model(training_name=args.training_sample_name,
+                             test_name=args.test_sample_name,
+                             training_folder=args.training_sample_folder,
+                             test_folder=args.test_sample_folder,
                              outDir=output_dir,
                              npz_mode=args.load_npz,
-                             sv_caller=args.sv_caller,
                              svtype=args.svtype)
     else:
 
-        cross_validation(sampleName=training_sample,
+        cross_validation(sample_name=args.training_sample_name,
+                         sample_folder=args.training_sample_folder,
                          outDir=output_dir,
                          npz_mode=args.load_npz,
-                         sv_caller=args.sv_caller,
                          svtype=args.svtype,
                          kfold=args.kfold)
 

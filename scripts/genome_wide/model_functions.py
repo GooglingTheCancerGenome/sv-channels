@@ -8,8 +8,6 @@ import pandas as pd
 from sklearn.metrics import (average_precision_score, f1_score,
                              precision_recall_curve)
 
-date = '250719'
-
 
 def unfold_win_id(win_id):
 
@@ -69,7 +67,7 @@ def unfold_win_id(win_id):
 
 
 def evaluate_model(model, X_test, ytest_binary, win_ids_test, results, cv_iter,
-                   output, mapclasses, output_dir):
+                   output, mapclasses, output_dir, svtype):
     def write_bed_wrong_predictions(probs, predicted, y_index, win_ids_test,
                                     class_labels):
 
@@ -80,7 +78,7 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test, results, cv_iter,
 
         outfile = os.path.join(
             outdir,
-            output + '_wrong_predictions_' + str(int(cv_iter) + 1) + '.bedpe')
+            'cnn_wrong_predictions.bedpe')
 
         lines = []
 
@@ -88,7 +86,7 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test, results, cv_iter,
 
             if class_labels[p] != class_labels[r]:
 
-                sv_score = prob[0] - prob[1]
+                sv_score = prob[0]
                 chr1, pos1, chr2, pos2 = unfold_win_id(w)
                 # print('{0}_{1}:{2}_{3}'.format(chr1, pos1, chr2, pos2))
                 lines.append('\t'.join([
@@ -100,6 +98,8 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test, results, cv_iter,
                     str(int(pos2) + 1), 'PRED:' + class_labels[p] + '_TRUE:' +
                     class_labels[r],
                     str(sv_score)
+                    #str(prob[0]),
+                    #str(prob[1])
                 ]) + '\n')
 
         f = open(outfile, 'w')
@@ -111,7 +111,7 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test, results, cv_iter,
             f.close()
 
     def write_bed_predictions(probs, predicted, y_index, win_ids_test,
-                              class_labels):
+                              class_labels, svtype):
 
         # print(class_labels)
 
@@ -120,26 +120,33 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test, results, cv_iter,
 
         outfile = os.path.join(
             outdir,
-            output + '_DEL_predicted_' + str(int(cv_iter) + 1) + '.bedpe')
+            'cnn_predictions.bedpe')
 
         lines = []
 
         for prob, p, r, w in zip(probs, predicted, y_index, win_ids_test):
 
-            if class_labels[p][:3] == 'DEL':
+            # print('{0}_{1}'.format(class_labels[p], class_labels[r]))
 
-                sv_score = prob[0] - prob[1]
+            if class_labels[p] == class_labels[r] and \
+                    class_labels[p] == svtype:
+
+                sv_score = prob[0]
                 chr1, pos1, chr2, pos2 = unfold_win_id(w)
+
                 # print('{0}_{1}:{2}_{3}'.format(chr1, pos1, chr2, pos2))
+
                 lines.append('\t'.join([
                     str(chr1),
                     str(pos1),
                     str(int(pos1) + 1),
                     str(chr2),
                     str(pos2),
-                    str(int(pos2) + 1), 'PRED:' + class_labels[p] + '_TRUE:' +
-                    class_labels[r],
+                    str(int(pos2) + 1), 'PRED:' + class_labels[p] +
+                                        '_TRUE:' + class_labels[r],
                     str(sv_score)
+                    #str(prob[0]),
+                    #str(prob[1])
                 ]) + '\n')
 
         f = open(outfile, 'w')
@@ -158,7 +165,7 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test, results, cv_iter,
     # print(y_binarized)
     # print(n_classes)
 
-    probs = model.predict_proba(X_test, batch_size=10000, verbose=True)
+    probs = model.predict_proba(X_test, batch_size=10000, verbose=False)
 
     # save model
     outdir = os.path.join(output_dir, 'models')
@@ -181,7 +188,7 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test, results, cv_iter,
     write_bed_wrong_predictions(probs, predicted, y_index, win_ids_test,
                                 class_labels)
     write_bed_predictions(probs, predicted, y_index, win_ids_test,
-                          class_labels)
+                          class_labels, svtype)
 
     # print(y_index)
     outdir = os.path.join(output_dir, 'confusion_matrix')
