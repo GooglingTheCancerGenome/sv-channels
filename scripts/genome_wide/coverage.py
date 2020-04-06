@@ -2,6 +2,7 @@ import argparse
 import logging
 import os
 from time import time
+from zlib import crc32
 
 import numpy as np
 import pysam
@@ -82,7 +83,7 @@ def get_coverage(ibam, chrName, outFile):
     stop_pos = chrLen
 
     # Numpy array to store the coverage
-    cov = np.zeros((3, chrLen), dtype=np.uint32)
+    cov = np.zeros((5, chrLen), dtype=np.uint32)
 
     read_quality_sum = np.zeros(chrLen, dtype=np.uint32)
     read_quality_count = np.zeros(chrLen, dtype=np.uint32)
@@ -121,6 +122,16 @@ def get_coverage(ibam, chrName, outFile):
                              1] += read.mapping_quality
             read_quality_count[read.reference_start:read.reference_end -
                                1] += 1
+
+            # using hash of query name
+            j = int((read.reference_end-read.reference_start)/2)
+            #print(j)
+            h = crc32(read.query_name.encode('utf8')) & 0xffffffff
+            #print(h)
+            if not read.is_reverse:
+                cov[3, j] = h if not cov[3, j] else 0
+            else:
+                cov[4, j] = h if not cov[4, j] else 0
 
     # # Iterate over the chromosome positions
     # for i, pile in enumerate(bamfile.pileup(chrName, start_pos, stop_pos, truncate=True), start=1):
