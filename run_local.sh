@@ -12,8 +12,8 @@ fi
 BAM=$(realpath -s "$1")
 BASE_DIR=$(dirname "$BAM")
 SAMPLE=$(basename "$BAM" .bam)
-SV_TYPES=(DEL INS INV DUP TRA)
-SV_CALLS=(gridss manta delly lumpy)  # to speed up exclude callers: manta delly lumpy
+SV_TYPES=(TRA)
+SV_CALLS=(gridss)  # to speed up exclude callers: manta delly lumpy
 KFOLD=2            # k-fold cross validation
 WIN_SZ=200  # in bp
 SEQ_IDS=(${@:2})

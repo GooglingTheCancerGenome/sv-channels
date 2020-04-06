@@ -14,8 +14,9 @@ BAM=$(realpath -s "$2")
 BASE_DIR=$(dirname "$BAM")
 SAMPLE=$(basename "$BAM" .bam)
 SEQ_IDS=(${@:3})
-SV_TYPES=(INS DEL)
+SV_TYPES=(DEL INS INV DUP TRA)
 SV_CALLS=(gridss manta delly lumpy)  # AK: +split_reads?
+KFOLD=2            # k-fold cross validation
 WIN_SZ=200  # in bp
 PREFIX="${BASE_DIR}/${SAMPLE}"
 TWOBIT="${PREFIX}.2bit"
@@ -44,6 +45,15 @@ monitor () {  # monitor a job via Xenon CLI
 eval "$(conda shell.bash hook)"
 conda activate $MY_ENV
 conda list
+
+# convert SV calls (i.e. truth set and sv-callers output) in VCF to BEDPE files
+for vcf in $(find data -name "*.vcf" | grep -E "test"); do
+  prefix=$(basename $vcf .vcf)
+  bedpe="${BASE_DIR}/${prefix}.bedpe"
+  cmd="scripts/R/vcf2bedpe.R -i ${vcf} -o ${bedpe}"
+  JOB_ID=$(submit $p all "$cmd")
+  JOBS+=($JOB_ID)
+done
 
 # submit jobs to output "channel" files (*.json.gz and *.npy.gz)
 cd $WORK_DIR
@@ -109,15 +119,15 @@ done
 # Create labels
 for sv in "${SV_TYPES[@]}"; do
     p=label_window_pairs_on_split_read_positions
-    cmd="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -w $WIN_SZ -gt '$BEDPE' \
-      -s $sv -o labels.json.gz -p . -l $p.log"
+    cmd="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -w '${WIN_SZ}' -gt '${BEDPE}' \
+      -s '${sv}' -o labels.json.gz -p . -l '${p}'.log"
     JOB_ID=$(submit $p $s "$cmd")
     JOBS+=($JOB_ID)
 
     for c in "${SV_CALLS[@]}"; do
         p=label_window_pairs_on_svcallset
-        cmd="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -w $WIN_SZ -gt '$BEDPE' \
-          -s $sv -sv '$BASE_DIR/$c' -o labels.json.gz -p . -l $p.log"
+        cmd="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -w '${WIN_SZ}' -gt '${BEDPE}' \
+          -s '${sv}' -sv '${BASE_DIR}/${c}' -o labels.json.gz -p . -l '${p}'.log"
         JOB_ID=$(submit $p $s "$cmd")
         JOBS+=($JOB_ID)
 
@@ -156,8 +166,9 @@ for sv in "${SV_TYPES[@]}"; do
     for c in "${SV_CALLS[@]}"; do
         p=train_model_with_fit
         out="labels/win$WIN_SZ/$sv/$c"
-        cmd="python $p.py --test_sample . --training_sample . -k 3 -p '$out' \
-          -s $sv -l $p.log"
+        cmd="python $p.py --training_sample_name '${SAMPLE}' --training_sample_folder . \
+          --test_sample_name '${SAMPLE}' --test_sample_folder . -k '${KFOLD}' -p '${out}' \
+          -s '${sv}' -l '${p}'.log"
         JOB_ID=$(submit $p all "$cmd")
         JOBS+=($JOB_ID)
 
