@@ -62,40 +62,48 @@ filter_regions <- function(regions_to_filter, ref_regions, mode='remove')
 }
 
 # load a VCF file and returns a Pairs object
-load_vcf <- function(vcf_file, svtype, caller, exclude_regions, include_regions)
+load_vcf <- function(vcf_file, svtype, caller, filter_regions)
 {
+
     # Load VCF file
     vcf_gr <-
-    VariantAnnotation::readVcf(vcf_file)
+      VariantAnnotation::readVcf(vcf_file)
 
     # set NCBI seqlevels
     seqlevelsStyle(vcf_gr) <- 'NCBI'
 
-    if (caller == 'survivor')
+    if(caller=='survivor')
     {
         # SURVIVOR simSV assigns LowQual to all artificial SVs
-        vcf_gr <- vcf_gr[rowRanges(vcf_gr)$FILTER %in% c("LowQual")]
+        vcf_gr <- vcf_gr[rowRanges(vcf_gr)$FILTER%in%c("LowQual")]
 
         # handle SURVIVOR simSV SVTYPE <TRA> as TIGRA <CTX>
-        if ("TRA" %in% info(vcf_gr)$SVTYPE & ! ("CT" %in% names(info(vcf_gr))))
+        if("TRA" %in% info(vcf_gr)$SVTYPE & !("CT" %in% names(info(vcf_gr))))
         {
-            info(vcf_gr)$SVTYPE[info(vcf_gr)$SVTYPE == "TRA"] <- "CTX"
+          info(vcf_gr)$SVTYPE[info(vcf_gr)$SVTYPE=="TRA"] <- "CTX"
         }
-    }else {
+
+        if(svtype == 'INS')
+        {
+            info(vcf_gr)$END <- end(ranges(rowRanges(vcf_gr)))
+        }
+
+    }else{
         # Keep only SVs that passed the filtering (PASS or .)
-        vcf_gr <- vcf_gr[rowRanges(vcf_gr)$FILTER %in% c("PASS", ".")]
+        vcf_gr <- vcf_gr[rowRanges(vcf_gr)$FILTER%in%c("PASS",".")]
     }
 
     if (caller == 'lumpy')
     {
-        # Read evidence support as a proxy for QUAL
-        fixed(vcf_gr)$QUAL <- unlist(info(vcf_gr)$SU)
+      # Read evidence support as a proxy for QUAL
+      support <- unlist(info(vcf_gr)$SU)
+      fixed(vcf_gr)$QUAL <- support
     } else if (caller == 'delly')
     {
-        # Split-read support plus Paired-end read support as a proxy for QUAL
-        sr_support <- info(vcf_gr)$SR
-        sr_support[is.na(vcf_gr)] <- 0
-        fixed(vcf_gr)$QUAL <-
+      # Split-read support plus Paired-end read support as a proxy for QUAL
+      sr_support <- info(vcf_gr)$SR
+      sr_support[is.na(vcf_gr)] <- 0
+      fixed(vcf_gr)$QUAL <-
         sr_support + info(vcf_gr)$PE
     }
 
@@ -106,17 +114,12 @@ load_vcf <- function(vcf_file, svtype, caller, exclude_regions, include_regions)
     vcf_gr <- vcf_gr[which(vcf_gr$svtype == svtype)]
 
     # Select SVs >= 50 bp
-    vcf_gr <- vcf_gr[abs(vcf_gr$svLen) >= 50]
+    if(!svtype %in% c('TRA','INS'))
+      {
+        vcf_gr <- vcf_gr[abs(vcf_gr$svLen) >= 50]
+      }
 
     #Filter regions
-    if(file.exists(exclude_regions))
-    {
-        vcf_gr <- filter_regions(vcf_gr, load_bed(exclude_regions), mode = 'remove')
-    }
-    if(file.exists(include_regions))
-    {
-        vcf_gr <- filter_regions(vcf_gr, load_bed(include_regions), mode = 'keep')
-    }
-
+    vcf_gr <- filter_regions(vcf_gr, load_bed(filter_regions), mode='remove')
     return(vcf_gr)
 }

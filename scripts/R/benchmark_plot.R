@@ -48,6 +48,12 @@ for( c in names(callsets) )
     sv_regions[[c]]$caller <- c
 }
 
+# exclude callsets with zero calls
+sv_regions <- sv_regions[sapply(sv_regions, length)!=0]
+
+# rename NA. column of CNN into svLen
+names(mcols(sv_regions[['CNN']]))[names(mcols(sv_regions[['CNN']]))=='NA.'] <- 'svLen'
+
 # Sanity check on seqlengths
 for( c in names(sv_regions) )
 {
@@ -60,6 +66,23 @@ for( c in names(sv_regions) )
 #Count overlaps on both breakpoints
 for (c in names(sv_regions))
 {
+  if(svtype == 'INS'){
+
+  sv_regions[[c]]$truth_matches <-
+    countBreakpointOverlaps(
+    sv_regions[[c]],
+    truth_set,
+    # using a smaller margin for insertions, insertion location should be precise
+    maxgap = 5,
+    # sizemargin cannot be used for insertions
+    # sizemargin = 0.25,
+    ignore.strand = TRUE,
+    restrictMarginToSizeMultiple = 0.5,
+    # countOnlyBest cannot be used for insertions
+    # countOnlyBest = TRUE
+    )
+
+  }else{
 
   sv_regions[[c]]$truth_matches <-
     countBreakpointOverlaps(
@@ -67,7 +90,7 @@ for (c in names(sv_regions))
       truth_set,
       # read pair based callers make imprecise calls.
       # A margin around the call position is required when matching with the truth set
-      maxgap = 200,
+      maxgap = 100,
       # Since we added a maxgap, we also need to restrict the mismatch between the
       # size of the events. We don't want to match a 100bp deletion with a
       # 5bp duplication. This will happen if we have a 100bp margin but don't also
@@ -83,8 +106,9 @@ for (c in names(sv_regions))
       # double-counted as multiple true positives.
       countOnlyBest = TRUE
     )
-
+    }
 }
+
 sv_regions <- unlist(GRangesList(sv_regions))
 
 #Create benchmark plot
