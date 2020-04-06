@@ -229,36 +229,36 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
             lu_start_elem_svtype, lu_start_elem_svid = lu_start_elem_data
             lu_end_elem_svtype, lu_end_elem_svid = lu_end_elem_data
 
-            if lu_start_elem_svtype != 'TRA':
+            # if lu_start_elem_svtype != 'TRA':
 
-                if pos1 - win_hlen <= lu_start_elem_start and lu_start_elem_end <= pos1 + win_hlen and \
-                        pos2 - win_hlen <= lu_end_elem_start and lu_end_elem_end <= pos2 + win_hlen and \
-                        lu_start_elem_svid == lu_end_elem_svid:
-                    # logging.info(
-                    #     'Chr1:{}\tpos1:{}-{}\tChr2:{}\tpos2:{}-{}'.format(
-                    #         chrom1, pos1 - win_hlen, pos1 + win_hlen, chrom2, pos2 - win_hlen, pos2 + win_hlen
-                    #     )
-                    # )
-                    # logging.info(
-                    #     'LookUp_start:{}-{}_{}\tLookUp_end:{}-{}_{}'.format(
-                    #         lu_start_elem_start, lu_start_elem_end, lu_start_elem_data,
-                    #         lu_end_elem_start, lu_end_elem_end, lu_end_elem_data
-                    #     )
-                    # )
-                    # if pos1 in np.arange(lu_start_elem_start-2, lu_start_elem_end+2) and \
-                    #         pos2 in np.arange(lu_end_elem_start-2, lu_end_elem_end+2):
-                    sv_covered.add(lu_start_elem_svid)
-                    labels[pos_id] = lu_start_elem_svtype
-                    # else:
-                    #     sv_covered.add(lu_start_elem_svid)
-                    #     labels[pos_id] = 'UK_overlap_not_matching'
-                else:
-                    labels[pos_id] = 'UK_single_partial'
-
-            else:
-
+            if pos1 - win_hlen <= lu_start_elem_start and lu_start_elem_end <= pos1 + win_hlen and \
+                    pos2 - win_hlen <= lu_end_elem_start and lu_end_elem_end <= pos2 + win_hlen and \
+                    lu_start_elem_svid == lu_end_elem_svid:
+                # logging.info(
+                #     'Chr1:{}\tpos1:{}-{}\tChr2:{}\tpos2:{}-{}'.format(
+                #         chrom1, pos1 - win_hlen, pos1 + win_hlen, chrom2, pos2 - win_hlen, pos2 + win_hlen
+                #     )
+                # )
+                # logging.info(
+                #     'LookUp_start:{}-{}_{}\tLookUp_end:{}-{}_{}'.format(
+                #         lu_start_elem_start, lu_start_elem_end, lu_start_elem_data,
+                #         lu_end_elem_start, lu_end_elem_end, lu_end_elem_data
+                #     )
+                # )
+                # if pos1 in np.arange(lu_start_elem_start-2, lu_start_elem_end+2) and \
+                #         pos2 in np.arange(lu_end_elem_start-2, lu_end_elem_end+2):
                 sv_covered.add(lu_start_elem_svid)
                 labels[pos_id] = lu_start_elem_svtype
+                # else:
+                #     sv_covered.add(lu_start_elem_svid)
+                #     labels[pos_id] = 'UK_overlap_not_matching'
+            else:
+                labels[pos_id] = 'UK_single_partial'
+
+            # else:
+            #
+            #     sv_covered.add(lu_start_elem_svid)
+            #     labels[pos_id] = lu_start_elem_svtype
 
         elif l1 > 1 or l2 > 1:
 
