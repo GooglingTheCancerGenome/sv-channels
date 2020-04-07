@@ -1,0 +1,46 @@
+# YAML 1.2
+# Metadata for citation of this software according to the CFF format
+# (https://citation-file-format.github.io/)
+---
+authors:
+  -
+    affiliation: "University Medical Center Utrecht"
+    family-names: Santuari
+    given-names: Luca
+    orcid: "https://orcid.org/0000-0001-8784-2507"
+  -
+    affiliation: "Netherlands eScience Center"
+    family-names: Kuzniar
+    given-names: Arnold
+    orcid: "https://orcid.org/0000-0003-1711-7961"
+  -
+    affiliation: "Netherlands eScience Center"
+    family-names: Georgievska
+    given-names: Sonja
+  -
+    affiliation: "University Medical Center Utrecht"
+    family-names: Shneider
+    given-names: Carl
+    orcid: https://orcid.org/0000-0002-3689-6959
+
+cff-version: "1.0.3"
+date-released: "2020-01-01"  # FIXME
+doi: 10.5281/zenodo.3725664
+keywords:
+  - "bioinformatics"
+  - "deep learning"
+  - "cancer genomics"
+  - "whole genome sequencing"
+  - "structural variants"
+  - "variant calling"
+  - "SV detection"
+  - "SV calling"
+  - "WGS"
+  - "BAM"
+  - "VCF"
+
+license: Apache-2.0
+message: "If you use this software, please cite it using these metadata"
+repository-code: "https://github.com/GooglingTheCancerGenome/sv-chaplin"
+title: sv-chaplin
+version: "0.0.0"  # FIXME
