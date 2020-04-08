@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/GooglingTheCancerGenome/CNN.svg?branch=iss32)](https://travis-ci.org/GooglingTheCancerGenome/CNN)
 
-# ChannelMaker
+# CNN
 
 **Install & execute**
 
