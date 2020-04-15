@@ -13,7 +13,7 @@ BAM=$(realpath -s "$1")
 BASE_DIR=$(dirname "$BAM")
 SAMPLE=$(basename "$BAM" .bam)
 SV_TYPES=(TRA)
-SV_CALLS=(gridss)  # to speed up exclude callers: manta delly lumpy
+SV_CALLS=(split_reads gridss)  # to speed up exclude callers: manta delly lumpy
 KFOLD=2            # k-fold cross validation
 WIN_SZ=200  # in bp
 SEQ_IDS=(${@:2})
@@ -22,6 +22,7 @@ PREFIX="${BASE_DIR}/${SAMPLE}"
 TWOBIT="${PREFIX}.2bit"
 BIGWIG="${PREFIX}.bw"
 BEDPE="${PREFIX}.bedpe"  # truth set
+BED="${PREFIX}.bed" # chromosome regions
 WORK_DIR=scripts/genome_wide
 
 # convert SV calls (i.e. truth set and sv-callers output) in VCF to BEDPE files
@@ -64,24 +65,10 @@ for s in "${SEQ_IDS[@]}"; do  # per chromosome
 done
 
 for sv in "${SV_TYPES[@]}"; do
-    p=label_window_pairs_on_split_read_positions
-    python $p.py -b "$BAM" -w $WIN_SZ -c "${SEQ_IDS_CSV}" -gt "$BEDPE" -s $sv \
-      -o labels.json.gz -p . -l $p.log
-
-    p=create_window_pairs
-    out="labels/win$WIN_SZ/$sv/split_reads"
-    lb="$out/labels.json.gz"
-    python $p.py -b "$BAM" -c "${SEQ_IDS_CSV}" -lb "$lb" -ca .  -w $WIN_SZ \
-      -p "$out" -l $p.log
-
-    p=train_model_with_fit
-    python $p.py --training_sample_name ${SAMPLE} --training_sample_folder . \
-          --test_sample_name ${SAMPLE} --test_sample_folder . -k $KFOLD -p "$out" \
-          -s $sv -l $p.log
 
     for c in "${SV_CALLS[@]}"; do
-        p=label_window_pairs_on_svcallset
-        python $p.py -b "$BAM" -w $WIN_SZ -c "${SEQ_IDS_CSV}" -gt "$BEDPE" \
+        p=label_windows
+        python $p.py -b "${BED}" -w $WIN_SZ -c "${SEQ_IDS_CSV}" -gt "$BEDPE" \
           -s $sv -sv "$BASE_DIR/$c" -o labels.json.gz -p . -l $p.log
 
         p=create_window_pairs

@@ -23,6 +23,7 @@ PREFIX="${BASE_DIR}/${SAMPLE}"
 TWOBIT="${PREFIX}.2bit"
 BIGWIG="${PREFIX}.bw"
 BEDPE="${PREFIX}.bedpe"
+BED="${PREFIX}.bed" # chromosome regions
 WORK_DIR=scripts/genome_wide
 #NUMEXPR_MAX_THREADS=128  # required by py-bcolz
 STARTTIME=$(date +%s)
@@ -121,15 +122,11 @@ done
 
 # Create labels
 for sv in "${SV_TYPES[@]}"; do
-    p=label_window_pairs_on_split_read_positions
-    cmd="python $p.py -b '$BAM' -c '${SEQ_IDS_CSV}' -w '${WIN_SZ}' -gt '${BEDPE}' \
-      -s '${sv}' -o labels.json.gz -p . -l '${p}'.log"
-    JOB_ID=$(submit $p $s "$cmd")
-    JOBS+=($JOB_ID)
 
     for c in "${SV_CALLS[@]}"; do
-        p=label_window_pairs_on_svcallset
-        cmd="python $p.py -b '$BAM' -c '${SEQ_IDS_CSV}' -w '${WIN_SZ}' -gt '${BEDPE}' \
+
+        p=label_windows
+        cmd="python $p.py -b '$BED' -c '${SEQ_IDS_CSV}' -w '${WIN_SZ}' -gt '${BEDPE}' \
           -s '${sv}' -sv '${BASE_DIR}/${c}' -o labels.json.gz -p . -l '${p}'.log"
         JOB_ID=$(submit $p $s "$cmd")
         JOBS+=($JOB_ID)
@@ -146,6 +143,7 @@ done
 # Create windows
 for sv in "${SV_TYPES[@]}"; do
     for c in "${SV_CALLS[@]}"; do
+
         p=create_window_pairs
         out="labels/win$WIN_SZ/$sv/$c"
         lb="$out/labels.json.gz"
