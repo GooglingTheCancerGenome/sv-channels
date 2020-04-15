@@ -87,7 +87,7 @@ Execution
 .. code-block:: console
 
   SCH=gridengine  # or slurm
-  BAM=data/test/test.bam
+  BAM=data/test.bam
   CHRS="12 22"
   ./run_local.sh $BAM $CHRS  # run locally
   ./run.sh $SCH $BAM         # submit jobs to GridEngine/Slurm cluster
