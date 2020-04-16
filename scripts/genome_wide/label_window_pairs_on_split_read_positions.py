@@ -13,23 +13,8 @@ from pysam import VariantFile
 from functions import *
 from label_classes import SVRecord
 
-with open('parameters.json', 'r') as f:
-    config = json.load(f)
-
-HPC_MODE = config["DEFAULT"]["HPC_MODE"]
-
-
-def get_chr_list():
-
-    chrlist = list(map(str, range(1, 23)))
-    chrlist.extend(['X'])
-    #chrlist = ['17']
-
-    return chrlist
-
 
 def read_vcf(invcf):
-
     # Check file existence
     assert os.path.isfile(invcf), invcf + ' not found!'
     # Dictionary with chromosome keys to store SVs
@@ -90,7 +75,6 @@ def read_bedpe(inbedpe, svtype_to_select):
 
 
 def filter_bedpe(inbedpe, sv_id_list, outDir):
-
     # Check file existence
     assert os.path.isfile(inbedpe), inbedpe + ' not found!'
     # Dictionary with chromosome keys to store SVs
@@ -194,6 +178,7 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
     :return: list, list of clipped read positions whose window completely overlap either the CIPOS interval
     or the CIEND interval
     '''
+
     def make_gtrees_from_svlist(sv_list):
 
         logging.info('Building SV GenomicTrees...')
@@ -224,13 +209,15 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
 
     def search_tree_with_cpos(cpos, trees_start, trees_end):
 
+        lookup_region = 10
+
         logging.info('Searching SV GenomicTrees with candidate positions...')
 
         lookup_start = []
         lookup_end = []
 
         # Log info every n_r times
-        n_r = 10**6
+        n_r = 10 ** 6
         last_t = time()
 
         for i, p in enumerate(cpos, start=1):
@@ -245,19 +232,20 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
 
             chrom1, pos1, chrom2, pos2 = p
 
-            lookup_start.append(trees_start[chrom1][pos1 - win_hlen:pos1 +
-                                                    win_hlen + 1])
-            lookup_end.append(trees_end[chrom2][pos2 - win_hlen:pos2 +
-                                                win_hlen + 1])
+            lookup_start.append(trees_start[chrom1][pos1 - lookup_region:pos1 +
+                                                                         lookup_region + 1])
+            lookup_end.append(trees_end[chrom2][pos2 - lookup_region:pos2 +
+                                                                     lookup_region + 1])
 
         return lookup_start, lookup_end
 
     trees_start, trees_end = make_gtrees_from_svlist(sv_list)
+
     lookup_start, lookup_end = search_tree_with_cpos(cpos_list, trees_start,
                                                      trees_end)
 
-    #print([l for l in lookup_start if len(l) > 0])
-    #print([l for l in lookup_end if len(l) > 0])
+    # print([l for l in lookup_start if len(l) > 0])
+    # print([l for l in lookup_end if len(l) > 0])
 
     labels = dict()
 
@@ -381,7 +369,6 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
 # Get labels
 def get_labels(ibam, chrlist, win_len, svtype, ground_truth, channelDataDir,
                outFile, outDir):
-
     # windows half length
     win_hlen = int(int(win_len) / 2)
     # get chromosome lengths
@@ -396,8 +383,9 @@ def get_labels(ibam, chrlist, win_len, svtype, ground_truth, channelDataDir,
     cpos_list = [
         (chrom1, pos1, chrom2, pos2)
         for chrom1, pos1, chrom2, pos2 in cpos_list if chrom1 in chrlist
-        and chrom2 in chrlist and win_hlen <= pos1 <= chr_len_dict[chrom1] -
-        win_hlen and win_hlen <= pos2 <= chr_len_dict[chrom2] - win_hlen
+                                                       and chrom2 in chrlist and win_hlen <= pos1 <= chr_len_dict[
+                                                           chrom1] -
+                                                       win_hlen and win_hlen <= pos2 <= chr_len_dict[chrom2] - win_hlen
     ]
 
     filename, file_extension = os.path.splitext(ground_truth)
@@ -431,12 +419,12 @@ def main():
     parser.add_argument('-b',
                         '--bam',
                         type=str,
-                        default='',
+                        default='../../data/test.bam',
                         help="Specify input file (BAM)")
     parser.add_argument('-c',
                         '--chrlist',
                         type=str,
-                        default='17',
+                        default='12,22',
                         help="Comma separated list of chromosomes to consider")
     parser.add_argument('-l',
                         '--logfile',
@@ -448,27 +436,27 @@ def main():
     parser.add_argument('-w',
                         '--window',
                         type=str,
-                        default=200,
+                        default=500,
                         help="Specify window size")
     parser.add_argument('-s',
                         '--svtype',
                         type=str,
-                        default='INS',
+                        default='TRA',
                         help="Specify SV type")
     parser.add_argument('-gt',
                         '--ground_truth',
                         type=str,
-                        default='',
+                        default='../../data/test.bedpe',
                         help="Specify ground truth VCF/BEDPE file")
     parser.add_argument('-o',
                         '--out',
                         type=str,
-                        default='labels.json.gz',
+                        default='./labels/win500/TRA/split_reads/labels.json.gz',
                         help="Specify output")
     parser.add_argument('-p',
                         '--outputpath',
                         type=str,
-                        default='',
+                        default='.',
                         help="Specify output path")
 
     args = parser.parse_args()
