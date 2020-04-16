@@ -123,13 +123,12 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test, results, cv_iter,
             'cnn_predictions.bedpe')
 
         lines = []
-
+        j = 1
         for prob, p, r, w in zip(probs, predicted, y_index, win_ids_test):
 
             # print('{0}_{1}'.format(class_labels[p], class_labels[r]))
 
-            if class_labels[p] == class_labels[r] and \
-                    class_labels[p] == svtype:
+            if class_labels[p] == svtype:
 
                 sv_score = prob[0]
                 chr1, pos1, chr2, pos2 = unfold_win_id(w)
@@ -142,12 +141,13 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test, results, cv_iter,
                     str(int(pos1) + 1),
                     str(chr2),
                     str(pos2),
-                    str(int(pos2) + 1), 'PRED:' + class_labels[p] +
-                                        '_TRUE:' + class_labels[r],
+                    str(int(pos2) + 1), 'PRED_' + class_labels[p] +
+                                        '_TRUE_' + class_labels[r] + '_' + str(j),
                     str(sv_score)
                     #str(prob[0]),
                     #str(prob[1])
                 ]) + '\n')
+                j += 1
 
         f = open(outfile, 'w')
         try:
