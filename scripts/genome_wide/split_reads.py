@@ -39,16 +39,17 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
 
     # List to store the split read positions
     split_pos_coord = dict()
-    for k in ['INDEL_INS', 'INDEL_DEL', 'DEL', 'INS', 'INV', 'DUP', 'TRA', 'ND']:
+    sv_type_list = ['INDEL_INS', 'INDEL_DEL', 'DEL', 'INS', 'INV', 'DUP', 'TRA', 'ND']
+    for k in sv_type_list:
         split_pos_coord[k] = []
 
-    # Tree with windows for candidate positions
-    gtrees = defaultdict(IntervalTree)
+    # # Tree with split read positions
+    # gtree = {k: dict() for k in sv_type_list}
+    # for s in sv_type_list:
+    #     gtree[s] = {k: IntervalTree() for k in chr_list}
 
     # Load the BAM file
     bamfile = pysam.AlignmentFile(ibam, "rb")
-
-    chrlen_dict = get_chr_len_dict(ibam)
 
     n_indels = 0
     n_split = 0
@@ -60,7 +61,7 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
     for chrom in chr_list:
         split_reads[chrom] = dict()
         split_read_distance[chrom] = dict()
-        for split_direction in ['left_F', 'left_R', 'right_F', 'right_R']:
+        for split_direction in ['left_F', 'left_R', 'right_F', 'right_R', 'both_F', 'both_R']:
             split_reads[chrom][split_direction] = defaultdict(int)
             split_read_distance[chrom][split_direction] = defaultdict(list)
 
@@ -70,7 +71,7 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
     total_reads_cnt = dict()
     positions_with_min_support = dict()
 
-    for k in ['right', 'left']:
+    for k in ['right', 'left', 'both']:
         clipped_pos_dict[k] = defaultdict(list, {k: [] for k in chr_list})
         split_pos[k] = defaultdict(list, {k: [] for k in chr_list})
         split_pos_cnt[k] = dict.fromkeys(chr_list)
@@ -134,8 +135,7 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
                         split_pos_coord['INDEL_DEL'], read.reference_name,
                         start, read.reference_name, end)
 
-            if read.has_tag(
-                    'SA') and is_left_clipped(read) != is_right_clipped(read):
+            if read.has_tag('SA'):
 
                 sa_entry = get_suppl_aln(read)
 
@@ -147,7 +147,7 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
                     cigar_sa = Cigar(cigar_sa)
                     cigar_sa_list = list(cigar_sa.items())
 
-                    if cigar_sa_list[-1][1] in ['S', 'H']:
+                    if cigar_sa_list[-1][1] in ['S', 'H'] and not cigar_sa_list[0][1] in ['S', 'H']:
                         # print('SA_RS')
                         # print(read.query_name)
                         # print('{} {} {} {}'.format(chr_SA, pos_SA, strand_SA, cigar_sa))
@@ -163,13 +163,21 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
                         # print('{} {} {} {}'.format(chr_SA, pos_SA, strand_SA, cigar_sa))
                         # print('---')
 
-                    elif cigar_sa_list[0][1] in ['S', 'H']:
+                    elif cigar_sa_list[0][1] in ['S', 'H'] and not cigar_sa_list[-1][1] in ['S', 'H']:
+                        pos_SA += 1
+
+                    elif cigar_sa_list[0][1] in ['S', 'H'] and cigar_sa_list[-1][1] in ['S', 'H']:
                         pos_SA += 1
 
                     if chr_SA in chr_list:
 
-                        clipped_string = 'right' if is_right_clipped(
-                            read) else 'left'
+                        if is_right_clipped(read) and not is_left_clipped(read):
+                            clipped_string = 'right'
+                        if not is_right_clipped(read) and is_left_clipped(read):
+                            clipped_string = 'left'
+                        elif is_right_clipped(read) and is_left_clipped(read):
+                            clipped_string = 'both'
+
                         clipped_orient = 'F' if not read.is_reverse else 'R'
                         clipped_ch = '_'.join([clipped_string, clipped_orient])
 
@@ -188,6 +196,8 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
                                 sv_type = 'DEL'
                             else:
                                 sv_type = 'DUP'
+                        elif clipped_string == 'both' and read.reference_name == chr_SA:
+                                sv_type = 'DEL'
 
                         if read.reference_name == chr_SA and \
                                 not read.mate_is_unmapped and \
@@ -202,11 +212,11 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
                             clipped_pos -
                             pos_SA) if read.reference_name == chr_SA else 0
 
-                        # if sv_type == 'DEL':
+                        # if sv_type == 'TRA':
                         #     print('{} {} {} => {}:{}-{} {} {} {}'.format(
                         #         sv_type, clipped_string, clipped_orient,
                         #         read.reference_name, clipped_pos,
-                        #         pos_SA,
+                        #         chr_SA, pos_SA,
                         #         strand_str[read.is_reverse], strand_SA,
                         #         read.query_name
                         #     ))
@@ -349,30 +359,18 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
 
 
 def main():
-    # Default BAM file for testing
-    # On the HPC
-    # wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
-    # inputBAM = wd + "T0_dedup.bam"
-    # Locally
-    wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
-    inputBAM = wd + "T1_dedup.bam"
-    # wd = '/Users/lsantuari/Documents/mount_points/hpc_mnt/Datasets/CretuStancu2017/Patient1/'
-    # inputBAM = wd + 'Patient1.bam'
-    # inputBAM = "/Users/lsantuari/Documents/mount_points/hpc_giab/RMNISTHS_30xdownsample.bam"
-
-    # Default chromosome is 17 for the artificial data
 
     # Parse the arguments of the script
     parser = argparse.ArgumentParser(description='Get split reads positions')
     parser.add_argument('-b',
                         '--bam',
                         type=str,
-                        default=inputBAM,
+                        default='../../data/test.bam',
                         help="Specify input file (BAM)")
     parser.add_argument('-c',
                         '--chrlist',
                         type=str,
-                        default='17',
+                        default='12,22',
                         help="Comma separated list of chromosomes to consider")
     parser.add_argument('-o',
                         '--out',
@@ -388,7 +386,7 @@ def main():
         '-p',
         '--outputpath',
         type=str,
-        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
+        default='.',
         help="Specify output path")
     parser.add_argument('-l',
                         '--logfile',
