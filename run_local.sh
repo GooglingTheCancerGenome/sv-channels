@@ -22,6 +22,7 @@ PREFIX="${BASE_DIR}/${SAMPLE}"
 TWOBIT="${PREFIX}.2bit"
 BIGWIG="${PREFIX}.bw"
 BEDPE="${PREFIX}.bedpe"  # truth set
+BED="${PREFIX}.bed" # chromosome regions
 WORK_DIR=scripts/genome_wide
 
 # convert SV calls (i.e. truth set and sv-callers output) in VCF to BEDPE files
@@ -64,35 +65,10 @@ for s in "${SEQ_IDS[@]}"; do  # per chromosome
 done
 
 for sv in "${SV_TYPES[@]}"; do
-    out="labels/win$WIN_SZ/$sv/split_reads"
-
-    p=label_window_pairs_on_split_read_positions
-    #python $p.py -b "$BAM" -w $WIN_SZ -c "${SEQ_IDS_CSV}" -gt "$BEDPE" -s $sv \
-    #  -o labels.json.gz -p . -l $p.log
-
-    p=create_window_pairs
-    lb="$out/labels.json.gz"
-    #python $p.py -b "$BAM" -c "${SEQ_IDS_CSV}" -lb "$lb" -ca .  -w $WIN_SZ \
-    #  -p "$out" -l $p.log
-
-    p=add_win_channels
-    pfix="$out/windows/windows"
-    iwin="${pfix}.npz"
-    owin="${pfix}_en.npz"
-    log="${pfix}_en.log"
-    python $p.py -b "$BAM" -w "$WIN_SZ" -i ${iwin} -o ${owin} -l $log
-    mv ${iwin} ${iwin}.bkup
-    mv ${owin} ${iwin}
-
-    p=train_model_with_fit
-    python $p.py --training_sample_name ${SAMPLE} --training_sample_folder . \
-          --test_sample_name ${SAMPLE} --test_sample_folder . -k $KFOLD -p "$out" \
-          -s $sv -l $p.log
 
     for c in "${SV_CALLS[@]}"; do
-
-        p=label_window_pairs_on_svcallset
-        python $p.py -b "$BAM" -w $WIN_SZ -c "${SEQ_IDS_CSV}" -gt "$BEDPE" \
+        p=label_windows
+        python $p.py -b "${BED}" -w $WIN_SZ -c "${SEQ_IDS_CSV}" -gt "$BEDPE" \
           -s $sv -sv "$BASE_DIR/$c" -o labels.json.gz -p . -l $p.log
 
         p=create_window_pairs

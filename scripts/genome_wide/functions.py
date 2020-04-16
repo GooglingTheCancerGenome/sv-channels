@@ -463,39 +463,39 @@ def load_all_clipped_read_positions(win_hlen,
                 and win_hlen <= pos2 <= (chr_dict[chr2] - win_hlen)
             ]
 
-            if svtype in ['DEL', 'INV', 'DUP', 'TRA']:
+            # if svtype in ['DEL', 'INV', 'DUP', 'TRA']:
+            #
+            #     if chrom in left_clipped_pos_cnt.keys():
+            #         positions_cr_l = set([
+            #             int(k) for k, v in left_clipped_pos_cnt[chrom].items()
+            #             if v >= min_CR_support
+            #         ])
+            #     else:
+            #         positions_cr_l = set()
+            #     if chrom in right_clipped_pos_cnt.keys():
+            #         positions_cr_r = set([
+            #             int(k)
+            #             for k, v in right_clipped_pos_cnt[chrom].items()
+            #             if v >= min_CR_support
+            #         ])
+            #     else:
+            #         positions_cr_r = set()
+            #
+            #     positions_cr[chrom] = positions_cr_l | positions_cr_r
+            #
+            #     # for pos in positions_cr:
+            #     #     print('{}:{}'.format(chrName, pos))
+            #
+            #     # print(positions_cr)
+            #     locations_sr[chrom] = [
+            #         (chr1, pos1, chr2, pos2)
+            #         for chr1, pos1, chr2, pos2 in locations_sr[chrom]
+            #         if (chr1 == chrom and pos1 in positions_cr[chr1]) or (
+            #             chr2 == chrom and pos2 in positions_cr[chr2])
+            #     ]
 
-                if chrom in left_clipped_pos_cnt.keys():
-                    positions_cr_l = set([
-                        int(k) for k, v in left_clipped_pos_cnt[chrom].items()
-                        if v >= min_CR_support
-                    ])
-                else:
-                    positions_cr_l = set()
-                if chrom in right_clipped_pos_cnt.keys():
-                    positions_cr_r = set([
-                        int(k)
-                        for k, v in right_clipped_pos_cnt[chrom].items()
-                        if v >= min_CR_support
-                    ])
-                else:
-                    positions_cr_r = set()
-
-                positions_cr[chrom] = positions_cr_l | positions_cr_r
-
-                # for pos in positions_cr:
-                #     print('{}:{}'.format(chrName, pos))
-
-                # print(positions_cr)
-                locations_sr[chrom] = [
-                    (chr1, pos1, chr2, pos2)
-                    for chr1, pos1, chr2, pos2 in locations_sr[chrom]
-                    if (chr1 == chrom and pos1 in positions_cr[chr1]) or (
-                        chr2 == chrom and pos2 in positions_cr[chr2])
-                ]
-
-                logging.info('Chr{}: {} positions'.format(
-                    chrom, len(locations_sr[chrom])))
+            logging.info('Chr{}: {} positions'.format(
+                chrom, len(locations_sr[chrom])))
 
         elif clipped_type == 'CR':
 
@@ -567,7 +567,6 @@ def load_all_clipped_read_positions(win_hlen,
 
         return cpos_list_right, cpos_list_left
 
-
 def load_windows(win_file):
 
     npzfile = np.load(win_file, allow_pickle=True)
@@ -582,3 +581,18 @@ def save_windows(X, y, win_file):
     np.savez(file=win_file,
              data=X,
              labels=y)
+
+def chr_dict_from_bed(input_bed):
+
+    # Check file existence
+    assert os.path.isfile(input_bed), input_bed + ' not found!'
+    # Dictionary. Keys: chromosome name, values: chromosome lengths
+    d = {}
+
+    with (open(input_bed, 'r')) as bed:
+        for line in bed:
+            columns = line.rstrip().split("\t")
+            d[columns[0]] = int(columns[2]) - int(columns[1])
+
+    return d
+

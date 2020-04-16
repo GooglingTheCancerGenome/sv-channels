@@ -3,11 +3,11 @@ import gzip
 import json
 import logging
 import os
-import re
+import sys
+
 from collections import Counter, defaultdict
 from time import time
 
-import numpy as np
 import pysam
 from intervaltree import IntervalTree
 
@@ -328,35 +328,32 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
 
 
 # Get labels
-def get_labels(ibam, chrlist, win_len, svtype, ground_truth, sv_caller,
+def get_labels(chrlist, chr_dict, win_len, svtype, ground_truth, sv_positions,
                channelDataDir, outFile, outDir):
 
     # windows half length
     win_hlen = int(int(win_len) / 2)
-    # get chromosome lengths
-    chr_dict = get_chr_len_dict(ibam)
 
-    if sv_caller == 'manta_gridss':
+    sv_caller_file = os.path.join(channelDataDir, sv_positions + '.bedpe')
+    sv_caller_name = os.path.basename(sv_positions)
 
-        sv_caller_file = os.path.join(channelDataDir, 'manta' + '.bedpe')
-        cpos_list_manta = read_svcaller_bedpe(sv_caller_file)
+    if os.path.exists(sv_caller_file):
 
-        sv_caller_file = os.path.join(channelDataDir, 'gridss' + '.bedpe')
-        cpos_list_gridss = read_svcaller_bedpe(sv_caller_file)
-
-        cpos_list = cpos_list_manta + cpos_list_gridss
-
-    else:
-        sv_caller_file = os.path.join(channelDataDir, sv_caller + '.bedpe')
         cpos_list = read_svcaller_bedpe(sv_caller_file)
 
+    elif sv_caller_name == 'split_reads':
+
+        cpos_list = load_all_clipped_read_positions(win_hlen, svtype, chr_dict,
+                                                    channelDataDir)
+    else:
+        sys.exit('I cannot find {} nor {}'.format(sv_caller_file, sv_caller_name))
+
     # Keep only positions that can be used to create windows
-    chr_len_dict = get_chr_len_dict(ibam)
     cpos_list = [
         (chrom1, pos1, chrom2, pos2)
         for chrom1, pos1, chrom2, pos2 in cpos_list if chrom1 in chrlist
-        and chrom2 in chrlist and win_hlen <= pos1 <= chr_len_dict[chrom1] -
-        win_hlen and win_hlen <= pos2 <= chr_len_dict[chrom2] - win_hlen
+        and chrom2 in chrlist and win_hlen <= pos1 <= chr_dict[chrom1] -
+        win_hlen and win_hlen <= pos2 <= chr_dict[chrom2] - win_hlen
     ]
 
     filename, file_extension = os.path.splitext(ground_truth)
@@ -385,10 +382,10 @@ def main():
 
     parser = argparse.ArgumentParser(description='Create labels')
     parser.add_argument('-b',
-                        '--bam',
+                        '--bed',
                         type=str,
-                        default='../../data/test/chr12_chr22.44Mb_45Mb.GRCh37.bam',
-                        help="Specify input file (BAM)")
+                        default='../../data/seqs.bed',
+                        help="Specify chromosome regions to consider (BED)")
     parser.add_argument('-l',
                         '--logfile',
                         type=str,
@@ -410,14 +407,15 @@ def main():
                         default='DEL',
                         help="Specify SV type")
     parser.add_argument('-sv',
-                        '--sv_caller',
+                        '--sv_positions',
                         type=str,
-                        default=os.path.join('..','..','data','test','gridss'),
+                        #default=os.path.join('..', '..', 'data', 'gridss'),
+                        default=os.path.join('..', '..', 'data', 'split_reads'),
                         help="Specify Manta/GRIDSS BEDPE file")
     parser.add_argument('-gt',
                         '--ground_truth',
                         type=str,
-                        default='../../data/test/chr12_chr22.44Mb_45Mb.GRCh37.bedpe',
+                        default='../../data/test.bedpe',
                         help="Specify ground truth VCF/BEDPE file")
     parser.add_argument('-o',
                         '--out',
@@ -432,16 +430,14 @@ def main():
 
     args = parser.parse_args()
 
-    # Log file
-    assert os.path.exists(args.sv_caller+'.bedpe')
-
-    sv_caller_name = os.path.basename(args.sv_caller)
+    sv_caller_name = os.path.basename(args.sv_positions)
     output_dir = os.path.join(args.outputpath, 'labels',
                               'win' + str(args.window),
                               args.svtype,
                               sv_caller_name
                               )
     os.makedirs(output_dir, exist_ok=True)
+    # Log file
     logfilename = os.path.join(output_dir, args.logfile)
     output_file = os.path.join(output_dir, args.out)
 
@@ -453,12 +449,15 @@ def main():
 
     t0 = time()
 
-    get_labels(ibam=args.bam,
-               chrlist=args.chrlist.split(','),
+    # Get dictionary of chromosome lengths
+    chr_dict = chr_dict_from_bed(args.bed)
+
+    get_labels(chrlist=args.chrlist.split(','),
+               chr_dict=chr_dict,
                win_len=args.window,
                svtype=args.svtype,
                ground_truth=args.ground_truth,
-               sv_caller=args.sv_caller,
+               sv_positions=args.sv_positions,
                channelDataDir=args.outputpath,
                outFile=output_file,
                outDir=output_dir)
