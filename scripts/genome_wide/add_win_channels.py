@@ -30,21 +30,21 @@ def parse_args():
     parser.add_argument('-w',
                         '--win',
                         type=int,
-                        default=200,
+                        default=500,
                         help="Window size")
     parser.add_argument('-i',
                         '--input',
                         type=str,
-                        default='./labels/win200/DEL/split_reads/windows/windows.npz',
+                        default='./labels/win500/DEL/split_reads/windows/windows.npz',
                         help="input file")
     parser.add_argument('-o',
                         '--output',
                         type=str,
-                        default='./labels/win200/DEL/split_reads/windows/windows_en.npz',
+                        default='./labels/win500/DEL/split_reads/windows/windows_en.npz',
                         help="output file")
     parser.add_argument('-l',
                         '--logfile',
-                        default='./labels/win200/DEL/split_reads/windows/windows_en.log',
+                        default='./labels/win500/DEL/split_reads/windows/windows_en.log',
                         help='File in which to write logs.')
 
     return parser.parse_args()
@@ -56,7 +56,7 @@ def get_channels():
         # All reads (clipped or not)
         'F_AR_N', 'R_AR_N',
         # Split reads
-        'F_SR_L', 'F_SR_R', 'F_SR_B', 'R_SR_L', 'R_SR_R', 'R_SR_B',
+        'F_SR_L', 'F_SR_R', 'F_SR_B', 'R_SR_L', 'R_SR_R', 'R_SR_B', 'F_SR_N', 'R_SR_N',
         # Clipped reads
         'F_CR_L', 'F_CR_R', 'R_CR_L', 'R_CR_R', 'F_CR_B', 'R_CR_B', 'F_CR_N', 'R_CR_N',
         # Discordant reads
@@ -101,31 +101,47 @@ def update_channel(X, ch, iter, read, win_mid_pos, is_second_win, win_len, paddi
     rel_end = start_win + end - abs_start
 
     # print('relative reference_start:{}, relative reference_end:{}'.format(s, e))
-    X[iter, rel_start:rel_end, ch['_'.join([orientation, clipped_state, clipping])]] += 1
+    k = '_'.join([orientation, clipped_state, clipping])
+    if k in ch.keys():
+        X[iter, rel_start:rel_end, ch[k]] += 1
 
     if not read.is_proper_pair:
-        X[iter, rel_start:rel_end, ch['_'.join(['DR', orientation])]] += 1
+        k = '_'.join(['DR', orientation])
+        if k in ch.keys():
+            X[iter, rel_start:rel_end, ch[k]] += 1
 
     if read.is_reverse and not read.mate_is_reverse \
             and read.reference_start < read.next_reference_start:
-        X[iter, rel_start:rel_end, ch['_'.join(['DUP', 'A'])]] += 1
+        k = '_'.join(['DUP', 'A'])
+        if k in ch.keys():
+            X[iter, rel_start:rel_end, ch[k]] += 1
 
     if not read.is_reverse and read.mate_is_reverse \
             and read.reference_start > read.next_reference_start:
-        X[iter, rel_start:rel_end, ch['_'.join(['DUP', 'B'])]] += 1
+        k = '_'.join(['DUP', 'B'])
+        if k in ch.keys():
+            X[iter, rel_start:rel_end, ch[k]] += 1
 
     if read.is_reverse == read.mate_is_reverse:
         if read.reference_start < read.next_reference_start:
-            X[iter, rel_start:rel_end, ch['_'.join(['INV', 'B'])]] += 1
+            k = '_'.join(['INV', 'B'])
+            if k in ch.keys():
+                X[iter, rel_start:rel_end, ch[k]] += 1
         else:
-            X[iter, rel_start:rel_end, ch['_'.join(['INV', 'A'])]] += 1
+            k = '_'.join(['INV', 'A'])
+            if k in ch.keys():
+                X[iter, rel_start:rel_end, ch[k]] += 1
 
     if read.reference_name != read.next_reference_name:
         if read.is_reverse == read.mate_is_reverse:
             if read.reference_start < read.next_reference_start:
-                X[iter, rel_start:rel_end, ch['_'.join(['TRA', 'S'])]] += 1
+                k = '_'.join(['TRA', 'S'])
+                if k in ch.keys():
+                    X[iter, rel_start:rel_end, ch[k]] += 1
             else:
-                X[iter, rel_start:rel_end, ch['_'.join(['TRA', 'O'])]] += 1
+                k = '_'.join(['TRA', 'O'])
+                if k in ch.keys():
+                    X[iter, rel_start:rel_end, ch[k]] += 1
 
     return X
 
