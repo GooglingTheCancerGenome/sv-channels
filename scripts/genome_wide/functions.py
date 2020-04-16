@@ -2,9 +2,7 @@ import gzip
 import json
 import logging
 import os
-from collections import Counter
 from itertools import groupby
-
 import numpy as np
 import pysam
 import twobitreader as twobit
@@ -568,3 +566,19 @@ def load_all_clipped_read_positions(win_hlen,
         # f.close()
 
         return cpos_list_right, cpos_list_left
+
+
+def load_windows(win_file):
+
+    npzfile = np.load(win_file, allow_pickle=True)
+    X = npzfile['data']
+    y = npzfile['labels']
+    y = y.item()
+    return X, y
+
+
+def save_windows(X, y, win_file):
+
+    np.savez(file=win_file,
+             data=X,
+             labels=y)

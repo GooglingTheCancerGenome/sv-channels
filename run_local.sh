@@ -12,7 +12,7 @@ fi
 BAM=$(realpath -s "$1")
 BASE_DIR=$(dirname "$BAM")
 SAMPLE=$(basename "$BAM" .bam)
-SV_TYPES=(TRA)
+SV_TYPES=(DEL)
 SV_CALLS=(gridss)  # to speed up exclude callers: manta delly lumpy
 KFOLD=2            # k-fold cross validation
 WIN_SZ=200  # in bp
@@ -64,15 +64,25 @@ for s in "${SEQ_IDS[@]}"; do  # per chromosome
 done
 
 for sv in "${SV_TYPES[@]}"; do
+    out="labels/win$WIN_SZ/$sv/split_reads"
+
     p=label_window_pairs_on_split_read_positions
-    python $p.py -b "$BAM" -w $WIN_SZ -c "${SEQ_IDS_CSV}" -gt "$BEDPE" -s $sv \
-      -o labels.json.gz -p . -l $p.log
+    #python $p.py -b "$BAM" -w $WIN_SZ -c "${SEQ_IDS_CSV}" -gt "$BEDPE" -s $sv \
+    #  -o labels.json.gz -p . -l $p.log
 
     p=create_window_pairs
-    out="labels/win$WIN_SZ/$sv/split_reads"
     lb="$out/labels.json.gz"
-    python $p.py -b "$BAM" -c "${SEQ_IDS_CSV}" -lb "$lb" -ca .  -w $WIN_SZ \
-      -p "$out" -l $p.log
+    #python $p.py -b "$BAM" -c "${SEQ_IDS_CSV}" -lb "$lb" -ca .  -w $WIN_SZ \
+    #  -p "$out" -l $p.log
+
+    p=add_win_channels
+    pfix="$out/windows/windows"
+    iwin="${pfix}.npz"
+    owin="${pfix}_en.npz"
+    log="${pfix}_en.log"
+    python $p.py -b "$BAM" -w "$WIN_SZ" -i ${iwin} -o ${owin} -l $log
+    mv ${iwin} ${iwin}.bkup
+    mv ${owin} ${iwin}
 
     p=train_model_with_fit
     python $p.py --training_sample_name ${SAMPLE} --training_sample_folder . \
@@ -80,6 +90,7 @@ for sv in "${SV_TYPES[@]}"; do
           -s $sv -l $p.log
 
     for c in "${SV_CALLS[@]}"; do
+
         p=label_window_pairs_on_svcallset
         python $p.py -b "$BAM" -w $WIN_SZ -c "${SEQ_IDS_CSV}" -gt "$BEDPE" \
           -s $sv -sv "$BASE_DIR/$c" -o labels.json.gz -p . -l $p.log
@@ -89,6 +100,15 @@ for sv in "${SV_TYPES[@]}"; do
         lb="$out/labels.json.gz"
         python $p.py -b "$BAM" -c "${SEQ_IDS_CSV}" -lb "$lb" -ca . -w $WIN_SZ \
           -p "$out" -l $p.log
+
+        p=add_win_channels
+        pfix="$out/windows/windows"
+        iwin="${pfix}.npz"
+        owin="${pfix}_en.npz"
+        log="${pfix}_en.log"
+        python $p.py -b "$BAM" -w "$WIN_SZ" -i ${iwin} -o ${owin} -l $log
+        mv ${iwin} ${iwin}.bkup
+        mv ${owin} ${iwin}
 
         p=train_model_with_fit
         python $p.py --training_sample_name ${SAMPLE} --training_sample_folder . \
