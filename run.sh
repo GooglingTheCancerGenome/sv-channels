@@ -161,6 +161,31 @@ while true; do
     && break || sleep ${STIME}m
 done
 
+# Add window channels
+for sv in "${SV_TYPES[@]}"; do
+    for c in "${SV_CALLS[@]}"; do
+
+        p=add_win_channels
+        out="labels/win$WIN_SZ/$sv/$c"
+        pfix="$out/windows/windows"
+        iwin="${pfix}.npz"
+        owin="${pfix}_en.npz"
+        log="${pfix}_en.log"
+        cmd="python $p.py -b "${BAM}" -w "${WIN_SZ}" -i ${iwin} -o ${owin} -l ${log}; \
+        mv ${iwin} ${iwin}.bkup; \
+        mv ${owin} ${iwin}"
+        JOB_ID=$(submit $p all "$cmd")
+        JOBS+=($JOB_ID)
+
+    done
+done
+
+# wait until the jobs are done
+while true; do
+  [[ $(monitor ${JOBS[-1]} | grep -v 'WARN' | jq '.statuses | .[] | select(.done==true)') ]] \
+    && break || sleep ${STIME}m
+done
+
 # Train and test model
 SV_CALLS+=(split_reads)  # AK: ok?
 for sv in "${SV_TYPES[@]}"; do
