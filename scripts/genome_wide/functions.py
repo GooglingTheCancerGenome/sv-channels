@@ -569,7 +569,7 @@ def load_all_clipped_read_positions(win_hlen,
 
 def load_windows(win_file):
 
-    npzfile = np.load(win_file, allow_pickle=True)
+    npzfile = np.load(win_file, allow_pickle=True, mmap_mode='r')
     X = npzfile['data']
     y = npzfile['labels']
     y = y.item()

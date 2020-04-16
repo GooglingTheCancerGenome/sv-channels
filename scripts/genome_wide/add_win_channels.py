@@ -7,7 +7,7 @@ import numpy as np
 from functions import load_windows, save_windows, is_left_clipped, is_right_clipped
 
 padding = 10
-log_every_n_pos = 1000
+log_every_n_pos = 100
 
 
 def init_log(logfile):
@@ -153,7 +153,12 @@ def add_channels(ibam, win, ifile):
             return [read for read in aln.fetch(chrom, pos - win / 2, pos + win / 2)]
 
     # Load the windows
+    logging.info("Loading windows...")
+    last_t = time()
     X, y = load_windows(ifile)
+    now_t = time()
+    logging.info("Windows loaded in {} seconds".format(now_t - last_t))
+
     # Load the channels
     ch = get_channels()
     # get starting time
