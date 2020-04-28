@@ -1,5 +1,5 @@
 ################################################################################
-CNN
+sv-channels
 ################################################################################
 
 .. list-table::
@@ -13,7 +13,7 @@ CNN
    * - \2. License
      - |License Badge|
    * - \3. Community Registry
-     - |PyPI Badge| |Research Software Directory Badge|
+     - |Research Software Directory Badge|
    * - \4. Enable Citation
      - |Zenodo Badge|
    * - \5. Checklist
@@ -29,19 +29,15 @@ CNN
 https://badgen.net/ to see which other badges are available.)
 
 .. |GitHub Badge| image:: https://img.shields.io/badge/github-repo-000.svg?logo=github&labelColor=gray&color=blue
-   :target: GooglingTheCancerGenome/CNN/
+   :target: https://github.com/GooglingTheCancerGenome/sv-channels
    :alt: GitHub Badge
 
 .. |License Badge| image:: https://img.shields.io/github/license/citation-file-format/cff-converter-python
-   :target: GooglingTheCancerGenome/CNN/
+   :target: https://github.com/GooglingTheCancerGenome/sv-channels
    :alt: License Badge
 
-.. |PyPI Badge| image:: https://img.shields.io/pypi/v/cffconvert.svg?colorB=blue
-   :target: https://pypi.python.org/pypi/cffconvert/
-   :alt: PyPI Badge
-
-.. |Research Software Directory Badge| image:: https://img.shields.io/badge/rsd-cnn-00a3e3.svg
-   :target: https://www.research-software.nl/software/cnn
+.. |Research Software Directory Badge| image:: https://img.shields.io/badge/rsd-svchannels-00a3e3.svg
+   :target: https://www.research-software.nl/software/sv-channels
    :alt: Research Software Directory Badge
 
 .. |Zenodo Badge| image:: https://zenodo.org/badge/DOI/10.000/FIXME.svg
@@ -52,14 +48,14 @@ https://badgen.net/ to see which other badges are available.)
    :target: https://bestpractices.coreinfrastructure.org/projects/FIXME
    :alt: CII Best Practices Badge
 
-.. |Travis CI| image:: https://travis-ci.org/GooglingTheCancerGenome/CNN.svg?branch=iss32
-   :target: https://travis-ci.org/GooglingTheCancerGenome/CNN
+.. |Travis CI| image:: https://travis-ci.org/GooglingTheCancerGenome/sv-channels.svg?branch=iss32
+   :target: https://travis-ci.org/GooglingTheCancerGenome/sv-channels
    :alt: Travis CI
 
-.. |ReadTheDocs Badge| image:: https://readthedocs.org/projects/CNN/badge/?version=latest
+.. |ReadTheDocs Badge| image:: https://readthedocs.org/projects/sv-channels/badge/?version=latest
     :alt: Documentation Status
     :scale: 100%
-    :target: https://cnn.readthedocs.io/en/latest/?badge=latest
+    :target: https://sv-channels.readthedocs.io/en/latest/?badge=latest
 
 
 The project setup is documented in `a separate document <project_setup.rst>`_.
@@ -75,11 +71,11 @@ Installation
 
 .. code-block:: console
 
-  git clone https://github.com/GooglingTheCancerGenome/CNN
-  cd CNN
+  git clone https://github.com/GooglingTheCancerGenome/sv-channels
+  cd sv-channels
   conda update -y conda  # update Conda
-  conda env create -n cnn -f environment.yaml
-  conda activate cnn
+  conda env create -n sv-channels -f environment.yaml
+  conda activate sv-channels
 
 Execution
 =========
@@ -110,11 +106,11 @@ Installation
 
 .. code-block:: console
 
-  git clone https://github.com/GooglingTheCancerGenome/CNN
-  cd CNN
+  git clone https://github.com/GooglingTheCancerGenome/sv-channels
+  cd sv-channels
   conda update -y conda  # update Conda
-  conda env create -n cnn -f environment.yaml
-  conda activate cnn
+  conda env create -n sv-channels -f environment.yaml
+  conda activate sv-channels
 
 Run tests (including coverage) with:
 
@@ -125,14 +121,14 @@ Run tests (including coverage) with:
 Flowchart
 =========
 
-.. image:: doc/cnn.svg
+.. image:: doc/sv-channels.svg
   :width: 400
   :alt: Flowchart
 
 Contributing
 ============
 
-If you want to contribute to the development of cnn,
+If you want to contribute to the development of *sv-channels*,
 have a look at the `contribution guidelines <CONTRIBUTING.rst>`_.
 
 *****************************
