@@ -31,13 +31,12 @@ JOBS_LOG=jobs.json  # job accounting log
 RTIME=10  # runtime in minutes
 STIME=1  # sleep X minutes
 MY_ENV=wf  # conda env
-MAXMEM=48000  # mem in MB
+#MAXMEM=48000  # mem in MB; use with xenon --max-memory
 
 submit () {  # submit a job via Xenon CLI
   xenon -v scheduler $SCH --location local:// submit \
     --name "${1}-${2}" --cores-per-task 1 --inherit-env --max-run-time $RTIME \
-    --max-memory ${MAXMEM} --working-directory . --stderr stderr-%j.log \
-    --stdout stdout-%j.log "$3"
+    --working-directory . --stderr stderr-%j.log --stdout stdout-%j.log "$3"
 }
 
 monitor () {  # monitor a job via Xenon CLI
@@ -153,8 +152,7 @@ done
 
 # wait until the jobs are done
 while true; do
-  [[ $(monitor ${JOBS[-1]} | grep -v 'WARN' | \
-    jq '.statuses | .[] | select(.done==true)') ]] && \
+  [[ $(monitor ${JOBS[-1]} | grep -v 'WARN' | jq '.statuses | .[] | select(.done==true)') ]] && \
     break || sleep ${STIME}m
 done
 
