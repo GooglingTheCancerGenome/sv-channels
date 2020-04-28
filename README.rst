@@ -71,7 +71,7 @@ Installation
 
 .. code-block:: console
 
-  git clone https://github.com/GooglingTheCancerGenome/sv-channels
+  git clone https://github.com/GooglingTheCancerGenome/sv-channels.git
   cd sv-channels
   conda update -y conda  # update Conda
   conda env create -n sv-channels -f environment.yaml
@@ -106,7 +106,7 @@ Installation
 
 .. code-block:: console
 
-  git clone https://github.com/GooglingTheCancerGenome/sv-channels
+  git clone https://github.com/GooglingTheCancerGenome/sv-channels.git
   cd sv-channels
   conda update -y conda  # update Conda
   conda env create -n sv-channels -f environment.yaml
