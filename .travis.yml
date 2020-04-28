@@ -23,4 +23,4 @@ install:
   - docker exec -t $SCH-$TAG chown -R xenon:xenon /home/xenon
   - docker exec -u xenon -t $SCH-$TAG ./install.sh
 script:
-  - docker exec -u xenon -t $SCH ./run.sh $SCH $BAM $CHROM
+  - docker exec -u xenon -t $SCH-$TAG ./run.sh $SCH $BAM $CHROM
