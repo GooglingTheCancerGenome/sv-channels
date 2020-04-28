@@ -1,24 +1,26 @@
 ---
 dist: xenial
+sudo: required
 language: python
 python:
   - "3.7"
+services:
+  - docker
 env:
   global:
-    - MY_ENV=cnn
-    - URL=https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    - PREFIX=gtcg/xenon
     - BAM=data/test.bam
     - CHROM="12 22"
+  matrix:
+    - PORT=10022 SCH=gridengine TAG=6
+    - PORT=10023 SCH=slurm TAG=17
+    - PORT=10024 SCH=slurm TAG=19
 install:
-  - sudo apt-get update
-  - wget $URL -O miniconda.sh
-  - bash miniconda.sh -b -p $HOME/miniconda
-  - source "$HOME/miniconda/etc/profile.d/conda.sh"
-  - hash -r
-  - conda config --set always_yes yes --set changeps1 no
-  - conda update -q conda
-  - conda info -a
-  - conda env create -n $MY_ENV -f environment.yaml
-  - conda activate $MY_ENV
+  - docker run -d -p $PORT:22 --name $SCH-$TAG $PREFIX-$SCH:$TAG
+  - sleep 10
+  - docker ps -a
+  - docker cp ./ $SCH-$TAG:/home/xenon
+  - docker exec -t $SCH-$TAG chown -R xenon:xenon /home/xenon
+  - docker exec -u xenon -t $SCH-$TAG ./install.sh
 script:
-  - ./run_local.sh $BAM $CHROM
+  - docker exec -u xenon -t $SCH ./run.sh $SCH $BAM $CHROM
