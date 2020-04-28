@@ -20,7 +20,6 @@ REF_GENOME = config["DEFAULT"]["REF_GENOME"]
 
 
 def get_chr_len(ibam, chrName):
-
     # check if the BAM file exists
     assert os.path.isfile(ibam), ibam + " file not existent!"
     # open the BAM file
@@ -96,10 +95,10 @@ def load_channel(chr_list, outDir, ch):
                     'clipped_reads_inversion'] = clipped_reads_inversion[chrom]
                 channel_data[chrom][
                     'clipped_reads_duplication'] = clipped_reads_duplication[
-                        chrom]
+                    chrom]
                 channel_data[chrom][
                     'clipped_reads_translocation'] = clipped_reads_translocation[
-                        chrom]
+                    chrom]
                 del clipped_reads, clipped_reads_inversion, \
                     clipped_reads_duplication, clipped_reads_translocation
 
@@ -127,8 +126,12 @@ def load_channel(chr_list, outDir, ch):
 
 
 def create_carray(ibam, chrom, twobit, bigwig, outDir, cmd_name):
+
+    def get_percentile(v):
+        return np.percentile(v, np.arange(50, 110, 10))
+
     chrlen = get_chr_len(ibam, chrom)
-    n_channels = 46
+    n_channels = 48
     chr_array = np.zeros(shape=(chrlen, n_channels),
                          dtype=np.float32)  # bz.zeros
     bw_map = pyBigWig.open(bigwig)  # get_mappability_bigwig()
@@ -150,10 +153,10 @@ def create_carray(ibam, chrom, twobit, bigwig, outDir, cmd_name):
 
     channel_index = 0
     for current_channel in [
-            'coverage', 'snv', 'clipped_reads', 'split_reads',
-            'clipped_read_distance', 'clipped_reads_inversion',
-            'clipped_reads_duplication', 'clipped_reads_translocation',
-            'split_read_distance'
+        'coverage', 'snv', 'clipped_reads', 'split_reads',
+        'clipped_read_distance', 'clipped_reads_inversion',
+        'clipped_reads_duplication', 'clipped_reads_translocation',
+        'split_read_distance'
     ]:
 
         current_channel_dataset = current_channel
@@ -163,8 +166,8 @@ def create_carray(ibam, chrom, twobit, bigwig, outDir, cmd_name):
             current_channel_dataset = 'split_reads'
 
         elif current_channel in [
-                'clipped_reads', 'clipped_reads_inversion',
-                'clipped_reads_duplication', 'clipped_reads_translocation'
+            'clipped_reads', 'clipped_reads_inversion',
+            'clipped_reads_duplication', 'clipped_reads_translocation'
         ]:
 
             current_channel_dataset = 'clipped_reads'
@@ -183,14 +186,14 @@ def create_carray(ibam, chrom, twobit, bigwig, outDir, cmd_name):
             ch_num = channel_data[chrom][current_channel].shape[1]
 
             chr_array[:, channel_index:channel_index +
-                      ch_num] = channel_data[chrom][current_channel][:
-                                                                     chrlen, :]
+                                       ch_num] = channel_data[chrom][current_channel][:
+                                                                                      chrlen, :]
             channel_index += ch_num
             del channel_data[chrom][current_channel]
 
         elif current_channel in [
-                'clipped_reads', 'split_reads', 'clipped_reads_inversion',
-                'clipped_reads_duplication', 'clipped_reads_translocation'
+            'clipped_reads', 'split_reads', 'clipped_reads_inversion',
+            'clipped_reads_duplication', 'clipped_reads_translocation'
         ]:
             for split_direction in direction_list[current_channel]:
                 if len(channel_data[chrom][current_channel]
@@ -219,6 +222,7 @@ def create_carray(ibam, chrom, twobit, bigwig, outDir, cmd_name):
                                 int, channel_data[chrom][current_channel]
                                 [split_direction]
                                 [clipped_arrangement].keys())))
+
                     vals = np.array(
                         list(
                             map(
@@ -227,18 +231,28 @@ def create_carray(ibam, chrom, twobit, bigwig, outDir, cmd_name):
                                 [clipped_arrangement].values())))
 
                     chr_array[idx, channel_index] = vals
-
                     channel_index += 1
+
+                    # vals = np.array(list(map(get_percentile,
+                    #            channel_data[chrom]
+                    #            [current_channel][split_direction]
+                    #            [clipped_arrangement].values())))
+
+                    #chr_array[idx, channel_index:channel_index + vals.shape[1]] = vals
+                    #channel_index += vals.shape[1]
+
                     del channel_data[chrom][current_channel][split_direction][
                         clipped_arrangement]
 
         elif current_channel == 'split_read_distance':
             for split_direction in direction_list[current_channel]:
+
                 idx = np.array(
                     list(
                         map(
                             int, channel_data[chrom][current_channel]
                             [split_direction].keys())))
+
                 vals = np.array(
                     list(
                         map(
@@ -246,8 +260,15 @@ def create_carray(ibam, chrom, twobit, bigwig, outDir, cmd_name):
                             [current_channel][split_direction].values())))
 
                 chr_array[idx, channel_index] = vals
-
                 channel_index += 1
+
+                # vals = np.array(list(map(get_percentile,
+                #                          channel_data[chrom][current_channel]
+                #                          [split_direction].values())))
+
+                # chr_array[idx, channel_index:channel_index + vals.shape[1]] = vals
+                # channel_index += vals.shape[1]
+
                 del channel_data[chrom][current_channel][split_direction]
 
     current_channel = 'mappability'
@@ -268,8 +289,8 @@ def create_carray(ibam, chrom, twobit, bigwig, outDir, cmd_name):
     nuc_list = ['A', 'T', 'C', 'G', 'N']
 
     chr_array[:, channel_index:channel_index +
-              len(nuc_list)] = get_one_hot_sequence_by_list(
-                  twobit, chrom, list(np.arange(chrlen)))
+                               len(nuc_list)] = get_one_hot_sequence_by_list(
+        twobit, chrom, list(np.arange(chrlen)))
     channel_index += len(nuc_list)
 
     logging.info("chr_array shape: %s" % str(chr_array.shape))

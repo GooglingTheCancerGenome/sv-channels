@@ -1,26 +1,33 @@
-# Imports
 import argparse
 import gzip
 import json
 import logging
 import os
+import sys
+
 from collections import Counter, defaultdict
 from time import time
 
+import pysam
 from intervaltree import IntervalTree
-from pysam import VariantFile
 
 from functions import *
 from label_classes import SVRecord
 
+with open('parameters.json', 'r') as f:
+    config = json.load(f)
+
+HPC_MODE = config["DEFAULT"]["HPC_MODE"]
+
 
 def read_vcf(invcf):
+
     # Check file existence
     assert os.path.isfile(invcf), invcf + ' not found!'
     # Dictionary with chromosome keys to store SVs
     sv_list = []
 
-    vcf_in = VariantFile(invcf, 'r')
+    vcf_in = pysam.VariantFile(invcf, 'r')
     for rec in vcf_in.fetch():
 
         var = SVRecord(rec, 'gridss')
@@ -75,6 +82,7 @@ def read_bedpe(inbedpe, svtype_to_select):
 
 
 def filter_bedpe(inbedpe, sv_id_list, outDir):
+
     # Check file existence
     assert os.path.isfile(inbedpe), inbedpe + ' not found!'
     # Dictionary with chromosome keys to store SVs
@@ -107,67 +115,26 @@ def filter_bedpe(inbedpe, sv_id_list, outDir):
         logging.info('{} SVs written'.format(len(lines_to_keep)))
 
 
-def read_survivor_simsv_output(insur, svtype):
+def read_svcaller_bedpe(inbedpe):
+
     # Check file existence
-    assert os.path.isfile(insur), insur + ' not found!'
+    assert os.path.isfile(inbedpe), inbedpe + ' not found!'
     # Dictionary with chromosome keys to store SVs
-    sv_list = []
+    cr_pos = []
 
-    with (open(insur, 'r')) as bed:
-        for line in bed:
-
-            columns = line.rstrip().split("\t")
-            chrom1, pos1_start, pos1_end = str(
-                columns[0]), int(columns[1]) - 1, int(columns[1])
-            chrom2, pos2_start, pos2_end = str(
-                columns[2]), int(columns[3]) - 1, int(columns[3])
-            type = columns[4]
-
-            if type == svtype:
-
-                if type == 'DEL':
-                    sv_list.append((chrom1, pos1_start, pos1_end, chrom2,
-                                    pos2_start, pos2_end, svtype))
-
-                elif type == 'INS':
-                    sv_list.append((chrom1, pos1_start, pos1_end, chrom1,
-                                    pos1_start, pos1_end, svtype))
-
-    logging.info('{} SVs'.format(len(sv_list)))
-
-    return sv_list
-
-
-def filter_survivor_output(insur, sv_id_list, outDir):
-    # Check file existence
-    assert os.path.isfile(insur), insur + ' not found!'
-
-    logging.info('{} SVs to filter out'.format(len(sv_id_list)))
-    lines_to_keep = []
-
-    with (open(insur, 'r')) as bed:
+    with (open(inbedpe, 'r')) as bed:
         for line in bed:
             columns = line.rstrip().split("\t")
-            chrom1, pos1_start, pos1_end = str(
-                columns[0]), int(columns[1]) - 1, int(columns[1])
-            chrom2, pos2_start, pos2_end = str(
-                columns[2]), int(columns[3]) - 1, int(columns[3])
-            svtype = columns[4]
+            chrom1, pos1_start, pos1_end = str(columns[0]), int(
+                columns[1]), int(columns[2])
+            chrom2, pos2_start, pos2_end = str(columns[3]), int(
+                columns[4]), int(columns[5])
 
-            sv_id = '_'.join(
-                (svtype, chrom1, str(pos1_start), chrom2, str(pos2_start)))
+            cr_pos.append((chrom1, pos1_start, chrom2, pos2_start))
 
-            if svtype == "DEL" and sv_id not in sv_id_list:
-                lines_to_keep.append(line)
+    logging.info('{} candidate positions'.format(len(cr_pos)))
 
-    fileout = os.path.join(outDir, 'uncaptured_SVs.sur')
-    logging.info('Writing {}'.format(fileout))
-
-    with (open(fileout, 'w')) as fout:
-        for line in lines_to_keep:
-            fout.write(line)
-
-    logging.info('{} SVs written'.format(len(lines_to_keep)))
+    return cr_pos
 
 
 def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
@@ -178,7 +145,6 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
     :return: list, list of clipped read positions whose window completely overlap either the CIPOS interval
     or the CIEND interval
     '''
-
     def make_gtrees_from_svlist(sv_list):
 
         logging.info('Building SV GenomicTrees...')
@@ -188,12 +154,9 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
 
         # Populate tree
         for sv in sv_list:
-            # print(sv)
-
             chrom1, pos1_start, pos1_end, chrom2, pos2_start, pos2_end, svtype = sv
             sv_id = '_'.join(
                 (svtype, chrom1, str(pos1_start), chrom2, str(pos2_start)))
-            # print(sv_id)
 
             trees_start[chrom1][pos1_start:pos1_end] = (svtype, sv_id)
             trees_end[chrom2][pos2_start:pos2_end] = (svtype, sv_id)
@@ -209,15 +172,13 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
 
     def search_tree_with_cpos(cpos, trees_start, trees_end):
 
-        lookup_region = 10
-
         logging.info('Searching SV GenomicTrees with candidate positions...')
 
         lookup_start = []
         lookup_end = []
 
         # Log info every n_r times
-        n_r = 10 ** 6
+        n_r = 10**6
         last_t = time()
 
         for i, p in enumerate(cpos, start=1):
@@ -231,16 +192,14 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
                 last_t = time()
 
             chrom1, pos1, chrom2, pos2 = p
-
-            lookup_start.append(trees_start[chrom1][pos1 - lookup_region:pos1 +
-                                                                         lookup_region + 1])
-            lookup_end.append(trees_end[chrom2][pos2 - lookup_region:pos2 +
-                                                                     lookup_region + 1])
+            lookup_start.append(trees_start[chrom1][pos1 - win_hlen:pos1 +
+                                                    win_hlen + 1])
+            lookup_end.append(trees_end[chrom2][pos2 - win_hlen:pos2 +
+                                                win_hlen + 1])
 
         return lookup_start, lookup_end
 
     trees_start, trees_end = make_gtrees_from_svlist(sv_list)
-
     lookup_start, lookup_end = search_tree_with_cpos(cpos_list, trees_start,
                                                      trees_end)
 
@@ -261,6 +220,8 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
 
         if l1 == 1 and l1 == l2:
 
+            # print(lu_start)
+            # print(lu_end)
             lu_start_elem_start, lu_start_elem_end, lu_start_elem_data = lu_start.pop(
             )
             lu_end_elem_start, lu_end_elem_end, lu_end_elem_data = lu_end.pop()
@@ -325,7 +286,7 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
 
         elif l1 == 0 and l1 == l2:
             # logging.info('CPOS->Partial: %s\t%d\t%d' % (elem, start, end))
-            labels[pos_id] = 'no' + svtype
+            labels[pos_id] = 'no'+svtype
 
         elif (l1 == 1 and l2 > 1) or (l2 == 1 and l1 > 1) or (l2 > 1 and l1 > 1):
 
@@ -348,7 +309,7 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
 
         else:
             # (l1 == 1 and l2 == 0) or (l1 == 0 and l2 == 1)
-            labels[pos_id] = 'no' + svtype
+            labels[pos_id] = 'no'+svtype
 
     logging.info(Counter(labels.values()))
     sv_coverage = int(len(sv_covered) / len(sv_list) * 100)
@@ -367,32 +328,37 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
 
 
 # Get labels
-def get_labels(ibam, chrlist, win_len, svtype, ground_truth, channelDataDir,
-               outFile, outDir):
+def get_labels(chrlist, chr_dict, win_len, svtype, ground_truth, sv_positions,
+               channelDataDir, outFile, outDir):
+
     # windows half length
     win_hlen = int(int(win_len) / 2)
-    # get chromosome lengths
-    chr_dict = get_chr_len_dict(ibam)
 
-    cpos_list = load_all_clipped_read_positions(win_hlen, svtype, chr_dict,
-                                                channelDataDir)
+    sv_caller_file = os.path.join(channelDataDir, sv_positions + '.bedpe')
+    sv_caller_name = os.path.basename(sv_positions)
+
+    if os.path.exists(sv_caller_file):
+
+        cpos_list = read_svcaller_bedpe(sv_caller_file)
+
+    elif sv_caller_name == 'split_reads':
+
+        cpos_list = load_all_clipped_read_positions(win_hlen, svtype, chr_dict,
+                                                    channelDataDir)
+    else:
+        sys.exit('I cannot find {} nor {}'.format(sv_caller_file, sv_caller_name))
 
     # Keep only positions that can be used to create windows
-    chr_len_dict = get_chr_len_dict(ibam)
-
     cpos_list = [
         (chrom1, pos1, chrom2, pos2)
         for chrom1, pos1, chrom2, pos2 in cpos_list if chrom1 in chrlist
-                                                       and chrom2 in chrlist and win_hlen <= pos1 <= chr_len_dict[
-                                                           chrom1] -
-                                                       win_hlen and win_hlen <= pos2 <= chr_len_dict[chrom2] - win_hlen
+        and chrom2 in chrlist and win_hlen <= pos1 <= chr_dict[chrom1] -
+        win_hlen and win_hlen <= pos2 <= chr_dict[chrom2] - win_hlen
     ]
 
     filename, file_extension = os.path.splitext(ground_truth)
     if file_extension == '.bedpe':
         sv_list = read_bedpe(ground_truth, svtype)
-    elif file_extension == '.sur':
-        sv_list = read_survivor_simsv_output(ground_truth, svtype)
     elif file_extension == '.vcf' or file_extension == '.gz':
         sv_list = read_vcf(ground_truth)
 
@@ -401,9 +367,8 @@ def get_labels(ibam, chrlist, win_len, svtype, ground_truth, channelDataDir,
 
     # filename, file_extension = os.path.splitext(ground_truth)
     # trees_start, trees_end = make_gtrees_from_truth_set(sv_list, file_extension.upper())
-
-    labels = overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth,
-                     outDir)
+    # print(sv_list)
+    labels = overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir)
 
     with gzip.GzipFile(outFile, 'wb') as fout:
         fout.write(json.dumps(labels).encode('utf-8'))
@@ -417,32 +382,36 @@ def main():
 
     parser = argparse.ArgumentParser(description='Create labels')
     parser.add_argument('-b',
-                        '--bam',
+                        '--bed',
                         type=str,
-                        default='../../data/test.bam',
-                        help="Specify input file (BAM)")
-    parser.add_argument('-c',
-                        '--chrlist',
-                        type=str,
-                        default='12,22',
-                        help="Comma separated list of chromosomes to consider")
+                        default='../../data/seqs.bed',
+                        help="Specify chromosome regions to consider (BED)")
     parser.add_argument('-l',
                         '--logfile',
                         type=str,
                         default='labels.log',
                         help="Specify log file")
-    # parser.add_argument('-s', '--sample', type=str, default='NA24385',
-    #                     help="Specify sample")
+    parser.add_argument('-c',
+                        '--chrlist',
+                        type=str,
+                        default='12,22',
+                        help="Comma separated list of chromosomes to consider")
     parser.add_argument('-w',
                         '--window',
                         type=str,
-                        default=500,
+                        default=200,
                         help="Specify window size")
     parser.add_argument('-s',
                         '--svtype',
                         type=str,
-                        default='TRA',
+                        default='DEL',
                         help="Specify SV type")
+    parser.add_argument('-sv',
+                        '--sv_positions',
+                        type=str,
+                        #default=os.path.join('..', '..', 'data', 'gridss'),
+                        default=os.path.join('..', '..', 'data', 'split_reads'),
+                        help="Specify Manta/GRIDSS BEDPE file")
     parser.add_argument('-gt',
                         '--ground_truth',
                         type=str,
@@ -451,22 +420,24 @@ def main():
     parser.add_argument('-o',
                         '--out',
                         type=str,
-                        default='./labels/win500/TRA/split_reads/labels.json.gz',
+                        default='labels.json.gz',
                         help="Specify output")
     parser.add_argument('-p',
                         '--outputpath',
                         type=str,
-                        default='.',
+                        default='',
                         help="Specify output path")
 
     args = parser.parse_args()
 
-    # Log file
+    sv_caller_name = os.path.basename(args.sv_positions)
     output_dir = os.path.join(args.outputpath, 'labels',
                               'win' + str(args.window),
                               args.svtype,
-                              'split_reads')
+                              sv_caller_name
+                              )
     os.makedirs(output_dir, exist_ok=True)
+    # Log file
     logfilename = os.path.join(output_dir, args.logfile)
     output_file = os.path.join(output_dir, args.out)
 
@@ -478,16 +449,18 @@ def main():
 
     t0 = time()
 
-    get_labels(
-        ibam=args.bam,
-        chrlist=args.chrlist.split(','),
-        win_len=args.window,
-        svtype=args.svtype,
-        ground_truth=args.ground_truth,
-        channelDataDir=args.outputpath,
-        outFile=output_file,
-        outDir=output_dir,
-    )
+    # Get dictionary of chromosome lengths
+    chr_dict = chr_dict_from_bed(args.bed)
+
+    get_labels(chrlist=args.chrlist.split(','),
+               chr_dict=chr_dict,
+               win_len=args.window,
+               svtype=args.svtype,
+               ground_truth=args.ground_truth,
+               sv_positions=args.sv_positions,
+               channelDataDir=args.outputpath,
+               outFile=output_file,
+               outDir=output_dir)
 
     logging.info('Elapsed time making labels = %f' % (time() - t0))
 

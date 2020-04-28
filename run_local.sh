@@ -21,17 +21,12 @@ SEQ_IDS_CSV=$(IFS=, ; echo "${SEQ_IDS[*]}")  # stringify
 PREFIX="${BASE_DIR}/${SAMPLE}"
 TWOBIT="${PREFIX}.2bit"
 BIGWIG="${PREFIX}.bw"
-TSV="${PREFIX}.tsv"
-BEDPE="${PREFIX}.bedpe"
+BEDPE="${PREFIX}.bedpe"  # truth set
+BED="${PREFIX}.bed" # chromosome regions
 WORK_DIR=scripts/genome_wide
 
-# convert SV truth set in TSV to BEDPE file (only INDELs considered)
-awk '{OFS="\t"}{if($5 ~ /DEL|INS|INV|DUP|TRA/){print $1,$2,$2+1,$1,$4,$4+1,$5}}' \
-  "$TSV" > "$BEDPE"
-
-
-# convert sv-callers output in VCF to BEDPE files
-for vcf in $(find data -mindepth 5 -name "*.vcf"); do
+# convert SV calls (i.e. truth set and sv-callers output) in VCF to BEDPE files
+for vcf in $(find data -name "*.vcf" | grep -E "test"); do
   prefix=$(basename $vcf .vcf)
   bedpe="${BASE_DIR}/${prefix}.bedpe"
   scripts/R/vcf2bedpe.R -i "$vcf" -o "$bedpe"
@@ -54,6 +49,7 @@ python $p.py -b "$BAM" -c "${SEQ_IDS_CSV}" -o $p.json.gz -ob $p.bedpe.gz -p . -l
 
 # write channels into *.json.gz and *.npy.gz files
 for s in "${SEQ_IDS[@]}"; do  # per chromosome
+
   p=clipped_read_distance
   python $p.py -b "$BAM" -c $s -o $p.json.gz -p . -l $p.log
 
@@ -65,26 +61,14 @@ for s in "${SEQ_IDS[@]}"; do  # per chromosome
 
   p=chr_array
   python $p.py -b "$BAM" -c $s -t "$TWOBIT" -m "$BIGWIG" -o $p.npy -p . -l $p.log
+
 done
 
 for sv in "${SV_TYPES[@]}"; do
-    p=label_window_pairs_on_split_read_positions
-    python $p.py -b "$BAM" -w $WIN_SZ -c "${SEQ_IDS_CSV}" -gt "$BEDPE" -s $sv \
-      -o labels.json.gz -p . -l $p.log
-
-    p=create_window_pairs
-    out="labels/win$WIN_SZ/$sv/split_reads"
-    lb="$out/labels.json.gz"
-    python $p.py -b "$BAM" -c "${SEQ_IDS_CSV}" -lb "$lb" -ca .  -w $WIN_SZ \
-      -p "$out" -l $p.log
-
-    p=train_model_with_fit
-    python $p.py --test_sample . --training_sample . -k $KFOLD -p "$out" \
-      -s $sv -l $p.log
 
     for c in "${SV_CALLS[@]}"; do
-        p=label_window_pairs_on_svcallset
-        python $p.py -b "$BAM" -w $WIN_SZ -c "${SEQ_IDS_CSV}" -gt "$BEDPE" \
+        p=label_windows
+        python $p.py -b "${BED}" -w $WIN_SZ -c "${SEQ_IDS_CSV}" -gt "$BEDPE" \
           -s $sv -sv "$BASE_DIR/$c" -o labels.json.gz -p . -l $p.log
 
         p=create_window_pairs
@@ -93,8 +77,18 @@ for sv in "${SV_TYPES[@]}"; do
         python $p.py -b "$BAM" -c "${SEQ_IDS_CSV}" -lb "$lb" -ca . -w $WIN_SZ \
           -p "$out" -l $p.log
 
+        p=add_win_channels
+        pfix="$out/windows/windows"
+        iwin="${pfix}.npz"
+        owin="${pfix}_en.npz"
+        log="${pfix}_en.log"
+        python $p.py -b "$BAM" -w "$WIN_SZ" -i ${iwin} -o ${owin} -l $log
+        mv ${iwin} ${iwin}.bkup
+        mv ${owin} ${iwin}
+
         p=train_model_with_fit
-        python $p.py --test_sample . --training_sample . -k $KFOLD -p "$out" \
+        python $p.py --training_sample_name ${SAMPLE} --training_sample_folder . \
+          --test_sample_name ${SAMPLE} --test_sample_folder . -k $KFOLD -p "$out" \
           -s $sv -l $p.log
     done
 done

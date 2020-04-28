@@ -13,10 +13,10 @@ dependencies:
   - twobitreader
   - bcolz
   - scikit-learn
-  - keras
-  - tensorflow
+  - tensorflow>=2.0.0
   - r-argparser
   - bioconductor-structuralvariantannotation
   - xenon-cli=3.0.5
   - jq
   - cigar
+  - coreutils

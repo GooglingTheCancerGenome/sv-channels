@@ -14,13 +14,16 @@ BAM=$(realpath -s "$2")
 BASE_DIR=$(dirname "$BAM")
 SAMPLE=$(basename "$BAM" .bam)
 SEQ_IDS=(${@:3})
-SV_TYPES=(INS DEL)
+SEQ_IDS_CSV=$(IFS=, ; echo "${SEQ_IDS[*]}")  # stringify
+SV_TYPES=(DEL INS INV DUP TRA)
 SV_CALLS=(gridss manta delly lumpy)  # AK: +split_reads?
+KFOLD=2            # k-fold cross validation
 WIN_SZ=200  # in bp
 PREFIX="${BASE_DIR}/${SAMPLE}"
 TWOBIT="${PREFIX}.2bit"
 BIGWIG="${PREFIX}.bw"
 BEDPE="${PREFIX}.bedpe"
+BED="${PREFIX}.bed" # chromosome regions
 WORK_DIR=scripts/genome_wide
 #NUMEXPR_MAX_THREADS=128  # required by py-bcolz
 STARTTIME=$(date +%s)
@@ -29,15 +32,18 @@ JOBS_LOG=jobs.json  # job accounting log
 RTIME=10   # runtime in minutes
 STIME=1  # sleep X minutes
 MY_ENV=wf  # conda env
+MAXMEM=48000
 
 submit () {  # submit a job via Xenon CLI
   xenon -v scheduler $SCH --location local:// submit \
     --name "${1}-${2}" --cores-per-task 1 --inherit-env --max-run-time $RTIME \
+    --max-memory ${MAXMEM} \
     --working-directory . --stderr stderr-%j.log --stdout stdout-%j.log "$3"
 }
 
 monitor () {  # monitor a job via Xenon CLI
-  xenon -v --json scheduler $SCH --location local:// list --identifier $1
+  xenon -v --json scheduler $SCH --prop xenon.adaptors.schedulers.${SCH}.ignore.version=true \
+  --location local:// list --identifier $1
 }
 
 # activate conda env
@@ -45,21 +51,30 @@ eval "$(conda shell.bash hook)"
 conda activate $MY_ENV
 conda list
 
+# convert SV calls (i.e. truth set and sv-callers output) in VCF to BEDPE files
+for vcf in $(find data -name "*.vcf" | grep -E "test"); do
+  prefix=$(basename $vcf .vcf)
+  bedpe="${BASE_DIR}/${prefix}.bedpe"
+  cmd="scripts/R/vcf2bedpe.R -i ${vcf} -o ${bedpe}"
+  JOB_ID=$(submit vcf2bedpe all "$cmd")
+  JOBS+=($JOB_ID)
+done
+
 # submit jobs to output "channel" files (*.json.gz and *.npy.gz)
 cd $WORK_DIR
 
 p=clipped_reads
-cmd="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -o $p.json.gz -p . -l $p.log"
+cmd="python $p.py -b '$BAM' -c '${SEQ_IDS_CSV}' -o $p.json.gz -p . -l $p.log"
 JOB_ID=$(submit $p all "$cmd")
 JOBS+=($JOB_ID)
 
 p=clipped_read_pos
-cmd="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -o $p.json.gz -p . -l $p.log"
+cmd="python $p.py -b '$BAM' -c '${SEQ_IDS_CSV}' -o $p.json.gz -p . -l $p.log"
 JOB_ID=$(submit $p all "$cmd")
 JOBS+=($JOB_ID)
 
 p=split_reads
-cmd="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -o $p.json.gz -ob $p.bedpe.gz \
+cmd="python $p.py -b '$BAM' -c '${SEQ_IDS_CSV}' -o $p.json.gz -ob $p.bedpe.gz \
   -p . -l $p.log"
 JOB_ID=$(submit $p all "$cmd")
 JOBS+=($JOB_ID)
@@ -84,7 +99,7 @@ done
 # wait until the jobs are done
 for j in "${JOBS[@]}"; do
   while true; do
-    [[ $(monitor $j | jq '.statuses | .[] | select(.done==true)') ]] && \
+    [[ $(monitor $j | grep -v 'WARN' | jq '.statuses | .[] | select(.done==true)') ]] && \
       break || sleep ${STIME}m
   done
 done
@@ -101,23 +116,19 @@ done
 # wait until the jobs are done
 for j in "${JOBS[@]}"; do
   while true; do
-    [[ $(monitor $j | jq '.statuses | .[] | select(.done==true)') ]] && \
+    [[ $(monitor $j | grep -v 'WARN' | jq '.statuses | .[] | select(.done==true)') ]] && \
       break || sleep ${STIME}m
   done
 done
 
 # Create labels
 for sv in "${SV_TYPES[@]}"; do
-    p=label_window_pairs_on_split_read_positions
-    cmd="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -w $WIN_SZ -gt '$BEDPE' \
-      -s $sv -o labels.json.gz -p . -l $p.log"
-    JOB_ID=$(submit $p $s "$cmd")
-    JOBS+=($JOB_ID)
 
     for c in "${SV_CALLS[@]}"; do
-        p=label_window_pairs_on_svcallset
-        cmd="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -w $WIN_SZ -gt '$BEDPE' \
-          -s $sv -sv '$BASE_DIR/$c' -o labels.json.gz -p . -l $p.log"
+
+        p=label_windows
+        cmd="python $p.py -b '$BED' -c '${SEQ_IDS_CSV}' -w '${WIN_SZ}' -gt '${BEDPE}' \
+          -s '${sv}' -sv '${BASE_DIR}/${c}' -o labels.json.gz -p . -l '${p}'.log"
         JOB_ID=$(submit $p $s "$cmd")
         JOBS+=($JOB_ID)
 
@@ -126,17 +137,20 @@ done
 
 # wait until the jobs are done
 while true; do
-  [[ $(monitor ${JOBS[-1]} | jq '.statuses | .[] | select(.done==true)') ]] \
+  [[ $(monitor ${JOBS[-1]} | grep -v 'WARN' | jq '.statuses | .[] | select(.done==true)') ]] \
     && break || sleep ${STIME}m
 done
+
+MAXMEM=128000
 
 # Create windows
 for sv in "${SV_TYPES[@]}"; do
     for c in "${SV_CALLS[@]}"; do
+
         p=create_window_pairs
         out="labels/win$WIN_SZ/$sv/$c"
         lb="$out/labels.json.gz"
-        cmd="python $p.py -b '$BAM' -c '${SEQ_IDS[*]}' -lb '$lb' -ca . \
+        cmd="python $p.py -b '$BAM' -c '${SEQ_IDS_CSV}' -lb '$lb' -ca . \
           -w $WIN_SZ -p '$out' -l $p.log"
         JOB_ID=$(submit $p all "$cmd")
         JOBS+=($JOB_ID)
@@ -146,7 +160,32 @@ done
 
 # wait until the jobs are done
 while true; do
-  [[ $(monitor ${JOBS[-1]} | jq '.statuses | .[] | select(.done==true)') ]] \
+  [[ $(monitor ${JOBS[-1]} | grep -v 'WARN' | jq '.statuses | .[] | select(.done==true)') ]] \
+    && break || sleep ${STIME}m
+done
+
+# Add window channels
+for sv in "${SV_TYPES[@]}"; do
+    for c in "${SV_CALLS[@]}"; do
+
+        p=add_win_channels
+        out="labels/win$WIN_SZ/$sv/$c"
+        pfix="$out/windows/windows"
+        iwin="${pfix}.npz"
+        owin="${pfix}_en.npz"
+        log="${pfix}_en.log"
+        cmd="python $p.py -b "${BAM}" -w "${WIN_SZ}" -i ${iwin} -o ${owin} -l ${log}; \
+        mv ${iwin} ${iwin}.bkup; \
+        mv ${owin} ${iwin}"
+        JOB_ID=$(submit $p all "$cmd")
+        JOBS+=($JOB_ID)
+
+    done
+done
+
+# wait until the jobs are done
+while true; do
+  [[ $(monitor ${JOBS[-1]} | grep -v 'WARN' | jq '.statuses | .[] | select(.done==true)') ]] \
     && break || sleep ${STIME}m
 done
 
@@ -156,8 +195,9 @@ for sv in "${SV_TYPES[@]}"; do
     for c in "${SV_CALLS[@]}"; do
         p=train_model_with_fit
         out="labels/win$WIN_SZ/$sv/$c"
-        cmd="python $p.py --test_sample . --training_sample . -k 3 -p '$out' \
-          -s $sv -l $p.log"
+        cmd="python $p.py --training_sample_name '${SAMPLE}' --training_sample_folder . \
+          --test_sample_name '${SAMPLE}' --test_sample_folder . -k '${KFOLD}' -p '${out}' \
+          -s '${sv}' -l '${p}'.log"
         JOB_ID=$(submit $p all "$cmd")
         JOBS+=($JOB_ID)
 
@@ -166,7 +206,7 @@ done
 
 # wait until the jobs are done
 while true; do
-  [[ $(monitor ${JOBS[-1]} | jq '.statuses | .[] | select(.done==true)') ]] \
+  [[ $(monitor ${JOBS[-1]} | grep -v 'WARN' | jq '.statuses | .[] | select(.done==true)') ]] \
     && break || sleep ${STIME}m
 done
 

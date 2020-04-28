@@ -3,12 +3,12 @@
 REF=$(realpath -s "$1")
 REFNAME=$(basename "$REF" .fa)
 
-OUTDIR=$2
+# specify read length the GEM mappability track
+READ_LENGTH=$2
+
+OUTDIR=$3
 [ ! -d ${OUTDIR} ] && mkdir -p ${OUTDIR}
 cd ${OUTDIR}
-
-# specify read length the GEM mappability track
-READ_LENGTH=150
 
 # prepare the GEM mappability track in BigWig format:
 sh ../mappability/run_gem.sh ${REFNAME} ${REF} ${READ_LENGTH} .
