@@ -177,7 +177,7 @@ while true; do
 done
 
 # Train and test model
-SV_CALLS+=(split_reads)
+# SV_CALLS+=(split_reads)
 for sv in "${SV_TYPES[@]}"; do
     for c in "${SV_CALLS[@]}"; do
         p=train_model_with_fit
