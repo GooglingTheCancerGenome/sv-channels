@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 
+set -xe
+
 GENOME=$1
 BED=$2
 BW=$3
 CHRSIZES=$4
 OUTDIR=$5
-
-# conda activate sv-gen_utils
-
 CMDDIR=$PWD
-[ ! -d $OUTDIR ] && mkdir -p $OUTDIR
+
+mkdir -p $OUTDIR
 cd $OUTDIR
 
 bedtools getfasta -fi $GENOME -bed $BED -fo test.tmp.fasta

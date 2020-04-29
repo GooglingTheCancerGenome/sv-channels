@@ -1,27 +1,25 @@
 #!/usr/bin/env bash
 
+set -xe
+
 REF=$(realpath -s "$1")
 REFNAME=$(basename "$REF" .fa)
-
-# specify read length the GEM mappability track
-READ_LENGTH=$2
-
+READ_LEN=$2  # read length of the GEM mappability track
 OUTDIR=$3
-[ ! -d ${OUTDIR} ] && mkdir -p ${OUTDIR}
+GENOME=${REF}
+BED=../data/seqs.bed
+BW=${REFNAME}.${READ_LEN}mer.bw
+CHRSIZES=chr_sizes.txt
+
+mkdir -p ${OUTDIR}
 cd ${OUTDIR}
 
-# prepare the GEM mappability track in BigWig format:
-sh ../mappability/run_gem.sh ${REFNAME} ${REF} ${READ_LENGTH} .
+# prepare the GEM mappability track in BigWig format
+../mappability/run_gem.sh ${REFNAME} ${REF} ${READ_LEN} .
 
 # get chromosome sizes
 samtools faidx -o ${REFNAME}.fai ${REF}
-cut -f1,2 ${REFNAME}.fai > sizes.genome
-
-GENOME=${REF}
-BED=../data/seqs.bed
-BW=${REFNAME}.${READ_LENGTH}mer.bw
-CHRSIZES=sizes.genome
-OUTDIR=.
+cut -f1,2 ${REFNAME}.fai > ${CHRSIZES}
 
 # extract chromosome regions
-sh ../create_test_fasta.sh ${GENOME} ${BED} ${BW} ${CHRSIZES} ${OUTDIR}
+../create_test_fasta.sh ${GENOME} ${BED} ${BW} ${CHRSIZES} ${OUTDIR}
