@@ -23,7 +23,8 @@ PREFIX="${BASE_DIR}/${SAMPLE}"
 TWOBIT="${PREFIX}.2bit"
 BIGWIG="${PREFIX}.bw"
 BEDPE="${PREFIX}.bedpe"
-BED="${PREFIX}.bed" # chromosome regions
+BED="${PREFIX}.bed"
+VCF="${PREFIX}.vcf"
 WORK_DIR=scripts/genome_wide
 STARTTIME=$(date +%s)
 JOBS=()  # array of job IDs
@@ -49,13 +50,9 @@ conda activate $MY_ENV
 conda list
 
 # convert SV calls (i.e. truth set and sv-callers output) in VCF to BEDPE files
-for vcf in $(find data -name "*.vcf" | grep "test"); do
-  prefix=$(basename "$vcf" .vcf)
-  bedpe="${BASE_DIR}/${prefix}.bedpe"
-  cmd="scripts/R/vcf2bedpe.R -i '${vcf}' -o '${bedpe}'"
-  JOB_ID=$(submit vcf2bedpe all "$cmd")
-  JOBS+=($JOB_ID)
-done
+cmd="scripts/R/vcf2bedpe.R -i '${VCF}' -o '${BEDPE}'"
+JOB_ID=$(submit vcf2bedpe all "$cmd")
+JOBS+=($JOB_ID)
 
 # submit jobs to output "channel" files (*.json.gz and *.npy.gz)
 cd $WORK_DIR
