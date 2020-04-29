@@ -21,16 +21,13 @@ SEQ_IDS_CSV=$(IFS=, ; echo "${SEQ_IDS[*]}")  # stringify
 PREFIX="${BASE_DIR}/${SAMPLE}"
 TWOBIT="${PREFIX}.2bit"
 BIGWIG="${PREFIX}.bw"
-BEDPE="${PREFIX}.bedpe"  # truth set
-BED="${PREFIX}.bed" # chromosome regions
+VCF="${PREFIX}.vcf"  # truth set
+BEDPE="${PREFIX}.bedpe"
+BED="${PREFIX}.bed"  # chromosome regions
 WORK_DIR=scripts/genome_wide
 
 # convert SV calls (i.e. truth set and sv-callers output) in VCF to BEDPE files
-for vcf in $(find data -name "*.vcf" | grep "test"); do
-  prefix=$(basename "$vcf" .vcf)
-  bedpe="${BASE_DIR}/${prefix}.bedpe"
-  scripts/R/vcf2bedpe.R -i "$vcf" -o "$bedpe"
-done
+scripts/R/vcf2bedpe.R -i "$VCF" -o "$BEDPE"
 
 cd $WORK_DIR
 printenv
