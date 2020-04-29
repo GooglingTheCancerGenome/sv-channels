@@ -48,7 +48,6 @@ eval "$(conda shell.bash hook)"
 conda activate $MY_ENV
 conda list
 
-echo "Here!"
 # convert SV calls (i.e. truth set and sv-callers output) in VCF to BEDPE files
 for vcf in $(find data -name "*.vcf" | grep "test"); do
   prefix=$(basename "$vcf" .vcf)
@@ -123,9 +122,10 @@ done
 for sv in "${SV_TYPES[@]}"; do
     for c in "${SV_CALLS[@]}"; do
         p=label_windows
-        cmd="python $p.py -b '$BED' -c '${SEQ_IDS_CSV}' -w '${WIN_SZ}' -gt '${BEDPE}' \
-          -s '${sv}' -sv '${BASE_DIR}/${c}' -o labels.json.gz -p . -l '${p}'.log"
-        JOB_ID=$(submit $p $s "$cmd")
+        cmd="python $p.py -b '$BED' -c '${SEQ_IDS_CSV}' -w '${WIN_SZ}' \
+          -gt '${BEDPE}' -s ${sv} -sv '${BASE_DIR}/${c}' -o labels.json.gz \
+          -p . -l ${p}.log"
+        JOB_ID=$(submit $p $c "$cmd")
         JOBS+=($JOB_ID)
     done
 done
@@ -143,7 +143,7 @@ for sv in "${SV_TYPES[@]}"; do
         out="labels/win$WIN_SZ/$sv/$c"
         lb="$out/labels.json.gz"
         cmd="python $p.py -b '$BAM' -c '${SEQ_IDS_CSV}' -lb '$lb' -ca . \
-          -w $WIN_SZ -p '$out' -l $p.log"
+          -w $WIN_SZ -p $out -l $p.log"
         JOB_ID=$(submit $p all "$cmd")
         JOBS+=($JOB_ID)
     done
@@ -158,19 +158,18 @@ done
 # Add window channels
 for sv in "${SV_TYPES[@]}"; do
     for c in "${SV_CALLS[@]}"; do
-
         p=add_win_channels
         out="labels/win$WIN_SZ/$sv/$c"
-        pfix="$out/windows/windows"
-        iwin="${pfix}.npz"
-        owin="${pfix}_en.npz"
-        log="${pfix}_en.log"
-        cmd="python $p.py -b "${BAM}" -w "${WIN_SZ}" -i ${iwin} -o ${owin} -l ${log}; \
-        mv ${iwin} ${iwin}.bkup; \
-        mv ${owin} ${iwin}"
+        prefix="$out/windows/windows"
+        infile="${prefix}.npz"
+        outfile="${prefix}_en.npz"
+        log="${prefix}_en.log"
+        cmd="python $p.py -b '${BAM}' -w '${WIN_SZ}' -i '${infile}' \
+          -o '${outfile}' -l '${log}'; \
+            mv '${infile}' '${infile}.bck'; \
+            mv '${outfile}' '${infile}'"  # AK: why are these needed?
         JOB_ID=$(submit $p all "$cmd")
         JOBS+=($JOB_ID)
-
     done
 done
 
@@ -186,12 +185,11 @@ for sv in "${SV_TYPES[@]}"; do
     for c in "${SV_CALLS[@]}"; do
         p=train_model_with_fit
         out="labels/win$WIN_SZ/$sv/$c"
-        cmd="python $p.py --training_sample_name '${SAMPLE}' --training_sample_folder . \
-          --test_sample_name '${SAMPLE}' --test_sample_folder . -k '${KFOLD}' -p '${out}' \
-          -s '${sv}' -l '${p}'.log"
+        cmd="python $p.py --training_sample_name '${SAMPLE}' \
+          --training_sample_folder . --test_sample_name '${SAMPLE}' \
+          --test_sample_folder . -k ${KFOLD} -p ${out} -s ${sv} -l ${p}.log"
         JOB_ID=$(submit $p all "$cmd")
         JOBS+=($JOB_ID)
-
     done
 done
 
