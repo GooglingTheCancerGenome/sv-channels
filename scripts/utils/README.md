@@ -1,19 +1,25 @@
-To create the test data:
+# Test data
 
-`cd utils`
+**1. Install dependencies.**
 
-download the hs37d5 reference genome from:
-
-ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz
-
-and extract it:
-
-`gunzip hs37d5.fa.gz`
-
- 
+```bash
+# create & activate new env
+conda env create -n utils -f environment.yaml
+conda activate utils
 ```
-conda env create -n test-env -f environment.yaml
-conda activate test-env
+**2. Download the hs37d5 reference genome.**
 
-sh create_test_data.sh hs37d5.fa test_data
+```bash
+wget ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz
+gzip -d hs37d5.fa.gz
 ```
+
+**3. Generate mappability track.**
+
+```bash
+./create_test_data.sh hs37d5.fa 100 test_data
+```
+
+**4. Generate artificial short-read alignments with SVs.**
+
+https://github.com/GooglingTheCancerGenome/sv-gen
