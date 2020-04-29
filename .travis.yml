@@ -13,8 +13,8 @@ env:
     - CHROM="12 22"
   matrix:
     - PORT=10022 SCH=gridengine TAG=6
-    - PORT=10023 SCH=slurm TAG=17
-    - PORT=10024 SCH=slurm TAG=19
+#    - PORT=10023 SCH=slurm TAG=17
+#    - PORT=10024 SCH=slurm TAG=19
 install:
   - docker run -d -p $PORT:22 --name $SCH-$TAG $PREFIX-$SCH:$TAG
   - sleep 10
