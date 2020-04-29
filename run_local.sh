@@ -9,22 +9,23 @@ if [ $# -lt "2" ]; then
 fi
 
 # set variables
+WORK_DIR=scripts/genome_wide
 BAM=$(realpath -s "$1")
 BASE_DIR=$(dirname "$BAM")
 SAMPLE=$(basename "$BAM" .bam)
-SV_TYPES=(DEL)
-SV_CALLS=(gridss)  # to speed up exclude callers: manta delly lumpy
-KFOLD=2  # k-fold cross validation
-WIN_SZ=200  # in bp
-SEQ_IDS=(${@:2})
-SEQ_IDS_CSV=$(IFS=, ; echo "${SEQ_IDS[*]}")  # stringify
 PREFIX="${BASE_DIR}/${SAMPLE}"
-TWOBIT="${PREFIX}.2bit"
-BIGWIG="${PREFIX}.bw"
 VCF="${PREFIX}.vcf"  # truth set
 BEDPE="${PREFIX}.bedpe"
 BED="${PREFIX}.bed"  # chromosome regions
-WORK_DIR=scripts/genome_wide
+TWOBIT="${PREFIX}.2bit"
+BIGWIG="${PREFIX}.bw"
+
+SV_TYPES=(DEL INS INV DUP TRA)
+SV_CALLS=(gridss)  # manta delly lumpy
+SEQ_IDS=(${@:2})
+SEQ_IDS_CSV=$(IFS=, ; echo "${SEQ_IDS[*]}")  # stringify
+KFOLD=2  # k-fold cross validation
+WIN_SZ=200  # in bp
 
 # convert SV calls (i.e. truth set and sv-callers output) in VCF to BEDPE files
 scripts/R/vcf2bedpe.R -i "$VCF" -o "$BEDPE"
