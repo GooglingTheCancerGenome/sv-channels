@@ -15,7 +15,7 @@ BASE_DIR=$(dirname "$BAM")
 SAMPLE=$(basename "$BAM" .bam)
 SEQ_IDS=(${@:3})
 SEQ_IDS_CSV=$(IFS=, ; echo "${SEQ_IDS[*]}")  # stringify
-SV_TYPES=(DEL INS INV DUP TRA)
+SV_TYPES=(DEL)  #INS INV DUP TRA)
 SV_CALLS=(gridss)  # manta delly lumpy
 KFOLD=2  # k-fold cross validation
 WIN_SZ=200  # in bp
@@ -40,10 +40,10 @@ submit () {  # submit a job via Xenon CLI
     cmd+="exec --cores-per-task 1 "
   else
     cmd+="--location local:// submit --name '${2}' --cores-per-task 1 \
-      -stderr stderr-%j.log --stdout stdout-%j.log "
+      --stderr stderr-%j.log --stdout stdout-%j.log "
   fi
   cmd+="--inherit-env --max-run-time $RTIME --working-directory . "
-  echo $cmd "$1"
+  $cmd "$1"
 }
 
 monitor () {  # monitor a job via Xenon CLI
