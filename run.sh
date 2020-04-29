@@ -35,9 +35,15 @@ MY_ENV=wf  # conda env
 #MAXMEM=48000  # mem in MB; use with xenon --max-memory
 
 submit () {  # submit a job via Xenon CLI
-  xenon -v scheduler $SCH --location local:// submit \
-    --name "${1}-${2}" --cores-per-task 1 --inherit-env --max-run-time $RTIME \
-    --working-directory . --stderr stderr-%j.log --stdout stdout-%j.log "$3"
+  local cmd="xenon -v scheduler $SCH "
+  if [ "$SCH" == 'local' ]; then
+    cmd+="exec --cores-per-task 1 "
+  else
+    cmd+="--location local:// submit --name '${2}' --cores-per-task 1 \
+      -stderr stderr-%j.log --stdout stdout-%j.log "
+  fi
+  cmd+="--inherit-env --max-run-time $RTIME --working-directory . "
+  echo $cmd "$1"
 }
 
 monitor () {  # monitor a job via Xenon CLI
@@ -51,7 +57,7 @@ conda list
 
 # convert SV calls (i.e. truth set and sv-callers output) in VCF to BEDPE files
 cmd="scripts/R/vcf2bedpe.R -i '${VCF}' -o '${BEDPE}'"
-JOB_ID=$(submit vcf2bedpe all "$cmd")
+JOB_ID=$(submit "$cmd" vcf2bedpe)
 JOBS+=($JOB_ID)
 
 # submit jobs to output "channel" files (*.json.gz and *.npy.gz)
@@ -59,34 +65,34 @@ cd $WORK_DIR
 
 p=clipped_reads
 cmd="python $p.py -b '$BAM' -c '${SEQ_IDS_CSV}' -o $p.json.gz -p . -l $p.log"
-JOB_ID=$(submit $p all "$cmd")
+JOB_ID=$(submit "$cmd" $p)
 JOBS+=($JOB_ID)
 
 p=clipped_read_pos
 cmd="python $p.py -b '$BAM' -c '${SEQ_IDS_CSV}' -o $p.json.gz -p . -l $p.log"
-JOB_ID=$(submit $p all "$cmd")
+JOB_ID=$(submit "$cmd" $p)
 JOBS+=($JOB_ID)
 
 p=split_reads
 cmd="python $p.py -b '$BAM' -c '${SEQ_IDS_CSV}' -o $p.json.gz -ob $p.bedpe.gz \
   -p . -l $p.log"
-JOB_ID=$(submit $p all "$cmd")
+JOB_ID=$(submit "$cmd" $p)
 JOBS+=($JOB_ID)
 
 for s in "${SEQ_IDS[@]}"; do  # per chromosome
   p=clipped_read_distance
   cmd="python $p.py -b '$BAM' -c $s -o $p.json.gz -p . -l $p.log"
-  JOB_ID=$(submit $p $s "$cmd")
+  JOB_ID=$(submit "$cmd" "$p-$s")
   JOBS+=($JOB_ID)
 
   p=snv
   cmd="python $p.py -b '$BAM' -c $s -t '$TWOBIT' -o $p.npy -p . -l $p.log"
-  JOB_ID=$(submit $p $s "$cmd")
+  JOB_ID=$(submit "$cmd" "$p-$s")
   JOBS+=($JOB_ID)
 
   p=coverage
   cmd="python $p.py -b '$BAM' -c $s -o $p.npy -p . -l $p.log"
-  JOB_ID=$(submit $p $s "$cmd")
+  JOB_ID=$(submit "$cmd" "$p-$s")
   JOBS+=($JOB_ID)
 done
 
@@ -103,7 +109,7 @@ for s in "${SEQ_IDS[@]}"; do
   p=chr_array
   cmd="python $p.py -b '$BAM' -c $s -t '$TWOBIT' -m '$BIGWIG' -o $p.npy -p . \
     -l $p.log"
-  JOB_ID=$(submit $p $s "$cmd")
+  JOB_ID=$(submit "$cmd" "$p-$s")
   JOBS+=($JOB_ID)
 done
 
@@ -122,7 +128,7 @@ for sv in "${SV_TYPES[@]}"; do
         cmd="python $p.py -b '$BED' -c '${SEQ_IDS_CSV}' -w '${WIN_SZ}' \
           -gt '${BEDPE}' -s ${sv} -sv '${BASE_DIR}/${c}' -o labels.json.gz \
           -p . -l ${p}.log"
-        JOB_ID=$(submit $p $c "$cmd")
+        JOB_ID=$(submit "$cmd" "$p-$c")
         JOBS+=($JOB_ID)
     done
 done
@@ -141,7 +147,7 @@ for sv in "${SV_TYPES[@]}"; do
         lb="$out/labels.json.gz"
         cmd="python $p.py -b '$BAM' -c '${SEQ_IDS_CSV}' -lb '$lb' -ca . \
           -w $WIN_SZ -p $out -l $p.log"
-        JOB_ID=$(submit $p all "$cmd")
+        JOB_ID=$(submit "$cmd" $p)
         JOBS+=($JOB_ID)
     done
 done
@@ -165,7 +171,7 @@ for sv in "${SV_TYPES[@]}"; do
           -o '${outfile}' -l '${log}'; \
             mv '${infile}' '${infile}.bck'; \
             mv '${outfile}' '${infile}'"  # AK: why are these needed?
-        JOB_ID=$(submit $p all "$cmd")
+        JOB_ID=$(submit "$cmd" $p)
         JOBS+=($JOB_ID)
     done
 done
@@ -185,7 +191,7 @@ for sv in "${SV_TYPES[@]}"; do
         cmd="python $p.py --training_sample_name '${SAMPLE}' \
           --training_sample_folder . --test_sample_name '${SAMPLE}' \
           --test_sample_folder . -k ${KFOLD} -p ${out} -s ${sv} -l ${p}.log"
-        JOB_ID=$(submit $p all "$cmd")
+        JOB_ID=$(submit "$cmd" $p)
         JOBS+=($JOB_ID)
     done
 done
