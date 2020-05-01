@@ -173,7 +173,7 @@ for sv in "${SV_TYPES[@]}"; do
         waiting
         
         p=mv
-        cmd="mv \"$infile\" \"$infile.bck\"; mv \"$outfile\" \"$infile\""
+        cmd="mv -b --suffix=.bck \"$outfile\" \"$infile\""
         JOB_ID=$(submit "$cmd" "$p-$c")
         JOBS+=($JOB_ID)
     done
