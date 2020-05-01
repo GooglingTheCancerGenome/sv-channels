@@ -34,6 +34,7 @@ MY_ENV=wf  # conda env used in gtcg/xenon-* docker images
 #MAXMEM=48000  # mem in MB; use with xenon --max-memory
 
 
+# define functions
 submit () {  # submit a job via Xenon CLI
   local xenon="xenon -v scheduler $SCH "
   local exec=$1
@@ -52,10 +53,18 @@ submit () {  # submit a job via Xenon CLI
 }
 
 monitor () {  # monitor a job via Xenon CLI
+  if [ "$SCH" == 'local' ]; then
+    return
+  fi
+
   xenon -v --json scheduler $SCH --location local:// list --identifier $1
 }
 
 waiting () {  # wait until all jobs are done
+  if [ "$SCH" == 'local' ]; then
+    return
+  fi
+
   for j in "${JOBS[@]}"; do
     while true; do
       [[ $(monitor $j | grep -v 'WARN' | jq '.statuses | .[] | select(.done==true)') ]] && \
@@ -189,7 +198,7 @@ for sv in "${SV_TYPES[@]}"; do
         cmd="python $p.py --training_sample_name \"$SAMPLE\" \
           --training_sample_folder . --test_sample_name \"$SAMPLE\" \
           --test_sample_folder . -k $KFOLD -p \"$out\" -s $sv -l $p.log"
-        JOB_ID=$(submit "$cmd" $p)
+        JOB_ID=$(submit "$cmd" "$p-$c")
         JOBS+=($JOB_ID)
     done
 done
