@@ -46,7 +46,7 @@ submit () {  # submit a job via Xenon CLI
       --stderr stderr-%j.log --stdout stdout-%j.log "
   fi
 
-  xenon+="--max-run-time $RTIME --working-directory . "
+  xenon+="--inherit-env --max-run-time $RTIME --working-directory . "
   exec=$(echo $exec | sed 's/ / -- /')  # workaround argparse
   $xenon $exec
 }
