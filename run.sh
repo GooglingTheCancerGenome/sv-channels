@@ -167,12 +167,14 @@ for sv in "${SV_TYPES[@]}"; do
         log="${prefix}_en.log"
         cmd="python $p.py -b \"$BAM\" -w $WIN_SZ -i \"$infile\" -o \"$outfile\" \
           -l \"$log\""
-        JOB_ID=$(submit "$cmd" $p)
+        JOB_ID=$(submit "$cmd" "$p-$c")
         JOBS+=($JOB_ID)
-
+        
+        waiting
+        
         p=mv
-        cmd="mv \"$infile\" \"$infile.bck\" && mv \"$outfile\" \"$infile\""
-        JOB_ID=$(submit "$cmd" $p)
+        cmd="mv \"$infile\" \"$infile.bck\"; mv \"$outfile\" \"$infile\""
+        JOB_ID=$(submit "$cmd" "$p-$c")
         JOBS+=($JOB_ID)
     done
 done
