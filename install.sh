@@ -2,7 +2,7 @@
 
 set -xe
 
-MY_ENV=wf
+MY_ENV=sv-channels
 
 eval "$(conda shell.bash hook)"
 printenv

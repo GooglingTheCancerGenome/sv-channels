@@ -30,7 +30,7 @@ JOBS=()  # array of job IDs
 JOBS_LOG=jobs.json  # job accounting log
 RTIME=20  # runtime in minutes
 STIME=1  # sleep X minutes
-MY_ENV=wf  # conda env used in gtcg/xenon-* docker images
+MY_ENV=sv-channels  # conda env in gtcg/xenon-* docker images
 #MAXMEM=48000  # mem in MB; use with xenon --max-memory
 
 
@@ -75,11 +75,8 @@ waiting () {  # wait until all jobs are done
 
 
 # activate conda env
-if [ "$SCH" != 'local' ]; then
-  eval "$(conda shell.bash hook)"
-  conda activate $MY_ENV
-fi
-
+eval "$(conda shell.bash hook)"
+conda activate $MY_ENV
 conda list
 
 # convert SV calls (i.e. truth set and sv-callers output) in VCF to BEDPE files
