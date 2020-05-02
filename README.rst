@@ -82,11 +82,8 @@ Execution
 
 .. code-block:: console
 
-  SCH=gridengine  # or slurm
-  BAM=data/test.bam
-  CHRS="12 22"
-  ./run_local.sh $BAM $CHRS  # run locally
-  ./run.sh $SCH $BAM         # submit jobs to GridEngine/Slurm cluster
+  SCH=local  # gridengine or slurm
+  ./run.sh $SCH data/test.bam "12 22" # run jobs locally or on a compute cluster
 
 Glossary of terms
 =================
@@ -116,7 +113,6 @@ Run tests (including coverage) with:
 
 .. code-block:: console
 
-  python setup.py test
 
 Flowchart
 =========
