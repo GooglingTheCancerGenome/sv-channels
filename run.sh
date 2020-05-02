@@ -18,7 +18,7 @@ SEQ_IDS_CSV=$(IFS=, ; echo "${SEQ_IDS[*]}")  # stringify
 SV_TYPES=(DEL)  # INS INV DUP TRA)
 SV_CALLS=(gridss)  # manta delly lumpy)
 KFOLD=2  # k-fold cross validation
-WIN_SZ=200  # in bp
+WIN_SZ=200  # window size in bp
 PREFIX="${BASE_DIR}/${SAMPLE}"
 TWOBIT="${PREFIX}.2bit"
 BIGWIG="${PREFIX}.bw"
@@ -36,7 +36,7 @@ MY_ENV=wf  # conda env used in gtcg/xenon-* docker images
 
 # define functions
 submit () {  # submit a job via Xenon CLI
-  local xenon="xenon -v scheduler $SCH "
+  local xenon="xenon scheduler $SCH "
   local exec=$1
   local jobname=$2
 
@@ -57,7 +57,7 @@ monitor () {  # monitor a job via Xenon CLI
     return
   fi
 
-  xenon -v --json scheduler $SCH --location local:// list --identifier $1
+  xenon --json scheduler $SCH --location local:// list --identifier $1
 }
 
 waiting () {  # wait until all jobs are done
@@ -67,7 +67,7 @@ waiting () {  # wait until all jobs are done
 
   for j in "${JOBS[@]}"; do
     while true; do
-      [[ $(monitor $j | grep -v 'WARN' | jq '.statuses | .[] | select(.done==true)') ]] && \
+      [[ $(monitor $j | grep -v "WARN" | jq '.statuses | .[] | select(.done==true)') ]] && \
         break || sleep ${STIME}m
     done
   done
