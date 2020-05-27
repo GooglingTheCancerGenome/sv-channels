@@ -7,7 +7,7 @@ import numpy as np
 from functions import load_windows, save_windows, is_left_clipped, is_right_clipped
 
 padding = 10
-log_every_n_pos = 100
+log_every_n_pos = 1000
 
 
 def init_log(logfile):
@@ -30,21 +30,21 @@ def parse_args():
     parser.add_argument('-w',
                         '--win',
                         type=int,
-                        default=500,
+                        default=200,
                         help="Window size")
     parser.add_argument('-i',
                         '--input',
                         type=str,
-                        default='./labels/win500/DEL/split_reads/windows/windows.npz',
+                        default='./windows.npz',
                         help="input file")
     parser.add_argument('-o',
                         '--output',
                         type=str,
-                        default='./labels/win500/DEL/split_reads/windows/windows_en.npz',
+                        default='./windows_en.npz',
                         help="output file")
     parser.add_argument('-l',
                         '--logfile',
-                        default='./labels/win500/DEL/split_reads/windows/windows_en.log',
+                        default='./windows_en.log',
                         help='File in which to write logs.')
 
     return parser.parse_args()
@@ -148,9 +148,8 @@ def update_channel(X, ch, iter, read, win_mid_pos, is_second_win, win_len, paddi
 
 def add_channels(ibam, win, ifile):
 
-    def get_reads(chrom, pos):
-        with pysam.AlignmentFile(ibam, "rb") as aln:
-            return [read for read in aln.fetch(chrom, pos - win / 2, pos + win / 2)]
+    def get_reads(ibam, chrom, pos):
+        return [read for read in ibam.fetch(chrom, pos - win / 2, pos + win / 2)]
 
     # Load the windows
     logging.info("Loading windows...")
@@ -181,8 +180,8 @@ def add_channels(ibam, win, ifile):
         pos1, pos2 = int(pos1), int(pos2)
 
         # Fetch reads overlapping each window
-        win1_reads = get_reads(chrom1, pos1)
-        win2_reads = get_reads(chrom2, pos2)
+        win1_reads = get_reads(ibam, chrom1, pos1)
+        win2_reads = get_reads(ibam, chrom2, pos2)
 
         # Which reads are in both windows?
         win1_read_names_set = set([read.query_name for read in win1_reads])
@@ -211,9 +210,10 @@ def main():
     # initialize log file
     init_log(args.logfile)
 
+    bam_handle = pysam.AlignmentFile(args.bam, "rb")
     t0 = time()
 
-    X, y = add_channels(ibam=args.bam,
+    X, y = add_channels(ibam=bam_handle,
                         win=args.win,
                         ifile=args.input
                         )
