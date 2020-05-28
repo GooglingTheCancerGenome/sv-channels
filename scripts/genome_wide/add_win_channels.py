@@ -8,6 +8,7 @@ from functions import load_windows, save_windows, is_left_clipped, is_right_clip
 
 padding = 10
 log_every_n_pos = 1000
+max_cov = 1000
 
 
 def init_log(logfile):
@@ -151,6 +152,9 @@ def add_channels(ibam, win, ifile):
     def get_reads(ibam, chrom, pos):
         return [read for read in ibam.fetch(chrom, pos - win / 2, pos + win / 2)]
 
+    def count_reads(ibam, chrom, pos):
+        return ibam.count(chrom, pos - win / 2, pos + win / 2)
+
     # Load the windows
     logging.info("Loading windows...")
     last_t = time()
@@ -165,6 +169,10 @@ def add_channels(ibam, win, ifile):
     # Initialize numpy array
     X_enh = np.zeros(shape=(X.shape[:2] + (len(ch),)), dtype=np.int8)
 
+    # Skip regions with too high read coverage?
+    too_high_cov_i = []
+    too_high_cov_p = []
+
     for i, p in enumerate(y.keys(), start=0):
 
         # Every n_r alignments, write log informations
@@ -178,6 +186,11 @@ def add_channels(ibam, win, ifile):
         # Get genomic coordinates
         chrom1, pos1, chrom2, pos2 = p.split('_')
         pos1, pos2 = int(pos1), int(pos2)
+
+        if count_reads(ibam, chrom1, pos1) > max_cov and count_reads(ibam, chrom2, pos2) > max_cov:
+            too_high_cov_i.append(i)
+            too_high_cov_p.append(p)
+            continue
 
         # Fetch reads overlapping each window
         win1_reads = get_reads(ibam, chrom1, pos1)
@@ -198,7 +211,14 @@ def add_channels(ibam, win, ifile):
         for r in win2_reads:
             X_enh = update_channel(X_enh, ch, i, r, pos2, True, win, padding)
 
+    logging.info("{} regions with too high coverage".format(len(too_high_cov_i)))
     X = np.concatenate((X, X_enh), axis=2)
+
+    X = np.delete(X, too_high_cov_i, axis=0)
+    for p in too_high_cov_p:
+        del y[p]
+
+    logging.info("X shape:{}, y length:{}".format(X.shape, len(y)))
 
     return X, y
 
