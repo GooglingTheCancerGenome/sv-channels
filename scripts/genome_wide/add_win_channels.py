@@ -202,7 +202,7 @@ def add_channels(ibam, win, ifile, padding, log_every_n_pos, max_coverage):
         chrom1, pos1, chrom2, pos2 = p.split('_')
         pos1, pos2 = int(pos1), int(pos2)
 
-        if count_reads(ibam, chrom1, pos1) > max_coverage and count_reads(ibam, chrom2, pos2) > max_cov:
+        if count_reads(ibam, chrom1, pos1) > max_coverage and count_reads(ibam, chrom2, pos2) > max_coverage:
             too_high_cov_i.append(i)
             too_high_cov_p.append(p)
             continue
