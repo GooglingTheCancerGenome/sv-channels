@@ -6,10 +6,6 @@ import numpy as np
 
 from functions import load_windows, save_windows, is_left_clipped, is_right_clipped
 
-padding = 10
-log_every_n_pos = 1000
-max_cov = 1000
-
 
 def init_log(logfile):
     FORMAT = '%(asctime)s %(message)s'
@@ -47,6 +43,25 @@ def parse_args():
                         '--logfile',
                         default='./windows_en.log',
                         help='File in which to write logs.')
+    parser.add_argument('-p',
+                        '--padding',
+                        type=int,
+                        default=10,
+                        help='Number of column for the zero-valued in between'
+                             'the two side-by-side window arrays to add based on the CNN kernel size'
+                             'to avoid artifacts that can be generated when the kernel'
+                             'includes data points from both windows')
+    parser.add_argument('-n',
+                        '--log_every_n_pos',
+                        type=int,
+                        default=1000,
+                        help='File in which to write logs.')
+    parser.add_argument('-m',
+                        '--max_coverage',
+                        type=int,
+                        default=1000,
+                        help='Do not compute window-specific channels for regions'
+                             'with read depth higher than max_coverage')
 
     return parser.parse_args()
 
@@ -147,7 +162,7 @@ def update_channel(X, ch, iter, read, win_mid_pos, is_second_win, win_len, paddi
     return X
 
 
-def add_channels(ibam, win, ifile):
+def add_channels(ibam, win, ifile, padding, log_every_n_pos, max_coverage):
 
     def get_reads(ibam, chrom, pos):
         return [read for read in ibam.fetch(chrom, pos - win / 2, pos + win / 2)]
@@ -187,7 +202,7 @@ def add_channels(ibam, win, ifile):
         chrom1, pos1, chrom2, pos2 = p.split('_')
         pos1, pos2 = int(pos1), int(pos2)
 
-        if count_reads(ibam, chrom1, pos1) > max_cov and count_reads(ibam, chrom2, pos2) > max_cov:
+        if count_reads(ibam, chrom1, pos1) > max_coverage and count_reads(ibam, chrom2, pos2) > max_cov:
             too_high_cov_i.append(i)
             too_high_cov_p.append(p)
             continue
@@ -235,7 +250,10 @@ def main():
 
     X, y = add_channels(ibam=bam_handle,
                         win=args.win,
-                        ifile=args.input
+                        ifile=args.input,
+                        padding=args.padding,
+                        log_every_n_pos=args.log_every_n_pos,
+                        max_coverage=args.max_coverage
                         )
 
     save_windows(X, y, args.output)
