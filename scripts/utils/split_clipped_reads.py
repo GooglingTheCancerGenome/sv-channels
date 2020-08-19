@@ -2,11 +2,12 @@ import pysam
 import logging
 import argparse
 from time import time
-from Bio.Seq import Seq
 import os
 
 
 def extract_clipped_reads(ibam, obam, ofastq):
+
+    complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
 
     if os.path.exists(ofastq):
         os.remove(ofastq)
@@ -17,12 +18,18 @@ def extract_clipped_reads(ibam, obam, ofastq):
     for read in aln.fetch():
         # write full sequence and quality of soft clipped reads in a FASTQ file
         if read.cigartuples is not None and \
-                (read.cigartuples[0][0] == 4 or read.cigartuples[-1][0] == 4):
-            seq = Seq(read.seq)
+                (
+                        read.cigartuples[0][0] == 4 or  # soft clipped at the start
+                        read.cigartuples[-1][0] == 4  # soft clipped at the end
+                ):
+
+            seq = read.seq
             qual = read.qual
+
             if read.is_reverse:
-                seq = seq.reverse_complement()
+                seq = "".join(complement.get(base, base) for base in reversed(seq))
                 qual = qual[::-1]
+
             with open(ofastq, "a") as out_handle:
                 out_handle.write("@{}\n{}\n+\n{}\n".format(read.query_name, seq, qual))
         else:
