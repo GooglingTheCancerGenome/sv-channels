@@ -10,38 +10,38 @@ TMPDIR=$OUTDIR"/"$SAMPLE"/tmp"
 # create tmp folder
 [ ! -d $TMPDIR ] && mkdir -p $TMPDIR
 
-echo activating...
-conda activate samtools
+# echo activating...
+# conda activate utils
 
 echo clipped to split reads...
 python split_clipped_reads.py \
     -b $BAM \
-    -ob no_clipped.bam \
-    -of clipped.fq \
-    -l split_clipped_reads.log
+    -ob ${TMPDIR}/no_clipped.bam \
+    -of ${TMPDIR}/clipped.fq \
+    -l ${TMPDIR}/split_clipped_reads.log
 
 echo sorting BAM without clipped reads...
-samtools sort -o no_clipped_sorted.bam no_clipped.bam
+samtools sort -o ${TMPDIR}/no_clipped_sorted.bam ${TMPDIR}/no_clipped.bam
 
 echo indexing BAM without clipped reads...
-samtools index no_clipped_sorted.bam
+samtools index ${TMPDIR}/no_clipped_sorted.bam
 
 echo mapping soft clipped sequences...
-bwa mem -L 0,0 ../../data/test.fasta clipped.fq > clipped.sam
+bwa mem -L 0,0 ../../data/test.fasta ${TMPDIR}/clipped.fq > ${TMPDIR}/clipped.sam
 
 echo converting SAM to BAM...
-samtools view -b clipped.sam -o clipped.bam
+samtools view -b ${TMPDIR}/clipped.sam -o ${TMPDIR}/clipped.bam
 
 echo sorting BAM with split reads...
-samtools sort -o clipped_sorted.bam clipped.bam
+samtools sort -o ${TMPDIR}/clipped_sorted.bam ${TMPDIR}/clipped.bam
 
 echo indexing BAM with split reads..
-samtools index clipped_sorted.bam
+samtools index ${TMPDIR}/clipped_sorted.bam
 
 OUTBAM=$OUTDIR"/"$SAMPLE"/"$SAMPLE"_split.bam"
 
 echo merging the two BAMs..
-samtools merge $OUTBAM clipped_sorted.bam no_clipped_sorted.bam
+samtools merge $OUTBAM ${TMPDIR}/clipped_sorted.bam ${TMPDIR}/no_clipped_sorted.bam
 
 echo indexing the final BAM output...
 samtools index $OUTBAM
