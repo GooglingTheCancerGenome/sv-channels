@@ -2,9 +2,12 @@
 #SBATCH --time=48:00:00
 #SBATCH --mem=32G
 
-BAM=$(realpath -s "$1")
+SCRIPT_DIR=$(dirname "$0")
+
+BWA_INDEX=$(realpath -s "$1")
+BAM=$(realpath -s "$2")
 SAMPLE=$(basename "$BAM" .bam)
-OUTDIR=$2
+OUTDIR=$3
 TMPDIR=$OUTDIR"/"$SAMPLE"/tmp"
 
 # create tmp folder
@@ -14,7 +17,7 @@ TMPDIR=$OUTDIR"/"$SAMPLE"/tmp"
 # conda activate utils
 
 echo clipped to split reads...
-python split_clipped_reads.py \
+python ${SCRIPT_DIR}/split_clipped_reads.py \
     -b $BAM \
     -ob ${TMPDIR}/no_clipped.bam \
     -of ${TMPDIR}/clipped.fq \
@@ -27,7 +30,7 @@ echo indexing BAM without clipped reads...
 samtools index ${TMPDIR}/no_clipped_sorted.bam
 
 echo mapping soft clipped sequences...
-bwa mem -L 0,0 ../../data/test.fasta ${TMPDIR}/clipped.fq > ${TMPDIR}/clipped.sam
+bwa mem -L 0,0 ${BWA_INDEX} ${TMPDIR}/clipped.fq > ${TMPDIR}/clipped.sam
 
 echo converting SAM to BAM...
 samtools view -b ${TMPDIR}/clipped.sam -o ${TMPDIR}/clipped.bam
