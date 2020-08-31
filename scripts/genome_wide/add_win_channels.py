@@ -6,9 +6,6 @@ import numpy as np
 
 from functions import load_windows, save_windows, is_left_clipped, is_right_clipped
 
-padding = 10
-log_every_n_pos = 100
-
 
 def init_log(logfile):
     FORMAT = '%(asctime)s %(message)s'
@@ -30,22 +27,41 @@ def parse_args():
     parser.add_argument('-w',
                         '--win',
                         type=int,
-                        default=500,
+                        default=200,
                         help="Window size")
     parser.add_argument('-i',
                         '--input',
                         type=str,
-                        default='./labels/win500/DEL/split_reads/windows/windows.npz',
+                        default='./windows.npz',
                         help="input file")
     parser.add_argument('-o',
                         '--output',
                         type=str,
-                        default='./labels/win500/DEL/split_reads/windows/windows_en.npz',
+                        default='./windows_en.npz',
                         help="output file")
     parser.add_argument('-l',
                         '--logfile',
-                        default='./labels/win500/DEL/split_reads/windows/windows_en.log',
+                        default='./windows_en.log',
                         help='File in which to write logs.')
+    parser.add_argument('-p',
+                        '--padding',
+                        type=int,
+                        default=10,
+                        help='Number of column for the zero-valued in between'
+                             'the two side-by-side window arrays to add based on the CNN kernel size'
+                             'to avoid artifacts that can be generated when the kernel'
+                             'includes data points from both windows')
+    parser.add_argument('-n',
+                        '--log_every_n_pos',
+                        type=int,
+                        default=1000,
+                        help='File in which to write logs.')
+    parser.add_argument('-m',
+                        '--max_coverage',
+                        type=int,
+                        default=1000,
+                        help='Do not compute window-specific channels for regions'
+                             'with read depth higher than max_coverage')
 
     return parser.parse_args()
 
@@ -146,11 +162,13 @@ def update_channel(X, ch, iter, read, win_mid_pos, is_second_win, win_len, paddi
     return X
 
 
-def add_channels(ibam, win, ifile):
+def add_channels(ibam, win, ifile, padding, log_every_n_pos, max_coverage):
 
-    def get_reads(chrom, pos):
-        with pysam.AlignmentFile(ibam, "rb") as aln:
-            return [read for read in aln.fetch(chrom, pos - win / 2, pos + win / 2)]
+    def get_reads(ibam, chrom, pos):
+        return [read for read in ibam.fetch(chrom, pos - win / 2, pos + win / 2)]
+
+    def count_reads(ibam, chrom, pos):
+        return ibam.count(chrom, pos - win / 2, pos + win / 2)
 
     # Load the windows
     logging.info("Loading windows...")
@@ -166,6 +184,10 @@ def add_channels(ibam, win, ifile):
     # Initialize numpy array
     X_enh = np.zeros(shape=(X.shape[:2] + (len(ch),)), dtype=np.int8)
 
+    # Skip regions with too high read coverage?
+    too_high_cov_i = []
+    too_high_cov_p = []
+
     for i, p in enumerate(y.keys(), start=0):
 
         # Every n_r alignments, write log informations
@@ -180,9 +202,14 @@ def add_channels(ibam, win, ifile):
         chrom1, pos1, chrom2, pos2 = p.split('_')
         pos1, pos2 = int(pos1), int(pos2)
 
+        if count_reads(ibam, chrom1, pos1) > max_coverage and count_reads(ibam, chrom2, pos2) > max_coverage:
+            too_high_cov_i.append(i)
+            too_high_cov_p.append(p)
+            continue
+
         # Fetch reads overlapping each window
-        win1_reads = get_reads(chrom1, pos1)
-        win2_reads = get_reads(chrom2, pos2)
+        win1_reads = get_reads(ibam, chrom1, pos1)
+        win2_reads = get_reads(ibam, chrom2, pos2)
 
         # Which reads are in both windows?
         win1_read_names_set = set([read.query_name for read in win1_reads])
@@ -199,7 +226,14 @@ def add_channels(ibam, win, ifile):
         for r in win2_reads:
             X_enh = update_channel(X_enh, ch, i, r, pos2, True, win, padding)
 
+    logging.info("{} regions with too high coverage".format(len(too_high_cov_i)))
     X = np.concatenate((X, X_enh), axis=2)
+
+    X = np.delete(X, too_high_cov_i, axis=0)
+    for p in too_high_cov_p:
+        del y[p]
+
+    logging.info("X shape:{}, y length:{}".format(X.shape, len(y)))
 
     return X, y
 
@@ -211,11 +245,15 @@ def main():
     # initialize log file
     init_log(args.logfile)
 
+    bam_handle = pysam.AlignmentFile(args.bam, "rb")
     t0 = time()
 
-    X, y = add_channels(ibam=args.bam,
+    X, y = add_channels(ibam=bam_handle,
                         win=args.win,
-                        ifile=args.input
+                        ifile=args.input,
+                        padding=args.padding,
+                        log_every_n_pos=args.log_every_n_pos,
+                        max_coverage=args.max_coverage
                         )
 
     save_windows(X, y, args.output)
