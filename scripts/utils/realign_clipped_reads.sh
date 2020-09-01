@@ -1,6 +1,4 @@
 #!/bin/bash
-#SBATCH --time=48:00:00
-#SBATCH --mem=32G
 
 BWA_INDEX=$(realpath -s "$1")
 BAM=$(realpath -s "$2")
