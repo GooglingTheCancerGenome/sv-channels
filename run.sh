@@ -78,7 +78,7 @@ waiting () {  # wait until all jobs are done
 
 # activate conda env
 eval "$(conda shell.bash hook)"
-conda activate $MY_ENV
+conda activate $MY_ENV2
 conda list
 
 # map clipped reads as split reads
@@ -86,6 +86,10 @@ cd scripts/utils
 cmd="sh ./realign_clipped_reads.sh \"$BWA_INDEX\" \"$RAW_BAM\" \"$BASE_DIR\" \"$BAM\""
 JOB_ID=$(submit "$cmd" realign)
 JOBS+=($JOB_ID)
+
+conda deactivate
+conda activate $MY_ENV
+conda list
 
 # convert SV calls (i.e. truth set and sv-callers output) in VCF to BEDPE files
 cd ../R

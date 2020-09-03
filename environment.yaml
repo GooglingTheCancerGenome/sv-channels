@@ -6,9 +6,6 @@ channels:
 dependencies:
   - intervaltree
   - pysam
-  - bwa
-  - samtools
-  - openssl=1.0
   - numpy
   - pandas
   - bz2file
