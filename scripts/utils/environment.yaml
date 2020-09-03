@@ -1,6 +1,8 @@
 channels:
   - bioconda
+  - nlesc
 dependencies:
+  - xenon-cli=3.0.5
   - samtools
   - openssl=1.0
   - bwa
