@@ -10,9 +10,9 @@ fi
 
 # set variables
 SCH=$1  # scheduler type
-BAM=$(realpath -s "$2")
-BASE_DIR=$(dirname "$BAM")
-SAMPLE=$(basename "$BAM" .bam)
+RAW_BAM=$(realpath -s "$2")
+BASE_DIR=$(dirname "$RAW_BAM")
+SAMPLE=$(basename "$RAW_BAM" .bam)
 SEQ_IDS=(${@:3})
 SEQ_IDS_CSV=$(IFS=, ; echo "${SEQ_IDS[*]}")  # stringify
 SV_TYPES=(DEL)  # INS INV DUP TRA)
@@ -25,6 +25,8 @@ BIGWIG="${PREFIX}.bw"
 BEDPE="${PREFIX}.bedpe"
 BED="${PREFIX}.bed"
 VCF="${PREFIX}.vcf"
+BWA_INDEX="${PREFIX}.fasta"
+BAM="${PREFIX}_sr.bam"
 STARTTIME=$(date +%s)
 JOBS=()  # array of job IDs
 JOBS_LOG=jobs.json  # job accounting log
@@ -79,11 +81,23 @@ eval "$(conda shell.bash hook)"
 conda activate $MY_ENV
 conda list
 
-# convert SV calls (i.e. truth set and sv-callers output) in VCF to BEDPE files
-cd scripts/R
-cmd="./vcf2bedpe.R -i \"$VCF\" -o \"$BEDPE\""
-JOB_ID=$(submit "$cmd" vcf2bedpe)
+# map clipped reads as split reads
+cd scripts/utils
+cmd="sh ./realign_clipped_reads.sh \"$BWA_INDEX\" \"$RAW_BAM\" \"$BASE_DIR\" \"$BAM\""
+JOB_ID=$(submit "$cmd" realign)
 JOBS+=($JOB_ID)
+
+# convert SV calls (i.e. truth set and sv-callers output) in VCF to BEDPE files
+cd ../R
+for int_vcf in $(find data -name "*.vcf" | grep -E "test"); do
+  int_prefix=$(basename $vcf .vcf)
+  int_bedpe="${BASE_DIR}/${PREFIX}.bedpe"
+  cmd="vcf2bedpe.R -i ${int_vcf} -o ${int_bedpe}"
+  JOB_ID=$(submit vcf2bedpe all "$cmd")
+  JOBS+=($JOB_ID)
+done
+
+waiting
 
 # submit jobs to output "channel" files (*.json.gz and *.npy.gz)
 cd ../genome_wide

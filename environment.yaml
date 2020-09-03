@@ -1,10 +1,14 @@
 channels:
   - conda-forge
   - bioconda
+  - r
   - nlesc
 dependencies:
   - intervaltree
   - pysam
+  - bwa
+  - samtools
+  - openssl=1.0
   - numpy
   - pandas
   - bz2file
@@ -19,4 +23,8 @@ dependencies:
   - xenon-cli=3.0.5
   - jq
   - cigar
+  - biopython
   - coreutils
+  - r-vcfr
+  - rstudio
+  - r-ggplot2

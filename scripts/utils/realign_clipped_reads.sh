@@ -4,17 +4,12 @@ BWA_INDEX=$(realpath -s "$1")
 BAM=$(realpath -s "$2")
 SAMPLE=$(basename "$BAM" .bam)
 OUTDIR=$3
-TMPDIR=$OUTDIR"/"$SAMPLE"/tmp"
-
-echo BWA_INDEX=${BWA_INDEX}
-echo BAM=${BAM}
-echo OUTDIR=${OUTDIR}
+OUTBAM_FILENAME=$4
+OUTBAM=${OUTDIR}/${OUTBAM_FILENAME}
+TMPDIR=${OUTDIR}"/tmp"
 
 # create tmp folder
 [ ! -d $TMPDIR ] && mkdir -p $TMPDIR
-
-# echo activating...
-# conda activate utils
 
 echo clipped to split reads...
 python split_clipped_reads.py \
@@ -40,8 +35,6 @@ samtools sort -o ${TMPDIR}/clipped_sorted.bam ${TMPDIR}/clipped.bam
 
 echo indexing BAM with split reads..
 samtools index ${TMPDIR}/clipped_sorted.bam
-
-OUTBAM=$OUTDIR"/"$SAMPLE"/"$SAMPLE"_split.bam"
 
 echo merging the two BAMs..
 samtools merge $OUTBAM ${TMPDIR}/clipped_sorted.bam ${TMPDIR}/no_clipped_sorted.bam
