@@ -48,6 +48,8 @@ if (is.na(argv$i))
 
 input_path <- argv$i
 regions_for_filtering <- argv$f
+mode <- argv$m
+output_fn <- argv$o
 
 # For each svtype, collect all predictions in BEDPE format and merge the SVs using SVA
 sv_regions <- list()
@@ -147,6 +149,6 @@ for (t in sv_types)
   if(file.exists(file.path(input_path, t)))
   {
   rtracklayer::export(breakpointgr2pairs(sv_regions[[t]]),
-                      con = paste("results_", t, ".bedpe", sep = ""))
+                      con = output_fn)
   }
 }
