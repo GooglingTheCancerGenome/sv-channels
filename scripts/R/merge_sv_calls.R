@@ -1,5 +1,7 @@
 #!/usr/bin/env Rscript
 
+options(scipen=999)
+
 suppressPackageStartupMessages(require(StructuralVariantAnnotation))
 suppressPackageStartupMessages(require(rtracklayer))
 suppressPackageStartupMessages(require(tools))
