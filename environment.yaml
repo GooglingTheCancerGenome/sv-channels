@@ -1,27 +1,25 @@
 channels:
   - conda-forge
-  - bioconda
   - r
+  - bioconda
   - nlesc
 dependencies:
-  - intervaltree
-  - pysam
-  - numpy
-  - pandas
+  - biopython
+  - bcolz
   - bz2file
+  - coreutils
+  - intervaltree
+  - jq
   - plotnine
+  - r-argparser
+  - r-vcfr
+  - scikit-learn
+  - tensorflow
+  - r-ggplot2
+  - rstudio
+  - cigar
+  - bioconductor-structuralvariantannotation
+  - pysam
   - pybigwig
   - twobitreader
-  - bcolz
-  - scikit-learn
-  - tensorflow>=2.0.0
-  - r-argparser
-  - bioconductor-structuralvariantannotation
   - xenon-cli=3.0.5
-  - jq
-  - cigar
-  - biopython
-  - coreutils
-  - r-vcfr
-  - rstudio
-  - r-ggplot2
