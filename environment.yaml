@@ -4,22 +4,22 @@ channels:
   - bioconda
   - nlesc
 dependencies:
-  - biopython
-  - bcolz
-  - bz2file
-  - coreutils
-  - intervaltree
-  - jq
-  - plotnine
-  - r-argparser
-  - r-vcfr
-  - scikit-learn
-  - tensorflow
-  - r-ggplot2
-  - rstudio
-  - cigar
-  - bioconductor-structuralvariantannotation
-  - pysam
-  - pybigwig
-  - twobitreader
+  - biopython=1.78
+  - bcolz=1.2
+  - bz2file=0.98
+  - coreutils=8.31
+  - intervaltree=3.0
+  - jq=1.6
+  - plotnine=0.7
+  - r-argparser=0.6
+  - r-vcfr=1.12
+  - scikit-learn=0.23
+  - tensorflow=1.14
+  - r-ggplot2=3.3
+  - rstudio=1.1
+  - cigar=0.1
+  - bioconductor-structuralvariantannotation=1.2
+  - pysam=0.16
+  - pybigwig=0.3
+  - twobitreader=3.1
   - xenon-cli=3.0.5

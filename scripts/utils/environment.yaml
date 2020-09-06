@@ -2,11 +2,11 @@ channels:
   - bioconda
   - nlesc
 dependencies:
-  - bedtools
-  - bwa
-  - genmap
-  - pybigwig
-  - samtools
-  - ucsc-wigtobigwig
-  - ucsc-fatotwobit
+  - bedtools=2.29
+  - bwa=0.7
+  - genmap=1.2
+  - pybigwig=0.3
+  - samtools=1.10
+  - ucsc-wigtobigwig=357
+  - ucsc-fatotwobit=357
   - xenon-cli=3.0.5
