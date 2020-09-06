@@ -149,6 +149,6 @@ for (t in sv_types)
   if(file.exists(file.path(input_path, t)))
   {
   rtracklayer::export(breakpointgr2pairs(sv_regions[[t]]),
-                      con = output_fn)
+                      con = paste(output_fn,"_",t,".bedpe", sep=""))
   }
 }
