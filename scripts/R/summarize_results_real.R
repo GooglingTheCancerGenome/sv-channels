@@ -1,7 +1,7 @@
 source('/Users/lsantuari/Documents/Local_GitHub/sv-channels/scripts/R/summarize_results_fun.R')
 
 parent_dir <-
-  '/Users/lsantuari/Documents/Projects/GTCG/paper_data/real-data-results'
+  '/Users/lsantuari/Documents/Projects/GTCG/paper_data/real-data-results/'
 out_dir <- file.path(parent_dir, 'results')
 
 regions_for_filtering <-
@@ -20,12 +20,12 @@ names(truth_set_list) <- samples.vec
 
 for (sample.name in samples.vec)
 {
-  sample.name <- 'CHM1_CHM13'
+  sample.name <- 'NA12878'
   print(sample.name)
   
   if(sample.name %in% c('NA24385', 'CHM1_CHM13'))
   {
-  truth_set <- load_vcf(truth_set_list[[sample.name]], svtype, sample_name, regions_for_filtering)
+  truth_set <- load_vcf(truth_set_list[[sample.name]], svtype, sample.name, regions_for_filtering)
   }else if (sample.name == 'NA12878')
   {
   truth_set <- load_bedpe(truth_set_list[[sample.name]], regions_for_filtering)
@@ -149,7 +149,7 @@ for (sample.name in samples.vec)
               colour = caller) +
           geom_point() +
           geom_line() +
-          theme(text = element_text(size=20)) +
+          theme(text = element_text(size=30)) +
           scale_y_continuous(labels = scales::percent) +
           scale_x_continuous(
             labels = scales::percent,
@@ -189,112 +189,4 @@ for (sample.name in samples.vec)
                   quote = FALSE,
                   row.names = FALSE)
         
-}
-
-############
-
-
-#Summarize results
-
-wide <- data.frame()
-
-for (param in names(abbrv))
-{
-  print(param)
-  for (param_val in sweep[[abbrv[param]]])
-  {
-    fld_val <- paste(abbrv[param], param_val, sep = "")
-    print(fld_val)
-    for (sample.name in c('hmz-sv', 'htz-sv'))
-    {
-      print(sample.name)
-      
-      for (svtype in c('DEL', 'INS', 'INV', 'DUP', 'TRA'))
-      {
-        files.dir <-
-          file.path(parent_dir,
-                    'results',
-                    param,
-                    fld_val,
-                    sample.name,
-                    svtype,
-                    mode)
-        print(files.dir)
-        
-        filename <- 'precision_recall_plot.csv'
-        df <- read.csv(file.path(files.dir, filename))
-        
-        df$caller <- as.vector(df$caller)
-        
-        wide <-
-          rbind(
-            wide,
-            cbind(
-              df,
-              param = param,
-              param_val = param_val,
-              sample.name = sample.name,
-              svtype = svtype,
-              mode = mode
-            )
-          )
-      }
-    }
-  }
-}
-# wide
-
-
-my_labeller <- function(variable, value) {
-  return(paste(value, ' (N=', table(truth_set_bedpe$sourceId)[value], ')', sep =
-                 ''))
-}
-
-for (param in names(abbrv))
-{
-  print(param)
-  for (sample.name in c('hmz-sv', 'htz-sv'))
-  {
-    print(sample.name)
-    
-    wide_param <- wide[wide$param == param &
-                         wide$sample.name == sample.name, ]
-    plot <-
-      ggplot(wide_param, aes(caller, F1_score)) + geom_col(aes(fill = caller)) +
-      facet_grid(svtype ~ param_val) + theme(
-        text = element_text(size = 15),
-        axis.title.x = element_blank(),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank()
-      )
-    plot <-
-      plot + ggtitle(paste(
-        sample.name,':',param,
-        #"TP:green",
-        #"FP:red",
-        sep = ''
-      ))  +
-      geom_text(
-        aes(label = FP),
-        position = position_dodge(width = 0.9),
-        vjust = -0.25,
-        color = 'darkred',
-        size = 2.5
-      ) +
-      geom_text(
-        aes(label = TP),
-        position = position_dodge(width = 0.9),
-        vjust = -1.50,
-        color = 'darkgreen',
-        size = 2.5
-      )
-    
-    ggsave(
-      plot,
-      file = file.path(out_dir, paste(param, sample.name, '_F1_score.png', sep = '_')),
-      dpi = 600,
-      h = 7,
-      w = 12
-    )
-  }
 }
