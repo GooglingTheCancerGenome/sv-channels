@@ -1,5 +1,7 @@
 #!/usr/bin/env Rscript
 
+options(scipen=999)
+
 suppressPackageStartupMessages(require(StructuralVariantAnnotation))
 library(tools)
 library(argparser, quietly = TRUE)
@@ -72,17 +74,23 @@ info(sv_callset_vcf) <- cbind(info(sv_callset_vcf),
         levels = c('5to5', '3to3', '3to5', '5to3'))))
 # TRA
 idx <- which(info(sv_callset_vcf)$SVTYPE == 'TRA')
-info(sv_callset_vcf)$CT[idx[seq(1, length(idx), by = 2)]] <- '3to3'
-info(sv_callset_vcf)$CT[idx[seq(2, length(idx), by = 2)]] <- '5to5'
+if(length(idx)>0){
+    info(sv_callset_vcf)$CT[idx[seq(1, length(idx), by = 2)]] <- '3to3'
+    info(sv_callset_vcf)$CT[idx[seq(2, length(idx), by = 2)]] <- '5to5'
+}
 
 # INV
 idx <- which(info(sv_callset_vcf)[['SVTYPE']] == 'INV')
-info(sv_callset_vcf)$CT[idx[seq(1, length(idx), by = 2)]] <- '3to5'
-info(sv_callset_vcf)$CT[idx[seq(2, length(idx), by = 2)]] <- '5to3'
+if(length(idx)>0){
+    info(sv_callset_vcf)$CT[idx[seq(1, length(idx), by = 2)]] <- '3to5'
+    info(sv_callset_vcf)$CT[idx[seq(2, length(idx), by = 2)]] <- '5to3'
+}
 
 # other SVTYPEs
 idx <- which(! info(sv_callset_vcf)[['SVTYPE']] %in% c('INV', 'TRA'))
-info(sv_callset_vcf)$CT[idx] <- '3to5'
+if(length(idx)>0){
+    info(sv_callset_vcf)$CT[idx] <- '3to5'
+}
 
 # Not including breakends (unpaired breakpoints)
 # bpgr <- breakpointRanges(sv_callset_vcf)
