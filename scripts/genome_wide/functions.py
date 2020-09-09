@@ -7,6 +7,8 @@ import numpy as np
 import pysam
 import twobitreader as twobit
 from cigar import Cigar
+from statistics import mean, stdev
+import matplotlib.pyplot as plt
 
 del_min_size = 50
 ins_min_size = 50
@@ -567,6 +569,7 @@ def load_all_clipped_read_positions(win_hlen,
 
         return cpos_list_right, cpos_list_left
 
+
 def load_windows(win_file):
 
     npzfile = np.load(win_file, allow_pickle=True, mmap_mode='r')
@@ -582,6 +585,7 @@ def save_windows(X, y, win_file):
              data=X,
              labels=y)
 
+
 def chr_dict_from_bed(input_bed):
 
     # Check file existence
@@ -596,3 +600,37 @@ def chr_dict_from_bed(input_bed):
 
     return d
 
+
+def get_insert_size(ibam):
+
+    config = get_config_file()
+    minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
+
+    n_bins = 100
+
+    fig, axs = plt.subplots(1, 1, sharey=True, tight_layout=True)
+
+    # Load the BAM file
+    bamfile = pysam.AlignmentFile(ibam, "rb")
+
+    isize_distr = []
+    i = 0
+    for read in bamfile.fetch():
+        if (not read.is_unmapped) and read.mapping_quality >= minMAPQ \
+                and read.is_reverse != read.mate_is_reverse \
+                and read.reference_name == read.next_reference_name:
+            dist = abs(read.reference_start - read.next_reference_start)
+            if dist < 10 ** 3:
+                isize_distr.append(
+                    dist
+                )
+                if i == 2 * 10 ** 6:
+                    break
+                i += 1
+
+    m = mean(isize_distr)
+    s = stdev(isize_distr)
+    axs.hist(isize_distr, bins=n_bins)
+    # plt.show()
+    logging.info('Mean:{}, StdDev:{}'.format(m,s))
+    return m, s

@@ -43,6 +43,8 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
     for k in sv_type_list:
         split_pos_coord[k] = []
 
+    bam_mean, bam_stddev = get_insert_size(ibam)
+
     # # Tree with split read positions
     # gtree = {k: dict() for k in sv_type_list}
     # for s in sv_type_list:
@@ -120,7 +122,7 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
 
                     split_pos_coord['INDEL_INS'] = append_coord(
                         split_pos_coord['INDEL_INS'], read.reference_name,
-                        pos, read.reference_name, pos+1)
+                        pos, read.reference_name, pos + 1)
 
                 for start, end in zip(dels_start, dels_end):
 
@@ -197,7 +199,7 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
                             else:
                                 sv_type = 'DUP'
                         elif clipped_string == 'both' and read.reference_name == chr_SA:
-                                sv_type = 'DEL'
+                            sv_type = 'DEL'
 
                         if read.reference_name == chr_SA and \
                                 not read.mate_is_unmapped and \
@@ -211,6 +213,7 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
                         dist = abs(
                             clipped_pos -
                             pos_SA) if read.reference_name == chr_SA else 0
+                        dist = (dist - bam_mean) / bam_stddev if read.reference_name == chr_SA else 0
 
                         # if sv_type == 'TRA':
                         #     print('{} {} {} => {}:{}-{} {} {} {}'.format(
@@ -240,7 +243,10 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
     # Look for INS positions:
     for chrom in chr_list:
         for k in ['right', 'left']:
-            clipped_pos_dict[k][chrom] = set(clipped_pos_dict[k][chrom])
+            clipped_pos_dict_cnt = Counter(clipped_pos_dict[k][chrom])
+            clipped_pos_dict[k][chrom] = set([
+                int(key) for key, val in clipped_pos_dict_cnt.items()
+                if val >= 3])
 
     # based on artificial INS
     for chrom in chr_list:
@@ -359,7 +365,6 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
 
 
 def main():
-
     # Parse the arguments of the script
     parser = argparse.ArgumentParser(description='Get split reads positions')
     parser.add_argument('-b',

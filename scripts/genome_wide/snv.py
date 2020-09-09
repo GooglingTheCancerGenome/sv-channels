@@ -195,34 +195,23 @@ def get_snvs(ibam, itwobit, chrName, outFile):
 
 
 def main():
-    # Default BAM file for testing
-    # On the HPC
-    # wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
-    # inputBAM = wd + "T0_dedup.bam"
-    # Locally
-    #wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
-    #inputBAM = 'wd + "T1_dedup.bam"
-    # wd = '/Users/lsantuari/Documents/mount_points/hpc_mnt/Datasets/CretuStancu2017/Patient1/'
-    # inputBAM = wd + 'Patient1.bam'
-
-    # Default chromosome is 17 for the artificial data
 
     # Parse the arguments of the script
     parser = argparse.ArgumentParser(description='Get snv info')
     parser.add_argument('-b',
                         '--bam',
                         type=str,
-                        default='hmz-sv.bam',
+                        default='../../data/test.bam',
                         help="Specify input file (BAM)")
     parser.add_argument('-t',
                         '--twobit',
                         type=str,
-                        default='hmz-sv.2bit',
+                        default='../../data/test.2bit',
                         help="Specify input file (2bit)")
     parser.add_argument('-c',
                         '--chr',
                         type=str,
-                        default='17',
+                        default='12',
                         help="Specify chromosome")
     parser.add_argument('-o',
                         '--out',

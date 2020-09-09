@@ -1,12 +1,10 @@
 import argparse
 import logging
 import os
-from time import time
-from zlib import crc32
-
 import numpy as np
 import pysam
-
+from time import time
+from zlib import crc32
 from functions import get_config_file
 
 config = get_config_file()
@@ -89,7 +87,7 @@ def get_coverage(ibam, chrName, outFile):
     read_quality_count = np.zeros(chrLen, dtype=np.uint32)
 
     # Log information every n_r base pair positions
-    n_r = 10**6
+    n_r = 10 ** 6
     # print(n_r)
     last_t = time()
     # print(type(last_t))
@@ -119,15 +117,15 @@ def get_coverage(ibam, chrName, outFile):
 
             # add read mapping quality
             read_quality_sum[read.reference_start:read.reference_end -
-                             1] += read.mapping_quality
+                                                  1] += read.mapping_quality
             read_quality_count[read.reference_start:read.reference_end -
-                               1] += 1
+                                                    1] += 1
 
             # using hash of query name
-            j = int((read.reference_end-read.reference_start)/2)
-            #print(j)
+            j = int((read.reference_end - read.reference_start) / 2)
+            # print(j)
             h = crc32(read.query_name.encode('utf8')) & 0xffffffff
-            #print(h)
+            # print(h)
             if not read.is_reverse:
                 cov[3, j] = h if not cov[3, j] else 0
             else:
@@ -206,26 +204,18 @@ def get_coverage(ibam, chrName, outFile):
 
 def main():
 
-    # Default BAM file for testing
-    # On the HPC
-    # wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
-    # inputBAM = wd + "T0_dedup.bam"
-    # Locally
-    wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
-    inputBAM = wd + "T1_dedup.bam"
-
-    # Default chromosome is 17 for the artificial data
+    # Default chromosome is 12 for the artificial data
 
     parser = argparse.ArgumentParser(description='Create coverage channel')
     parser.add_argument('-b',
                         '--bam',
                         type=str,
-                        default=inputBAM,
+                        default='../../data/test.bam',
                         help="Specify input file (BAM)")
     parser.add_argument('-c',
                         '--chr',
                         type=str,
-                        default='17',
+                        default='12',
                         help="Specify chromosome")
     parser.add_argument('-o',
                         '--out',
@@ -236,7 +226,7 @@ def main():
         '-p',
         '--outputpath',
         type=str,
-        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
+        default='.',
         help="Specify output path")
     parser.add_argument('-l',
                         '--logfile',

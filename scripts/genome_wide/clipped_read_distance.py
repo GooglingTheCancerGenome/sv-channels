@@ -27,6 +27,8 @@ def get_clipped_read_distance(ibam, chrName, outFile):
     config = get_config_file()
     minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
 
+    bam_mean, bam_stddev = get_insert_size(ibam)
+
     # open BAM file
     bamfile = pysam.AlignmentFile(ibam, "rb")
     # get chromosome length from BAM header
@@ -97,6 +99,7 @@ def get_clipped_read_distance(ibam, chrName, outFile):
             if read.reference_name == read.next_reference_name:
                 # Calculate absolute read to mate distance
                 dist = abs(read.reference_start - read.next_reference_start)
+                dist = (dist - bam_mean)/bam_stddev
                 # Read is mapped in forward orientation, mate is in reverse orientation, read is mapped before mate
                 if not read.is_reverse and read.mate_is_reverse and read.reference_start <= read.next_reference_start:
                     set_distance('forward', read, dist)
@@ -115,26 +118,18 @@ def get_clipped_read_distance(ibam, chrName, outFile):
 
 def main():
 
-    # Default BAM file for testing
-    # On the HPC
-    #wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
-    #inputBAM = wd + "T0_dedup.bam"
-    # Locally
-    wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
-    inputBAM = wd + "T1_dedup.bam"
-
     parser = argparse.ArgumentParser(
         description=
         'Create channels with distance between clipped/non-clipped reads')
     parser.add_argument('-b',
                         '--bam',
                         type=str,
-                        default=inputBAM,
+                        default='../../data/test.bam',
                         help="Specify input file (BAM)")
     parser.add_argument('-c',
                         '--chr',
                         type=str,
-                        default='17',
+                        default='12',
                         help="Specify chromosome")
     parser.add_argument('-o',
                         '--out',
@@ -145,7 +140,7 @@ def main():
         '-p',
         '--outputpath',
         type=str,
-        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
+        default='.',
         help="Specify output path")
     parser.add_argument('-l',
                         '--logfile',

@@ -131,7 +131,7 @@ def create_carray(ibam, chrom, twobit, bigwig, outDir, cmd_name):
         return np.percentile(v, np.arange(50, 110, 10))
 
     chrlen = get_chr_len(ibam, chrom)
-    n_channels = 48
+    n_channels = 54
     chr_array = np.zeros(shape=(chrlen, n_channels),
                          dtype=np.float32)  # bz.zeros
     bw_map = pyBigWig.open(bigwig)  # get_mappability_bigwig()
@@ -145,9 +145,9 @@ def create_carray(ibam, chrom, twobit, bigwig, outDir, cmd_name):
         ],
         'split_reads': ['left_F', 'left_R', 'right_F', 'right_R'],
         'split_read_distance': ['left_F', 'left_R', 'right_F', 'right_R'],
-        'clipped_reads_inversion': ['before', 'after'],
-        'clipped_reads_duplication': ['before', 'after'],
-        'clipped_reads_translocation': ['opposite', 'same'],
+        'clipped_reads_inversion': ['before', 'after', 'before_split', 'after_split'],
+        'clipped_reads_duplication': ['before', 'after', 'before_split', 'after_split'],
+        'clipped_reads_translocation': ['opposite', 'same', 'opposite_split', 'same_split'],
         'clipped_read_distance': ['forward', 'reverse']
     }
 
@@ -205,10 +205,11 @@ def create_carray(ibam, chrom, twobit, bigwig, outDir, cmd_name):
                     vals = np.fromiter(channel_data[chrom][current_channel]
                                        [split_direction].values(),
                                        dtype=np.float32)
-                    chr_array[idx, channel_index] = vals
+                    if len(idx) > 0:
+                        chr_array[idx, channel_index] = vals
 
-                    assert chr_array[idx, channel_index].any(), \
-                        print('{}:{} is all zeros!'.format(current_channel, split_direction))
+                        assert chr_array[idx, channel_index].any(), \
+                            print('{}:{} is all zeros!'.format(current_channel, split_direction))
 
                 channel_index += 1
                 del channel_data[chrom][current_channel][split_direction]
@@ -230,7 +231,8 @@ def create_carray(ibam, chrom, twobit, bigwig, outDir, cmd_name):
                                 [current_channel][split_direction]
                                 [clipped_arrangement].values())))
 
-                    chr_array[idx, channel_index] = vals
+                    if len(idx) > 0:
+                        chr_array[idx, channel_index] = vals
                     channel_index += 1
 
                     # vals = np.array(list(map(get_percentile,
@@ -258,8 +260,8 @@ def create_carray(ibam, chrom, twobit, bigwig, outDir, cmd_name):
                         map(
                             statistics.median, channel_data[chrom]
                             [current_channel][split_direction].values())))
-
-                chr_array[idx, channel_index] = vals
+                if len(idx) > 0:
+                    chr_array[idx, channel_index] = vals
                 channel_index += 1
 
                 # vals = np.array(list(map(get_percentile,
@@ -277,9 +279,16 @@ def create_carray(ibam, chrom, twobit, bigwig, outDir, cmd_name):
 
     # bw_chrom = chrom.replace('chr', '')
     # start and end position hard coded at the moment, to be updated with (0, chrlen)
-    chr_array[:, channel_index] = np.array(bw_map.values(
-        chrom, 44000000, 46000000),
-        dtype=np.float32)
+    bam_name = os.path.splitext(os.path.basename(ibam))[0]
+
+    if bam_name == "test":
+        chr_array[:, channel_index] = np.array(bw_map.values(
+            chrom, 44000000, 46000000),
+            dtype=np.float32)
+    else:
+        chr_array[:, channel_index] = np.array(bw_map.values(
+            chrom, 0, chrlen),
+            dtype=np.float32)
     channel_index += 1
 
     current_channel = 'one_hot_encoding'
@@ -326,37 +335,37 @@ def main():
     parser.add_argument('-b',
                         '--bam',
                         type=str,
-                        default=inputBAM,
+                        default='../../data/test.bam',
                         help="Specify input file (BAM)")
     parser.add_argument('-c',
                         '--chr',
                         type=str,
-                        default='17',
+                        default='12',
                         help="Specify chromosome")
     parser.add_argument('-m',
                         '--map',
                         type=str,
-                        default='chr22.bw',
+                        default='../../data/test.bw',
                         help="Specify input file (bigWig)")
     parser.add_argument('-t',
                         '--twobit',
                         type=str,
-                        default='chr22.2bit',
+                        default='../../data/test.2bit',
                         help="Specify input file (2bit)")
     parser.add_argument('-o',
                         '--out',
                         type=str,
-                        default='channel_maker.npy.gz',
+                        default='chr_array/12_chr_array',
                         help="Specify output")
     parser.add_argument(
         '-p',
         '--outputpath',
         type=str,
-        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
+        default='.',
         help="Specify output path")
     parser.add_argument('-l',
                         '--logfile',
-                        default='window_maker.log',
+                        default='chr_array.log',
                         help='File in which to write logs.')
     parser.add_argument('-w',
                         '--window',

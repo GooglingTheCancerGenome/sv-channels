@@ -212,7 +212,7 @@ def main():
     parser.add_argument('-c',
                         '--chrlist',
                         type=str,
-                        default='17',
+                        default='12,22',
                         help="List of chromosomes to consider")
     parser.add_argument('-ca',
                         '--carraydir',
