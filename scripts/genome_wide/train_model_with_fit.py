@@ -401,72 +401,6 @@ def create_model(dim_length, dim_channels, class_number):
 def train(sample_folder, model_fn, params, X_train, y_train, y_train_binary):
     channel_data_dir = sample_folder  # get_data_dir(sampleName)
 
-    # win_len = 200
-    # padding_len = 10
-    # dim = win_len * 2 + padding_len
-
-    # print(Counter(y_train))
-    # class_weights = class_weight.compute_class_weight('balanced',
-    #                                                   np.unique(y_train),
-    #                                                   y_train)
-    # class_weights = dict(zip(np.unique(y_train), class_weights))
-    # print(class_weights)
-
-    # Balancing dataset
-    sampling = 'oversample'
-
-    cnt_lab = Counter(y_train)
-
-    # maximum training samples per class
-    max_train = 10 ** 5
-
-    min_v = min([v for k, v in cnt_lab.items()])
-    max_v = max([v for k, v in cnt_lab.items()])
-
-    print(cnt_lab)
-    print('Minimum number of labels = ' + str(min_v))
-    print('Maximum number of labels = ' + str(max_v))
-
-    data_balanced = []
-    labels_balanced = []
-
-    for l in cnt_lab.keys():
-        # print(l)
-        iw = np.where(y_train == l)
-
-        if sampling == 'oversample':
-            ii = np.random.choice(a=iw[0],
-                                  size=min(max_v, max_train),
-                                  replace=True)
-        elif sampling == 'undersample':
-            ii = np.random.choice(a=iw[0], size=min_v, replace=False)
-
-        data_balanced.extend(X_train[ii])
-        labels_balanced.extend(y_train[ii])
-
-    print(Counter(labels_balanced))
-
-    X_train = np.array(data_balanced)
-    y_train = np.array(labels_balanced)
-
-    y_train_binary = to_categorical(y_train, num_classes=params['n_classes'])
-
-    # End balancing
-
-    # X_train, X_val, y_train, y_val = train_test_split(X_train, y_train,
-    #                                                   test_size=0.3,
-    #                                                   random_state=2,
-    #                                                   stratify=y_train,
-    #                                                   shuffle=True)
-    #
-    # y_train_binary = to_categorical(y_train, num_classes=params['n_classes'])
-    # y_val_binary = to_categorical(y_val, num_classes=params['n_classes'])
-    #
-    # model = create_model_with_mcfly(X_train, y_train_binary)
-    #
-    # history, model = train_model_with_mcfly(model, X_train, y_train_binary,
-    #                                         X_val, y_val_binary)
-
     # Design model
     logging.info('Creating model...')
     model = create_model(params['dim'], params['n_channels'],
@@ -491,7 +425,17 @@ def train(sample_folder, model_fn, params, X_train, y_train, y_train_binary):
                              write_graph=True,
                              write_images=True)
 
-    callbacks = [earlystop, tbCallBack, csv_logger, checkpoint]
+    callbacks = [earlystop, checkpoint]
+
+    nosv_count, sv_count = np.bincount(y_train)
+    total_count = len(y_train)
+    logging.info('nosv_count:{}, sv_count:{}, total_count:{}'.format(nosv_count, sv_count, total_count))
+
+    weight_nosv = (1 / nosv_count) * (total_count) / 2.0
+    weight_sv = (1 / sv_count) * (total_count) / 2.0
+
+    class_weights = {0: weight_sv, 1: weight_nosv}
+    logging.info('class_weights: {}'.format(class_weights))
 
     logging.info('Fitting model...')
 
@@ -503,7 +447,7 @@ def train(sample_folder, model_fn, params, X_train, y_train, y_train_binary):
         batch_size=params['batch_size'],
         epochs=params['epochs'],
         shuffle=True,
-        # class_weight=class_weights,
+        class_weight=class_weights,
         verbose=1,
         callbacks=callbacks)
 
@@ -670,27 +614,27 @@ def main():
         '-p',
         '--outputpath',
         type=str,
-        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
+        default='./labels/win200/DEL/split_reads',
         help="Specify output path")
     parser.add_argument('-t',
                         '--training_sample_folder',
                         type=str,
-                        default='CHM1_CHM13',
+                        default='./labels/win200/DEL/split_reads',
                         help="Specify training sample")
     parser.add_argument('-x',
                         '--test_sample_folder',
                         type=str,
-                        default='NA24385',
+                        default='./labels/win200/DEL/split_reads',
                         help="Specify training sample")
     parser.add_argument('-tn',
                         '--training_sample_name',
                         type=str,
-                        default='CHM1_CHM13',
+                        default='test',
                         help="Specify training sample")
     parser.add_argument('-xn',
                         '--test_sample_name',
                         type=str,
-                        default='NA24385',
+                        default='test',
                         help="Specify training sample")
     parser.add_argument('-l',
                         '--logfile',
@@ -699,7 +643,7 @@ def main():
     parser.add_argument('-s',
                         '--svtype',
                         type=str,
-                        default='INS',
+                        default='DEL',
                         help="Specify SV type")
     parser.add_argument('-m',
                         '--mode',
