@@ -202,9 +202,7 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
                             sv_type = 'DEL'
 
                         if read.reference_name == chr_SA and \
-                                not read.mate_is_unmapped and \
-                                read.is_reverse == read.mate_is_reverse and \
-                                read.reference_name == read.next_reference_name:
+                                strand_str[read.is_reverse] != strand_SA:
                             sv_type = 'INV'
 
                         if read.reference_name != chr_SA:

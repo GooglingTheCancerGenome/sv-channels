@@ -16,7 +16,7 @@ SAMPLE=$(basename "$BAM" .bam)
 SEQ_IDS=(${@:3})
 SEQ_IDS_CSV=$(IFS=, ; echo "${SEQ_IDS[*]}")  # stringify
 SV_TYPES=(DEL)  # INS INV DUP TRA)
-SV_CALLS=(gridss)  # manta delly lumpy)
+SV_CALLS=(split_reads)  # manta delly lumpy)
 KFOLD=2  # k-fold cross validation
 WIN_SZ=200  # window size in bp
 PREFIX="${BASE_DIR}/${SAMPLE}"
