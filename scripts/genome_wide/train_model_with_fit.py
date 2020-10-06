@@ -535,10 +535,10 @@ def cross_validation(sample_name, sample_folder, outDir, npz_mode, svtype, kfold
 
 
 def train_and_test_model(training_name, test_name, training_folder, test_folder, outDir,
-                         npz_mode, svtype):
+                         npz_mode, svtype, epochs):
     if training_name == test_name:
         X_train, X_test, y_train, y_test, win_ids_train, win_ids_test = train_and_test_data(
-            training_folder, npz_mode, svtype, epochs)
+            training_folder, npz_mode, svtype)
     else:
         X_train, y_train, win_ids_train = get_data(training_folder, npz_mode, svtype)
         X_test, y_test, win_ids_test = get_data(test_folder, npz_mode, svtype)
@@ -706,7 +706,7 @@ def main():
                          npz_mode=args.load_npz,
                          svtype=args.svtype,
                          kfold=args.kfold,
-                         epochs = args.epochs)
+                         epochs=args.epochs)
 
     # print('Elapsed time channel_maker_real on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))
     logging.info('Elapsed time training and testing = %f seconds' %
