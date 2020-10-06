@@ -457,7 +457,7 @@ def train(sample_folder, model_fn, params, X_train, y_train, y_train_binary):
                                                  params['val_split'])
 
 
-def cross_validation(sample_name, sample_folder, outDir, npz_mode, svtype, kfold):
+def cross_validation(sample_name, sample_folder, outDir, npz_mode, svtype, kfold, epochs):
 
     X, y, win_ids = get_data(os.path.join(outDir, '..'), npz_mode, svtype)
     y_binary = to_categorical(y, num_classes=len(mapclasses.keys()))
@@ -480,7 +480,6 @@ def cross_validation(sample_name, sample_folder, outDir, npz_mode, svtype, kfold
             test_indices]
 
         batch_size = 32
-        epochs = 10
 
         # Parameters
         params = {
@@ -539,13 +538,12 @@ def train_and_test_model(training_name, test_name, training_folder, test_folder,
                          npz_mode, svtype):
     if training_name == test_name:
         X_train, X_test, y_train, y_test, win_ids_train, win_ids_test = train_and_test_data(
-            training_folder, npz_mode, svtype)
+            training_folder, npz_mode, svtype, epochs)
     else:
         X_train, y_train, win_ids_train = get_data(training_folder, npz_mode, svtype)
         X_test, y_test, win_ids_test = get_data(test_folder, npz_mode, svtype)
 
     batch_size = 32
-    epochs = 10
 
     # Parameters
     params = {
@@ -655,6 +653,11 @@ def main():
                         type=int,
                         default=3,
                         help="Specify [k]-fold cross validation")
+    parser.add_argument('-e',
+                        '--epochs',
+                        type=int,
+                        default=10,
+                        help="Number of epochs")
     parser.add_argument('-npz',
                         '--load_npz',
                         type=bool,
@@ -693,7 +696,8 @@ def main():
                              test_folder=args.test_sample_folder,
                              outDir=output_dir,
                              npz_mode=args.load_npz,
-                             svtype=args.svtype)
+                             svtype=args.svtype,
+                             epochs=args.epochs)
     else:
 
         cross_validation(sample_name=args.training_sample_name,
@@ -701,7 +705,8 @@ def main():
                          outDir=output_dir,
                          npz_mode=args.load_npz,
                          svtype=args.svtype,
-                         kfold=args.kfold)
+                         kfold=args.kfold,
+                         epochs = args.epochs)
 
     # print('Elapsed time channel_maker_real on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))
     logging.info('Elapsed time training and testing = %f seconds' %

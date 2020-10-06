@@ -18,6 +18,7 @@ SEQ_IDS_CSV=$(IFS=, ; echo "${SEQ_IDS[*]}")  # stringify
 SV_TYPES=(DEL)  # INS INV DUP TRA)
 SV_CALLS=(split_reads)  # manta delly lumpy)
 KFOLD=2  # k-fold cross validation
+EPOCHS=10 # epochs
 WIN_SZ=200  # window size in bp
 PREFIX="${BASE_DIR}/${SAMPLE}"
 TWOBIT="${PREFIX}.2bit"
@@ -194,7 +195,7 @@ for sv in "${SV_TYPES[@]}"; do
         out="labels/win$WIN_SZ/$sv/$c"
         cmd="python $p.py --training_sample_name \"$SAMPLE\" \
           --training_sample_folder . --test_sample_name \"$SAMPLE\" \
-          --test_sample_folder . -k $KFOLD -p \"$out\" -s $sv -l $p.log"
+          --test_sample_folder . -k $KFOLD -e $EPOCHS -p \"$out\" -s $sv -l $p.log"
         JOB_ID=$(submit "$cmd" "$p-$c")
         JOBS+=($JOB_ID)
     done
