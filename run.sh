@@ -82,9 +82,15 @@ conda list
 
 # convert SV calls (i.e. truth set and sv-callers output) in VCF to BEDPE files
 cd scripts/R
-cmd="./vcf2bedpe.R -i \"$VCF\" -o \"$BEDPE\""
-JOB_ID=$(submit "$cmd" vcf2bedpe)
-JOBS+=($JOB_ID)
+for int_vcf in $(find data -name "*.vcf" | grep -E "test"); do
+  int_prefix=$(basename $vcf .vcf)
+  int_bedpe="${BASE_DIR}/${PREFIX}.bedpe"
+  cmd="vcf2bedpe.R -i ${int_vcf} -o ${int_bedpe}"
+  JOB_ID=$(submit vcf2bedpe all "$cmd")
+  JOBS+=($JOB_ID)
+done
+
+waiting
 
 # submit jobs to output "channel" files (*.json.gz and *.npy.gz)
 cd ../genome_wide
