@@ -94,7 +94,7 @@ for (svtype in sv_types)
   
   print('Loading predictions...')
 
-  if(count_sv_lines(bedpe.file))
+  if(file.exists(bedpe.file))
   {
 
   sv_regions[[svtype]] <-
