@@ -93,6 +93,10 @@ for (svtype in sv_types)
   }
   
   print('Loading predictions...')
+
+  if(count_sv_lines(bedpe.file))
+  {
+
   sv_regions[[svtype]] <-
     load_bedpe(bedpe.file, regions_for_filtering)
   
@@ -135,6 +139,7 @@ for (svtype in sv_types)
     sv_regions[[svtype]] <- sv_regions[[svtype]][unique(aggdata$x)]
     sv_regions[[svtype]] <-
       sv_regions[[svtype]][sv_regions[[svtype]]$partner %in% names(sv_regions[[svtype]])]
+  }
   }
   print(length(sv_regions[[svtype]]))
   }

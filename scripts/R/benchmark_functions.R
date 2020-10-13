@@ -138,3 +138,7 @@ load_vcf <- function(vcf_file, svtype, caller, filter_regions)
   # vcf_gr <- filter_regions(vcf_gr, load_bed(filter_regions), mode='remove')
   return(vcf_gr)
 }
+
+count_sv_lines <- function(filename){
+  length(grep('^#', readLines(filename), perl = TRUE, invert = TRUE)) > 0
+}
