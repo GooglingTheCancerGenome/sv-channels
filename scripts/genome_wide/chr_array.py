@@ -279,13 +279,14 @@ def create_carray(ibam, chrom, twobit, bigwig, outDir, cmd_name):
 
     # bw_chrom = chrom.replace('chr', '')
     # start and end position hard coded at the moment, to be updated with (0, chrlen)
-    bam_name = os.path.splitext(os.path.basename(ibam))[0]
 
-    if bam_name == "test":
+    if chr_array.shape[0] == 2000000:
+        # test data
         chr_array[:, channel_index] = np.array(bw_map.values(
             chrom, 44000000, 46000000),
             dtype=np.float32)
     else:
+        # real data
         chr_array[:, channel_index] = np.array(bw_map.values(
             chrom, 0, chrlen),
             dtype=np.float32)
@@ -320,15 +321,6 @@ def main():
     Main function for parsing the input arguments and calling the channel_maker function
     :return: None
     '''
-
-    # Default BAM file for testing
-    # On the HPC
-    # wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/'+
-    #   'artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
-    # inputBAM = wd + "T0_dedup.bam"
-    # Locally
-    wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
-    inputBAM = wd + "T1_dedup.bam"
 
     parser = argparse.ArgumentParser(
         description='Create channels from saved data')
