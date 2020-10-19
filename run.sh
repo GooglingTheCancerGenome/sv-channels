@@ -26,6 +26,7 @@ BIGWIG="${PREFIX}.bw"
 BEDPE="${PREFIX}.bedpe"
 BED="${PREFIX}.bed"
 VCF="${PREFIX}.vcf"
+EXCL_LIST="${BASE_DIR}/ENCFF001TDO.bed"
 STARTTIME=$(date +%s)
 JOBS=()  # array of job IDs
 JOBS_LOG=jobs.json  # job accounting log
@@ -204,6 +205,39 @@ for sv in "${SV_TYPES[@]}"; do
           --test_sample_folder . -k $KFOLD -e $EPOCHS -p \"$out\" -s $sv -l $p.log"
         JOB_ID=$(submit "$cmd" "$p-$c")
         JOBS+=($JOB_ID)
+    done
+done
+
+waiting
+
+cd ../R
+for sv in "${SV_TYPES[@]}"; do
+    for c in "${SV_CALLS[@]}"; do
+        p=merge_sv_calls
+        out="../genome_wide/labels/win$WIN_SZ/$sv/$c"
+        cmd="merge_sv_calls.R \
+                -i ${out} \
+                -f ${EXCL_LIST} \
+                -m ${sv} \
+                -o ${out}"
+                JOB_ID=$(submit "$cmd" "$p-$c")
+                JOBS+=($JOB_ID)
+    done
+done
+
+waiting
+
+cd ../utils
+for sv in "${SV_TYPES[@]}"; do
+    for c in "${SV_CALLS[@]}"; do
+        p=bedpe_to_vcf
+        out="../genome_wide/labels/win$WIN_SZ/$sv/$c"
+        cmd="bedpe_to_vcf.py \
+                -i ${out} \
+                -o ${out} \
+                -s ${SAMPLE}"
+                JOB_ID=$(submit "$cmd" "$p-$c")
+                JOBS+=($JOB_ID)
     done
 done
 
