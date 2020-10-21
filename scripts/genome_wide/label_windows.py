@@ -14,11 +14,6 @@ from intervaltree import IntervalTree
 from functions import *
 from label_classes import SVRecord
 
-with open('parameters.json', 'r') as f:
-    config = json.load(f)
-
-HPC_MODE = config["DEFAULT"]["HPC_MODE"]
-
 
 def read_vcf(invcf):
 
@@ -41,9 +36,8 @@ def read_vcf(invcf):
         pos2_end = var.end + var.ciend[1] + 1
         svtype = var.svtype
 
-        if svtype == "DEL":
-            sv_list.append((chrom1, pos1_start, pos1_end, chrom2, pos2_start,
-                            pos2_end, svtype))
+        sv_list.append((chrom1, pos1_start, pos1_end, chrom2, pos2_start,
+                        pos2_end, svtype))
 
     logging.info('{} SVs'.format(len(sv_list)))
 
@@ -137,6 +131,62 @@ def read_svcaller_bedpe(inbedpe):
     return cr_pos
 
 
+def make_gtrees_from_svlist(sv_list):
+
+    logging.info('Building SV GenomicTrees...')
+    # Tree with windows for candidate positions
+    trees_start = defaultdict(IntervalTree)
+    trees_end = defaultdict(IntervalTree)
+
+    # Populate tree
+    for sv in sv_list:
+        chrom1, pos1_start, pos1_end, chrom2, pos2_start, pos2_end, svtype = sv
+        sv_id = '_'.join(
+            (svtype, chrom1, str(pos1_start), chrom2, str(pos2_start)))
+
+        trees_start[chrom1][pos1_start:pos1_end] = (svtype, sv_id)
+        trees_end[chrom2][pos2_start:pos2_end] = (svtype, sv_id)
+
+    # print('Tree start')
+    # for k in trees_start.keys():
+    #     print('{} : {}'.format( k, len(trees_start[k])))
+    # print('Tree end')
+    # for k in trees_end.keys():
+    #     print('{} : {}'.format( k, len(trees_end[k])))
+
+    return trees_start, trees_end
+
+
+def search_tree_with_cpos(cpos, trees_start, trees_end, win_hlen):
+
+    logging.info('Searching SV GenomicTrees with candidate positions...')
+
+    lookup_start = []
+    lookup_end = []
+
+    # Log info every n_r times
+    n_r = 10**6
+    last_t = time()
+
+    for i, p in enumerate(cpos, start=1):
+
+        if not i % n_r:
+            now_t = time()
+            # print(type(now_t))
+            logging.info(
+                "%d candidate positions processed (%f positions / s)" %
+                (i, n_r / (now_t - last_t)))
+            last_t = time()
+
+        chrom1, pos1, chrom2, pos2, strand_info = p
+        lookup_start.append(trees_start[chrom1][pos1 - win_hlen:pos1 +
+                                                win_hlen + 1])
+        lookup_end.append(trees_end[chrom2][pos2 - win_hlen:pos2 +
+                                            win_hlen + 1])
+
+    return lookup_start, lookup_end
+
+
 def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
     '''
 
@@ -145,63 +195,10 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
     :return: list, list of clipped read positions whose window completely overlap either the CIPOS interval
     or the CIEND interval
     '''
-    def make_gtrees_from_svlist(sv_list):
-
-        logging.info('Building SV GenomicTrees...')
-        # Tree with windows for candidate positions
-        trees_start = defaultdict(IntervalTree)
-        trees_end = defaultdict(IntervalTree)
-
-        # Populate tree
-        for sv in sv_list:
-            chrom1, pos1_start, pos1_end, chrom2, pos2_start, pos2_end, svtype = sv
-            sv_id = '_'.join(
-                (svtype, chrom1, str(pos1_start), chrom2, str(pos2_start)))
-
-            trees_start[chrom1][pos1_start:pos1_end] = (svtype, sv_id)
-            trees_end[chrom2][pos2_start:pos2_end] = (svtype, sv_id)
-
-        # print('Tree start')
-        # for k in trees_start.keys():
-        #     print('{} : {}'.format( k, len(trees_start[k])))
-        # print('Tree end')
-        # for k in trees_end.keys():
-        #     print('{} : {}'.format( k, len(trees_end[k])))
-
-        return trees_start, trees_end
-
-    def search_tree_with_cpos(cpos, trees_start, trees_end):
-
-        logging.info('Searching SV GenomicTrees with candidate positions...')
-
-        lookup_start = []
-        lookup_end = []
-
-        # Log info every n_r times
-        n_r = 10**6
-        last_t = time()
-
-        for i, p in enumerate(cpos, start=1):
-
-            if not i % n_r:
-                now_t = time()
-                # print(type(now_t))
-                logging.info(
-                    "%d candidate positions processed (%f positions / s)" %
-                    (i, n_r / (now_t - last_t)))
-                last_t = time()
-
-            chrom1, pos1, chrom2, pos2 = p
-            lookup_start.append(trees_start[chrom1][pos1 - win_hlen:pos1 +
-                                                    win_hlen + 1])
-            lookup_end.append(trees_end[chrom2][pos2 - win_hlen:pos2 +
-                                                win_hlen + 1])
-
-        return lookup_start, lookup_end
 
     trees_start, trees_end = make_gtrees_from_svlist(sv_list)
     lookup_start, lookup_end = search_tree_with_cpos(cpos_list, trees_start,
-                                                     trees_end)
+                                                     trees_end, win_hlen)
 
     # print([l for l in lookup_start if len(l) > 0])
     # print([l for l in lookup_end if len(l) > 0])
@@ -212,8 +209,8 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
 
     for p, lu_start, lu_end in zip(cpos_list, lookup_start, lookup_end):
 
-        chrom1, pos1, chrom2, pos2 = p
-        pos_id = '_'.join((chrom1, str(pos1), chrom2, str(pos2)))
+        chrom1, pos1, chrom2, pos2, strand_info = p
+        pos_id = '_'.join((chrom1, str(pos1), chrom2, str(pos2), strand_info))
 
         l1 = len(lu_start)
         l2 = len(lu_end)
@@ -350,8 +347,8 @@ def get_labels(chrlist, chr_dict, win_len, svtype, ground_truth, sv_positions,
 
     # Keep only positions that can be used to create windows
     cpos_list = [
-        (chrom1, pos1, chrom2, pos2)
-        for chrom1, pos1, chrom2, pos2 in cpos_list if chrom1 in chrlist
+        (chrom1, pos1, chrom2, pos2, strand_info)
+        for chrom1, pos1, chrom2, pos2, strand_info, in cpos_list if chrom1 in chrlist
         and chrom2 in chrlist and win_hlen <= pos1 <= chr_dict[chrom1] -
         win_hlen and win_hlen <= pos2 <= chr_dict[chrom2] - win_hlen
     ]
@@ -404,7 +401,7 @@ def main():
     parser.add_argument('-s',
                         '--svtype',
                         type=str,
-                        default='DEL',
+                        default='INV',
                         help="Specify SV type")
     parser.add_argument('-sv',
                         '--sv_positions',
