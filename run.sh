@@ -214,12 +214,12 @@ cd ../R
 for sv in "${SV_TYPES[@]}"; do
     for c in "${SV_CALLS[@]}"; do
         p=merge_sv_calls
-        out="../genome_wide/labels/win$WIN_SZ/$sv/$c"
-        cmd="merge_sv_calls.R \
-                -i ${out} \
+        split_reads_dir="../genome_wide/labels/win$WIN_SZ/$sv/$c"
+        cmd="Rscript merge_sv_calls.R \
+                -i ${split_reads_dir} \
                 -f ${EXCL_LIST} \
                 -m ${sv} \
-                -o ${out}"
+                -o ${split_reads_dir}"
                 JOB_ID=$(submit "$cmd" "$p-$c")
                 JOBS+=($JOB_ID)
     done
@@ -231,10 +231,11 @@ cd ../utils
 for sv in "${SV_TYPES[@]}"; do
     for c in "${SV_CALLS[@]}"; do
         p=bedpe_to_vcf
-        out="../genome_wide/labels/win$WIN_SZ/$sv/$c"
-        cmd="bedpe_to_vcf.py \
-                -i ${out} \
-                -o ${out} \
+        split_reads_dir="../genome_wide/labels/win$WIN_SZ/$sv/$c"
+        output_vcf=${split_reads_dir}"/"${SAMPLE}"_cv"${KFOLD}".vcf"
+        cmd="python bedpe_to_vcf.py \
+                -p ${split_reads_dir} \
+                -o ${output_vcf} \
                 -s ${SAMPLE}"
                 JOB_ID=$(submit "$cmd" "$p-$c")
                 JOBS+=($JOB_ID)
