@@ -231,10 +231,11 @@ cd ../utils
 for sv in "${SV_TYPES[@]}"; do
     for c in "${SV_CALLS[@]}"; do
         p=bedpe_to_vcf
-        split_reads_dir="../genome_wide/labels/win$WIN_SZ/$sv/$c"
-        output_vcf=${split_reads_dir}"/"${SAMPLE}"_cv"${KFOLD}".vcf"
+        win_dir="../genome_wide/labels/win$WIN_SZ/$sv/$c"
+        calls_dir=${win_dir}"/$sv/$c"
+        output_vcf=${win_dir}"/"${SAMPLE}"_"${c}"_cv"${KFOLD}".vcf"
         cmd="python bedpe_to_vcf.py \
-                -p ${split_reads_dir} \
+                -p ${calls_dir} \
                 -o ${output_vcf} \
                 -s ${SAMPLE}"
                 JOB_ID=$(submit "$cmd" "$p-$c")
