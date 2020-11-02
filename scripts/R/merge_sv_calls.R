@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-source('./benchmark_functions.R')
+source('./aux_functions.R')
 
 # create a parser and add command-line arguments
 p <-
