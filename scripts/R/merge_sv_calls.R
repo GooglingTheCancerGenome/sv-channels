@@ -1,19 +1,6 @@
 #!/usr/bin/env Rscript
 
-options(scipen=999)
-
-suppressPackageStartupMessages(require(StructuralVariantAnnotation))
-suppressPackageStartupMessages(require(rtracklayer))
-suppressPackageStartupMessages(require(tools))
-suppressPackageStartupMessages(require(argparser))
-
-script.name <-
-  basename(sub(".*=", "", commandArgs()[4])) # script name
-
-script.dir <- dirname(commandArgs()[2])
-source(file.path(script.dir, 'R/benchmark_functions.R'))
-
-#source('~/Documents/Local_GitHub/sv-channels/scripts/R/benchmark_functions.R')
+source('./benchmark_functions.R')
 
 # create a parser and add command-line arguments
 p <-
@@ -71,7 +58,7 @@ for (svtype in sv_types)
       recursive = TRUE,
       full.names = TRUE
     )
-  
+
   print(filenames)
   bedpe.file <-
     file.path(input_path, paste(mode, '_', svtype, '.bedpe', sep = ''))
@@ -79,7 +66,7 @@ for (svtype in sv_types)
   if (file.exists(bedpe.file)) {
     file.remove(bedpe.file)
   }
-  
+
   for (f in filenames)
   {
     cmd <-
@@ -91,7 +78,7 @@ for (svtype in sv_types)
       )
     system(cmd)
   }
-  
+
   print('Loading predictions...')
 
   if(file.exists(bedpe.file))
@@ -99,11 +86,11 @@ for (svtype in sv_types)
 
   sv_regions[[svtype]] <-
     load_bedpe(bedpe.file, regions_for_filtering)
-  
+
   # rename NA. column of CNN into svLen
   names(mcols(sv_regions[[svtype]]))[names(mcols(sv_regions[[svtype]])) ==
                                        'NA.'] <- 'svLen'
-  
+
   # Merge SVs
   if (svtype != 'INS')
   {
@@ -151,9 +138,14 @@ for (svtype in sv_types)
 # Export to BEDPE
 for (t in sv_types)
 {
-  if(file.exists(file.path(input_path, t)))
+  if(file.exists(bedpe.file))
   {
-  rtracklayer::export(breakpointgr2pairs(sv_regions[[t]]),
+    tryCatch({
+        rtracklayer::export(breakpointgr2pairs(sv_regions[[t]]),
                       con = paste(output_fn,"_",t,".bedpe", sep=""))
+    }, error = function(err){
+        print(paste("MY_ERROR:  ", err))
+        next
+    })
   }
 }
