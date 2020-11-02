@@ -132,17 +132,16 @@ for (svtype in sv_types)
   }
 }
 
-# print(breakpointgr2pairs(sv_regions[[svtype]]))
-#callset <- unlist(GRangesList(sv_regions))
-
 # Export to BEDPE
-for (t in sv_types)
+for (tp in sv_types)
 {
-  if(file.exists(bedpe.file))
-  {
+    output_file = paste(output_fn,"_",tp,".bedpe", sep="")
+
+    if(length(sv_regions[[tp]]) > 0)
+    {
     tryCatch({
-        rtracklayer::export(breakpointgr2pairs(sv_regions[[t]]),
-                      con = paste(output_fn,"_",t,".bedpe", sep=""))
+        bp_pairs <- breakpointgr2pairs(sv_regions[[tp]])
+        rtracklayer::export(bp_pairs, con = output_file)
     }, error = function(err){
         print(paste("MY_ERROR:  ", err))
         next
