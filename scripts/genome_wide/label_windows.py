@@ -63,7 +63,7 @@ def read_bedpe(inbedpe, svtype_to_select):
                 svtype = "DEL"
 
             if svtype_to_select == svtype:
-                if svtype in ['DEL', 'INV', 'DUP', 'TRA']:
+                if svtype in ['DEL', 'INV', 'DUP', 'CTX']:
                     sv_list.append((chrom1, pos1_start, pos1_end, chrom2,
                                     pos2_start, pos2_end, svtype))
                 elif svtype == "INS":
@@ -96,7 +96,7 @@ def filter_bedpe(inbedpe, sv_id_list, outDir):
             sv_id = '_'.join(
                 (svtype, chrom1, str(pos1_start), chrom2, str(pos2_start)))
 
-            if svtype in ['DEL', 'INS', 'INV', 'DUP', 'TRA'] and sv_id not in sv_id_list:
+            if svtype in ['DEL', 'INS', 'INV', 'DUP', 'CTX'] and sv_id not in sv_id_list:
                 lines_to_keep.append(line)
 
         fileout = os.path.join(outDir, 'uncaptured_SVs.bedpe')
@@ -179,10 +179,10 @@ def search_tree_with_cpos(cpos, trees_start, trees_end, win_hlen):
             last_t = time()
 
         chrom1, pos1, chrom2, pos2, strand_info = p
-        lookup_start.append(trees_start[chrom1][pos1 - win_hlen:pos1 +
-                                                win_hlen + 1])
-        lookup_end.append(trees_end[chrom2][pos2 - win_hlen:pos2 +
-                                            win_hlen + 1])
+        lookup_start.append(trees_start[chrom1].envelop(pos1 - win_hlen,
+                                                        pos1 + win_hlen + 1))
+        lookup_end.append(trees_end[chrom2].envelop(pos2 - win_hlen,
+                                                    pos2 + win_hlen + 1))
 
     return lookup_start, lookup_end
 
