@@ -80,6 +80,12 @@ def get_snvs(ibam, itwobit, chrName, max_coverage, outFile):
                     chrName, pileupcolumn.pos, pileupcolumn.nsegments))
                 continue
 
+    for i in np.arange(snv_array.shape[0]):
+        logging.info('snv array {}:'+ \
+                     'non-zero elements at index {}:{}'.format(chrName,
+                                                               i,
+                                                               np.argwhere(snv_array[i, :] != 0).shape[0]))
+
     # Write the output
     # snv_array = np.delete(snv_array, 2, 0)
     np.save(file=outFile, arr=snv_array)
