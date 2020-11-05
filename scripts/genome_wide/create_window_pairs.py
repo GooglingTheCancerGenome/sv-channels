@@ -118,15 +118,14 @@ def get_windows(carrays_dir, outDir, chrom_list, win, label_file_path, mode, npz
         last_t = time()
         i = 1
 
-        outfile = os.path.join(outDir, 'windows')
+        # outfile = os.path.join(outDir, 'windows')
+        # bcolz_array = bcolz.carray(bcolz.zeros(shape=(0, int(win) * 2 +
+        #                                               padding_len, n_channels),
+        #                                        dtype=np.float32),
+        #                            mode='w',
+        #                            rootdir=outfile + '_carray')
 
-        bcolz_array = bcolz.carray(bcolz.zeros(shape=(0, int(win) * 2 +
-                                                      padding_len, n_channels),
-                                               dtype=np.float32),
-                                   mode='w',
-                                   rootdir=outfile + '_carray')
-
-        padding = bcolz.zeros(shape=(padding_len, n_channels),
+        padding = np.zeros(shape=(padding_len, n_channels),
                               dtype=np.float32)
 
         if npz_mode:
@@ -145,42 +144,51 @@ def get_windows(carrays_dir, outDir, chrom_list, win, label_file_path, mode, npz
                     (i, n_r / (now_t - last_t)))
                 last_t = time()
 
-            dask_array = list()
+            partial_array = list()
             d = chr_array[chr1][pos1 - win_hlen:pos1 + win_hlen, :]
-            dask_array.append(d)
-            dask_array.append(padding)
+            partial_array.append(d)
+            partial_array.append(padding)
             d = chr_array[chr2][pos2 - win_hlen:pos2 + win_hlen, :]
-            dask_array.append(d)
+            partial_array.append(d)
 
             try:
 
-                dask_array = np.concatenate(dask_array, axis=0)
+                full_array = np.concatenate(partial_array, axis=0)
 
                 if npz_mode:
-                    numpy_array.append(dask_array)
+                    numpy_array.append(full_array)
 
             except ValueError:
 
                 print('{}:{}-{}:{}'.format(chr1, pos1, chr2, pos2))
 
-                for d in dask_array:
+                for d in numpy_array:
                     print(d.shape)
 
             # print(type(dask_array))
-            bcolz_array.append(dask_array)
-            i += 1
+            # bcolz_array.append(dask_array)
 
         # bcolz_array.append(dask_array)
-        bcolz_array.attrs['labels'] = labs
-        bcolz_array.flush()
-        logging.info(bcolz_array.shape)
+        # bcolz_array.attrs['labels'] = labs
+        # bcolz_array.flush()
+        # logging.info(bcolz_array.shape)
 
         if npz_mode:
+
             numpy_array = np.stack(numpy_array, axis=0)
+
             logging.info('Numpy array shape: {}'.format(numpy_array.shape))
+
+            for i in np.arange(numpy_array.shape[2]):
+                logging.info('windows array:' + \
+                             'non-zero elements at index {}:{}'.format(i,
+                                                                       np.argwhere(numpy_array[i, :] != 0).shape[0]))
+
             np.savez(file=os.path.join(outDir, 'windows'),
                      data=numpy_array,
                      labels=labs)
+        else:
+            logging.info('Enable bcolz!')
 
 
 def main():
