@@ -7,6 +7,18 @@ from pysam import VariantRecord
 __bpRE__ = None
 __symbolicRE__ = None
 
+def setupREs():
+    '''
+    Function of the mergevcf tool by Jonathan Dursi (Simpson Lab)
+    URL: https://github.com/ljdursi/mergevcf
+    '''
+    global __symbolicRE__
+    global __bpRE__
+    if __symbolicRE__ is None or __bpRE__ is None:
+        __symbolicRE__ = re.compile(r'.*<([A-Z:]+)>.*')
+        __bpRE__ = re.compile(
+            r'([ACGTNactgn\.]*)([\[\]])([a-zA-Z0-9\.\_]+:\d+)([\[\]])([ACGTNacgtn\.]*)'
+        )
 
 class SVRecord:
     def __init__(self, record, svcaller):
@@ -161,18 +173,10 @@ class SVRecord:
             ct, chr2, pos2, indellen = self.locFromBkpt(
                 str(record.ref), resultBP.group(1), resultBP.group(2),
                 resultBP.group(3), resultBP.group(4), resultBP.group(5))
-        return (ct, chr2, pos2, indellen)
 
+            res = (ct, chr2, pos2, indellen)
 
-def setupREs():
-    '''
-    Function of the mergevcf tool by Jonathan Dursi (Simpson Lab)
-    URL: https://github.com/ljdursi/mergevcf
-    '''
-    global __symbolicRE__
-    global __bpRE__
-    if __symbolicRE__ is None or __bpRE__ is None:
-        __symbolicRE__ = re.compile(r'.*<([A-Z:]+)>.*')
-        __bpRE__ = re.compile(
-            r'([ACGTNactgn\.]*)([\[\]])([a-zA-Z0-9\.]+:\d+)([\[\]])([ACGTNacgtn\.]*)'
-        )
+        else:
+            res = None
+
+        return res
