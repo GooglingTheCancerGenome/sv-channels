@@ -37,15 +37,16 @@ def get_split_read_positions(ibam, chr_list, min_mapq, min_sr_support, outFile, 
     for k in sv_type_list:
         split_pos_coord[k] = []
 
-    bam_mean, bam_stddev = get_insert_size(ibam)
+    # Load the BAM file
+    bamfile = pysam.AlignmentFile(ibam, "rb")
+
+    bam_mean, bam_stddev = get_insert_size(ibam, bamfile, min_mapq)
 
     # # Tree with split read positions
     # gtree = {k: dict() for k in sv_type_list}
     # for s in sv_type_list:
     #     gtree[s] = {k: IntervalTree() for k in chr_list}
 
-    # Load the BAM file
-    bamfile = pysam.AlignmentFile(ibam, "rb")
 
     n_indels = 0
     n_split = 0

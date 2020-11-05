@@ -11,7 +11,7 @@ import pysam
 from functions import *
 
 
-def get_clipped_read_distance(ibam, chrName, outFile):
+def get_clipped_read_distance(ibam, chrName, min_mapq, outFile):
     '''
 
     :param ibam: BAM file in input
@@ -23,14 +23,11 @@ def get_clipped_read_distance(ibam, chrName, outFile):
     # Check if the BAM file in input exists
     assert os.path.isfile(ibam)
 
-    # minimum read mapping quality to consider
-    config = get_config_file()
-    minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
-
-    bam_mean, bam_stddev = get_insert_size(ibam)
-
     # open BAM file
     bamfile = pysam.AlignmentFile(ibam, "rb")
+
+    bam_mean, bam_stddev = get_insert_size(ibam, bamfile, min_mapq)
+
     # get chromosome length from BAM header
     header_dict = bamfile.header
     chrLen = [i['LN'] for i in header_dict['SQ'] if i['SN'] == chrName][0]
@@ -62,15 +59,15 @@ def get_clipped_read_distance(ibam, chrName, outFile):
 
         if is_left_clipped(read):
             pos = read.reference_start
-            #if pos not in clipped_read_distance[direction]['left'].keys():
+            # if pos not in clipped_read_distance[direction]['left'].keys():
             #    clipped_read_distance[direction]['left'][pos] = [dist]
-            #else:
+            # else:
             clipped_read_distance[direction]['left'][pos].append(dist)
         elif is_right_clipped(read):
             pos = read.reference_end + 1
-            #if pos not in clipped_read_distance[direction]['right'].keys():
+            # if pos not in clipped_read_distance[direction]['right'].keys():
             #    clipped_read_distance[direction]['right'][pos] = [dist]
-            #else:
+            # else:
             clipped_read_distance[direction]['right'][pos].append(dist)
 
     # Consider all the chromosome: interval [0, chrLen]
@@ -80,7 +77,7 @@ def get_clipped_read_distance(ibam, chrName, outFile):
     iter = bamfile.fetch(chrName, start_pos, stop_pos)
 
     # Log information every n_r reads
-    n_r = 10**6
+    n_r = 10 ** 6
     # print(n_r)
     last_t = time()
     # print(type(last_t))
@@ -94,12 +91,12 @@ def get_clipped_read_distance(ibam, chrName, outFile):
             last_t = time()
 
         # Both read and mate should be mapped
-        if not read.is_unmapped and not read.mate_is_unmapped and read.mapping_quality >= minMAPQ:
+        if not read.is_unmapped and not read.mate_is_unmapped and read.mapping_quality >= min_mapq:
             # Read and mate should be mapped on the same chromosome
             if read.reference_name == read.next_reference_name:
                 # Calculate absolute read to mate distance
                 dist = abs(read.reference_start - read.next_reference_start)
-                dist = (dist - bam_mean)/bam_stddev
+                dist = (dist - bam_mean) / bam_stddev
                 # Read is mapped in forward orientation, mate is in reverse orientation, read is mapped before mate
                 if not read.is_reverse and read.mate_is_reverse and read.reference_start <= read.next_reference_start:
                     set_distance('forward', read, dist)
@@ -136,16 +133,21 @@ def main():
                         type=str,
                         default='clipped_read_distance.json.gz',
                         help="Specify output")
-    parser.add_argument(
-        '-p',
-        '--outputpath',
-        type=str,
-        default='.',
-        help="Specify output path")
+    parser.add_argument('-p',
+                        '--outputpath',
+                        type=str,
+                        default='.',
+                        help="Specify output path")
     parser.add_argument('-l',
                         '--logfile',
                         default='clipped_read_distance.log',
                         help='File in which to write logs.')
+    parser.add_argument('-m',
+                        '--min_mapq',
+                        type=int,
+                        default=10,
+                        help='Minimum read mapping quality')
+
 
     args = parser.parse_args()
 
@@ -164,10 +166,10 @@ def main():
     t0 = time()
     get_clipped_read_distance(ibam=args.bam,
                               chrName=args.chr,
+                              min_mapq=args.min_mapq,
                               outFile=output_file)
     logging.info('Time: clipped read distance on BAM %s and Chr %s: %f' %
                  (args.bam, args.chr, (time() - t0)))
-
 
 if __name__ == '__main__':
     main()

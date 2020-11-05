@@ -8,7 +8,8 @@ import pysam
 import twobitreader as twobit
 from cigar import Cigar
 from statistics import mean, stdev
-import matplotlib.pyplot as plt
+import pandas as pd
+# import matplotlib.pyplot as plt
 
 del_min_size = 50
 ins_min_size = 50
@@ -601,36 +602,66 @@ def chr_dict_from_bed(input_bed):
     return d
 
 
-def get_insert_size(ibam):
+def estimate_insert_size(ibam, pysam_bam, min_mapq):
 
-    config = get_config_file()
-    minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
+    base =os.path.basename(ibam)
+    prefix = os.path.splitext(base)[0]
 
-    n_bins = 100
+    isize_out = os.path.join(
+        os.path.dirname(ibam),
+        prefix+'.insert_size.csv'
+    )
+    # print(isize_out)
 
-    fig, axs = plt.subplots(1, 1, sharey=True, tight_layout=True)
+    # n_bins = 100
 
-    # Load the BAM file
-    bamfile = pysam.AlignmentFile(ibam, "rb")
+    # fig, axs = plt.subplots(1, 1, sharey=True, tight_layout=True)
 
     isize_distr = []
     i = 0
-    for read in bamfile.fetch():
-        if (not read.is_unmapped) and read.mapping_quality >= minMAPQ \
+
+    for read in pysam_bam.fetch():
+        if (not read.is_unmapped) and read.mapping_quality >= min_mapq \
                 and read.is_reverse != read.mate_is_reverse \
                 and read.reference_name == read.next_reference_name:
             dist = abs(read.reference_start - read.next_reference_start)
+
             if dist < 10 ** 3:
+
                 isize_distr.append(
                     dist
                 )
+
                 if i == 2 * 10 ** 6:
                     break
                 i += 1
 
-    m = mean(isize_distr)
-    s = stdev(isize_distr)
-    axs.hist(isize_distr, bins=n_bins)
+    df = pd.DataFrame({'mean': [mean(isize_distr)],
+                       'sd': [stdev(isize_distr)]
+                        })
+
+    df.to_csv(isize_out, index=False)
+
+    # axs.hist(isize_distr, bins=n_bins)
     # plt.show()
-    logging.info('Mean:{}, StdDev:{}'.format(m,s))
-    return m, s
+
+    return df
+
+
+def get_insert_size(ibam, pysam_bam, min_mapq):
+
+    base =os.path.basename(ibam)
+    prefix = os.path.splitext(base)[0]
+
+    isize_file = os.path.join(
+        os.path.dirname(ibam),
+        prefix+'.insert_size.csv'
+    )
+
+    if os.path.exists(isize_file):
+        df = pd.read_csv(isize_file)
+    else:
+        df = estimate_insert_size(ibam, pysam_bam, min_mapq)
+
+    return df.at[0, 'mean'], df.at[0, 'sd']
+
