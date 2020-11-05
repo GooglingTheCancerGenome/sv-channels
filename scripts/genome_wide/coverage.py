@@ -4,11 +4,18 @@ import os
 import numpy as np
 import pysam
 from time import time
-from zlib import crc32
-from functions import get_config_file
 
-config = get_config_file()
-minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
+from functions import get_config_file, get_insert_size
+
+
+def is_read_proper_paired(read, bam_mean, bam_stddev):
+
+    dist = read.next_reference_start - read.reference_start
+
+    if dist > 0 and abs(dist) <= bam_mean + bam_stddev:
+        return True
+    else:
+        return False
 
 
 def check_read(read):
@@ -21,14 +28,14 @@ def check_read(read):
         - read and mate are mapped on opposite strands
     '''
 
-    if read.reference_name == read.next_reference_name and read.mapping_quality >= minMAPQ \
+    if read.reference_name == read.next_reference_name \
             and read.is_reverse != read.mate_is_reverse:
         return True
 
     return False
 
 
-def check_read_is_proper_paired_forward(read):
+def check_read_is_proper_paired_forward(read, bam_mean, bam_stddev):
     '''
 
     :param read: AlignedSegment
@@ -38,14 +45,15 @@ def check_read_is_proper_paired_forward(read):
         - read and mate are mapped on opposite strands
     '''
 
-    if not read.is_unmapped and not read.mate_is_unmapped and read.mapping_quality >= minMAPQ \
-            and not read.is_proper_pair and not read.is_reverse:
-        return True
+    if not read.mate_is_unmapped \
+            and is_read_proper_paired(read, bam_mean, bam_stddev) \
+            and not read.is_reverse:
+        return False
 
-    return False
+    return True
 
 
-def check_read_is_proper_paired_reverse(read):
+def check_read_is_proper_paired_reverse(read, bam_mean, bam_stddev):
     '''
 
     :param read: AlignedSegment
@@ -55,14 +63,15 @@ def check_read_is_proper_paired_reverse(read):
         - read and mate are mapped on opposite strands
     '''
 
-    if not read.is_unmapped and not read.mate_is_unmapped and read.mapping_quality >= minMAPQ \
-            and not read.is_proper_pair and read.is_reverse:
-        return True
+    if not read.mate_is_unmapped \
+            and is_read_proper_paired(read, bam_mean, bam_stddev) \
+            and read.is_reverse:
+        return False
 
-    return False
+    return True
 
 
-def get_coverage(ibam, chrName, outFile):
+def get_coverage(ibam, chrName, minMAPQ, outFile):
     '''
     This function fills the coverage array for the chromosome
     :param ibam: input BAM alignment file
@@ -73,6 +82,9 @@ def get_coverage(ibam, chrName, outFile):
 
     # Open BAM file
     bamfile = pysam.AlignmentFile(ibam, "rb")
+
+    bam_mean, bam_stddev = get_insert_size(ibam, bamfile, minMAPQ)
+
     # Get chromosome length from BAM header
     header_dict = bamfile.header
     chrLen = [i['LN'] for i in header_dict['SQ'] if i['SN'] == chrName][0]
@@ -81,7 +93,7 @@ def get_coverage(ibam, chrName, outFile):
     stop_pos = chrLen
 
     # Numpy array to store the coverage
-    cov = np.zeros((5, chrLen), dtype=np.uint32)
+    cov = np.zeros((3, chrLen), dtype=np.uint32)
 
     read_quality_sum = np.zeros(chrLen, dtype=np.uint32)
     read_quality_count = np.zeros(chrLen, dtype=np.uint32)
@@ -104,82 +116,22 @@ def get_coverage(ibam, chrName, outFile):
             # print(type(now_t))
             logging.info("%d alignments processed (%f alignments / s)" %
                          (i, n_r / (now_t - last_t)))
+
             last_t = time()
 
-        if check_read(read):
-            cov[0, read.reference_start:read.reference_end - 1] += 1
-        if check_read_is_proper_paired_forward(read):
-            cov[1, read.reference_start:read.reference_end - 1] += 1
-        if check_read_is_proper_paired_reverse(read):
-            cov[2, read.reference_start:read.reference_end - 1] += 1
-
         if not read.is_unmapped and read.mapping_quality >= minMAPQ:
+            if check_read(read):
+                cov[0, read.reference_start:read.reference_end - 1] += 1
+            if check_read_is_proper_paired_forward(read, bam_mean, bam_stddev):
+                cov[1, read.reference_start:read.reference_end - 1] += 1
+            if check_read_is_proper_paired_reverse(read, bam_mean, bam_stddev):
+                cov[2, read.reference_start:read.reference_end - 1] += 1
 
             # add read mapping quality
             read_quality_sum[read.reference_start:read.reference_end -
                                                   1] += read.mapping_quality
             read_quality_count[read.reference_start:read.reference_end -
                                                     1] += 1
-
-            # using hash of query name
-            j = int((read.reference_end - read.reference_start) / 2)
-            # print(j)
-            h = crc32(read.query_name.encode('utf8')) & 0xffffffff
-            # print(h)
-            if not read.is_reverse:
-                cov[3, j] = h if not cov[3, j] else 0
-            else:
-                cov[4, j] = h if not cov[4, j] else 0
-
-    # # Iterate over the chromosome positions
-    # for i, pile in enumerate(bamfile.pileup(chrName, start_pos, stop_pos, truncate=True), start=1):
-    #
-    #     if not i % n_r:
-    #         now_t = time()
-    #         # print(type(now_t))
-    #         logging.info("%d pileup positions processed (%f positions / s)" % (
-    #             i,
-    #             n_r / (now_t - last_t)))
-    #         last_t = time()
-    #     #print('Pos: %d, Cov: %d' % (pile.pos, pile.n))
-    #     try:
-    #         cov[pile.pos] = pile.n
-    #     except MemoryError:
-    #         logging.info("Out of memory for chr %s and BAM file %s !" % (chrName, ibam))
-
-    # Replacing pileup with count_coverage
-    # cov_A, cov_C, cov_G, cov_T = bamfile.count_coverage(chrName, start_pos, stop_pos, read_callback=check_read)
-    # cov = np.asarray(cov_A, dtype=int) + \
-    #       np.asarray(cov_C, dtype=int) + \
-    #       np.asarray(cov_G, dtype=int) + \
-    #       np.asarray(cov_T, dtype=int)
-    #
-    # cov_A, cov_C, cov_G, cov_T = bamfile.count_coverage(chrName, start_pos, stop_pos,
-    #                                                     read_callback=check_read_is_proper_paired_forward)
-    # cov_disc_f = np.asarray(cov_A, dtype=int) + \
-    #       np.asarray(cov_C, dtype=int) + \
-    #       np.asarray(cov_G, dtype=int) + \
-    #       np.asarray(cov_T, dtype=int)
-    #
-    # cov_A, cov_C, cov_G, cov_T = bamfile.count_coverage(chrName, start_pos, stop_pos,
-    #                                                     read_callback=check_read_is_proper_paired_reverse)
-    # cov_disc_r = np.asarray(cov_A, dtype=int) + \
-    #       np.asarray(cov_C, dtype=int) + \
-    #       np.asarray(cov_G, dtype=int) + \
-    #       np.asarray(cov_T, dtype=int)
-    #
-    # cov = np.vstack((cov, cov_disc_f, cov_disc_r))
-
-    # print(cov)
-
-    # cov_A, cov_C, cov_G, cov_T = bamfile.count_coverage(chrName, start_pos, stop_pos)
-    # cov_nofilter = np.asarray(cov_A, dtype=int) + \
-    #       np.asarray(cov_C, dtype=int) + \
-    #       np.asarray(cov_G, dtype=int) + \
-    #       np.asarray(cov_T, dtype=int)
-    # print(cov_nofilter)
-    #
-    # assert np.all(cov == cov_nofilter)
 
     read_quality = np.divide(read_quality_sum,
                              read_quality_count,
@@ -189,6 +141,12 @@ def get_coverage(ibam, chrName, outFile):
 
     cov = np.vstack((cov, read_quality))
     logging.info(cov.shape)
+
+    for i in np.arange(cov.shape[0]):
+        logging.info('chromosome {} coverage:'+ \
+                     'non-zero elements at index {}:{}'.format(chrName,
+                                                               i,
+                                                               np.argwhere(cov[i, :] != 0).shape[0]))
 
     # Save coverage numpy array
     try:
@@ -222,6 +180,11 @@ def main():
                         type=str,
                         default='coverage.npy',
                         help="Specify output")
+    parser.add_argument('-m',
+                        '--min_mapq',
+                        type=int,
+                        default=10,
+                        help='Minimum read mapping quality')
     parser.add_argument(
         '-p',
         '--outputpath',
@@ -248,7 +211,9 @@ def main():
                         level=logging.INFO)
 
     t0 = time()
-    get_coverage(ibam=args.bam, chrName=args.chr, outFile=output_file)
+
+    get_coverage(ibam=args.bam, chrName=args.chr, minMAPQ=args.min_mapq, outFile=output_file)
+
     logging.info('Time: coverage on BAM %s and Chr %s: %f' %
                  (args.bam, args.chr, (time() - t0)))
 
