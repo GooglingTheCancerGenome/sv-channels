@@ -382,9 +382,9 @@ def create_model(dim_length, dim_channels, class_number):
 
     model.add(Dense(units=outputdim, kernel_initializer=weightinit))
     model.add(BatchNormalization())
-    model.add(Activation("softmax"))  # Final classification layer
+    model.add(Activation("sigmoid"))  # Final classification layer
 
-    model.compile(loss='categorical_crossentropy',
+    model.compile(loss='crossentropy',
                   optimizer=Adam(lr=learning_rate),
                   metrics=['accuracy'])
 

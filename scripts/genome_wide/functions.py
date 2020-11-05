@@ -458,8 +458,8 @@ def load_all_clipped_read_positions(win_hlen,
         if clipped_type == 'SR':
 
             locations_sr[chrom] = [
-                (chr1, pos1, chr2, pos2)
-                for chr1, pos1, chr2, pos2 in total_reads_coord_min_support
+                (chr1, pos1, chr2, pos2, strand_info)
+                for chr1, pos1, chr2, pos2, strand_info in total_reads_coord_min_support
                 if chr1 in chr_dict.keys() and chr2 in chr_dict.keys() and chr1
                 == chrom and win_hlen <= pos1 <= (chr_dict[chr1] - win_hlen)
                 and win_hlen <= pos2 <= (chr_dict[chr2] - win_hlen)

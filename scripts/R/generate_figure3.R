@@ -1,11 +1,13 @@
 source('/Users/lsantuari/Documents/Local_GitHub/sv-channels/scripts/R/summarize_results_fun.R')
 
 parent_dir <-
-  '/Users/lsantuari/Documents/Projects/GTCG/paper_data/real-data-results/'
+  '/Users/lsantuari/Documents/Projects/GTCG/paper_data/real-data-results_noCR2SR_enh/'
 out_dir <- file.path(parent_dir, 'results')
 
 regions_for_filtering <-
   '/Users/lsantuari/Documents/Local_GitHub/sv-channels/data/ENCFF001TDO.bed'
+N_regions_for_filtering <-
+  '/Users/lsantuari/Documents/Local_GitHub/sv-channels/data/Ns.bed'
 
 modes <- c('split_reads', 'gridss', 'manta', 'lumpy', 'delly')
 samples.vec <- c('NA12878', 'NA24385', 'CHM1_CHM13')
@@ -13,22 +15,22 @@ svtype <-'DEL'
 
 truth_set_list <- c(
   '~/Documents/Processed/SPIDER/notebook-data/NA12878/in/Personalis_1000_Genomes_deduplicated_deletions.bedpe',
-  '~/Documents/Processed/SPIDER/notebook-data/NA24385/in/nstd167.GRCh37.variant_call.vcf.gz',
-  '~/Documents/Processed/SPIDER/notebook-data/CHM1_CHM13/in/nstd137.GRCh37.variant_call.vcf.gz'
+  '~/Documents/Processed/SPIDER/notebook-data/NA24385/in/nstd167.GRCh37.variant_call.vcf',
+  '~/Documents/Processed/SPIDER/notebook-data/CHM1_CHM13/in/nstd137.GRCh37.variant_call.vcf'
 )
 names(truth_set_list) <- samples.vec
 
 for (sample.name in samples.vec)
 {
-  sample.name <- 'NA12878'
+  sample.name <- 'NA24385'
   print(sample.name)
   
   if(sample.name %in% c('NA24385', 'CHM1_CHM13'))
   {
-  truth_set <- load_vcf(truth_set_list[[sample.name]], svtype, sample.name, regions_for_filtering)
+  truth_set <- load_vcf(truth_set_list[[sample.name]], svtype, sample.name, regions_for_filtering, N_regions_for_filtering)
   }else if (sample.name == 'NA12878')
   {
-  truth_set <- load_bedpe(truth_set_list[[sample.name]], regions_for_filtering)
+  truth_set <- load_bedpe(truth_set_list[[sample.name]], regions_for_filtering, N_regions_for_filtering)
   }
   
   files.dir <-
@@ -41,30 +43,33 @@ for (sample.name in samples.vec)
   callsets[['Manta']] <- file.path(files.dir, 'manta.vcf')
   callsets[['Lumpy']] <- file.path(files.dir, 'lumpy.vcf')
   callsets[['DELLY']] <- file.path(files.dir, 'delly.vcf')
+  #callsets[['ensemble_set']] <- file.path(files.dir, 'all.vcf')
   
   sv_regions <- list()
   sv_regions[['GRIDSS']] <-
-    load_vcf(callsets[['GRIDSS']], svtype, 'gridss', regions_for_filtering)
+    load_vcf(callsets[['GRIDSS']], svtype, 'gridss', regions_for_filtering, N_regions_for_filtering)
   sv_regions[['Manta']] <-
-    load_vcf(callsets[['Manta']], svtype, 'manta', regions_for_filtering)
+    load_vcf(callsets[['Manta']], svtype, 'manta', regions_for_filtering, N_regions_for_filtering)
   sv_regions[['Lumpy']] <-
-    load_vcf(callsets[['Lumpy']], svtype, 'lumpy', regions_for_filtering)
+    load_vcf(callsets[['Lumpy']], svtype, 'lumpy', regions_for_filtering, N_regions_for_filtering)
   sv_regions[['DELLY']] <-
-    load_vcf(callsets[['DELLY']], svtype, 'delly', regions_for_filtering)
+    load_vcf(callsets[['DELLY']], svtype, 'delly', regions_for_filtering, N_regions_for_filtering)
+  #sv_regions[['ensemble_set']] <-
+  #  load_vcf(callsets[['ensemble_set']], svtype, 'ensemble_set', regions_for_filtering, N_regions_for_filtering)
   
   for (mode in modes)
   {
-      # m <- 'split_reads'
+      # mode <- 'split_reads'
       files.dir <-
         file.path(parent_dir, sample.name)
       print(files.dir)
         mode.name <- paste('sv-channels',mode,sep=':')
         callsets[[mode.name]]  <-
           file.path(files.dir,
-                    'sv-channels',
-                    paste(mode, '_', svtype, '.bedpe', sep = ''))
+                    'sv-channels', mode,
+                    paste('win50', '_', svtype, '.bedpe', sep = ''))
         sv_regions[[mode.name]] <-
-          load_bedpe(callsets[[mode.name]], regions_for_filtering)
+          load_bedpe(callsets[[mode.name]], regions_for_filtering, N_regions_for_filtering)
   }
   
         for (n in names(sv_regions)) {
@@ -142,7 +147,7 @@ for (sample.name in samples.vec)
               cum_fp = cum_n - cum_tp,
               precision = cum_tp / cum_n,
               recall = cum_tp / length(truth_set)
-            )
+            ) 
         ) +
           aes(x = recall,
               y = precision,
@@ -155,7 +160,7 @@ for (sample.name in samples.vec)
             labels = scales::percent,
             sec.axis = sec_axis(~ (.) * length(truth_set), name = "true positives")
           ) +
-          labs(title = main.title)
+          labs(title = main.title) + scale_fill_manual(values=cbbPalette)
         
         output_path <-
           file.path(out_dir, sample.name, svtype)
@@ -163,7 +168,7 @@ for (sample.name in samples.vec)
         filename <-
           file.path(output_path, 'precision_recall_plot.png')
         print(filename)
-        ggsave(file = filename)
+        ggsave(file = filename, width = 10, height = 5)
         
         res.df <- as.data.frame(sv_regions_unlisted) %>%
           dplyr::select(caller, truth_matches) %>%
