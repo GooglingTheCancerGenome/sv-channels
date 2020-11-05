@@ -12,7 +12,7 @@ import pysam
 from functions import *
 
 
-def get_clipped_reads(ibam, chr_list, outFile):
+def get_clipped_reads(ibam, chr_list, minMAPQ, outFile):
     '''
 
     :param ibam: input BAM alignment file
@@ -23,9 +23,6 @@ def get_clipped_reads(ibam, chr_list, outFile):
 
     # Check if the BAM file in input exists
     assert os.path.isfile(ibam)
-
-    config = get_config_file()
-    minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
 
     # Dictionary to store number of clipped reads per position
     clipped_reads = dict()
@@ -305,6 +302,11 @@ def main():
                         type=str,
                         default='clipped_reads.json.gz',
                         help="Specify output")
+    parser.add_argument('-m',
+                        '--min_mapq',
+                        type=int,
+                        default=10,
+                        help='Minimum read mapping quality')
     parser.add_argument(
         '-p',
         '--outputpath',
@@ -333,6 +335,7 @@ def main():
     t0 = time()
     get_clipped_reads(ibam=args.bam,
                       chr_list=args.chrlist.split(','),
+                      minMAPQ=args.min_mapq,
                       outFile=output_file)
     logging.info('Time: clipped reads on BAM %s: %f' % (args.bam,
                                                         (time() - t0)))
