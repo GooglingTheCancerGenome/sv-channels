@@ -61,10 +61,10 @@ def split_labels(labels):
 
 
 def unfold_win_id(win_id):
-    chr1, pos1, chr2, pos2 = win_id.split('_')
+    chr1, pos1, chr2, pos2, strand_info = win_id.split('_')
     pos1 = int(pos1)
     pos2 = int(pos2)
-    return chr1, pos1, chr2, pos2
+    return chr1, pos1, chr2, pos2, strand_info
 
 
 def get_window_by_id(win_id, chr_array, padding, win_hlen):
@@ -79,10 +79,7 @@ def get_window_by_id(win_id, chr_array, padding, win_hlen):
     return da.concatenate(dask_arrays, axis=0)
 
 
-def get_windows(carrays_dir, outDir, chrom_list, win, label_file_path, mode, npz_mode):
-    def same_chr_in_winid(win_id):
-        chr1, pos1, chr2, pos2 = win_id.split('_')
-        return chr1 == chr2
+def get_windows(carrays_dir, outDir, chrom_list, win, label_file_path, mode, npz_mode, padding_len):
 
     chr_array = load_chr_array(carrays_dir, chrom_list)
     n_channels = chr_array[chrom_list[0]].shape[1]
@@ -110,7 +107,6 @@ def get_windows(carrays_dir, outDir, chrom_list, win, label_file_path, mode, npz
 
         labels_set = {'test': labels}
 
-    padding_len = 10
     win_hlen = int(int(win) / 2)
 
     for labs_name, labs in labels_set.items():
@@ -137,7 +133,7 @@ def get_windows(carrays_dir, outDir, chrom_list, win, label_file_path, mode, npz
             numpy_array = []
 
         logging.info('Creating dask_arrays_win1 and dask_arrays_win2...')
-        for chr1, pos1, chr2, pos2 in map(unfold_win_id, labs.keys()):
+        for chr1, pos1, chr2, pos2, strand_info in map(unfold_win_id, labs.keys()):
             # logging.info("chr1={} pos1={} chr2={} pos2={}".format(
             #    chr1, pos1, chr2, pos2))
             if not i % n_r:
@@ -193,21 +189,13 @@ def main():
     :return: None
     '''
 
-    # Default BAM file for testing
-    # On the HPC
-    # wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/'+
-    #   'artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
-    # inputBAM = wd + "T0_dedup.bam"
-    # Locally
-    wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
-    inputBAM = wd + "T1_dedup.bam"
 
     parser = argparse.ArgumentParser(
         description='Create windows from chromosome arrays')
     parser.add_argument('-b',
                         '--bam',
                         type=str,
-                        default=inputBAM,
+                        default='../../data/test.bam',
                         help="Specify input file (BAM)")
     parser.add_argument('-c',
                         '--chrlist',
@@ -217,12 +205,12 @@ def main():
     parser.add_argument('-ca',
                         '--carraydir',
                         type=str,
-                        default='',
+                        default='.',
                         help="chr_array directory")
     parser.add_argument('-p',
                         '--outputpath',
                         type=str,
-                        default='',
+                        default='./labels/win200/DEL/split_reads',
                         help="Specify output path")
     parser.add_argument('-l',
                         '--logfile',
@@ -236,7 +224,7 @@ def main():
     parser.add_argument('-lb',
                         '--labels',
                         type=str,
-                        default='labels.json.gz',
+                        default='./labels/win200/DEL/split_reads/labels.json.gz',
                         help="Specify label file")
     parser.add_argument('-m',
                         '--mode',
@@ -248,6 +236,11 @@ def main():
                         type=bool,
                         default=True,
                         help="save in npz format?")
+    parser.add_argument('-pd',
+                        '--padding',
+                        type=int,
+                        default=10,
+                        help="Length of the padding in between windows")
 
     args = parser.parse_args()
 
@@ -271,7 +264,8 @@ def main():
                 win=args.window,
                 label_file_path=args.labels,
                 mode=args.mode,
-                npz_mode=args.save_npz)
+                npz_mode=args.save_npz,
+                padding_len=args.padding)
 
     # print('Elapsed time channel_maker_real on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))
     logging.info('Elapsed time create_windows = %f seconds' % (time() - t0))

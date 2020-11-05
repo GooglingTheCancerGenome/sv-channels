@@ -6,9 +6,6 @@ import numpy as np
 
 from functions import load_windows, save_windows, is_left_clipped, is_right_clipped
 
-padding = 10
-log_every_n_pos = 100
-
 
 def init_log(logfile):
     FORMAT = '%(asctime)s %(message)s'
@@ -19,6 +16,7 @@ def init_log(logfile):
 
 
 def parse_args():
+
     parser = argparse.ArgumentParser(
         description='Add window specific channels')
 
@@ -30,22 +28,32 @@ def parse_args():
     parser.add_argument('-w',
                         '--win',
                         type=int,
-                        default=500,
+                        default=200,
                         help="Window size")
     parser.add_argument('-i',
                         '--input',
                         type=str,
-                        default='./labels/win500/DEL/split_reads/windows/windows.npz',
+                        default='./labels/win200/DEL/split_reads/windows/windows.npz',
                         help="input file")
     parser.add_argument('-o',
                         '--output',
                         type=str,
-                        default='./labels/win500/DEL/split_reads/windows/windows_en.npz',
+                        default='./labels/win200/DEL/split_reads/windows/windows_en.npz',
                         help="output file")
     parser.add_argument('-l',
                         '--logfile',
-                        default='./labels/win500/DEL/split_reads/windows/windows_en.log',
+                        default='./labels/win200/DEL/split_reads/windows/windows_en.log',
                         help='File in which to write logs.')
+    parser.add_argument('-lp',
+                        '--log_every_n_pos',
+                        type=int,
+                        default=1000,
+                        help='Write in log file every log_every_n_pos positions')
+    parser.add_argument('-p',
+                        '--padding',
+                        type=int,
+                        default=10,
+                        help="Length of the padding in between windows")
 
     return parser.parse_args()
 
@@ -89,6 +97,7 @@ def update_channel(X, ch, iter, read, win_mid_pos, is_second_win, win_len, paddi
     orientation = 'R' if read.is_reverse else 'F'
 
     start_win = win_len + padding if is_second_win else 0
+    end_win = win_len*2 + padding if is_second_win else win_len
 
     abs_start = int(win_mid_pos - win_len / 2)
     abs_end = int(win_mid_pos + win_len / 2)
@@ -100,53 +109,78 @@ def update_channel(X, ch, iter, read, win_mid_pos, is_second_win, win_len, paddi
     rel_start = start_win + start - abs_start
     rel_end = start_win + end - abs_start
 
-    # print('relative reference_start:{}, relative reference_end:{}'.format(s, e))
-    k = '_'.join([orientation, clipped_state, clipping])
-    if k in ch.keys():
-        X[iter, rel_start:rel_end, ch[k]] += 1
-
-    if not read.is_proper_pair:
-        k = '_'.join(['DR', orientation])
-        if k in ch.keys():
-            X[iter, rel_start:rel_end, ch[k]] += 1
-
-    if read.is_reverse and not read.mate_is_reverse \
-            and read.reference_start < read.next_reference_start:
-        k = '_'.join(['DUP', 'A'])
-        if k in ch.keys():
-            X[iter, rel_start:rel_end, ch[k]] += 1
-
-    if not read.is_reverse and read.mate_is_reverse \
-            and read.reference_start > read.next_reference_start:
-        k = '_'.join(['DUP', 'B'])
-        if k in ch.keys():
-            X[iter, rel_start:rel_end, ch[k]] += 1
-
-    if read.is_reverse == read.mate_is_reverse:
-        if read.reference_start < read.next_reference_start:
-            k = '_'.join(['INV', 'B'])
-            if k in ch.keys():
-                X[iter, rel_start:rel_end, ch[k]] += 1
+    skip = False
+    if is_left_clipped(read):
+        if (is_second_win and win_len + padding <= rel_start < win_len*2 + padding) or \
+                (not is_second_win and 0 <= rel_start < win_len):
+            rel_pos = rel_start
         else:
-            k = '_'.join(['INV', 'A'])
-            if k in ch.keys():
-                X[iter, rel_start:rel_end, ch[k]] += 1
+            skip = True
+    elif is_right_clipped(read):
+        if (is_second_win and win_len + padding <= rel_end < win_len*2 + padding) or \
+                (not is_second_win and 0 <= rel_end < win_len):
+            rel_pos = rel_end
+        else:
+            skip = True
+    else:
+        rel_pos = np.arange(max(start_win, rel_start), min(rel_end, end_win))
 
-    if read.reference_name != read.next_reference_name:
+    if not skip:
+
+        # print('relative reference_start:{}, relative reference_end:{}'.format(s, e))
+        k = '_'.join([orientation, clipped_state, clipping])
+
+        if k in ch.keys():
+            X[iter, rel_pos, ch[k]] += 1
+
+        if not read.is_proper_pair:
+            k = '_'.join(['DR', orientation])
+            if k in ch.keys():
+                X[iter, rel_pos, ch[k]] += 1
+
+        if read.is_reverse and not read.mate_is_reverse \
+                and read.reference_start < read.next_reference_start:
+            k = '_'.join(['DUP', 'A'])
+            if k in ch.keys():
+                X[iter, rel_pos, ch[k]] += 1
+
+        if not read.is_reverse and read.mate_is_reverse \
+                and read.reference_start > read.next_reference_start:
+            k = '_'.join(['DUP', 'B'])
+            if k in ch.keys():
+                X[iter, rel_pos, ch[k]] += 1
+
         if read.is_reverse == read.mate_is_reverse:
             if read.reference_start < read.next_reference_start:
-                k = '_'.join(['TRA', 'S'])
+                k = '_'.join(['INV', 'B'])
                 if k in ch.keys():
-                    X[iter, rel_start:rel_end, ch[k]] += 1
+                    X[iter, rel_pos, ch[k]] += 1
             else:
-                k = '_'.join(['TRA', 'O'])
+                k = '_'.join(['INV', 'A'])
                 if k in ch.keys():
-                    X[iter, rel_start:rel_end, ch[k]] += 1
+                    X[iter, rel_pos, ch[k]] += 1
+
+        if read.reference_name != read.next_reference_name:
+            if read.is_reverse == read.mate_is_reverse:
+                if read.reference_start < read.next_reference_start:
+                    k = '_'.join(['TRA', 'S'])
+                    if k in ch.keys():
+                        X[iter, rel_pos, ch[k]] += 1
+                else:
+                    k = '_'.join(['TRA', 'O'])
+                    if k in ch.keys():
+                        X[iter, rel_pos, ch[k]] += 1
 
     return X
 
 
-def add_channels(ibam, win, ifile):
+def add_channels(args):
+
+    ibam = args.bam
+    win = args.win
+    ifile = args.input
+    padding = args.padding
+    log_every_n_pos = args.log_every_n_pos
 
     def get_reads(chrom, pos):
         with pysam.AlignmentFile(ibam, "rb") as aln:
@@ -177,7 +211,7 @@ def add_channels(ibam, win, ifile):
             last_t = time()
 
         # Get genomic coordinates
-        chrom1, pos1, chrom2, pos2 = p.split('_')
+        chrom1, pos1, chrom2, pos2, strand_info = p.split('_')
         pos1, pos2 = int(pos1), int(pos2)
 
         # Fetch reads overlapping each window
@@ -199,6 +233,10 @@ def add_channels(ibam, win, ifile):
         for r in win2_reads:
             X_enh = update_channel(X_enh, ch, i, r, pos2, True, win, padding)
 
+    for i in np.arange(X_enh.shape[2]):
+        logging.info('win channels array:'+ \
+                     'non-zero elements at index {}:{}'.format(i,
+                                                               np.argwhere(X_enh[i, :] != 0).shape[0]))
     X = np.concatenate((X, X_enh), axis=2)
 
     return X, y
@@ -213,10 +251,7 @@ def main():
 
     t0 = time()
 
-    X, y = add_channels(ibam=args.bam,
-                        win=args.win,
-                        ifile=args.input
-                        )
+    X, y = add_channels(args)
 
     save_windows(X, y, args.output)
 
