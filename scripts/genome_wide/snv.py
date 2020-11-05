@@ -10,19 +10,8 @@ import twobitreader as twobit
 
 from functions import *
 
-config = get_config_file()
 
-HPC_MODE = config["DEFAULT"]["HPC_MODE"]
-REF_GENOME = config["DEFAULT"]["REF_GENOME"]
-
-MAX_PILEUP_BUFFER_SIZE = 8000
-minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
-
-
-def get_snvs(ibam, itwobit, chrName, outFile):
-    def get_2bit_genome():
-        genome = twobit.TwoBitFile(itwobit)
-        return genome
+def get_snvs(ibam, itwobit, chrName, max_coverage, outFile):
 
     def get_snv_number(query_seq_list, reference_base):
 
@@ -33,26 +22,6 @@ def get_snvs(ibam, itwobit, chrName, outFile):
                 reference_base]
         else:
             return 0
-
-    def correct_for_indels(read, ref_string):
-
-        seq = read.query_alignment_sequence
-        base_quals = [i for i in read.query_alignment_qualities]
-        # print(base_quals)
-        bq = []
-        pos = 0
-        bq.append(read.reference_start + i)
-        for op, l in read.cigartuples:
-            if op not in [0, 1, 2]:
-                continue
-            elif op == 1:
-                ref_string = ref_string[:pos] + '-' * l + ref_string[pos:]
-                base_quals = base_quals[:pos] + base_quals[pos + l:]
-            elif op == 2:
-                seq = seq[:pos] + '-' * l + seq[pos:]
-                base_quals = base_quals[:pos] + [0] * l + base_quals[pos:]
-                pos += l
-        return seq, base_quals, ref_string
 
     # Check if the BAM file in input exists
     assert os.path.isfile(ibam)
@@ -67,11 +36,9 @@ def get_snvs(ibam, itwobit, chrName, outFile):
     # Fetch reads over the entire chromosome between positions [0, chrLen]
     start_pos = 0
     stop_pos = chrLen
-    # stop_pos = 10000000
 
     reference_sequence = twobit.TwoBitFile(itwobit)
 
-    # snv_list = ['BQ', 'nALN', 'nSEG', 'A', 'a', 'C', 'c', 'G', 'g', 'T', 't']
     snv_list = ['BQ', 'SNV']
     snv_array = np.zeros(shape=(len(snv_list), stop_pos), dtype=np.uint32)
     snv_dict = {v: n for n, v in enumerate(snv_list)}
@@ -88,7 +55,7 @@ def get_snvs(ibam, itwobit, chrName, outFile):
         # pileupcolumn.set_min_base_quality(0)
         # print("\ncoverage at base %s = %s" %
         #       (pileupcolumn.pos, pileupcolumn.nsegments))
-        if 0 < pileupcolumn.nsegments < MAX_PILEUP_BUFFER_SIZE and start_pos <= pileupcolumn.pos <= stop_pos:
+        if 0 < pileupcolumn.nsegments < max_coverage and start_pos <= pileupcolumn.pos <= stop_pos:
             quals = pileupcolumn.get_query_qualities()
             if len(quals) > 0:
                 snv_array[snv_dict['BQ'], pileupcolumn.pos] = np.median(
@@ -98,10 +65,11 @@ def get_snvs(ibam, itwobit, chrName, outFile):
             try:
 
                 query_seq_list = pileupcolumn.get_query_sequences()
-                #chrName_2bit = chrName.replace('chr', '') #if REF_GENOME == 'GRCh38' else 'chr' + chrName
+
                 snv_number = get_snv_number(
                     query_seq_list,
                     reference_sequence[chrName][pileupcolumn.pos])
+
                 snv_array[snv_dict['SNV'], pileupcolumn.pos] = snv_number/pileupcolumn.nsegments \
                     if pileupcolumn.nsegments != 0 else 0
 
@@ -112,82 +80,6 @@ def get_snvs(ibam, itwobit, chrName, outFile):
                     chrName, pileupcolumn.pos, pileupcolumn.nsegments))
                 continue
 
-    # # Pysam iterator to fetch the reads
-    # iter = bamfile.fetch(chrName, start_pos, stop_pos)
-    #
-    # for i, read in enumerate(iter, start=1):
-    #
-    #     # Every n_r alignments, write log informations
-    #     if not i % n_r:
-    #         # Record the current time
-    #         now_t = time()
-    #         # print(type(now_t))
-    #         logging.info("%d alignments processed (%f alignments / s)" % (
-    #             i,
-    #             n_r / (now_t - last_t)))
-    #         last_t = time()
-    #
-    #     if not read.is_unmapped and read.mapping_quality >= minMAPQ:
-    #
-    #         # print(read)
-    #         # print(read.cigartuples)
-    #         # print(read.mapping_quality)
-    #         # print(read.query_alignment_qualities)
-    #         # print('{} == {}'.format(
-    #         #     len(read.query_alignment_qualities), read.reference_end - read.reference_start))
-    #
-    #         try:
-    #
-    #             ref_string = reference_sequence['chr' + chrName][read.reference_start:read.reference_end].upper()
-    #
-    #             if len(read.cigartuples) == 1 and read.cigartuples[0][0] == 0:
-    #
-    #                 query_string = read.query_alignment_sequence
-    #                 query_base_qualities = read.query_alignment_qualities
-    #
-    #             else:
-    #
-    #                 query_string, query_base_qualities, ref_string = correct_for_indels(read, ref_string)
-    #                 # print(read.query_alignment_sequence)
-    #                 # print(query_string)
-    #                 # print(ref_string)
-    #
-    #                 snv_idx = [read.reference_start + index for index, (e1, e2) in enumerate(
-    #                     zip(query_string, ref_string)) if e1 != e2 and e1 != '-' and e2 != '-' ]
-    #                 # for i in snv_idx:
-    #                 #     pos = i - read.reference_start
-    #                 #     print('{} != {}'.format(query_string[pos], ref_string[pos]))
-    #
-    #                 snv_array[snv_dict['SNV'], snv_idx] += 1
-    #
-    #             snv_array[snv_dict['BQ'], read.reference_start:read.reference_end] += \
-    #                 np.array(query_base_qualities, dtype=np.uint32)
-    #             snv_array[snv_dict['RC'], read.reference_start:read.reference_end] += 1
-    #
-    #         except:
-    #
-    #             print(read)
-    #             print(read.cigartuples)
-    #             print(read.mapping_quality)
-    #             print(read.query_alignment_qualities)
-
-    # print(cnt)
-    # for k in cnt.keys():
-    #     if k in snv_list and k.upper() != reference_sequence['chr' + chrName][pileupcolumn.pos]:
-    #         snv_array[snv_dict[k], pileupcolumn.pos] = cnt[k]
-
-    # # Close the BAM file
-    # bamfile.close()
-    #
-    # snv_array = np.vstack(
-    #     (
-    #         np.divide(snv_array[snv_dict['SNV']], snv_array[snv_dict['RC']],
-    #                   where=snv_array[snv_dict['RC']] != 0),
-    #         np.divide(snv_array[snv_dict['BQ']], snv_array[snv_dict['RC']],
-    #                   where=snv_array[snv_dict['RC']] != 0)
-    #     )
-    # )
-
     # Write the output
     # snv_array = np.delete(snv_array, 2, 0)
     np.save(file=outFile, arr=snv_array)
@@ -197,7 +89,7 @@ def get_snvs(ibam, itwobit, chrName, outFile):
 def main():
 
     # Parse the arguments of the script
-    parser = argparse.ArgumentParser(description='Get snv info')
+    parser = argparse.ArgumentParser(description='Get SNV info')
     parser.add_argument('-b',
                         '--bam',
                         type=str,
@@ -227,14 +119,22 @@ def main():
                         '--logfile',
                         default='snv.log',
                         help='File in which to write logs.')
+    parser.add_argument('-pb',
+                        '--max_coverage',
+                        type=int,
+                        default=1000,
+                        help='Consider only regions with coverage less than max_coverage to speed up the processing')
 
     args = parser.parse_args()
 
     # Log file
 
     cmd_name = 'snv'
+
     output_dir = os.path.join(args.outputpath, cmd_name)
+
     os.makedirs(output_dir, exist_ok=True)
+
     logfilename = os.path.join(output_dir, '_'.join((args.chr, args.logfile)))
     output_file = os.path.join(output_dir, '_'.join((args.chr, args.out)))
 
@@ -248,6 +148,7 @@ def main():
     get_snvs(ibam=args.bam,
              itwobit=args.twobit,
              chrName=args.chr,
+             max_coverage=args.max_coverage,
              outFile=output_file)
     logging.info('Time: SNVs on BAM %s and Chr %s: %f' % (args.bam, args.chr,
                                                           (time() - t0)))
