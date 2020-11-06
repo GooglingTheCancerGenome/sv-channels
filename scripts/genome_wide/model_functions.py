@@ -4,16 +4,15 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-#from mcfly import modelgen, find_architecture
+# from mcfly import modelgen, find_architecture
 from sklearn.metrics import (average_precision_score, f1_score,
                              precision_recall_curve)
 
 
 def unfold_win_id(win_id):
+    chr1, pos1, chr2, pos2, strand_info = win_id.split('_')
 
-    chr1, pos1, chr2, pos2 = win_id.split('_')
-
-    return chr1, pos1, chr2, pos2
+    return chr1, pos1, chr2, pos2, strand_info
 
 
 # def create_model_with_mcfly(X, y_binary):
@@ -66,28 +65,29 @@ def unfold_win_id(win_id):
 #     return history, best_model
 
 
-def evaluate_model(model, X_test, ytest_binary, win_ids_test, results, cv_iter,
-                   output, mapclasses, output_dir, svtype):
-    def write_bed_wrong_predictions(probs, predicted, y_index, win_ids_test,
-                                    class_labels):
+def evaluate_model(model, X_test, ytest_binary, win_ids_test,
+                   results, mapclasses, output_dir, svtype):
+    # print(mapclasses)
 
-        #print(class_labels)
+    def write_wrong_predictions(probs, predicted, y_index, win_ids_test,
+                                class_labels):
+
+        # print(class_labels)
 
         outdir = os.path.join(output_dir, 'predictions')
         os.makedirs(outdir, exist_ok=True)
 
         outfile = os.path.join(
             outdir,
-            'cnn_wrong_predictions.bedpe')
+            'wrong.bedpe')
 
         lines = []
 
         for prob, p, r, w in zip(probs, predicted, y_index, win_ids_test):
 
             if class_labels[p] != class_labels[r]:
-
                 sv_score = prob[0]
-                chr1, pos1, chr2, pos2 = unfold_win_id(w)
+                chr1, pos1, chr2, pos2, strand_info = unfold_win_id(w)
                 # print('{0}_{1}:{2}_{3}'.format(chr1, pos1, chr2, pos2))
                 lines.append('\t'.join([
                     str(chr1),
@@ -96,10 +96,12 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test, results, cv_iter,
                     str(chr2),
                     str(pos2),
                     str(int(pos2) + 1), 'PRED:' + class_labels[p] + '_TRUE:' +
-                    class_labels[r],
-                    str(sv_score)
-                    #str(prob[0]),
-                    #str(prob[1])
+                                        class_labels[r],
+                    str(sv_score),
+                    strand_info[0],
+                    strand_info[1]
+                    # str(prob[0]),
+                    # str(prob[1])
                 ]) + '\n')
 
         f = open(outfile, 'w')
@@ -110,8 +112,8 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test, results, cv_iter,
         finally:
             f.close()
 
-    def write_bed_predictions(probs, predicted, y_index, win_ids_test,
-                              class_labels, svtype):
+    def write_correct_predictions(probs, predicted, y_index, win_ids_test,
+                                  class_labels, svtype):
 
         # print(class_labels)
 
@@ -120,18 +122,18 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test, results, cv_iter,
 
         outfile = os.path.join(
             outdir,
-            'cnn_predictions.bedpe')
+            'correct.bedpe')
 
         lines = []
         j = 1
+
         for prob, p, r, w in zip(probs, predicted, y_index, win_ids_test):
 
             # print('{0}_{1}'.format(class_labels[p], class_labels[r]))
 
             if class_labels[p] == svtype:
-
                 sv_score = prob[0]
-                chr1, pos1, chr2, pos2 = unfold_win_id(w)
+                chr1, pos1, chr2, pos2, strand_info = unfold_win_id(w)
 
                 # print('{0}_{1}:{2}_{3}'.format(chr1, pos1, chr2, pos2))
 
@@ -143,9 +145,11 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test, results, cv_iter,
                     str(pos2),
                     str(int(pos2) + 1), 'PRED_' + class_labels[p] +
                                         '_TRUE_' + class_labels[r] + '_' + str(j),
-                    str(sv_score)
-                    #str(prob[0]),
-                    #str(prob[1])
+                    str(sv_score),
+                    strand_info[0],
+                    strand_info[1]
+                    # str(prob[0]),
+                    # str(prob[1])
                 ]) + '\n')
                 j += 1
 
@@ -158,24 +162,13 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test, results, cv_iter,
             f.close()
 
     dict_sorted = sorted(mapclasses.items(), key=lambda x: x[1])
-    # print(dict_sorted)
     class_labels = [i[0] for i in dict_sorted]
 
     n_classes = ytest_binary.shape[1]
     # print(y_binarized)
     # print(n_classes)
 
-    probs = model.predict_proba(X_test, batch_size=10000, verbose=False)
-
-    # save model
-    outdir = os.path.join(output_dir, 'models')
-
-    os.makedirs(outdir, exist_ok=True)
-
-    model.save(
-        os.path.join(
-            outdir, '{0}_model_{1}.hdf5'.format(output,
-                                                str(int(cv_iter) + 1))))
+    probs = model.predict_proba(X_test, batch_size=1000, verbose=False)
 
     # columns are predicted, rows are truth
     predicted = probs.argmax(axis=1)
@@ -185,14 +178,12 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test, results, cv_iter,
     # print(y_index)
 
     # write predictions
-    write_bed_wrong_predictions(probs, predicted, y_index, win_ids_test,
-                                class_labels)
-    write_bed_predictions(probs, predicted, y_index, win_ids_test,
-                          class_labels, svtype)
+    write_wrong_predictions(probs, predicted, y_index, win_ids_test,
+                            class_labels)
+    write_correct_predictions(probs, predicted, y_index, win_ids_test,
+                              class_labels, svtype)
 
     # print(y_index)
-    outdir = os.path.join(output_dir, 'confusion_matrix')
-    os.makedirs(outdir, exist_ok=True)
 
     confusion_matrix = pd.crosstab(pd.Series(y_index), pd.Series(predicted))
     confusion_matrix.index = [class_labels[i] for i in confusion_matrix.index]
@@ -201,9 +192,8 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test, results, cv_iter,
     ]
     confusion_matrix.reindex(columns=[l for l in class_labels], fill_value=0)
     confusion_matrix.to_csv(os.path.join(
-        outdir, '{0}_confusion_matrix_{1}.csv'.format(output,
-                                                      str(int(cv_iter) + 1))),
-                            sep='\t')
+        output_dir, 'confusion_matrix.csv'),
+        sep='\t')
 
     # For each class
     precision = dict()
@@ -228,9 +218,9 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test, results, cv_iter,
     average_precision["weighted"] = average_precision_score(ytest_binary,
                                                             probs,
                                                             average="weighted")
-    print(
-        'Average precision score, weighted over all classes: {0:0.2f}'.format(
-            average_precision["weighted"]))
+    # print(
+    #     'Average precision score, weighted over all classes: {0:0.2f}'.format(
+    #         average_precision["weighted"]))
 
     f1_score_metric["weighted"] = f1_score(y_index,
                                            predicted,
@@ -238,26 +228,21 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test, results, cv_iter,
 
     results = results.append(
         {
-            "run": str(cv_iter + 1),
             "test_set_size": X_test.shape[0],
             "average_precision_score": average_precision["weighted"],
             "f1_score": f1_score_metric["weighted"]
         },
         ignore_index=True)
 
-    plot_precision_recall(cv_iter, mapclasses, precision, recall,
-                          average_precision, output, output_dir)
+    plot_precision_recall(mapclasses, precision, recall,
+                          average_precision, output_dir)
 
     return results, (average_precision, precision, recall, thresholds,
                      f1_score_metric)
 
 
-def plot_precision_recall(cv_iter, mapclasses, precision, recall,
-                          average_precision, output, output_dir):
-
-    outdir = os.path.join(output_dir, 'plots')
-    os.makedirs(outdir, exist_ok=True)
-
+def plot_precision_recall(mapclasses, precision, recall,
+                          average_precision, output_dir):
     from itertools import cycle
     # setup plot details
     colors = cycle(
@@ -296,6 +281,6 @@ def plot_precision_recall(cv_iter, mapclasses, precision, recall,
     plt.legend(lines, labels, loc=(0, -.38), prop=dict(size=14))
 
     plt.savefig(os.path.join(
-        outdir, '{0}_PrecRec_{1}.png'.format(output, str(int(cv_iter) + 1))),
-                bbox_inches='tight')
+        output_dir, 'precision_vs_recall.png'),
+        bbox_inches='tight')
     plt.close()

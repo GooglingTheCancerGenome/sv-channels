@@ -12,7 +12,6 @@ from functions import *
 
 
 def get_snvs(ibam, itwobit, chrName, max_coverage, outFile):
-
     def get_snv_number(query_seq_list, reference_base):
 
         reference_base = reference_base.upper()
@@ -39,12 +38,13 @@ def get_snvs(ibam, itwobit, chrName, max_coverage, outFile):
 
     reference_sequence = twobit.TwoBitFile(itwobit)
 
-    snv_list = ['BQ', 'SNV']
-    snv_array = np.zeros(shape=(len(snv_list), stop_pos), dtype=np.uint32)
+    snv_list = ['BQ', 'SNV', 'MAPQ']
+    snv_array = np.zeros(shape=(stop_pos, len(snv_list)), dtype=np.float32)
+    # print(snv_array.shape)
     snv_dict = {v: n for n, v in enumerate(snv_list)}
     # print(snv_dict)
     # Print every n_r alignments processed
-    n_r = 10**6
+    n_r = 10 ** 6
     # Record the current time
     last_t = time()
 
@@ -52,16 +52,21 @@ def get_snvs(ibam, itwobit, chrName, max_coverage, outFile):
                                        start_pos,
                                        stop_pos,
                                        stepper='all'):
+
         # pileupcolumn.set_min_base_quality(0)
         # print("\ncoverage at base %s = %s" %
         #       (pileupcolumn.pos, pileupcolumn.nsegments))
+
         if 0 < pileupcolumn.nsegments < max_coverage and start_pos <= pileupcolumn.pos <= stop_pos:
             quals = pileupcolumn.get_query_qualities()
             if len(quals) > 0:
-                snv_array[snv_dict['BQ'], pileupcolumn.pos] = np.median(
-                    pileupcolumn.get_query_qualities())
-            # snv_array[snv_dict['nALN'], pileupcolumn.pos] = pileupcolumn.get_num_aligned()
-            # snv_array[snv_dict['nSEG'], pileupcolumn.pos] = pileupcolumn.nsegments
+                snv_array[pileupcolumn.pos, snv_dict['BQ']] = np.median(
+                    quals)
+            quals = pileupcolumn.get_mapping_qualities()
+            if len(quals) > 0:
+                snv_array[pileupcolumn.pos, snv_dict['MAPQ']] = np.median(
+                    quals)
+
             try:
 
                 query_seq_list = pileupcolumn.get_query_sequences()
@@ -70,7 +75,7 @@ def get_snvs(ibam, itwobit, chrName, max_coverage, outFile):
                     query_seq_list,
                     reference_sequence[chrName][pileupcolumn.pos])
 
-                snv_array[snv_dict['SNV'], pileupcolumn.pos] = snv_number/pileupcolumn.nsegments \
+                snv_array[pileupcolumn.pos, snv_dict['SNV']] = snv_number / pileupcolumn.nsegments \
                     if pileupcolumn.nsegments != 0 else 0
 
             except AssertionError as error:
@@ -80,11 +85,11 @@ def get_snvs(ibam, itwobit, chrName, max_coverage, outFile):
                     chrName, pileupcolumn.pos, pileupcolumn.nsegments))
                 continue
 
-    for i in np.arange(snv_array.shape[0]):
-        logging.info('snv array {}:'+ \
-                     'non-zero elements at index {}:{}'.format(chrName,
-                                                               i,
-                                                               np.argwhere(snv_array[i, :] != 0).shape[0]))
+    for i in np.arange(snv_array.shape[1]):
+        logging.info('snv array {}: non-zero elements at index {}:{}'.format(chrName,
+                                                                             i,
+                                                                             np.argwhere(snv_array[:, i] != 0).shape[
+                                                                                 0]))
 
     # Write the output
     # snv_array = np.delete(snv_array, 2, 0)
@@ -93,7 +98,6 @@ def get_snvs(ibam, itwobit, chrName, max_coverage, outFile):
 
 
 def main():
-
     # Parse the arguments of the script
     parser = argparse.ArgumentParser(description='Get SNV info')
     parser.add_argument('-b',

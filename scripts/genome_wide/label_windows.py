@@ -396,12 +396,12 @@ def main():
     parser.add_argument('-w',
                         '--window',
                         type=str,
-                        default=200,
+                        default=250,
                         help="Specify window size")
     parser.add_argument('-s',
                         '--svtype',
                         type=str,
-                        default='INV',
+                        default='DEL',
                         help="Specify SV type")
     parser.add_argument('-sv',
                         '--sv_positions',

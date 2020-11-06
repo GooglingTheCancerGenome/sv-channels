@@ -15,16 +15,6 @@ def get_range(dictionary, begin, end):
     return dict(itertools.islice(dictionary.items(), begin, end))
 
 
-def get_chr_list(chrom):
-    # if sampleName in ['T1', 'G1', 'ART_INDEL_HET', 'ART_INDEL_HOM']:
-    #     chrlist = ['17']
-    # else:
-    #     chrlist = list(map(str, range(1, 23)))
-    #     chrlist.extend(['X'])
-    #
-    return [chrom]
-
-
 def load_chr_array(channel_data_dir, chrlist):
     chr_array = dict()
 
@@ -152,7 +142,7 @@ def get_windows(carrays_dir, outDir, chrom_list, win, label_file_path, mode, npz
             partial_array.append(d)
 
             try:
-
+                # print(len(partial_array))
                 full_array = np.concatenate(partial_array, axis=0)
 
                 if npz_mode:
@@ -163,7 +153,7 @@ def get_windows(carrays_dir, outDir, chrom_list, win, label_file_path, mode, npz
                 print('{}:{}-{}:{}'.format(chr1, pos1, chr2, pos2))
 
                 for d in numpy_array:
-                    print(d.shape)
+                   print(d.shape)
 
             # print(type(dask_array))
             # bcolz_array.append(dask_array)
@@ -227,7 +217,7 @@ def main():
     parser.add_argument('-w',
                         '--window',
                         type=str,
-                        default=200,
+                        default=250,
                         help="Specify window size")
     parser.add_argument('-lb',
                         '--labels',

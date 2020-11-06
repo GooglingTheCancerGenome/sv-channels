@@ -28,7 +28,7 @@ def parse_args():
     parser.add_argument('-w',
                         '--win',
                         type=int,
-                        default=200,
+                        default=250,
                         help="Window size")
     parser.add_argument('-i',
                         '--input',
@@ -235,9 +235,14 @@ def add_channels(args):
 
     for i in np.arange(X_enh.shape[2]):
         logging.info('win channels array:'+ \
-                     'non-zero elements at index {}:{}'.format(i,
-                                                               np.argwhere(X_enh[i, :] != 0).shape[0]))
+                     'non-zero elements at index {}:{}'.format(i, np.argwhere(X_enh[i, :] != 0).shape[0]))
+
     X = np.concatenate((X, X_enh), axis=2)
+    print(X.shape)
+
+    for i in np.arange(X.shape[2]):
+        logging.info('full channels array:' + \
+                     'NaN elements at index {}:{}'.format(i, len(np.argwhere(np.isnan(X[i, :])))))
 
     return X, y
 

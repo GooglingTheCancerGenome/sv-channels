@@ -295,7 +295,7 @@ def main():
     parser.add_argument('-c',
                         '--chrlist',
                         type=str,
-                        default='12',
+                        default='12,22',
                         help="Comma separated list of chromosomes to consider")
     parser.add_argument('-o',
                         '--out',

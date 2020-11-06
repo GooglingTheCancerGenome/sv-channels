@@ -184,10 +184,10 @@ def get_split_read_positions(ibam, chr_list, min_mapq, min_sr_support, outFile, 
                         sv_type = 'ND'
 
                         if clipped_string == 'right' and read.reference_name == chr_SA:
-                            if read.reference_end < pos_SA:
-                                sv_type = 'DUP'
-                            else:
+                            if read.reference_start < pos_SA:
                                 sv_type = 'DEL'
+                            else:
+                                sv_type = 'DUP'
                         elif clipped_string == 'left' and read.reference_name == chr_SA:
                             if read.reference_start > pos_SA:
                                 sv_type = 'DUP'

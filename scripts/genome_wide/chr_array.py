@@ -14,11 +14,6 @@ import pysam
 
 from functions import *
 
-config = get_config_file()
-HPC_MODE = config["DEFAULT"]["HPC_MODE"]
-REF_GENOME = config["DEFAULT"]["REF_GENOME"]
-
-
 def get_chr_len(ibam, chrName):
     # check if the BAM file exists
     assert os.path.isfile(ibam), ibam + " file not existent!"
@@ -43,15 +38,6 @@ def count_clipped_read_positions(cpos_cnt):
     for i in range(0, 5):
         logging.info('Number of positions with at least %d clipped reads: %d' %
                      (i + 1, len([k for k, v in cpos_cnt.items() if v > i])))
-
-
-def get_mappability_bigwig():
-    mappability_file = os.path.join("/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/Mappability",
-                                    REF_GENOME, REF_GENOME + ".151mer.bw") if HPC_MODE \
-        else os.path.join("/Users/lsantuari/Documents/Data/GEM", REF_GENOME + ".151mer.bw")
-    bw = pyBigWig.open(mappability_file)
-
-    return bw
 
 
 def load_bam(ibam):
@@ -115,8 +101,6 @@ def load_channel(chr_list, outDir, ch):
             if suffix == '.npy.gz':
                 with gzip.GzipFile(filename, 'r') as fin:
                     channel_data[chrom][ch] = np.load(fin)
-                channel_data[chrom][ch] = np.swapaxes(channel_data[chrom][ch],
-                                                      0, 1)
             else:
                 with gzip.GzipFile(filename, 'r') as fin:
                     channel_data[chrom][ch] = json.loads(
@@ -127,13 +111,12 @@ def load_channel(chr_list, outDir, ch):
 
 def create_carray(ibam, chrom, twobit, bigwig, outDir, cmd_name):
 
-    def get_percentile(v):
-        return np.percentile(v, np.arange(50, 110, 10))
-
     chrlen = get_chr_len(ibam, chrom)
+
     n_channels = 54
+
     chr_array = np.zeros(shape=(chrlen, n_channels),
-                         dtype=np.float32)  # bz.zeros
+                         dtype=np.float64)  # bz.zeros
     bw_map = pyBigWig.open(bigwig)  # get_mappability_bigwig()
 
     # dictionary of key choices
@@ -322,6 +305,7 @@ def main():
     :return: None
     '''
 
+    default_chr = '22'
     parser = argparse.ArgumentParser(
         description='Create channels from saved data')
     parser.add_argument('-b',
@@ -332,7 +316,7 @@ def main():
     parser.add_argument('-c',
                         '--chr',
                         type=str,
-                        default='12',
+                        default=default_chr,
                         help="Specify chromosome")
     parser.add_argument('-m',
                         '--map',
@@ -347,7 +331,7 @@ def main():
     parser.add_argument('-o',
                         '--out',
                         type=str,
-                        default='chr_array/12_chr_array',
+                        default='chr_array/'+default_chr+'_chr_array',
                         help="Specify output")
     parser.add_argument(
         '-p',
@@ -370,7 +354,7 @@ def main():
     cmd_name = 'chr_array'
     output_dir = os.path.join(args.outputpath, cmd_name)
     os.makedirs(output_dir, exist_ok=True)
-    logfilename = os.path.join(output_dir, args.logfile)
+    logfilename = os.path.join(output_dir, args.chr+'_'+args.logfile)
     # output_file = os.path.join(output_dir, args.out)
 
     FORMAT = '%(asctime)s %(message)s'

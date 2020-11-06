@@ -35,6 +35,8 @@ STIME=1  # sleep X minutes
 MY_ENV=sv-channels  # conda env in gtcg/xenon-* docker images
 #MAXMEM=48000  # mem in MB; use with xenon --max-memory
 
+#MODEL PARAMS
+
 
 # define functions
 submit () {  # submit a job via Xenon CLI
@@ -183,13 +185,7 @@ for sv in "${SV_TYPES[@]}"; do
           -l \"$log\""
         JOB_ID=$(submit "$cmd" "$p-$c")
         JOBS+=($JOB_ID)
-        
-        waiting
-        
-        p=mv
-        cmd="mv -b --suffix=.bck \"$outfile\" \"$infile\""
-        JOB_ID=$(submit "$cmd" "$p-$c")
-        JOBS+=($JOB_ID)
+
     done
 done
 
@@ -198,11 +194,12 @@ waiting
 # Train and test model
 for sv in "${SV_TYPES[@]}"; do
     for c in "${SV_CALLS[@]}"; do
-        p=train_model_with_fit
+        p=train
         out="labels/win$WIN_SZ/$sv/$c"
         cmd="python $p.py --training_sample_name \"$SAMPLE\" \
           --training_sample_folder . --test_sample_name \"$SAMPLE\" \
-          --test_sample_folder . -k $KFOLD -e $EPOCHS -p \"$out\" -s $sv -l $p.log"
+          --test_sample_folder . -k $KFOLD -e $EPOCHS -p \"$out\" -s $sv -l $p.log
+          "
         JOB_ID=$(submit "$cmd" "$p-$c")
         JOBS+=($JOB_ID)
     done
