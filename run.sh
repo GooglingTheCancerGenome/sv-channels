@@ -177,10 +177,10 @@ for sv in "${SV_TYPES[@]}"; do
     for c in "${SV_CALLS[@]}"; do
         p=add_win_channels
         out="labels/win$WIN_SZ/$sv/$c"
-        prefix="$out/windows/windows"
-        infile="$prefix.npz"
-        outfile="${prefix}_en.npz"
-        log="${prefix}_en.log"
+        dir_prefix="$out/windows/windows"
+        infile=${dir_prefix}".npz"
+        outfile=${dir_prefix}"_en.npz"
+        log=${dir_prefix}"_en.log"
         cmd="python $p.py -b \"$BAM\" -w $WIN_SZ -i \"$infile\" -o \"$outfile\" \
           -l \"$log\""
         JOB_ID=$(submit "$cmd" "$p-$c")
@@ -208,41 +208,39 @@ done
 waiting
 
 cd ../R
-for sv in "${SV_TYPES[@]}"; do
-    for c in "${SV_CALLS[@]}"; do
+for c in "${SV_CALLS[@]}"; do
         for m in cv chrom_cv; do
             p=merge_sv_calls
-            split_reads_dir="../genome_wide/labels/win$WIN_SZ/$sv/$c/model/$m"
-            bedped_out=${split_reads_dir}"/correct_pred.bedpe"
+            win_dir="../genome_wide/labels/win$WIN_SZ"
+            split_reads_dir=${win_dir}"/"${sv}"/"${c}"/model/"${m}
+            bedpe_out=${win_dir}"/sv-channels_"${c}"_"${m}"."${SAMPLE}".bedpe"
             cmd="Rscript merge_sv_calls.R \
                     -i ${split_reads_dir} \
                     -f ${EXCL_LIST} \
-                    -m ${sv} \
-                    -o ${split_reads_dir}"
+                    -m ${c} \
+                    -o ${bedpe_out}"
                     JOB_ID=$(submit "$cmd" "$p-$c-$m")
                     JOBS+=($JOB_ID)
         done
-    done
 done
 
 waiting
 
 cd ../utils
-for sv in "${SV_TYPES[@]}"; do
-    for c in "${SV_CALLS[@]}"; do
-        for m in cv chrom_cv; do
-            p=bedpe_to_vcf
-            win_dir="../genome_wide/labels/win$WIN_SZ/$sv/$c/model/$m"
-            bedped_in=${win_dir}"/correct_pred.bedpe"
-            output_vcf=${win_dir}"/sv-channels_"${c}"_"${m}"."${SAMPLE}".vcf"
-            cmd="python bedpe_to_vcf.py \
-                    -i ${bedped_in} \
-                    -b ${TWOBIT} \
-                    -o ${output_vcf} \
-                    -s ${SAMPLE}_{$c}"
-                    JOB_ID=$(submit "$cmd" "$p-$c-$m")
-                    JOBS+=($JOB_ID)
-        done
+for c in "${SV_CALLS[@]}"; do
+    for m in cv chrom_cv; do
+        p=bedpe_to_vcf
+        win_dir="../genome_wide/labels/win$WIN_SZ"
+        file_prefix=${win_dir}"/sv-channels_"${c}"_"${m}"."${SAMPLE}
+        bedped_in=${file_prefix}".bedpe"
+        output_vcf=${file_prefix}".vcf"
+        cmd="python bedpe_to_vcf.py \
+                -i ${bedped_in} \
+                -b ${TWOBIT} \
+                -o ${output_vcf} \
+                -s ${SAMPLE}"
+                JOB_ID=$(submit "$cmd" "$p-$c-$m")
+                JOBS+=($JOB_ID)
     done
 done
 

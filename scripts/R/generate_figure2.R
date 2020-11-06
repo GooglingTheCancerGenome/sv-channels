@@ -307,120 +307,120 @@ for (param in params.list)
 
 ############
 
-#
-# #Summarize results
-#
-# wide <- data.frame()
-#
-# for (param in names(abbrv))
-# {
-#   print(param)
-#   for (param_val in sweep[[abbrv[param]]])
-#   {
-#     fld_val <- paste(abbrv[param], param_val, sep = "")
-#     print(fld_val)
-#     for (sample.name in c('hmz-sv', 'htz-sv'))
-#     {
-#       print(sample.name)
-#
-#       for (svtype in c('DEL', 'INS', 'INV', 'DUP', 'TRA'))
-#       {
-#         files.dir <-
-#           file.path(parent_dir,
-#                     'results',
-#                     param,
-#                     fld_val,
-#                     sample.name,
-#                     svtype,
-#                     mode)
-#         print(files.dir)
-#
-#         filename <- 'precision_recall_plot.csv'
-#         if (file.exists(file.path(files.dir, filename)))
-#         {
-#           df <- read.csv(file.path(files.dir, filename))
-#
-#           df$caller <- as.vector(df$caller)
-#
-#           wide <-
-#             rbind(
-#               wide,
-#               cbind(
-#                 df,
-#                 param = param,
-#                 param_val = param_val,
-#                 sample.name = sample.name,
-#                 svtype = svtype,
-#                 mode = mode
-#               )
-#             )
-#         }
-#       }
-#     }
-#   }
-# }
-# # wide
-#
-#
-# my_labeller <- function(variable, value) {
-#   return(paste(value, ' (N=', table(truth_set_bedpe$sourceId)[value], ')', sep =
-#                  ''))
-# }
-#
-# for (param in names(abbrv))
-# {
-#   print(param)
-#   for (sample.name in c('hmz-sv', 'htz-sv'))
-#   {
-#     print(sample.name)
-#
-#     wide_param <- wide[wide$param == param &
-#                          wide$sample.name == sample.name, ]
-#     plot <-
-#       ggplot(wide_param, aes(caller, F1_score)) +
-#       geom_col(aes(fill = caller)) +
-#       facet_grid(svtype ~ param_val) +
-#       theme(
-#         text = element_text(size = 30),
-#         axis.text.y = element_text(size = 15),
-#         axis.title.x = element_blank(),
-#         axis.text.x = element_blank(),
-#         axis.ticks.x = element_blank()
-#       ) +
-#       scale_fill_manual(values = cbbPalette)
-#     plot <-
-#       plot + ggtitle(paste(sample.name, ':', param,
-#                            #"TP:green",
-#                            #"FP:red",
-#                            sep = ''))  # +
-#     # geom_text(
-#     #   aes(label = FP),
-#     #   position = position_dodge(width = 0.9),
-#     #   vjust = -0.25,
-#     #   color = 'darkred',
-#     #   size = 2
-#     # ) +
-#     # geom_text(
-#     #   aes(label = TP),
-#     #   position = position_dodge(width = 0.9),
-#     #   vjust = -1.50,
-#     #   color = 'darkgreen',
-#     #   size = 2
-#     # )
-#     #+ theme(
-#     #    panel.grid.major.y = element_line(colour = "grey", linetype="solid")
-#     #  )
-#
-#     ggsave(
-#       plot,
-#       file = file.path(
-#         out_dir,
-#         paste(param, sample.name, '_F1_score.png', sep = '_')
-#       ),
-#       dpi = 600,
-#       h = 7,
-#       w = 12
-#     )
-#   }
-# }
-# 
+
+#Summarize results
+
+wide <- data.frame()
+
+for (param in params.list)
+{
+  print(param)
+  for (param_val in get_default_param_val(parameters, abbrv[param]))
+  {
+    fld_val <- paste(abbrv[param], param_val, sep = "")
+    print(fld_val)
+    for (sample.name in samples.list)
+    {
+      print(sample.name)
+
+      for (svtype in svtype.list)
+      {
+        files.dir <-
+          file.path(parent_dir,
+                    '../plots',
+                    param,
+                    fld_val,
+                    sample.name,
+                    svtype,
+                    mode)
+        print(files.dir)
+
+        filename <- 'precision_recall_plot.csv'
+        if (file.exists(file.path(files.dir, filename)))
+        {
+          df <- read.csv(file.path(files.dir, filename))
+          #print(df)
+          df$caller <- as.vector(df$caller)
+
+          wide <-
+            rbind(
+              wide,
+              cbind(
+                df,
+                param = param,
+                param_val = param_val,
+                sample.name = sample.name,
+                svtype = svtype,
+                mode = mode
+              )
+            )
+        }
+      }
+    }
+  }
+}
+# wide
+
+
+my_labeller <- function(variable, value) {
+  return(paste(value, ' (N=', table(truth_set_bedpe$sourceId)[value], ')', sep =
+                 ''))
+}
+
+for (param in names(abbrv))
+{
+  print(param)
+  for (sample.name in c('hmz-sv', 'htz-sv'))
+  {
+    print(sample.name)
+
+    wide_param <- wide[wide$param == param &
+                         wide$sample.name == sample.name, ]
+    plot <-
+      ggplot(wide_param, aes(caller, F1_score)) +
+      geom_col(aes(fill = caller)) +
+      facet_grid(svtype ~ param_val) +
+      theme(
+        text = element_text(size = 30),
+        axis.text.y = element_text(size = 15),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()
+      ) +
+      scale_fill_manual(values = cbbPalette)
+    plot <-
+      plot + ggtitle(paste(sample.name, ':', param,
+                           #"TP:green",
+                           #"FP:red",
+                           sep = ''))  # +
+    # geom_text(
+    #   aes(label = FP),
+    #   position = position_dodge(width = 0.9),
+    #   vjust = -0.25,
+    #   color = 'darkred',
+    #   size = 2
+    # ) +
+    # geom_text(
+    #   aes(label = TP),
+    #   position = position_dodge(width = 0.9),
+    #   vjust = -1.50,
+    #   color = 'darkgreen',
+    #   size = 2
+    # )
+    #+ theme(
+    #    panel.grid.major.y = element_line(colour = "grey", linetype="solid")
+    #  )
+
+    ggsave(
+      plot,
+      file = file.path(
+        out_dir,
+        paste(param, sample.name, '_F1_score.png', sep = '_')
+      ),
+      dpi = 600,
+      h = 7,
+      w = 12
+    )
+  }
+}
+

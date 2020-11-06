@@ -40,7 +40,7 @@ output_fn <- argv$o
 
 # For each svtype, collect all predictions in BEDPE format and merge the SVs using SVA
 sv_regions <- list()
-sv_types <- c('DEL', 'INS', 'INV', 'DUP', 'TRA')
+sv_types <- c('DEL', 'INS', 'INV', 'DUP', 'CTX')
 #for (svtype in )
 
 for (svtype in sv_types)
@@ -54,7 +54,7 @@ for (svtype in sv_types)
       path = file.path(input_path,
                        svtype,
                        mode),
-      pattern = "cnn_predictions.bedpe$",
+      pattern = "correct.bedpe$",
       recursive = TRUE,
       full.names = TRUE
     )
