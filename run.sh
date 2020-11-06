@@ -213,6 +213,7 @@ for sv in "${SV_TYPES[@]}"; do
         for m in cv chrom_cv; do
             p=merge_sv_calls
             split_reads_dir="../genome_wide/labels/win$WIN_SZ/$sv/$c/model/$m"
+            bedped_out=${split_reads_dir}"/correct_pred.bedpe"
             cmd="Rscript merge_sv_calls.R \
                     -i ${split_reads_dir} \
                     -f ${EXCL_LIST} \
@@ -231,11 +232,11 @@ for sv in "${SV_TYPES[@]}"; do
     for c in "${SV_CALLS[@]}"; do
         for m in cv chrom_cv; do
             p=bedpe_to_vcf
-            win_dir="../genome_wide/labels/win$WIN_SZ/$sv/$c"
-            calls_dir=${win_dir}"/$sv/$c/model/${m}"
-            output_vcf=${win_dir}"/"${SAMPLE}"_"${c}"_"${m}".vcf"
+            win_dir="../genome_wide/labels/win$WIN_SZ/$sv/$c/model/$m"
+            bedped_in=${win_dir}"/correct_pred.bedpe"
+            output_vcf=${win_dir}"/sv-channels_"${c}"_"${m}"."${SAMPLE}".vcf"
             cmd="python bedpe_to_vcf.py \
-                    -i ${calls_dir} \
+                    -i ${bedped_in} \
                     -b ${TWOBIT} \
                     -o ${output_vcf} \
                     -s ${SAMPLE}_{$c}"
