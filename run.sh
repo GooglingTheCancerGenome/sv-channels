@@ -212,7 +212,7 @@ for sv in "${SV_TYPES[@]}"; do
     for c in "${SV_CALLS[@]}"; do
         for m in cv chrom_cv; do
             p=merge_sv_calls
-            split_reads_dir="../genome_wide/labels/win$WIN_SZ/$sv/$c/model/${m}"
+            split_reads_dir="../genome_wide/labels/win$WIN_SZ/$sv/$c/model/$m"
             cmd="Rscript merge_sv_calls.R \
                     -i ${split_reads_dir} \
                     -f ${EXCL_LIST} \
@@ -235,7 +235,8 @@ for sv in "${SV_TYPES[@]}"; do
             calls_dir=${win_dir}"/$sv/$c/model/${m}"
             output_vcf=${win_dir}"/"${SAMPLE}"_"${c}"_"${m}".vcf"
             cmd="python bedpe_to_vcf.py \
-                    -p ${calls_dir} \
+                    -i ${calls_dir} \
+                    -b ${TWOBIT} \
                     -o ${output_vcf} \
                     -s ${SAMPLE}_{$c}"
                     JOB_ID=$(submit "$cmd" "$p-$c-$m")
