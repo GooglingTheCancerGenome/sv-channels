@@ -195,10 +195,10 @@ waiting
 for sv in "${SV_TYPES[@]}"; do
     for c in "${SV_CALLS[@]}"; do
         p=train
-        out="labels/win$WIN_SZ/$sv/$c"
+        train_dir="labels/win$WIN_SZ/$sv/$c"
         cmd="python $p.py --training_sample_name \"$SAMPLE\" \
-          --training_sample_folder . --test_sample_name \"$SAMPLE\" \
-          --test_sample_folder . -k $KFOLD -e $EPOCHS -p \"$out\" -s $sv -l $p.log
+          --training_sample_folder ${train_dir} --test_sample_name \"$SAMPLE\" \
+          --test_sample_folder ${train_dir} -k $KFOLD -e $EPOCHS -p \"$out\" -s $sv -l $p.log
           "
         JOB_ID=$(submit "$cmd" "$p-$c")
         JOBS+=($JOB_ID)
@@ -210,15 +210,17 @@ waiting
 cd ../R
 for sv in "${SV_TYPES[@]}"; do
     for c in "${SV_CALLS[@]}"; do
-        p=merge_sv_calls
-        split_reads_dir="../genome_wide/labels/win$WIN_SZ/$sv/$c"
-        cmd="Rscript merge_sv_calls.R \
-                -i ${split_reads_dir} \
-                -f ${EXCL_LIST} \
-                -m ${sv} \
-                -o ${split_reads_dir}"
-                JOB_ID=$(submit "$cmd" "$p-$c")
-                JOBS+=($JOB_ID)
+        for m in cv chrom_cv; do
+            p=merge_sv_calls
+            split_reads_dir="../genome_wide/labels/win$WIN_SZ/$sv/$c/model/${m}"
+            cmd="Rscript merge_sv_calls.R \
+                    -i ${split_reads_dir} \
+                    -f ${EXCL_LIST} \
+                    -m ${sv} \
+                    -o ${split_reads_dir}"
+                    JOB_ID=$(submit "$cmd" "$p-$c-$m")
+                    JOBS+=($JOB_ID)
+        done
     done
 done
 
@@ -227,16 +229,18 @@ waiting
 cd ../utils
 for sv in "${SV_TYPES[@]}"; do
     for c in "${SV_CALLS[@]}"; do
-        p=bedpe_to_vcf
-        win_dir="../genome_wide/labels/win$WIN_SZ/$sv/$c"
-        calls_dir=${win_dir}"/$sv/$c"
-        output_vcf=${win_dir}"/"${SAMPLE}"_"${c}"_cv"${KFOLD}".vcf"
-        cmd="python bedpe_to_vcf.py \
-                -p ${calls_dir} \
-                -o ${output_vcf} \
-                -s ${SAMPLE}"
-                JOB_ID=$(submit "$cmd" "$p-$c")
-                JOBS+=($JOB_ID)
+        for m in cv chrom_cv; do
+            p=bedpe_to_vcf
+            win_dir="../genome_wide/labels/win$WIN_SZ/$sv/$c"
+            calls_dir=${win_dir}"/$sv/$c/model/${m}"
+            output_vcf=${win_dir}"/"${SAMPLE}"_"${c}"_"${m}".vcf"
+            cmd="python bedpe_to_vcf.py \
+                    -p ${calls_dir} \
+                    -o ${output_vcf} \
+                    -s ${SAMPLE}_{$c}"
+                    JOB_ID=$(submit "$cmd" "$p-$c-$m")
+                    JOBS+=($JOB_ID)
+        done
     done
 done
 
