@@ -214,7 +214,7 @@ for c in "${SV_CALLS[@]}"; do
             win_dir="../genome_wide/labels/win$WIN_SZ"
             split_reads_dir=${win_dir}"/"${sv}"/"${c}"/model/"${m}
             bedpe_out=${win_dir}"/sv-channels_"${c}"_"${m}"."${SAMPLE}".bedpe"
-            cmd="Rscript merge_sv_calls.R \
+            cmd="Rscript ${p}.R \
                     -i ${split_reads_dir} \
                     -f ${EXCL_LIST} \
                     -m ${c} \
@@ -234,7 +234,7 @@ for c in "${SV_CALLS[@]}"; do
         file_prefix=${win_dir}"/sv-channels_"${c}"_"${m}"."${SAMPLE}
         bedped_in=${file_prefix}".bedpe"
         output_vcf=${file_prefix}".vcf"
-        cmd="python bedpe_to_vcf.py \
+        cmd="python ${p}.py \
                 -i ${bedped_in} \
                 -b ${TWOBIT} \
                 -o ${output_vcf} \
