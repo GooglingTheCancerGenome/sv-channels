@@ -51,9 +51,7 @@ for (svtype in sv_types)
   print(svtype)
   filenames <-
     list.files(
-      path = file.path(input_path,
-                       svtype,
-                       mode),
+      path = input_path,
       pattern = "correct.bedpe$",
       recursive = TRUE,
       full.names = TRUE

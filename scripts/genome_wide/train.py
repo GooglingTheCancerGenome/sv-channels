@@ -46,7 +46,7 @@ def get_labels(channel_data_dir, win):
     return labels
 
 
-def get_data(out_dir, npz_mode, svtype):
+def get_data(windows_file, npz_mode, svtype):
     def filter_labels(X, y, win_ids):
         # print(y)
         keep = [i for i, v in enumerate(y) if v in [svtype, 'no' + svtype]]
@@ -59,34 +59,20 @@ def get_data(out_dir, npz_mode, svtype):
         print(Counter(y))
         return X, y, win_ids
 
-    logging.info('Loading data for {}...'.format(out_dir))
+    logging.info('Loading data from {}...'.format(windows_file))
 
     y = []
     win_ids = []
 
-    for label_type in ['test']:
+    if npz_mode:
+        npzfile = np.load(windows_file, allow_pickle=True)
 
-        if npz_mode:
+        X = npzfile['data']
+        labels = npzfile['labels']
+        labels = labels.item()
 
-            outfile = os.path.join(out_dir, 'windows', 'windows_en.npz')
-            npzfile = np.load(outfile, allow_pickle=True)
-
-            X = npzfile['data']
-            labels = npzfile['labels']
-            labels = labels.item()
-
-        else:
-
-            carray_file = os.path.join(out_dir, 'windows',
-                                       label_type + '_win200_carray')
-            logging.info('Loading file: {}'.format(carray_file))
-            assert os.path.exists(carray_file), carray_file + ' not found'
-            X = bcolz.open(rootdir=carray_file)
-
-            labels = X.attrs['labels']
-
-        y.extend(labels.values())
-        win_ids.extend(labels.keys())
+    y.extend(labels.values())
+    win_ids.extend(labels.keys())
 
     logging.info(X.shape)
     logging.info(Counter(y))
@@ -96,7 +82,7 @@ def get_data(out_dir, npz_mode, svtype):
     y = np.array([mapclasses[i] for i in y])
     win_ids = np.array(win_ids)
 
-    logging.info('Data for {} loaded'.format(out_dir))
+    logging.info('Data from {} loaded'.format(windows_file))
 
     print(X.shape)
 
@@ -232,7 +218,6 @@ def train(model_fn, params, X_train, y_train, y_train_binary):
 
 
 def cv_train_and_evaluate(X, y, y_binary, win_ids, train_indices, test_indices, model_dir, svtype):
-
     # Generate batches from indices
     X_train, X_test = X[train_indices], X[test_indices]
     y_train, y_test = y[train_indices], y[test_indices]
@@ -266,9 +251,9 @@ def cv_train_and_evaluate(X, y, y_binary, win_ids, train_indices, test_indices, 
     results.to_csv(os.path.join(model_dir, 'metrics.csv'), sep='\t')
 
 
-def cross_validation(outDir, npz_mode, svtype, kfold):
+def cross_validation(training_windows, outDir, npz_mode, svtype, kfold):
 
-    X, y, win_ids = get_data(os.path.join(outDir, '..'), npz_mode, svtype)
+    X, y, win_ids = get_data(training_windows, npz_mode, svtype)
     y_binary = to_categorical(y, num_classes=len(mapclasses.keys()))
 
     # Instantiate the cross validator
@@ -278,15 +263,15 @@ def cross_validation(outDir, npz_mode, svtype, kfold):
     for index, (train_indices, test_indices) in enumerate(skf.split(X, y)):
         print("Training on fold " + str(index + 1) + "/" + str(kfold) + "...")
 
-        model_dir = os.path.join(outDir, 'cv',
+        model_dir = os.path.join(outDir, 'cv', svtype,
                                  str(index + 1))
 
         cv_train_and_evaluate(X, y, y_binary, win_ids, train_indices, test_indices, model_dir, svtype)
 
 
-def cross_validation_by_chrom(outDir, npz_mode, svtype, chrlist):
+def cross_validation_by_chrom(training_windows, outDir, npz_mode, svtype, chrlist):
 
-    X, y, win_ids = get_data(os.path.join(outDir, '..'), npz_mode, svtype)
+    X, y, win_ids = get_data(training_windows, npz_mode, svtype)
     y_binary = to_categorical(y, num_classes=len(mapclasses.keys()))
 
     # print(win_ids)
@@ -311,16 +296,17 @@ def cross_validation_by_chrom(outDir, npz_mode, svtype, chrlist):
 
         print("Test on chromosome " + chrom + "...")
 
-        model_dir = os.path.join(outDir, 'chrom_cv', chrom)
+        model_dir = os.path.join(outDir, 'chrom_cv', svtype, chrom)
 
         cv_train_and_evaluate(X, y, y_binary, win_ids, train_indices, test_indices, model_dir, svtype)
 
 
-def train_and_test_model(training_name, test_name, training_folder, test_folder,
+def train_and_test_model(training_name, test_name, training_windows, test_windows,
                          outDir,
                          npz_mode, svtype):
-    X_train, y_train, win_ids_train = get_data(training_folder, npz_mode, svtype)
-    X_test, y_test, win_ids_test = get_data(test_folder, npz_mode, svtype)
+
+    X_train, y_train, win_ids_train = get_data(training_windows, npz_mode, svtype)
+    X_test, y_test, win_ids_test = get_data(test_windows, npz_mode, svtype)
 
     # Parameters
     params = {
@@ -357,6 +343,7 @@ def train_and_test_model(training_name, test_name, training_folder, test_folder,
 def main():
     default_win = 200
     default_path = './labels/win' + str(default_win) + '/DEL/split_reads'
+    def_windows_file = os.path.join(default_path, 'windows', 'windows_en.npz')
 
     parser = argparse.ArgumentParser(description='Train and test model')
 
@@ -366,14 +353,14 @@ def main():
                         default=default_path,
                         help="Specify output path")
     parser.add_argument('-t',
-                        '--training_sample_folder',
+                        '--training_windows',
                         type=str,
-                        default=default_path,
+                        default=def_windows_file,
                         help="Specify training sample")
     parser.add_argument('-x',
-                        '--test_sample_folder',
+                        '--test_windows',
                         type=str,
-                        default=default_path,
+                        default=def_windows_file,
                         help="Specify training sample")
     parser.add_argument('-tn',
                         '--training_sample_name',
@@ -480,7 +467,7 @@ def main():
         'regularization_rate_exp': args.regularization_rate_exp
     }
 
-    output_dir = os.path.join(args.outputpath, cmd_name)
+    output_dir = args.outputpath
 
     os.makedirs(output_dir, exist_ok=True)
 
@@ -497,32 +484,37 @@ def main():
 
     t0 = time()
 
-    assert os.path.exists(os.path.join(args.training_sample_folder, 'windows', 'windows_en.npz'))
-    assert os.path.exists(os.path.join(args.test_sample_folder, 'windows', 'windows_en.npz'))
+    assert os.path.exists(os.path.join(args.training_windows))
+    assert os.path.exists(os.path.join(args.test_windows))
 
-    if args.training_sample_folder != args.test_sample_folder:
+    if args.training_windows != args.test_windows:
 
-        train_and_test_model(training_name=args.training_sample_name,
-                             test_name=args.test_sample_name,
-                             training_folder=args.training_sample_folder,
-                             test_folder=args.test_sample_folder,
-                             outDir=output_dir,
-                             npz_mode=args.load_npz,
-                             svtype=args.svtype
-                             )
+        train_and_test_model(
+            training_name=args.training_sample_name,
+            test_name=args.test_sample_name,
+            training_windows=args.training_windows,
+            test_windows=args.test_windowsr,
+            outDir=output_dir,
+            npz_mode=args.load_npz,
+            svtype=args.svtype
+        )
     else:
 
-        cross_validation(outDir=output_dir,
-                         npz_mode=args.load_npz,
-                         svtype=args.svtype,
-                         kfold=args.kfold
-                         )
+        cross_validation(
+            training_windows=args.training_windows,
+            outDir=output_dir,
+            npz_mode=args.load_npz,
+            svtype=args.svtype,
+            kfold=args.kfold
+        )
 
-        cross_validation_by_chrom(outDir=output_dir,
-                                  npz_mode=args.load_npz,
-                                  svtype=args.svtype,
-                                  chrlist=args.chrlist
-                                  )
+        cross_validation_by_chrom(
+            training_windows=args.training_windows,
+            outDir=output_dir,
+            npz_mode=args.load_npz,
+            svtype=args.svtype,
+            chrlist=args.chrlist
+        )
 
     # print('Elapsed time channel_maker_real on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))
     logging.info('Elapsed time training and testing = %f seconds' %

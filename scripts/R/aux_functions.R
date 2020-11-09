@@ -1,4 +1,3 @@
-suppressPackageStartupMessages(require(ggplot2))
 suppressPackageStartupMessages(require(tools))
 suppressPackageStartupMessages(require(StructuralVariantAnnotation))
 suppressPackageStartupMessages(require(dplyr))
