@@ -148,7 +148,7 @@ for c in "${SV_CALLS[@]}"; do
     for sv in "${SV_TYPES[@]}"; do
         p=label_windows
         cmd="python $p.py -b \"$BED\" -c \"$SEQ_IDS_CSV\" -w $WIN_SZ \
-          -gt \"$BEDPE\" -s $sv -sv \"$BASE_DIR/$c\" -o labels.json.gz \
+          -gt \"$BEDPE\" -s $sv -sv \"$c\" -o labels.json.gz \
           -p . -l $p.log"
         JOB_ID=$(submit "$cmd" "$p-$c")
         JOBS+=($JOB_ID)
