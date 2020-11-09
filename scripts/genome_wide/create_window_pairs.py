@@ -208,7 +208,7 @@ def main():
     parser.add_argument('-p',
                         '--outputpath',
                         type=str,
-                        default='./labels/win200/DEL/split_reads',
+                        default='./cnn/win200/split_reads/windows/DEL',
                         help="Specify output path")
     parser.add_argument('-l',
                         '--logfile',
@@ -222,7 +222,7 @@ def main():
     parser.add_argument('-lb',
                         '--labels',
                         type=str,
-                        default='./labels/win200/DEL/split_reads/labels.json.gz',
+                        default='./cnn/win200/split_reads/windows/DEL/labels.json.gz',
                         help="Specify label file")
     parser.add_argument('-m',
                         '--mode',
@@ -242,8 +242,7 @@ def main():
 
     args = parser.parse_args()
 
-    cmd_name = 'windows'
-    output_dir = os.path.join(args.outputpath, cmd_name)
+    output_dir = args.outputpath
     os.makedirs(output_dir, exist_ok=True)
     logfilename = os.path.join(output_dir, args.logfile)
     # output_file = os.path.join(output_dir, args.out)

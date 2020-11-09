@@ -396,7 +396,7 @@ def main():
     parser.add_argument('-w',
                         '--window',
                         type=str,
-                        default=250,
+                        default=200,
                         help="Specify window size")
     parser.add_argument('-s',
                         '--svtype',
@@ -428,9 +428,9 @@ def main():
     args = parser.parse_args()
 
     sv_caller_name = os.path.basename(args.sv_positions)
-    output_dir = os.path.join(args.outputpath, 'labels',
+    output_dir = os.path.join(args.outputpath, 'cnn',
                               'win' + str(args.window),
-                              sv_caller_name,
+                              sv_caller_name, 'windows',
                               args.svtype
                               )
     os.makedirs(output_dir, exist_ok=True)

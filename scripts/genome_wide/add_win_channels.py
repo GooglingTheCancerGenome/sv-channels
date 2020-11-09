@@ -28,21 +28,21 @@ def parse_args():
     parser.add_argument('-w',
                         '--win',
                         type=int,
-                        default=250,
+                        default=200,
                         help="Window size")
     parser.add_argument('-i',
                         '--input',
                         type=str,
-                        default='./labels/win200/DEL/split_reads/windows/windows.npz',
+                        default='./cnn/win200/split_reads/windows/DEL/windows.npz',
                         help="input file")
     parser.add_argument('-o',
                         '--output',
                         type=str,
-                        default='./labels/win200/DEL/split_reads/windows/windows_en.npz',
+                        default='./cnn/win200/split_reads/windows/DEL/windows_en.npz',
                         help="output file")
     parser.add_argument('-l',
                         '--logfile',
-                        default='./labels/win200/DEL/split_reads/windows/windows_en.log',
+                        default='./cnn/win200/split_reads/windows/DEL/windows_en.log',
                         help='File in which to write logs.')
     parser.add_argument('-lp',
                         '--log_every_n_pos',

@@ -342,8 +342,8 @@ def train_and_test_model(training_name, test_name, training_windows, test_window
 
 def main():
     default_win = 200
-    default_path = './labels/win' + str(default_win) + '/DEL/split_reads'
-    def_windows_file = os.path.join(default_path, 'windows', 'windows_en.npz')
+    default_path = os.path.join('./cnn/win'+str(default_win), 'split_reads')
+    def_windows_file = os.path.join(default_path, 'windows', 'DEL', 'windows_en.npz')
 
     parser = argparse.ArgumentParser(description='Train and test model')
 

@@ -161,7 +161,7 @@ waiting
 for c in "${SV_CALLS[@]}"; do
     for sv in "${SV_TYPES[@]}"; do
         p=create_window_pairs
-        out="labels/win$WIN_SZ/$c"
+        out="cnn/win$WIN_SZ/$c/windows/$sv"
         lb="$out/labels.json.gz"
         cmd="python $p.py -b \"$BAM\" -c \"$SEQ_IDS_CSV\" -lb \"$lb\" -ca . \
           -w $WIN_SZ -p \"$out\" -l $p.log"
@@ -176,8 +176,8 @@ waiting
 for c in "${SV_CALLS[@]}"; do
     for sv in "${SV_TYPES[@]}"; do
         p=add_win_channels
-        out="labels/win$WIN_SZ/$c/$sv"
-        dir_prefix="$out/windows/windows"
+        out="cnn/win$WIN_SZ/$c/windows/$sv"
+        dir_prefix="cnn/win$WIN_SZ/$c/windows/$sv/windows"
         infile=${dir_prefix}".npz"
         outfile=${dir_prefix}"_en.npz"
         log=${dir_prefix}"_en.log"
@@ -192,15 +192,16 @@ done
 waiting
 
 # Train and test model
-for c in "${SV_CALLS[@]}"; do
-    for sv in "${SV_TYPES[@]}"; do
+for sv in "${SV_TYPES[@]}"; do
+    for c in "${SV_CALLS[@]}"; do
         p=train
-        train_dir="labels/win$WIN_SZ/$c/$sv"
+        train_dir="cnn/win$WIN_SZ/$c/windows/$sv/windows_en.npz"
+        out_dir="cnn/win$WIN_SZ/$c"
         cmd="python $p.py --training_sample_name \"$SAMPLE\" \
-          --training_sample_folder ${train_dir} --test_sample_name \"$SAMPLE\" \
-          --test_sample_folder ${train_dir} -k $KFOLD -e $EPOCHS -p \"$out\" -s $sv -l $p.log
+          --training_windows ${train_dir} --test_sample_name \"$SAMPLE\" \
+          --test_windows ${train_dir} -k $KFOLD -e $EPOCHS -p \"$out_dir\" -s $sv -l $p.log
           "
-        JOB_ID=$(submit "$cmd" "$p-$c")
+        JOB_ID=$(submit "$cmd" "$p-$sv-$c")
         JOBS+=($JOB_ID)
     done
 done
@@ -211,8 +212,8 @@ cd ../R
 for c in "${SV_CALLS[@]}"; do
         for m in cv chrom_cv; do
             p=merge_sv_calls
-            win_dir="../genome_wide/labels/win$WIN_SZ"
-            split_reads_dir=${win_dir}"/"${c}"/"${sv}"/model/"${m}
+            win_dir="../genome_wide/cnn/win$WIN_SZ"
+            sv_calls_dir=${win_dir}"/"${c}"/"${m}
             bedpe_out=${win_dir}"/sv-channels_"${c}"_"${m}"."${SAMPLE}".bedpe"
             cmd="Rscript ${p}.R \
                     -i ${split_reads_dir} \
@@ -230,7 +231,7 @@ cd ../utils
 for c in "${SV_CALLS[@]}"; do
     for m in cv chrom_cv; do
         p=bedpe_to_vcf
-        win_dir="../genome_wide/labels/win$WIN_SZ"
+        win_dir="../genome_wide/cnn/win$WIN_SZ"
         file_prefix=${win_dir}"/sv-channels_"${c}"_"${m}"."${SAMPLE}
         bedped_in=${file_prefix}".bedpe"
         output_vcf=${file_prefix}".vcf"
