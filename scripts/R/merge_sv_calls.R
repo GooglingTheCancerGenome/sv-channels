@@ -15,6 +15,8 @@ p <-
 p <-
   add_argument(p, "-f", help = "ENCODE blacklist", type = "character")
 p <-
+  add_argument(p, "-n", help = "BED file with regions containing Ns", type = "character")
+p <-
   add_argument(p, "-m", help = "mode: 'split_reads', 'gridss', 'manta', 'delly', 'lumpy'", type = "character")
 p <-
   add_argument(p, "-o", help = "Output in BEDPE", type = "character")
@@ -35,6 +37,7 @@ if (is.na(argv$i))
 
 input_path <- argv$i
 regions_for_filtering <- argv$f
+ref_regions <- argv$n
 mode <- argv$m
 output_fn <- argv$o
 
@@ -83,7 +86,7 @@ for (svtype in sv_types)
   {
 
   sv_regions[[svtype]] <-
-    load_bedpe(bedpe.file, regions_for_filtering)
+    load_bedpe(bedpe.file, regions_for_filtering, ref_regions)
 
   # rename NA. column of CNN into svLen
   names(mcols(sv_regions[[svtype]]))[names(mcols(sv_regions[[svtype]])) ==

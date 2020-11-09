@@ -27,6 +27,7 @@ BEDPE="${PREFIX}.bedpe"
 BED="${PREFIX}.bed"
 VCF="${PREFIX}.vcf"
 EXCL_LIST="${BASE_DIR}/ENCFF001TDO.bed"
+NREGIONS="${BASE_DIR}/reference_N_regions.bed"
 STARTTIME=$(date +%s)
 JOBS=()  # array of job IDs
 JOBS_LOG=jobs.json  # job accounting log
@@ -218,6 +219,7 @@ for c in "${SV_CALLS[@]}"; do
             cmd="Rscript ${p}.R \
                     -i ${split_reads_dir} \
                     -f ${EXCL_LIST} \
+                    -n ${NREGIONS} \
                     -m ${c} \
                     -o ${bedpe_out}"
                     JOB_ID=$(submit "$cmd" "$p-$c-$m")
