@@ -122,8 +122,8 @@ def create_carray(ibam, chrom, twobit, bigwig, outDir, cmd_name):
     # dictionary of key choices
     direction_list = {
         'clipped_reads': [
-            'left_F', 'left_R', 'right_F', 'right_R', 'disc_right_F',
-            'disc_right_R', 'disc_left_F', 'disc_left_R', 'D_left_F',
+            'left_F', 'left_R', 'right_F', 'right_R', 'disc_left_F',
+            'disc_left_R', 'disc_right_F', 'disc_right_R', 'D_left_F',
             'D_left_R', 'D_right_F', 'D_right_R', 'I_F', 'I_R'
         ],
         'split_reads': ['left_F', 'left_R', 'right_F', 'right_R'],
