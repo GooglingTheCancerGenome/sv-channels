@@ -150,7 +150,7 @@ for c in "${SV_CALLS[@]}"; do
         cmd="python $p.py -b \"$BED\" -c \"$SEQ_IDS_CSV\" -w $WIN_SZ \
           -gt \"$BEDPE\" -s $sv -sv \"$c\" -o labels.json.gz \
           -p . -l $p.log"
-        JOB_ID=$(submit "$cmd" "$p-$c")
+        JOB_ID=$(submit "$cmd" "$p-$c-$sv")
         JOBS+=($JOB_ID)
     done
 done
@@ -161,11 +161,11 @@ waiting
 for c in "${SV_CALLS[@]}"; do
     for sv in "${SV_TYPES[@]}"; do
         p=create_window_pairs
-        out="labels/win$WIN_SZ/$c/$sv"
+        out="labels/win$WIN_SZ/$c"
         lb="$out/labels.json.gz"
         cmd="python $p.py -b \"$BAM\" -c \"$SEQ_IDS_CSV\" -lb \"$lb\" -ca . \
           -w $WIN_SZ -p \"$out\" -l $p.log"
-        JOB_ID=$(submit "$cmd" $p)
+        JOB_ID=$(submit "$cmd" "$p-$c-$sv")
         JOBS+=($JOB_ID)
     done
 done
@@ -183,7 +183,7 @@ for c in "${SV_CALLS[@]}"; do
         log=${dir_prefix}"_en.log"
         cmd="python $p.py -b \"$BAM\" -w $WIN_SZ -i \"$infile\" -o \"$outfile\" \
           -l \"$log\""
-        JOB_ID=$(submit "$cmd" "$p-$c")
+        JOB_ID=$(submit "$cmd" "$p-$c-$sv")
         JOBS+=($JOB_ID)
 
     done
@@ -212,7 +212,7 @@ for c in "${SV_CALLS[@]}"; do
         for m in cv chrom_cv; do
             p=merge_sv_calls
             win_dir="../genome_wide/labels/win$WIN_SZ"
-            split_reads_dir=${win_dir}"/"${sv}"/"${c}"/model/"${m}
+            split_reads_dir=${win_dir}"/"${c}"/"${sv}"/model/"${m}
             bedpe_out=${win_dir}"/sv-channels_"${c}"_"${m}"."${SAMPLE}".bedpe"
             cmd="Rscript ${p}.R \
                     -i ${split_reads_dir} \
