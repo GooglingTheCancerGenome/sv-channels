@@ -144,8 +144,8 @@ done
 waiting
 
 # Create labels
-for sv in "${SV_TYPES[@]}"; do
-    for c in "${SV_CALLS[@]}"; do
+for c in "${SV_CALLS[@]}"; do
+    for sv in "${SV_TYPES[@]}"; do
         p=label_windows
         cmd="python $p.py -b \"$BED\" -c \"$SEQ_IDS_CSV\" -w $WIN_SZ \
           -gt \"$BEDPE\" -s $sv -sv \"$BASE_DIR/$c\" -o labels.json.gz \
@@ -158,10 +158,10 @@ done
 waiting
 
 # Create windows
-for sv in "${SV_TYPES[@]}"; do
-    for c in "${SV_CALLS[@]}"; do
+for c in "${SV_CALLS[@]}"; do
+    for sv in "${SV_TYPES[@]}"; do
         p=create_window_pairs
-        out="labels/win$WIN_SZ/$sv/$c"
+        out="labels/win$WIN_SZ/$c/$sv"
         lb="$out/labels.json.gz"
         cmd="python $p.py -b \"$BAM\" -c \"$SEQ_IDS_CSV\" -lb \"$lb\" -ca . \
           -w $WIN_SZ -p \"$out\" -l $p.log"
@@ -173,10 +173,10 @@ done
 waiting
 
 # Add window channels
-for sv in "${SV_TYPES[@]}"; do
-    for c in "${SV_CALLS[@]}"; do
+for c in "${SV_CALLS[@]}"; do
+    for sv in "${SV_TYPES[@]}"; do
         p=add_win_channels
-        out="labels/win$WIN_SZ/$sv/$c"
+        out="labels/win$WIN_SZ/$c/$sv"
         dir_prefix="$out/windows/windows"
         infile=${dir_prefix}".npz"
         outfile=${dir_prefix}"_en.npz"
@@ -192,10 +192,10 @@ done
 waiting
 
 # Train and test model
-for sv in "${SV_TYPES[@]}"; do
-    for c in "${SV_CALLS[@]}"; do
+for c in "${SV_CALLS[@]}"; do
+    for sv in "${SV_TYPES[@]}"; do
         p=train
-        train_dir="labels/win$WIN_SZ/$sv/$c"
+        train_dir="labels/win$WIN_SZ/$c/$sv"
         cmd="python $p.py --training_sample_name \"$SAMPLE\" \
           --training_sample_folder ${train_dir} --test_sample_name \"$SAMPLE\" \
           --test_sample_folder ${train_dir} -k $KFOLD -e $EPOCHS -p \"$out\" -s $sv -l $p.log
