@@ -430,8 +430,8 @@ def main():
     sv_caller_name = os.path.basename(args.sv_positions)
     output_dir = os.path.join(args.outputpath, 'labels',
                               'win' + str(args.window),
-                              args.svtype,
-                              sv_caller_name
+                              sv_caller_name,
+                              args.svtype
                               )
     os.makedirs(output_dir, exist_ok=True)
     # Log file
