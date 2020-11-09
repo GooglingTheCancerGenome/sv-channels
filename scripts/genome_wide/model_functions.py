@@ -168,7 +168,7 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test,
     # print(y_binarized)
     # print(n_classes)
 
-    probs = model.predict_proba(X_test, batch_size=1000, verbose=False)
+    probs = model.predict(X_test, batch_size=1000, verbose=False)
 
     # columns are predicted, rows are truth
     predicted = probs.argmax(axis=1)
