@@ -70,12 +70,12 @@ load_bed <- function(bed_file)
     return(bed_regions)
 }
 
-load_bedpe <- function(bedpe_file, filter_regions, N_filter_regions)
+load_bedpe <- function(bedpe_file, encode.blacklist, n.regions)
 {
     bedpe_gr <- pairs2breakpointgr(rtracklayer::import(bedpe_file))
 
-    bedpe_gr <- filter_regions('ENCODE blacklist', bedpe_gr, filter_regions, mode = 'remove')
-    bedpe_gr <- filter_regions('regions with Ns', bedpe_gr, N_filter_regions, mode = 'remove')
+    bedpe_gr <- filter_regions('ENCODE blacklist', bedpe_gr, load_bed(encode.blacklist), mode = 'remove')
+    bedpe_gr <- filter_regions('regions with Ns', bedpe_gr, load_bed(n.regions), mode = 'remove')
 
     return(bedpe_gr)
 }
