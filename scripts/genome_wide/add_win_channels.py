@@ -174,17 +174,15 @@ def update_channel(X, ch, iter, read, win_mid_pos, is_second_win, win_len, paddi
     return X
 
 
-def add_channels(args):
+def add_channels(args, aln):
 
-    ibam = args.bam
     win = args.win
     ifile = args.input
     padding = args.padding
     log_every_n_pos = args.log_every_n_pos
 
     def get_reads(chrom, pos):
-        with pysam.AlignmentFile(ibam, "rb") as aln:
-            return [read for read in aln.fetch(chrom, pos - win / 2, pos + win / 2)]
+        return [read for read in aln.fetch(chrom, pos - win / 2, pos + win / 2)]
 
     # Load the windows
     logging.info("Loading windows...")
@@ -256,7 +254,9 @@ def main():
 
     t0 = time()
 
-    X, y = add_channels(args)
+    aln = pysam.AlignmentFile(args.bam, "rb")
+
+    X, y = add_channels(args, aln)
 
     save_windows(X, y, args.output)
 
