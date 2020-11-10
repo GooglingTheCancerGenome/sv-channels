@@ -85,7 +85,7 @@ eval "$(conda shell.bash hook)"
 conda activate $MY_ENV
 conda list
 
-if [${MAKECHANNELS}]; then
+if [ "$MAKECHANNELS" = true ]; then
 
 # convert SV calls (i.e. truth set and sv-callers output) in VCF to BEDPE files
 cd $BASE_DIR/../scripts/R
@@ -195,6 +195,8 @@ done
 
 waiting
 
+fi
+
 # Train and test model
 for sv in "${SV_TYPES[@]}"; do
     for c in "${SV_CALLS[@]}"; do
@@ -211,8 +213,6 @@ for sv in "${SV_TYPES[@]}"; do
 done
 
 waiting
-
-fi
 
 cd $BASE_DIR/../scripts/R
 for c in "${SV_CALLS[@]}"; do
