@@ -250,7 +250,7 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
                 #     sv_covered.add(lu_start_elem_svid)
                 #     labels[pos_id] = 'UK_overlap_not_matching'
             else:
-                labels[pos_id] = 'UK_single_partial'
+                labels[pos_id] = 'no'+svtype
 
             # else:
             #

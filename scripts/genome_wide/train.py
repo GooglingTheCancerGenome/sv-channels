@@ -7,7 +7,7 @@ import json
 import logging
 import os
 import sys
-from collections import Counter
+
 from time import time
 
 import bcolz
@@ -33,7 +33,7 @@ from tensorflow.keras.callbacks import (CSVLogger, EarlyStopping, ModelCheckpoin
 from sklearn.model_selection import StratifiedKFold, train_test_split
 
 from model_functions import \
-    evaluate_model  # create_model_with_mcfly, train_model_with_mcfly
+    evaluate_model, get_data  # create_model_with_mcfly, train_model_with_mcfly
 
 
 def get_labels(channel_data_dir, win):
@@ -44,49 +44,6 @@ def get_labels(channel_data_dir, win):
         labels = json.loads(fin.read().decode('utf-8'))
 
     return labels
-
-
-def get_data(windows_file, npz_mode, svtype):
-    def filter_labels(X, y, win_ids):
-        # print(y)
-        keep = [i for i, v in enumerate(y) if v in [svtype, 'no' + svtype]]
-        # print(keep)
-        X = X[np.array(keep)]
-        # print(y)
-        y = [y[i] for i in keep]
-        win_ids = [win_ids[i] for i in keep]
-
-        print(Counter(y))
-        return X, y, win_ids
-
-    logging.info('Loading data from {}...'.format(windows_file))
-
-    y = []
-    win_ids = []
-
-    if npz_mode:
-        npzfile = np.load(windows_file, allow_pickle=True)
-
-        X = npzfile['data']
-        labels = npzfile['labels']
-        labels = labels.item()
-
-    y.extend(labels.values())
-    win_ids.extend(labels.keys())
-
-    logging.info(X.shape)
-    logging.info(Counter(y))
-
-    X, y, win_ids = filter_labels(X, y, win_ids)
-
-    y = np.array([mapclasses[i] for i in y])
-    win_ids = np.array(win_ids)
-
-    logging.info('Data from {} loaded'.format(windows_file))
-
-    print(X.shape)
-
-    return X, y, win_ids
 
 
 def train_and_test_data(sampleName, npz_mode, svtype):
@@ -341,6 +298,7 @@ def train_and_test_model(training_name, test_name, training_windows, test_window
 
 
 def main():
+
     default_win = 200
     default_path = os.path.join('./cnn/win'+str(default_win), 'split_reads')
     def_windows_file = os.path.join(default_path, 'windows', 'DEL', 'windows_en.npz')
@@ -448,8 +406,6 @@ def main():
                         help="Regularization rate = 10 ** (-regularization_rate_exp)")
 
     args = parser.parse_args()
-
-    cmd_name = 'model'
 
     global mapclasses
     mapclasses = {args.svtype: 0, 'no' + args.svtype: 1}

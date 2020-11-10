@@ -1,6 +1,6 @@
 import logging
 import os
-
+from collections import Counter
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -63,6 +63,51 @@ def unfold_win_id(win_id):
 #                              shuffle=True)
 #
 #     return history, best_model
+
+def get_data(windows_file, npz_mode, svtype):
+
+    def filter_labels(X, y, win_ids):
+        # print(y)
+        keep = [i for i, v in enumerate(y) if v in [svtype, 'no' + svtype]]
+        # print(keep)
+        X = X[np.array(keep)]
+        # print(y)
+        y = [y[i] for i in keep]
+        win_ids = [win_ids[i] for i in keep]
+
+        print(Counter(y))
+        return X, y, win_ids
+
+    logging.info('Loading data from {}...'.format(windows_file))
+
+    y = []
+    win_ids = []
+
+    if npz_mode:
+        npzfile = np.load(windows_file, allow_pickle=True)
+
+        X = npzfile['data']
+        labels = npzfile['labels']
+        labels = labels.item()
+
+    y.extend(labels.values())
+    win_ids.extend(labels.keys())
+
+    logging.info(X.shape)
+    logging.info(Counter(y))
+
+    # X, y, win_ids = filter_labels(X, y, win_ids)
+
+    mapclasses = {svtype: 0, 'no' + svtype: 1}
+
+    y = np.array([mapclasses[i] for i in y])
+    win_ids = np.array(win_ids)
+
+    logging.info('Data from {} loaded'.format(windows_file))
+
+    print(X.shape)
+
+    return X, y, win_ids
 
 
 def evaluate_model(model, X_test, ytest_binary, win_ids_test,
