@@ -331,7 +331,7 @@ def get_labels(chrlist, chr_dict, win_len, svtype, ground_truth, sv_positions,
     # windows half length
     win_hlen = int(int(win_len) / 2)
 
-    sv_caller_file = os.path.join(channelDataDir, sv_positions + '.bedpe')
+    sv_caller_file = os.path.join('..', '..', 'data', sv_positions + '.bedpe')
     sv_caller_name = os.path.basename(sv_positions)
 
     if os.path.exists(sv_caller_file):
