@@ -89,9 +89,6 @@ for (svtype in sv_types)
   sv_regions[[svtype]] <-
     load_bedpe(bedpe.file, regions_for_filtering, ref_regions)
 
-  # rename NA. column of CNN into svLen
-  names(mcols(sv_regions[[svtype]]))[names(mcols(sv_regions[[svtype]])) ==
-                                       'NA.'] <- 'svLen'
 
   # Merge SVs
   if (svtype != 'INS')
