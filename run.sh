@@ -90,8 +90,9 @@ conda list
 for vcf in $(find data -name "*.vcf" | grep -v "htz"); do
     int_prefix=$(basename $vcf .vcf)
     int_bedpe="${BASE_DIR}/${int_prefix}.bedpe"
+    p=vcf2bedpe
     cmd="Rscript scripts/R/vcf2bedpe.R -i ${vcf} -o ${int_bedpe}"
-    JOB_ID=$(submit vcf2bedpe all "$cmd")
+    JOB_ID=$(submit "$cmd" "$p-$int_prefix")
     JOBS+=($JOB_ID)
 done
 
