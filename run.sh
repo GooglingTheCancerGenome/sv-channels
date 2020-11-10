@@ -15,12 +15,12 @@ BASE_DIR=$(dirname "$BAM")
 SAMPLE=$(basename "$BAM" .bam)
 SEQ_IDS=(${@:3})
 SEQ_IDS_CSV=$(IFS=, ; echo "${SEQ_IDS[*]}")  # stringify
-SV_TYPES=(DEL INS INV DUP CTX)  # INS INV DUP CTX)
-SV_CALLS=(split_reads gridss manta delly lumpy)  # manta delly lumpy)
+SV_TYPES=(DEL)  # INS INV DUP CTX)
+SV_CALLS=(split_reads gridss)  # manta delly lumpy)
 CVMODES=(kfold chrom)
 KFOLD=2  # k-fold cross validation
 EPOCHS=1 # epochs
-WIN_SZ=50  # window size in bp
+WIN_SZ=25  # window size in bp
 PREFIX="${BASE_DIR}/${SAMPLE}"
 TWOBIT="${PREFIX}.2bit"
 BIGWIG="${PREFIX}.bw"
