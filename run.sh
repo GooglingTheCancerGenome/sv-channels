@@ -227,7 +227,7 @@ for c in "${SV_CALLS[@]}"; do
             sv_calls_dir=${win_dir}"/"${c}"/"${m}
             bedpe_out=${win_dir}"/sv-channels."${c}"."${m}"."${SAMPLE}
             cmd="Rscript ${p}.R \
-                    -i ${split_reads_dir} \
+                    -i ${sv_calls_dir} \
                     -f ${EXCL_LIST} \
                     -n ${NREGIONS} \
                     -m ${c} \
