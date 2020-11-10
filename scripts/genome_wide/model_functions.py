@@ -64,7 +64,7 @@ def unfold_win_id(win_id):
 #
 #     return history, best_model
 
-def get_data(windows_file, npz_mode, svtype):
+def get_data(windows_list, npz_mode, svtype):
 
     def filter_labels(X, y, win_ids):
         # print(y)
@@ -78,20 +78,26 @@ def get_data(windows_file, npz_mode, svtype):
         print(Counter(y))
         return X, y, win_ids
 
-    logging.info('Loading data from {}...'.format(windows_file))
-
+    X = []
     y = []
     win_ids = []
 
-    if npz_mode:
-        npzfile = np.load(windows_file, allow_pickle=True)
+    for t in windows_list:
 
-        X = npzfile['data']
+        logging.info('Loading data from {}...'.format(t))
+
+        npzfile = np.load(t, allow_pickle=True)
+
+        X.extend(npzfile['data'])
         labels = npzfile['labels']
         labels = labels.item()
 
-    y.extend(labels.values())
-    win_ids.extend(labels.keys())
+        y.extend(labels.values())
+        win_ids.extend(labels.keys())
+
+        logging.info('Data from {} loaded'.format(t))
+
+    X = np.stack(X, axis=0)
 
     logging.info(X.shape)
     logging.info(Counter(y))
@@ -102,10 +108,6 @@ def get_data(windows_file, npz_mode, svtype):
 
     y = np.array([mapclasses[i] for i in y])
     win_ids = np.array(win_ids)
-
-    logging.info('Data from {} loaded'.format(windows_file))
-
-    print(X.shape)
 
     return X, y, win_ids
 

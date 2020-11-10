@@ -56,7 +56,7 @@ def main():
                         '--input',
                         type=str,
                         default=def_windows_file,
-                        help="Specify training sample"
+                        help="Specify list of windows"
                         )
     parser.add_argument('-sn',
                         '--sample_name',
@@ -87,7 +87,9 @@ def main():
         'n_classes': len(mapclasses.keys())
     }
 
-    predict(args.input, args.sample_name, args.svtype,
+    windows_list = args.input.split(',')
+
+    predict(windows_list, args.sample_name, args.svtype,
             args.model, args.model_name, args.output)
 
 

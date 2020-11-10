@@ -262,7 +262,7 @@ def train_and_test_model(training_name, test_name, training_windows, test_window
                          outDir,
                          npz_mode, svtype):
 
-    X_train, y_train, win_ids_train = get_data(training_windows, npz_mode, svtype)
+    X_test, y_test, win_ids_test = get_data(training_windows, npz_mode, svtype)
     X_test, y_test, win_ids_test = get_data(test_windows, npz_mode, svtype)
 
     # Parameters
@@ -313,12 +313,12 @@ def main():
     parser.add_argument('-t',
                         '--training_windows',
                         type=str,
-                        default=def_windows_file,
-                        help="Specify training sample")
+                        default=def_windows_file+','+def_windows_file,
+                        help="Comma separated list of training data")
     parser.add_argument('-x',
                         '--test_windows',
                         type=str,
-                        default=def_windows_file,
+                        default=def_windows_file+','+def_windows_file,
                         help="Specify training sample")
     parser.add_argument('-tn',
                         '--training_sample_name',
@@ -440,15 +440,21 @@ def main():
 
     t0 = time()
 
-    assert os.path.exists(os.path.join(args.training_windows))
-    assert os.path.exists(os.path.join(args.test_windows))
+    training_windows_list = args.training_windows.split(',')
+    test_windows_list = args.test_windows.split(',')
 
-    if args.training_windows != args.test_windows:
+    for t in training_windows_list:
+        assert os.path.exists(t)
+
+    for t in test_windows_list:
+        assert os.path.exists(t)
+
+    if len(set(test_windows_list) & set(training_windows_list)) == 0:
 
         train_and_test_model(
             training_name=args.training_sample_name,
             test_name=args.test_sample_name,
-            training_windows=args.training_windows,
+            training_windows=training_windows_list,
             test_windows=args.test_windowsr,
             outDir=output_dir,
             npz_mode=args.load_npz,
@@ -457,7 +463,7 @@ def main():
     else:
 
         cross_validation(
-            training_windows=args.training_windows,
+            training_windows=training_windows_list,
             outDir=output_dir,
             npz_mode=args.load_npz,
             svtype=args.svtype,
@@ -465,7 +471,7 @@ def main():
         )
 
         cross_validation_by_chrom(
-            training_windows=args.training_windows,
+            training_windows=training_windows_list,
             outDir=output_dir,
             npz_mode=args.load_npz,
             svtype=args.svtype,
