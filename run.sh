@@ -38,6 +38,7 @@ MY_ENV=sv-channels  # conda env in gtcg/xenon-* docker images
 
 #MODEL PARAMS
 
+MAKECHANNELS=false
 
 # define functions
 submit () {  # submit a job via Xenon CLI
@@ -83,6 +84,8 @@ waiting () {  # wait until all jobs are done
 eval "$(conda shell.bash hook)"
 conda activate $MY_ENV
 conda list
+
+if [MAKECHANNELS =  true]; then
 
 # convert SV calls (i.e. truth set and sv-callers output) in VCF to BEDPE files
 cd scripts/R
@@ -208,6 +211,8 @@ for sv in "${SV_TYPES[@]}"; do
 done
 
 waiting
+
+fi
 
 cd ../R
 for c in "${SV_CALLS[@]}"; do
