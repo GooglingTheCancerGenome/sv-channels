@@ -42,7 +42,7 @@ mode <- argv$m
 output_fn <- argv$o
 
 # For each svtype, collect all predictions in BEDPE format and merge the SVs using SVA
-sv_regions <- list()
+sv_regions <- GRangesList()
 sv_types <- c('DEL', 'INS', 'INV', 'DUP', 'CTX')
 #for (svtype in )
 
@@ -134,11 +134,14 @@ for (svtype in sv_types)
 }
 
 # Export to BEDPE
-tryCatch({
-    bp_pairs <- breakpointgr2pairs(unlist(sv_regions))
-    rtracklayer::export(bp_pairs, con = output_fn)
-}, error = function(err){
-    print(paste("MY_ERROR:  ", err))
-    next
-})
+for (svtype in sv_types)
+{
+  if(length(sv_regions[[svtype]])>0){
+    bp_pairs <- breakpointgr2pairs(sv_regions[[svtype]])
+    rtracklayer::export(bp_pairs, con = paste(output_fn, svtype, 'bedpe', sep='.'))
+  }
+}
+
+
+
 
