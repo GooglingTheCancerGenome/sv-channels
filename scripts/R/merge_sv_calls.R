@@ -141,6 +141,8 @@ for (svtype in sv_types)
     rtracklayer::export(bp_pairs, con = paste(output_fn, svtype, 'bedpe', sep='.'))
   }
 }
+#concatenate the BEDPE files
+system(paste("cat ", output_fn, ".*.bedpe", " > ", output_fn, ".bedpe", sep=""))
 
 
 
