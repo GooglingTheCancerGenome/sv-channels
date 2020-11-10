@@ -87,13 +87,12 @@ conda activate $MY_ENV
 conda list
 
 # convert SV calls (i.e. truth set and sv-callers output) in VCF to BEDPE files
-cd $BASE_DIR/../scripts/R
-for int_vcf in $(find data -name "*.vcf" | grep -E "test"); do
-  int_prefix=$(basename $vcf .vcf)
-  int_bedpe="${BASE_DIR}/${PREFIX}.bedpe"
-  cmd="vcf2bedpe.R -i ${int_vcf} -o ${int_bedpe}"
-  JOB_ID=$(submit vcf2bedpe all "$cmd")
-  JOBS+=($JOB_ID)
+for vcf in $(find data -name "*.vcf" | grep -v "htz"); do
+    int_prefix=$(basename $vcf .vcf)
+    int_bedpe="${BASE_DIR}/${int_prefix}.bedpe"
+    cmd="Rscript scripts/R/vcf2bedpe.R -i ${vcf} -o ${int_bedpe}"
+    JOB_ID=$(submit vcf2bedpe all "$cmd")
+    JOBS+=($JOB_ID)
 done
 
 waiting
