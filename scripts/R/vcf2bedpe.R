@@ -92,7 +92,7 @@ if (meta(header(sv_callset_vcf))[['source']]$Value == 'Sniffles')
                                   levels = c('5to5', '3to3', '3to5', '5to3')
                                 )))
   # TRA
-  idx <- which(info(sv_callset_vcf)$SVTYPE == 'CTX')
+  idx <- which(info(sv_callset_vcf)$SVTYPE == 'TRA')
   if (length(idx) > 0) {
     info(sv_callset_vcf)$CT[idx[seq(1, length(idx), by = 2)]] <- '3to3'
     info(sv_callset_vcf)$CT[idx[seq(2, length(idx), by = 2)]] <-
