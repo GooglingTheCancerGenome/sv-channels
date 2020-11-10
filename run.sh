@@ -148,6 +148,10 @@ done
 
 waiting
 
+fi
+
+cd $BASE_DIR/../scripts/genome_wide
+
 # Create labels
 for c in "${SV_CALLS[@]}"; do
     for sv in "${SV_TYPES[@]}"; do
@@ -195,8 +199,6 @@ for c in "${SV_CALLS[@]}"; do
 done
 
 waiting
-
-fi
 
 # Train and test model
 for sv in "${SV_TYPES[@]}"; do
