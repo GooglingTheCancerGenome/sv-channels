@@ -219,7 +219,7 @@ def cross_validation(training_windows, outDir, npz_mode, svtype, kfold):
     for index, (train_indices, test_indices) in enumerate(skf.split(X, y)):
         print("Training on fold " + str(index + 1) + "/" + str(kfold) + "...")
 
-        model_dir = os.path.join(outDir, 'cv', svtype,
+        model_dir = os.path.join(outDir, 'kfold', svtype,
                                  str(index + 1))
 
         cv_train_and_evaluate(X, y, y_binary, win_ids, train_indices, test_indices, model_dir, svtype)
@@ -251,7 +251,7 @@ def cross_validation_by_chrom(training_windows, outDir, npz_mode, svtype, chrlis
 
         print("Test on chromosome " + chrom + "...")
 
-        model_dir = os.path.join(outDir, 'chrom_cv', svtype, chrom)
+        model_dir = os.path.join(outDir, 'chrom', svtype, chrom)
 
         cv_train_and_evaluate(X, y, y_binary, win_ids, train_indices, test_indices, model_dir, svtype)
 

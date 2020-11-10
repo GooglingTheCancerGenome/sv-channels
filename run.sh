@@ -219,7 +219,7 @@ waiting
 
 cd $BASE_DIR/../scripts/R
 for c in "${SV_CALLS[@]}"; do
-        for m in cv chrom_cv; do
+        for m in "${CVMODES[@]}"; do
             p=merge_sv_calls
             win_dir="../genome_wide/cnn/win$WIN_SZ"
             sv_calls_dir=${win_dir}"/"${c}"/"${m}
@@ -239,7 +239,7 @@ waiting
 
 cd ../utils
 for c in "${SV_CALLS[@]}"; do
-    for m in cv chrom_cv; do
+    for m in "${CVMODES[@]}"; do
         p=bedpe_to_vcf
         win_dir="../genome_wide/cnn/win$WIN_SZ"
         file_prefix=${win_dir}"/sv-channels."${c}"."${m}"."${SAMPLE}
