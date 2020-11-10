@@ -48,13 +48,14 @@ sv_types <- c('DEL', 'INS', 'INV', 'DUP', 'CTX')
 
 for (svtype in sv_types)
 {
-  if(file.exists(file.path(input_path, svtype)))
+  svtype_path <- file.path(input_path, svtype)
+  if(file.exists(svtype_path))
   {
   # svtype <- 'DEL'
   print(svtype)
   filenames <-
     list.files(
-      path = input_path,
+      path = svtype_path,
       pattern = "correct.bedpe$",
       recursive = TRUE,
       full.names = TRUE
