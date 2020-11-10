@@ -38,7 +38,7 @@ MY_ENV=sv-channels  # conda env in gtcg/xenon-* docker images
 
 #MODEL PARAMS
 
-MAKECHANNELS=false
+MAKECHANNELS=true
 
 # define functions
 submit () {  # submit a job via Xenon CLI
@@ -220,7 +220,7 @@ for c in "${SV_CALLS[@]}"; do
             p=merge_sv_calls
             win_dir="../genome_wide/cnn/win$WIN_SZ"
             sv_calls_dir=${win_dir}"/"${c}"/"${m}
-            bedpe_out=${win_dir}"/sv-channels_"${c}"_"${m}"."${SAMPLE}".bedpe"
+            bedpe_out=${win_dir}"/sv-channels."${c}"."${m}"."${SAMPLE}
             cmd="Rscript ${p}.R \
                     -i ${split_reads_dir} \
                     -f ${EXCL_LIST} \
@@ -239,7 +239,7 @@ for c in "${SV_CALLS[@]}"; do
     for m in cv chrom_cv; do
         p=bedpe_to_vcf
         win_dir="../genome_wide/cnn/win$WIN_SZ"
-        file_prefix=${win_dir}"/sv-channels_"${c}"_"${m}"."${SAMPLE}
+        file_prefix=${win_dir}"/sv-channels."${c}"."${m}"."${SAMPLE}
         bedped_in=${file_prefix}".bedpe"
         output_vcf=${file_prefix}".vcf"
         cmd="python ${p}.py \
