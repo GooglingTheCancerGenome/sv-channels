@@ -85,10 +85,10 @@ eval "$(conda shell.bash hook)"
 conda activate $MY_ENV
 conda list
 
-if [MAKECHANNELS =  true]; then
+if [${MAKECHANNELS}]; then
 
 # convert SV calls (i.e. truth set and sv-callers output) in VCF to BEDPE files
-cd scripts/R
+cd $BASE_DIR/../scripts/R
 for int_vcf in $(find data -name "*.vcf" | grep -E "test"); do
   int_prefix=$(basename $vcf .vcf)
   int_bedpe="${BASE_DIR}/${PREFIX}.bedpe"
@@ -100,7 +100,7 @@ done
 waiting
 
 # submit jobs to output "channel" files (*.json.gz and *.npy.gz)
-cd ../genome_wide
+cd $BASE_DIR/../scripts/genome_wide
 p=clipped_reads
 cmd="python $p.py -b \"$BAM\" -c \"${SEQ_IDS_CSV}\" -o $p.json.gz -p . -l $p.log"
 JOB_ID=$(submit "$cmd" $p)
@@ -214,7 +214,7 @@ waiting
 
 fi
 
-cd ../R
+cd $BASE_DIR/../scripts/R
 for c in "${SV_CALLS[@]}"; do
         for m in cv chrom_cv; do
             p=merge_sv_calls
