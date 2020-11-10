@@ -15,11 +15,12 @@ BASE_DIR=$(dirname "$BAM")
 SAMPLE=$(basename "$BAM" .bam)
 SEQ_IDS=(${@:3})
 SEQ_IDS_CSV=$(IFS=, ; echo "${SEQ_IDS[*]}")  # stringify
-SV_TYPES=(DEL)  # INS INV DUP TRA)
-SV_CALLS=(split_reads)  # manta delly lumpy)
+SV_TYPES=(DEL INS INV DUP CTX)  # INS INV DUP CTX)
+SV_CALLS=(split_reads gridss manta delly lumpy)  # manta delly lumpy)
+CVMODES=(kfold chrom)
 KFOLD=2  # k-fold cross validation
-EPOCHS=10 # epochs
-WIN_SZ=200  # window size in bp
+EPOCHS=1 # epochs
+WIN_SZ=50  # window size in bp
 PREFIX="${BASE_DIR}/${SAMPLE}"
 TWOBIT="${PREFIX}.2bit"
 BIGWIG="${PREFIX}.bw"
@@ -200,15 +201,17 @@ fi
 # Train and test model
 for sv in "${SV_TYPES[@]}"; do
     for c in "${SV_CALLS[@]}"; do
-        p=train
-        train_dir="cnn/win$WIN_SZ/$c/windows/$sv/windows_en.npz"
-        out_dir="cnn/win$WIN_SZ/$c"
-        cmd="python $p.py --training_sample_name \"$SAMPLE\" \
-          --training_windows ${train_dir} --test_sample_name \"$SAMPLE\" \
-          --test_windows ${train_dir} -k $KFOLD -e $EPOCHS -p \"$out_dir\" -s $sv -l $p.log
-          "
-        JOB_ID=$(submit "$cmd" "$p-$sv-$c")
-        JOBS+=($JOB_ID)
+        for cv in "${CVMODES[@]}"; do
+            p=train
+            train_dir="cnn/win$WIN_SZ/$c/windows/$sv/windows_en.npz"
+            out_dir="cnn/win$WIN_SZ/$c"
+            cmd="python $p.py --training_sample_name \"$SAMPLE\" \
+              --training_windows ${train_dir} --test_sample_name \"$SAMPLE\" \
+              --test_windows ${train_dir} -k $KFOLD -e $EPOCHS -p \"$out_dir\" -s $sv -cv ${cv} -l $p.log
+              "
+            JOB_ID=$(submit "$cmd" "$p-$sv-$c")
+            JOBS+=($JOB_ID)
+        done
     done
 done
 

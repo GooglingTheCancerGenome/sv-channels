@@ -209,7 +209,6 @@ def cv_train_and_evaluate(X, y, y_binary, win_ids, train_indices, test_indices, 
 
 
 def cross_validation(training_windows, outDir, npz_mode, svtype, kfold):
-
     X, y, win_ids = get_data(training_windows, npz_mode, svtype)
     y_binary = to_categorical(y, num_classes=len(mapclasses.keys()))
 
@@ -227,7 +226,6 @@ def cross_validation(training_windows, outDir, npz_mode, svtype, kfold):
 
 
 def cross_validation_by_chrom(training_windows, outDir, npz_mode, svtype, chrlist):
-
     X, y, win_ids = get_data(training_windows, npz_mode, svtype)
     y_binary = to_categorical(y, num_classes=len(mapclasses.keys()))
 
@@ -261,7 +259,6 @@ def cross_validation_by_chrom(training_windows, outDir, npz_mode, svtype, chrlis
 def train_and_test_model(training_name, test_name, training_windows, test_windows,
                          outDir,
                          npz_mode, svtype):
-
     X_test, y_test, win_ids_test = get_data(training_windows, npz_mode, svtype)
     X_test, y_test, win_ids_test = get_data(test_windows, npz_mode, svtype)
 
@@ -298,9 +295,8 @@ def train_and_test_model(training_name, test_name, training_windows, test_window
 
 
 def main():
-
     default_win = 200
-    default_path = os.path.join('./cnn/win'+str(default_win), 'split_reads')
+    default_path = os.path.join('./cnn/win' + str(default_win), 'split_reads')
     def_windows_file = os.path.join(default_path, 'windows', 'DEL', 'windows_en.npz')
 
     parser = argparse.ArgumentParser(description='Train and test model')
@@ -313,12 +309,12 @@ def main():
     parser.add_argument('-t',
                         '--training_windows',
                         type=str,
-                        default=def_windows_file+','+def_windows_file,
+                        default=def_windows_file + ',' + def_windows_file,
                         help="Comma separated list of training data")
     parser.add_argument('-x',
                         '--test_windows',
                         type=str,
-                        default=def_windows_file+','+def_windows_file,
+                        default=def_windows_file + ',' + def_windows_file,
                         help="Specify training sample")
     parser.add_argument('-tn',
                         '--training_sample_name',
@@ -339,11 +335,11 @@ def main():
                         type=str,
                         default='DEL',
                         help="Specify SV type")
-    parser.add_argument('-m',
-                        '--mode',
+    parser.add_argument('-cv',
+                        '--cv',
                         type=str,
-                        default='training',
-                        help="training/test mode")
+                        default='kfold',
+                        help="kfold/chrom")
     parser.add_argument('-c',
                         '--chrlist',
                         type=str,
@@ -460,23 +456,28 @@ def main():
             npz_mode=args.load_npz,
             svtype=args.svtype
         )
+
     else:
 
-        cross_validation(
-            training_windows=training_windows_list,
-            outDir=output_dir,
-            npz_mode=args.load_npz,
-            svtype=args.svtype,
-            kfold=args.kfold
-        )
+        if args.cv == 'kfold':
 
-        cross_validation_by_chrom(
-            training_windows=training_windows_list,
-            outDir=output_dir,
-            npz_mode=args.load_npz,
-            svtype=args.svtype,
-            chrlist=args.chrlist
-        )
+            cross_validation(
+                training_windows=training_windows_list,
+                outDir=output_dir,
+                npz_mode=args.load_npz,
+                svtype=args.svtype,
+                kfold=args.kfold
+            )
+
+        elif args.cv == 'chrom':
+
+            cross_validation_by_chrom(
+                training_windows=training_windows_list,
+                outDir=output_dir,
+                npz_mode=args.load_npz,
+                svtype=args.svtype,
+                chrlist=args.chrlist
+            )
 
     # print('Elapsed time channel_maker_real on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))
     logging.info('Elapsed time training and testing = %f seconds' %
