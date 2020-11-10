@@ -124,7 +124,7 @@ def read_svcaller_bedpe(inbedpe):
             chrom2, pos2_start, pos2_end = str(columns[3]), int(
                 columns[4]), int(columns[5])
 
-            cr_pos.append((chrom1, pos1_start, chrom2, pos2_start, '*'))
+            cr_pos.append((chrom1, pos1_start, chrom2, pos2_start, '**'))
 
     logging.info('{} candidate positions'.format(len(cr_pos)))
 
