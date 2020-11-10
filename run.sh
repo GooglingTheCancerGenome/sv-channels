@@ -86,8 +86,6 @@ eval "$(conda shell.bash hook)"
 conda activate $MY_ENV
 conda list
 
-if [ "$MAKECHANNELS" = true ]; then
-
 # convert SV calls (i.e. truth set and sv-callers output) in VCF to BEDPE files
 cd $BASE_DIR/../scripts/R
 for int_vcf in $(find data -name "*.vcf" | grep -E "test"); do
@@ -99,6 +97,8 @@ for int_vcf in $(find data -name "*.vcf" | grep -E "test"); do
 done
 
 waiting
+
+if [ "$MAKECHANNELS" = true ]; then
 
 # submit jobs to output "channel" files (*.json.gz and *.npy.gz)
 cd $BASE_DIR/../scripts/genome_wide
