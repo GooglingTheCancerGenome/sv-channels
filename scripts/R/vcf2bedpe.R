@@ -69,35 +69,37 @@ apply_svtype <- function(gr, p_inslen)
 sv_callset_vcf <- VariantAnnotation::readVcf(argv$i)
 
 # if the file was generated with SURVIVOR simSV, treat translocations as DELLY TRA entries
-if (meta(header(sv_callset_vcf))[['source']]$Value == 'Sniffles')
-{
-  # Make TRA IDs unique
-  sv.names <- names(rowRanges(sv_callset_vcf))
-  idx <- grep('TRA', names(rowRanges(sv_callset_vcf)))
-  names(rowRanges(sv_callset_vcf))[idx] <-
-    paste(sv.names[idx], as.character(1 - idx %% 2 + 1), sep = '_')
-  
-  # update info header
-  info(header(sv_callset_vcf)) <-
-    rbind(info(header(sv_callset_vcf)),
-          data.frame(
-            Number = '4',
-            Type = 'String',
-            Description = 'DELLY CT'
-          ))
-  # update info
-  info(sv_callset_vcf) <- cbind(info(sv_callset_vcf),
-                                data.frame(CT = factor(
-                                  rep('3to5', nrow(info(sv_callset_vcf))),
-                                  levels = c('5to5', '3to3', '3to5', '5to3')
-                                )))
-  # TRA
-  idx <- which(info(sv_callset_vcf)$SVTYPE == 'TRA')
-  if (length(idx) > 0) {
-    info(sv_callset_vcf)$CT[idx[seq(1, length(idx), by = 2)]] <- '3to3'
-    info(sv_callset_vcf)$CT[idx[seq(2, length(idx), by = 2)]] <-
-      '5to5'
-  }
+if ('source' %in% names(meta(header(sv_callset_vcf)))){
+    if (meta(header(sv_callset_vcf))[['source']]$Value == 'Sniffles')
+    {
+      # Make TRA IDs unique
+      sv.names <- names(rowRanges(sv_callset_vcf))
+      idx <- grep('TRA', names(rowRanges(sv_callset_vcf)))
+      names(rowRanges(sv_callset_vcf))[idx] <-
+        paste(sv.names[idx], as.character(1 - idx %% 2 + 1), sep = '_')
+
+      # update info header
+      info(header(sv_callset_vcf)) <-
+        rbind(info(header(sv_callset_vcf)),
+              data.frame(
+                Number = '4',
+                Type = 'String',
+                Description = 'DELLY CT'
+              ))
+      # update info
+      info(sv_callset_vcf) <- cbind(info(sv_callset_vcf),
+                                    data.frame(CT = factor(
+                                      rep('3to5', nrow(info(sv_callset_vcf))),
+                                      levels = c('5to5', '3to3', '3to5', '5to3')
+                                    )))
+      # TRA
+      idx <- which(info(sv_callset_vcf)$SVTYPE == 'TRA')
+      if (length(idx) > 0) {
+        info(sv_callset_vcf)$CT[idx[seq(1, length(idx), by = 2)]] <- '3to3'
+        info(sv_callset_vcf)$CT[idx[seq(2, length(idx), by = 2)]] <-
+          '5to5'
+      }
+    }
 }
 
 # Not including breakends (unpaired breakpoints)
