@@ -1,6 +1,7 @@
 import argparse
 import os
 import pandas as pd
+import subprocess
 
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.models import load_model
@@ -69,10 +70,25 @@ def main():
                         type=str,
                         default='DEL',
                         help="Specify SV type")
+    parser.add_argument('-fe',
+                        '--encode_blacklist',
+                        type=str,
+                        default='../../data/ENCFF001TDO.bed',
+                        help="ENCODE blacklist")
+    parser.add_argument('-fn',
+                        '--n_regions',
+                        type=str,
+                        default='../../data/reference_N_regions.bed',
+                        help="Regions in the genome containing Ns")
+    parser.add_argument('-tb',
+                        '--twobit',
+                        type=str,
+                        default='../../data/test.2bit',
+                        help="TwoBit reference genome")
     parser.add_argument('-o',
                         '--output',
                         type=str,
-                        default='./predictions',
+                        default='results',
                         help="Output folder"
                         )
 
@@ -90,7 +106,36 @@ def main():
     windows_list = args.input.split(',')
 
     predict(windows_list, args.sample_name, args.svtype,
-            args.model, args.model_name, args.output)
+            args.model, args.model_name, os.path.join(args.output, args.svtype))
+
+    out_prefix = os.path.join(args.output, "sv-channels")
+
+    merge_sv_calls = ' '.join([
+        "cd ../R; "
+        "Rscript merge_sv_calls.R",
+        "-i", os.path.join("../genome_wide", args.output),
+        "-f", args.encode_blacklist,
+        "-n", args.n_regions,
+        "-m split_reads",
+        "-o", os.path.join("../genome_wide", out_prefix)
+    ])
+    print(merge_sv_calls)
+    cmd_out = subprocess.run(merge_sv_calls, shell=True, check=True)
+    print(cmd_out)
+
+    assert os.path.join("../utils/bedpe_to_vcf.py")
+    assert os.path.join("../genome_wide", out_prefix+'.bedpe')
+
+    bedpe_to_vcf = ' '.join([
+        "source activate sv-channels; python ../utils/bedpe_to_vcf.py",
+        "-i", os.path.join("../genome_wide", out_prefix+'.bedpe'),
+        "-b", args.twobit,
+        "-s", args.sample_name,
+        "-o", os.path.join("../genome_wide", out_prefix+'.'+args.sample_name+'.vcf')
+    ])
+    print(bedpe_to_vcf)
+    cmd_out = subprocess.run(bedpe_to_vcf, shell=True, check=True)
+    print(cmd_out)
 
 
 if __name__ == '__main__':
