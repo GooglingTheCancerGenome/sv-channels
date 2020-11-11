@@ -10,16 +10,26 @@ p <-
     p,
     "-i",
     help = paste("a path containing multiple BEDPE files (CV mode"),
-    type = "character"
+    type = "character",
+    default = '../genome_wide/results'
   )
 p <-
-  add_argument(p, "-f", help = "ENCODE blacklist", type = "character")
+  add_argument(p, "-f", help = "ENCODE blacklist", type = "character",
+  default = '../../data/ENCFF001TDO.bed'
+  )
 p <-
-  add_argument(p, "-n", help = "BED file with regions containing Ns", type = "character")
+  add_argument(p, "-n", help = "BED file with regions containing Ns", type = "character",
+  default = '../../data/reference_N_regions.bed'
+  )
 p <-
-  add_argument(p, "-m", help = "mode: 'split_reads', 'gridss', 'manta', 'delly', 'lumpy'", type = "character")
+  add_argument(p, "-m", help = "mode: 'split_reads', 'gridss', 'manta', 'delly', 'lumpy'",
+  type = "character",
+  default="split_reads"
+  )
 p <-
-  add_argument(p, "-o", help = "Output in BEDPE", type = "character")
+  add_argument(p, "-o", help = "Output in BEDPE", type = "character",
+  default="../genome_wide/results/sv-channels"
+  )
 
 # parse the command line arguments
 argv <- parse_args(p)
@@ -136,12 +146,12 @@ for (svtype in sv_types)
 {
   if(length(sv_regions[[svtype]])>0){
     bp_pairs <- breakpointgr2pairs(sv_regions[[svtype]])
-    rtracklayer::export(bp_pairs, con = paste(output_fn, svtype, 'bedpe', sep='.'))
+    out_file = paste(output_fn, svtype, 'bedpe', sep='.')
+    print(out_file)
+    rtracklayer::export(bp_pairs, con = out_file)
   }
 }
 #concatenate the BEDPE files
 system(paste("cat ", output_fn, ".*.bedpe", " > ", output_fn, ".bedpe", sep=""))
-
-
 
 
