@@ -57,19 +57,10 @@ def unfold_win_id(win_id):
     return chr1, pos1, chr2, pos2, strand_info
 
 
-def get_window_by_id(win_id, chr_array, padding, win_hlen):
-    chr1, pos1, chr2, pos2 = win_id.split('_')
-    pos1 = int(pos1)
-    pos2 = int(pos2)
-
-    dask_arrays = list()
-    dask_arrays.append(chr_array[chr1][pos1 - win_hlen:pos1 + win_hlen, :])
-    dask_arrays.append(padding)
-    dask_arrays.append(chr_array[chr2][pos2 - win_hlen:pos2 + win_hlen, :])
-    return da.concatenate(dask_arrays, axis=0)
-
-
 def get_windows(carrays_dir, outDir, chrom_list, win, label_file_path, mode, npz_mode, padding_len):
+
+    if win % 2 != 0:
+        win += 1
 
     chr_array = load_chr_array(carrays_dir, chrom_list)
     n_channels = chr_array[chrom_list[0]].shape[1]
@@ -208,7 +199,7 @@ def main():
     parser.add_argument('-p',
                         '--outputpath',
                         type=str,
-                        default='./cnn/win200/split_reads/windows/DEL',
+                        default='./cnn/win25/split_reads/windows/DEL',
                         help="Specify output path")
     parser.add_argument('-l',
                         '--logfile',
@@ -217,12 +208,12 @@ def main():
     parser.add_argument('-w',
                         '--window',
                         type=str,
-                        default=250,
+                        default=25,
                         help="Specify window size")
     parser.add_argument('-lb',
                         '--labels',
                         type=str,
-                        default='./cnn/win200/split_reads/windows/DEL/labels.json.gz',
+                        default='./cnn/win25/split_reads/windows/DEL/labels.json.gz',
                         help="Specify label file")
     parser.add_argument('-m',
                         '--mode',

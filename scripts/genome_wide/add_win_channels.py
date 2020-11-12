@@ -17,6 +17,7 @@ def init_log(logfile):
 
 def parse_args():
 
+    default_win = 25
     parser = argparse.ArgumentParser(
         description='Add window specific channels')
 
@@ -28,21 +29,21 @@ def parse_args():
     parser.add_argument('-w',
                         '--win',
                         type=int,
-                        default=200,
+                        default=default_win,
                         help="Window size")
     parser.add_argument('-i',
                         '--input',
                         type=str,
-                        default='./cnn/win200/split_reads/windows/DEL/windows.npz',
+                        default='./cnn/win'+str(default_win)+'/split_reads/windows/DEL/windows.npz',
                         help="input file")
     parser.add_argument('-o',
                         '--output',
                         type=str,
-                        default='./cnn/win200/split_reads/windows/DEL/windows_en.npz',
+                        default='./cnn/win'+str(default_win)+'/split_reads/windows/DEL/windows_en.npz',
                         help="output file")
     parser.add_argument('-l',
                         '--logfile',
-                        default='./cnn/win200/split_reads/windows/DEL/windows_en.log',
+                        default='./cnn/win'+str(default_win)+'/split_reads/windows/DEL/windows_en.log',
                         help='File in which to write logs.')
     parser.add_argument('-lp',
                         '--log_every_n_pos',
@@ -59,7 +60,6 @@ def parse_args():
 
 
 def get_channels():
-
     ch = [
         # All reads (clipped or not)
         'F_AR_N', 'R_AR_N',
@@ -97,27 +97,45 @@ def update_channel(X, ch, iter, read, win_mid_pos, is_second_win, win_len, paddi
     orientation = 'R' if read.is_reverse else 'F'
 
     start_win = win_len + padding if is_second_win else 0
-    end_win = win_len*2 + padding if is_second_win else win_len
+    end_win = win_len * 2 + padding if is_second_win else win_len
 
-    abs_start = int(win_mid_pos - win_len / 2)
-    abs_end = int(win_mid_pos + win_len / 2)
+    abs_start = int(win_mid_pos - int(win_len / 2)) if win_len % 2 == 0 else \
+        int(win_mid_pos - int(win_len + 1 / 2))
+
+    abs_end = int(win_mid_pos + int(win_len / 2)) if win_len % 2 == 0 else \
+        int(win_mid_pos + int(win_len + 1 / 2))
 
     start = max(read.reference_start, abs_start)
     end = min(read.reference_end, abs_end)
 
     # print('reference_start:{}, reference_end:{}'.format(s0, e0))
+    #rel_start = start - abs_start
+    #rel_end = end - abs_start
+
     rel_start = start_win + start - abs_start
     rel_end = start_win + end - abs_start
 
+    # print(read)
+    # print('start_win={}\nend_win={}\nabs_start={}\nabs_end={}\nstart={}\nend={}\nrel_start={}\nrel_end={}\n'.format(
+    #     start_win, end_win, abs_start,
+    #     abs_end, start, end, rel_start,
+    #     rel_end))
+
+    assert rel_start >= 0
+    assert rel_end >= 0
+
+    assert start_win <= rel_start <= end_win
+    assert start_win <= rel_end <= end_win
+
     skip = False
     if is_left_clipped(read):
-        if (is_second_win and win_len + padding <= rel_start < win_len*2 + padding) or \
+        if (is_second_win and win_len + padding <= rel_start < win_len * 2 + padding) or \
                 (not is_second_win and 0 <= rel_start < win_len):
             rel_pos = rel_start
         else:
             skip = True
     elif is_right_clipped(read):
-        if (is_second_win and win_len + padding <= rel_end < win_len*2 + padding) or \
+        if (is_second_win and win_len + padding <= rel_end < win_len * 2 + padding) or \
                 (not is_second_win and 0 <= rel_end < win_len):
             rel_pos = rel_end
         else:
@@ -176,13 +194,13 @@ def update_channel(X, ch, iter, read, win_mid_pos, is_second_win, win_len, paddi
 
 def add_channels(args, aln):
 
-    win = args.win
+    win = args.win if args.win % 2 == 0 else args.win + 1
     ifile = args.input
     padding = args.padding
     log_every_n_pos = args.log_every_n_pos
 
     def get_reads(chrom, pos):
-        return [read for read in aln.fetch(chrom, pos - win / 2, pos + win / 2)]
+        return [read for read in aln.fetch(chrom, pos - int(win / 2), pos + int(win / 2))]
 
     # Load the windows
     logging.info("Loading windows...")
@@ -197,6 +215,9 @@ def add_channels(args, aln):
     last_t = time()
     # Initialize numpy array
     X_enh = np.zeros(shape=(X.shape[:2] + (len(ch),)), dtype=np.int8)
+
+    # print(X.shape)
+    # print(X_enh.shape)
 
     for i, p in enumerate(y.keys(), start=0):
 
@@ -232,7 +253,7 @@ def add_channels(args, aln):
             X_enh = update_channel(X_enh, ch, i, r, pos2, True, win, padding)
 
     for i in np.arange(X_enh.shape[2]):
-        logging.info('win channels array:'+ \
+        logging.info('win channels array:' + \
                      'non-zero elements at index {}:{}'.format(i, np.argwhere(X_enh[i, :] != 0).shape[0]))
 
     X = np.concatenate((X, X_enh), axis=2)
@@ -246,7 +267,6 @@ def add_channels(args, aln):
 
 
 def main():
-
     # parse arguments
     args = parse_args()
     # initialize log file
