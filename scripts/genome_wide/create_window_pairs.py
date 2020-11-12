@@ -207,7 +207,7 @@ def main():
                         help='File in which to write logs.')
     parser.add_argument('-w',
                         '--window',
-                        type=str,
+                        type=int,
                         default=25,
                         help="Specify window size")
     parser.add_argument('-lb',
