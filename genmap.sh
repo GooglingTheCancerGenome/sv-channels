@@ -17,6 +17,7 @@ FAI="$FASTA.fai"
 INDEX="$BASE_DIR/genmap_index"
 MAP="$BASE_DIR/genmap_K${KMERS}_E${MAX_MISMATCH}"
 
+rm -fr "$INDEX" "$MAP*" "$FAI*"
 genmap index -F "$FASTA" -I "$INDEX"
 genmap map -K "$KMERS" -E "$MAX_MISMATCH" -I "$INDEX" -O "$MAP" -bg
 cut -f 1,2 "$FAI" > "$FAI.sizes"
