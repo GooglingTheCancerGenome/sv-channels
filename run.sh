@@ -134,7 +134,7 @@ cmd="python $p.py \
 JOB_ID=$(submit "$cmd" $p)
 JOBS+=($JOB_ID)
 
-for s in "${SEQ_IDS[@]}"; do  # per chromosome
+for s in $(echo "$SEQ_IDS" | tr ',' ' '); do  # per chromosome
   p=clipped_read_distance
   cmd="python $p.py \
     -b \"$BAM\" \
@@ -170,7 +170,7 @@ done
 waiting
 
 # generate chromosome arrays from the channels as well as label window pairs
-for s in "${SEQ_IDS[@]}"; do
+for s in $(echo "$SEQ_IDS" | tr ',' ' '); do
   p=chr_array
   cmd="python $p.py \
     -b \"$BAM\" \
