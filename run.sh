@@ -18,10 +18,13 @@ SEQ_IDS_CSV="$(IFS=, ; echo "${SEQ_IDS[*]}")"  # stringify
 SV_TYPES=(DEL)  # INS INV DUP CTX)
 SV_CALLS=(split_reads gridss)  # manta delly lumpy)
 CV_MODES=(kfold chrom)  # cross validation modes
+KMERS=19
+MAX_MISMATCH=2
 KFOLD=2  # k-fold cross validation
 EPOCHS=1  # epochs
 WIN_SZ=25  # window size in bp
 PREFIX="$BASE_DIR/$SAMPLE"
+FASTA="$PREFIX.fasta"
 TWOBIT="$PREFIX.2bit"
 BIGWIG="$PREFIX.bw"
 BEDPE="$PREFIX.bedpe"
@@ -79,6 +82,12 @@ waiting () {  # wait until all jobs are done
 eval "$(conda shell.bash hook)"
 conda activate $CONDA_ENV
 conda list
+
+# compute genome mappability
+p=genmap
+cmd="./$p.sh \"$FASTA\" \"$BIGWIG\" $KMERS $MAX_MISMATCH"
+JOB_ID=$(submit "$cmd" "$p")
+JOBS+=($JOB_ID)
 
 # convert SV calls (i.e. truth set and sv-callers output) in VCF to BEDPE files
 cd scripts/R
