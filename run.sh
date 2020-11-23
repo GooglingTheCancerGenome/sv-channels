@@ -25,7 +25,6 @@ EPOCHS=1  # epochs
 WIN_SZ=25  # window size in bp
 PREFIX="$BASE_DIR/$SAMPLE"
 FASTA="$PREFIX.fasta"
-FAI="$FASTA.fai"
 TWOBIT="$PREFIX.2bit"
 BIGWIG="$PREFIX.bw"
 BEDPE="$PREFIX.bedpe"
