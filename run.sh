@@ -3,8 +3,8 @@
 set -xe
 
 # check input arg(s)
-if [ $# -lt "3" ]; then
-  echo "Usage: $0 [SCHEDULER {local,gridengine,slurm}] [BAM file] [SEQID...]"
+if [ $# -ne "3" ]; then
+  echo "Usage: $0 [SCHEDULER {local,gridengine,slurm}] [BAM file] [SEQID1,2,...]"
   exit 1
 fi
 
@@ -13,8 +13,7 @@ SCH=$1  # scheduler type
 BAM=$(realpath -s "$2")
 BASE_DIR=$(dirname "$BAM")
 SAMPLE=$(basename "$BAM" .bam)
-SEQ_IDS=(${@:3})
-SEQ_IDS_CSV=$(IFS=, ; echo "${SEQ_IDS[*]}")  # stringify
+SEQ_IDS=$3
 SV_TYPES=(DEL)  # INS INV DUP TRA)
 SV_CALLS=(gridss)  # manta delly lumpy)
 KFOLD=2  # k-fold cross validation
@@ -88,17 +87,17 @@ JOBS+=($JOB_ID)
 # submit jobs to output "channel" files (*.json.gz and *.npy.gz)
 cd ../genome_wide
 p=clipped_reads
-cmd="python $p.py -b \"$BAM\" -c \"${SEQ_IDS_CSV}\" -o $p.json.gz -p . -l $p.log"
+cmd="python $p.py -b \"$BAM\" -c \"$SEQ_IDS\" -o $p.json.gz -p . -l $p.log"
 JOB_ID=$(submit "$cmd" $p)
 JOBS+=($JOB_ID)
 
 p=clipped_read_pos
-cmd="python $p.py -b \"$BAM\" -c \"$SEQ_IDS_CSV\" -o $p.json.gz -p . -l $p.log"
+cmd="python $p.py -b \"$BAM\" -c \"$SEQ_IDS\" -o $p.json.gz -p . -l $p.log"
 JOB_ID=$(submit "$cmd" $p)
 JOBS+=($JOB_ID)
 
 p=split_reads
-cmd="python $p.py -b \"$BAM\" -c \"$SEQ_IDS_CSV\" -o $p.json.gz -ob $p.bedpe.gz \
+cmd="python $p.py -b \"$BAM\" -c \"$SEQ_IDS\" -o $p.json.gz -ob $p.bedpe.gz \
   -p . -l $p.log"
 JOB_ID=$(submit "$cmd" $p)
 JOBS+=($JOB_ID)
@@ -137,7 +136,7 @@ waiting
 for sv in "${SV_TYPES[@]}"; do
     for c in "${SV_CALLS[@]}"; do
         p=label_windows
-        cmd="python $p.py -b \"$BED\" -c \"$SEQ_IDS_CSV\" -w $WIN_SZ \
+        cmd="python $p.py -b \"$BED\" -c \"$SEQ_IDS\" -w $WIN_SZ \
           -gt \"$BEDPE\" -s $sv -sv \"$BASE_DIR/$c\" -o labels.json.gz \
           -p . -l $p.log"
         JOB_ID=$(submit "$cmd" "$p-$c")
@@ -153,7 +152,7 @@ for sv in "${SV_TYPES[@]}"; do
         p=create_window_pairs
         out="labels/win$WIN_SZ/$sv/$c"
         lb="$out/labels.json.gz"
-        cmd="python $p.py -b \"$BAM\" -c \"$SEQ_IDS_CSV\" -lb \"$lb\" -ca . \
+        cmd="python $p.py -b \"$BAM\" -c \"$SEQ_IDS\" -lb \"$lb\" -ca . \
           -w $WIN_SZ -p \"$out\" -l $p.log"
         JOB_ID=$(submit "$cmd" $p)
         JOBS+=($JOB_ID)
