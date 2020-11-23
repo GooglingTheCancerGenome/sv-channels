@@ -3,8 +3,8 @@
 set -xe
 
 # check input arg(s)
-if [ $# -lt "3" ]; then
-  echo "Usage: $0 [SCHEDULER {local,gridengine,slurm}] [BAM file] [SEQID1 ...N]"
+if [ $# -ne "3" ]; then
+  echo "Usage: $0 [SCHEDULER {local,gridengine,slurm}] [BAM file] [SEQID1,2,...]"
   exit 1
 fi
 
@@ -13,8 +13,7 @@ SCH=$1  # scheduler type
 BAM="$(realpath -s "$2")"
 BASE_DIR="$(dirname "$BAM")"
 SAMPLE="$(basename "$BAM" .bam)"
-SEQ_IDS=(${@:3})
-SEQ_IDS_CSV="$(IFS=, ; echo "${SEQ_IDS[*]}")"  # stringify
+SEQ_IDS=$3
 SV_TYPES=(DEL)  # INS INV DUP CTX)
 SV_CALLS=(split_reads gridss)  # manta delly lumpy)
 CV_MODES=(kfold chrom)  # cross validation modes
@@ -98,7 +97,7 @@ cd ../genome_wide
 p=clipped_reads
 cmd="python $p.py \
   -b \"$BAM\" \
-  -c \"$SEQ_IDS_CSV\" \
+  -c \"$SEQ_IDS\" \
   -o $p.json.gz \
   -p . \
   -l $p.log"
@@ -108,7 +107,7 @@ JOBS+=($JOB_ID)
 p=clipped_read_pos
 cmd="python $p.py \
   -b \"$BAM\" \
-  -c \"$SEQ_IDS_CSV\" \
+  -c \"$SEQ_IDS\" \
   -o $p.json.gz \
   -p . \
   -l $p.log"
@@ -118,7 +117,7 @@ JOBS+=($JOB_ID)
 p=split_reads
 cmd="python $p.py \
   -b \"$BAM\" \
-  -c \"$SEQ_IDS_CSV\" \
+  -c \"$SEQ_IDS\" \
   -o $p.json.gz \
   -ob $p.bedpe.gz \
   -p . \
@@ -184,7 +183,7 @@ for c in "${SV_CALLS[@]}"; do
         p=label_windows
         cmd="python $p.py \
           -b \"$BED\" \
-          -c \"$SEQ_IDS_CSV\" \
+          -c \"$SEQ_IDS\" \
           -w $WIN_SZ \
           -gt \"$BEDPE\" \
           -s $sv \
@@ -207,7 +206,7 @@ for c in "${SV_CALLS[@]}"; do
         lb="$out/labels.json.gz"
         cmd="python $p.py \
           -b \"$BAM\" \
-          -c \"$SEQ_IDS_CSV\" \
+          -c \"$SEQ_IDS\" \
           -lb \"$lb\" -ca . \
           -w $WIN_SZ \
           -p \"$out\" \
