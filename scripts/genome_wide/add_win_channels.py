@@ -233,9 +233,14 @@ def add_channels(args, aln):
         chrom1, pos1, chrom2, pos2, strand_info = p.split('_')
         pos1, pos2 = int(pos1), int(pos2)
 
+        if count_reads(ibam, chrom1, pos1) > max_coverage and count_reads(ibam, chrom2, pos2) > max_coverage:
+            too_high_cov_i.append(i)
+            too_high_cov_p.append(p)
+            continue
+
         # Fetch reads overlapping each window
-        win1_reads = get_reads(chrom1, pos1)
-        win2_reads = get_reads(chrom2, pos2)
+        win1_reads = get_reads(ibam, chrom1, pos1)
+        win2_reads = get_reads(ibam, chrom2, pos2)
 
         # Which reads are in both windows?
         win1_read_names_set = set([read.query_name for read in win1_reads])
@@ -263,6 +268,12 @@ def add_channels(args, aln):
         logging.info('full channels array:' + \
                      'NaN elements at index {}:{}'.format(i, len(np.argwhere(np.isnan(X[i, :])))))
 
+    X = np.delete(X, too_high_cov_i, axis=0)
+    for p in too_high_cov_p:
+        del y[p]
+
+    logging.info("X shape:{}, y length:{}".format(X.shape, len(y)))
+
     return X, y
 
 
@@ -272,6 +283,7 @@ def main():
     # initialize log file
     init_log(args.logfile)
 
+    bam_handle = pysam.AlignmentFile(args.bam, "rb")
     t0 = time()
 
     aln = pysam.AlignmentFile(args.bam, "rb")
