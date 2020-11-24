@@ -17,6 +17,7 @@ env:
     - PORT=10026 IMG=slurm TAG=19 SCH=slurm SV=DUP
     - PORT=10027 IMG=slurm TAG=19 SCH=slurm SV=INV
     - PORT=10028 IMG=slurm TAG=19 SCH=slurm SV=CTX
+    - PORT=10029 IMG=slurm TAG=19 SCH=slurm SV=TRA
 install:
   - docker run -d -p $PORT:22 --name $SCH $PREFIX-$IMG:$TAG
   - sleep 10
