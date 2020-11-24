@@ -3,18 +3,20 @@
 set -xe
 
 # check input arg(s)
-if [ $# -ne "3" ]; then
-  echo "Usage: $0 [SCHEDULER {local,gridengine,slurm}] [BAM file] [SEQID1,2,...]"
+if [ $# -ne "4" ]; then
+  echo "Usage: $0 [SCHEDULER] [BAM file] [SEQIDS] [SVTYPES]"
   exit 1
 fi
 
 # set variables
-SCH=$1  # scheduler type
+SCH=$1  # scheduler types: local, gridengine or slurm
 BAM="$(realpath -s "$2")"
 BASE_DIR="$(dirname "$BAM")"
 SAMPLE="$(basename "$BAM" .bam)"
-SEQ_IDS=$3
-SV_TYPES=(DEL INS INV DUP CTX)
+SEQ_IDS_CSV=$3  # e.g., chromosomes: 1,2,...X,Y
+SV_TYPES_CSV=$4  # INV,DEL,INS,INV,DUP,CTX
+SEQ_IDS=($(echo "$SEQ_IDS_CSV" | tr ',' ' '))
+SV_TYPES=($(echo "$SV_TYPES_CSV" | tr ',' ' '))
 SV_CALLS=(split_reads gridss)  # manta delly lumpy)
 CV_MODES=(kfold chrom)  # cross validation modes
 KMERS=19
@@ -106,7 +108,7 @@ cd ../genome_wide
 p=clipped_reads
 cmd="python $p.py \
   -b \"$BAM\" \
-  -c \"$SEQ_IDS\" \
+  -c \"$SEQ_IDS_CSV\" \
   -o $p.json.gz \
   -p . \
   -l $p.log"
@@ -116,7 +118,7 @@ JOBS+=($JOB_ID)
 p=clipped_read_pos
 cmd="python $p.py \
   -b \"$BAM\" \
-  -c \"$SEQ_IDS\" \
+  -c \"$SEQ_IDS_CSV\" \
   -o $p.json.gz \
   -p . \
   -l $p.log"
@@ -126,7 +128,7 @@ JOBS+=($JOB_ID)
 p=split_reads
 cmd="python $p.py \
   -b \"$BAM\" \
-  -c \"$SEQ_IDS\" \
+  -c \"$SEQ_IDS_CSV\" \
   -o $p.json.gz \
   -ob $p.bedpe.gz \
   -p . \
@@ -134,7 +136,7 @@ cmd="python $p.py \
 JOB_ID=$(submit "$cmd" $p)
 JOBS+=($JOB_ID)
 
-for s in $(echo "$SEQ_IDS" | tr ',' ' '); do  # per chromosome
+for s in "${SEQ_IDS[@]}"; do  # per chromosome
   p=clipped_read_distance
   cmd="python $p.py \
     -b \"$BAM\" \
@@ -170,7 +172,7 @@ done
 waiting
 
 # generate chromosome arrays from the channels as well as label window pairs
-for s in $(echo "$SEQ_IDS" | tr ',' ' '); do
+for s in "${SEQ_IDS[@]}"; do
   p=chr_array
   cmd="python $p.py \
     -b \"$BAM\" \
@@ -192,7 +194,7 @@ for c in "${SV_CALLS[@]}"; do
         p=label_windows
         cmd="python $p.py \
           -b \"$BED\" \
-          -c \"$SEQ_IDS\" \
+          -c \"$SEQ_IDS_CSV\" \
           -w $WIN_SZ \
           -gt \"$BEDPE\" \
           -s $sv \
@@ -215,7 +217,7 @@ for c in "${SV_CALLS[@]}"; do
         lb="$out/labels.json.gz"
         cmd="python $p.py \
           -b \"$BAM\" \
-          -c \"$SEQ_IDS\" \
+          -c \"$SEQ_IDS_CSV\" \
           -lb \"$lb\" -ca . \
           -w $WIN_SZ \
           -p \"$out\" \
