@@ -12,12 +12,12 @@ env:
     - BAM=data/test.bam
     - SEQIDS="12,22"
   matrix:
-    - PORT=10024 IMG=slurm TAG=19 SCH=slurm SV=DEL
-    - PORT=10025 IMG=slurm TAG=19 SCH=slurm SV=INS
-    - PORT=10026 IMG=slurm TAG=19 SCH=slurm SV=DUP
-    - PORT=10027 IMG=slurm TAG=19 SCH=slurm SV=INV
-    - PORT=10028 IMG=slurm TAG=19 SCH=slurm SV=CTX
-    - PORT=10029 IMG=slurm TAG=19 SCH=slurm SV=TRA
+    - PORT=10024 IMG=gridengine TAG=6 SCH=local SV=DEL
+    - PORT=10025 IMG=gridengine TAG=6 SCH=local SV=INS
+    - PORT=10026 IMG=gridengine TAG=6 SCH=local SV=DUP
+    - PORT=10027 IMG=gridengine TAG=6 SCH=local SV=INV
+    - PORT=10028 IMG=gridengine TAG=6 SCH=local SV=CTX
+    - PORT=10029 IMG=gridengine TAG=6 SCH=local SV=TRA
 install:
   - docker run -d -p $PORT:22 --name $SCH $PREFIX-$IMG:$TAG
   - sleep 10
