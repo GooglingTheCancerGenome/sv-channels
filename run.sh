@@ -88,8 +88,15 @@ cmd="./$p.sh \"$FASTA\" \"$BIGWIG\" $KMERS $MAX_MISMATCH"
 JOB_ID=$(submit "$cmd" "$p")
 JOBS+=($JOB_ID)
 
+# extract N's from sequence into BED
+cd scripts/utils
+p=Ns_to_bed
+cmd="python $p.py -b \"$REF_REG\" -t \"$TWOBIT\" -c \"$SEQ_IDS\""
+JOB_ID=$(submit "$cmd" "$p")
+JOBS+=($JOB_ID)
+
 # convert SV calls (i.e. truth set and sv-callers output) in VCF to BEDPE files
-cd scripts/R
+cd ../R
 p=vcf2bedpe
 for vcf in $(find "$BASE_DIR" -mindepth 3 -name "*.vcf"); do
     prefix="$(basename "$vcf" .vcf)"
@@ -110,7 +117,7 @@ cmd="python $p.py \
   -o $p.json.gz \
   -p . \
   -l $p.log"
-JOB_ID=$(submit "$cmd" $p)
+JOB_ID=$(submit "$cmd" "$p")
 JOBS+=($JOB_ID)
 
 p=clipped_read_pos
@@ -120,7 +127,7 @@ cmd="python $p.py \
   -o $p.json.gz \
   -p . \
   -l $p.log"
-JOB_ID=$(submit "$cmd" $p)
+JOB_ID=$(submit "$cmd" "$p")
 JOBS+=($JOB_ID)
 
 p=split_reads
@@ -131,7 +138,7 @@ cmd="python $p.py \
   -ob $p.bedpe.gz \
   -p . \
   -l $p.log"
-JOB_ID=$(submit "$cmd" $p)
+JOB_ID=$(submit "$cmd" "$p")
 JOBS+=($JOB_ID)
 
 for s in $(echo "$SEQ_IDS" | tr ',' ' '); do  # per chromosome
