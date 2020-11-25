@@ -82,6 +82,12 @@ eval "$(conda shell.bash hook)"
 conda activate $CONDA_ENV
 conda list
 
+# convert input FASTA to 2bit
+p=faToTwoBit
+cmd="$p \"$FASTA\" \"$TWOBIT\""
+JOB_ID=$(submit "$cmd" "$p")
+JOBS+=($JOB_ID)
+
 # compute genome mappability
 p=genmap
 cmd="./$p.sh \"$FASTA\" \"$BIGWIG\" $KMERS $MAX_MISMATCH"
