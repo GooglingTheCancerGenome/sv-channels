@@ -587,19 +587,14 @@ def save_windows(X, y, win_file):
              labels=y)
 
 
-def chr_dict_from_bed(input_bed):
+def get_chr_dict(fasta_file):
 
-    # Check file existence
-    assert os.path.isfile(input_bed), input_bed + ' not found!'
-    # Dictionary. Keys: chromosome name, values: chromosome lengths
-    d = {}
+    d = dict()
 
-    with (open(input_bed, 'r')) as bed:
-        for line in bed:
-            columns = line.rstrip().split("\t")
-            d[columns[0]] = int(columns[2]) - int(columns[1])
-
-    return d
+    with pysam.FastaFile(filename=fasta_file, filepath_index=fasta_file + '.fai') as fa:
+        for i,seqid in enumerate(fa.references):
+            d[seqid] = fa.lengths[i] - 1
+        return d
 
 
 def estimate_insert_size(ibam, pysam_bam, min_mapq):

@@ -27,7 +27,6 @@ FASTA="$PREFIX.fasta"
 TWOBIT="$PREFIX.2bit"
 BIGWIG="$PREFIX.bw"
 BEDPE="$PREFIX.bedpe"
-BED="$PREFIX.bed"
 EXCL_LIST="$BASE_DIR/ENCFF001TDO.bed"
 REF_REG="$BASE_DIR/reference_N_regions.bed"
 JOBS=()  # array of job IDs
@@ -204,7 +203,7 @@ for c in "${SV_CALLS[@]}"; do
     for sv in "${SV_TYPES[@]}"; do
         p=label_windows
         cmd="python $p.py \
-          -b \"$BED\" \
+          -f \"$FASTA\" \
           -c \"$SEQ_IDS\" \
           -w $WIN_SZ \
           -gt \"$BEDPE\" \

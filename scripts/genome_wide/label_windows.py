@@ -378,11 +378,11 @@ def main():
     '''
 
     parser = argparse.ArgumentParser(description='Create labels')
-    parser.add_argument('-b',
-                        '--bed',
+    parser.add_argument('-f',
+                        '--fasta',
                         type=str,
-                        default='../../data/seqs.bed',
-                        help="Specify chromosome regions to consider (BED)")
+                        default='../../data/test.fasta',
+                        help="Specify FASTA file")
     parser.add_argument('-l',
                         '--logfile',
                         type=str,
@@ -406,7 +406,6 @@ def main():
     parser.add_argument('-sv',
                         '--sv_positions',
                         type=str,
-                        #default=os.path.join('..', '..', 'data', 'gridss'),
                         default=os.path.join('..', '..', 'data', 'split_reads'),
                         help="Specify Manta/GRIDSS BEDPE file")
     parser.add_argument('-gt',
@@ -431,8 +430,7 @@ def main():
     output_dir = os.path.join(args.outputpath, 'cnn',
                               'win' + str(args.window),
                               sv_caller_name, 'windows',
-                              args.svtype
-                              )
+                              args.svtype)
     os.makedirs(output_dir, exist_ok=True)
     # Log file
     logfilename = os.path.join(output_dir, args.logfile)
@@ -447,7 +445,7 @@ def main():
     t0 = time()
 
     # Get dictionary of chromosome lengths
-    chr_dict = chr_dict_from_bed(args.bed)
+    chr_dict = get_chr_dict(args.fasta)
 
     get_labels(chrlist=args.chrlist.split(','),
                chr_dict=chr_dict,
