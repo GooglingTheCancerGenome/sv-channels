@@ -93,6 +93,8 @@ cmd="./$p.sh \"$FASTA\" \"$BIGWIG\" $KMERS $MAX_MISMATCH"
 JOB_ID=$(submit "$cmd" "$p")
 JOBS+=($JOB_ID)
 
+waiting
+
 # extract N's from sequence into BED
 cd scripts/utils
 p=Ns_to_bed
