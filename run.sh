@@ -81,6 +81,12 @@ eval "$(conda shell.bash hook)"
 conda activate $CONDA_ENV
 conda list
 
+# extract N's from sequence into BED
+p=seqkit
+cmd="$p locate -i -P -r -p "N+" --bed \"$FASTA\" -o \"$REF_REG\""
+JOB_ID=$(submit "$cmd" "$p")
+JOBS+=($JOB_ID)
+
 # convert input FASTA to 2bit
 p=faToTwoBit
 cmd="$p \"$FASTA\" \"$TWOBIT\""
@@ -95,15 +101,8 @@ JOBS+=($JOB_ID)
 
 waiting
 
-# extract N's from sequence into BED
-cd scripts/utils
-p=Ns_to_bed
-cmd="python $p.py -b \"$REF_REG\" -t \"$TWOBIT\" -c \"$SEQ_IDS\""
-JOB_ID=$(submit "$cmd" "$p")
-JOBS+=($JOB_ID)
-
 # convert SV calls (i.e. truth set and sv-callers output) in VCF to BEDPE files
-cd ../R
+cd scripts/R
 p=vcf2bedpe
 for vcf in $(find "$BASE_DIR" -mindepth 3 -name "*.vcf"); do
     prefix="$(basename "$vcf" .vcf)"
