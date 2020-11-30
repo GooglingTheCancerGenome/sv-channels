@@ -3,53 +3,50 @@ import gzip
 import json
 import logging
 import os
+import pysam
 from collections import Counter, defaultdict
 from time import time
-
-import pysam
 from cigar import Cigar
-from intervaltree import IntervalTree
-
 from functions import *
 
 strand_str = {True: '-', False: '+'}
 
 
-def append_coord(split_pos_coord, chrName, refpos, chr, pos):
-    if chrName == chr:
-        if refpos < pos:
-            split_pos_coord.append((chrName, refpos, chr, pos))
+def append_coord(split_pos_coord, chr1, pos1, chr2, pos2, strand_info):
+
+    if chr1 == chr1:
+        if pos2 < pos1:
+            split_pos_coord.append((chr2, pos2, chr1, pos1, strand_info))
         else:
-            split_pos_coord.append((chr, pos, chrName, refpos))
-    elif chrName < chr:
-        split_pos_coord.append((chrName, refpos, chr, pos))
-    elif chrName > chr:
-        split_pos_coord.append((chr, pos, chrName, refpos))
+            split_pos_coord.append((chr1, pos1, chr2, pos2, strand_info))
+    elif chr2 < chr1:
+        split_pos_coord.append((chr2, pos2, chr1, pos1, strand_info))
+    elif chr2 > chr1:
+        split_pos_coord.append((chr1, pos1, chr2, pos2, strand_info))
 
     return split_pos_coord
 
 
-def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
+def get_split_read_positions(ibam, chr_list, min_mapq, min_sr_support, outFile, outBedpe):
     # Check if the BAM file in input exists
     assert os.path.isfile(ibam)
 
-    config = get_config_file()
-    minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
-    min_support = config["DEFAULT"]["MIN_SR_SUPPORT"]
-
     # List to store the split read positions
     split_pos_coord = dict()
-    sv_type_list = ['INDEL_INS', 'INDEL_DEL', 'DEL', 'INS', 'INV', 'DUP', 'TRA', 'ND']
+    sv_type_list = ['INDEL_INS', 'INDEL_DEL', 'DEL', 'INS', 'INV', 'DUP', 'CTX', 'ND']
     for k in sv_type_list:
         split_pos_coord[k] = []
+
+    # Load the BAM file
+    bamfile = pysam.AlignmentFile(ibam, "rb")
+
+    bam_mean, bam_stddev = get_insert_size(ibam, bamfile, min_mapq)
 
     # # Tree with split read positions
     # gtree = {k: dict() for k in sv_type_list}
     # for s in sv_type_list:
     #     gtree[s] = {k: IntervalTree() for k in chr_list}
 
-    # Load the BAM file
-    bamfile = pysam.AlignmentFile(ibam, "rb")
 
     n_indels = 0
     n_split = 0
@@ -104,7 +101,7 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
             clipped_pos_dict['right'][read.reference_name].append(
                 read.reference_end)
 
-        if not read.is_unmapped and read.mapping_quality >= minMAPQ and \
+        if not read.is_unmapped and read.mapping_quality >= min_mapq and \
                 read.reference_name in chr_list:
 
             if has_indels(read):
@@ -119,8 +116,8 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
                     n_indels += 1
 
                     split_pos_coord['INDEL_INS'] = append_coord(
-                        split_pos_coord['INDEL_INS'], read.reference_name,
-                        pos, read.reference_name, pos+1)
+                        split_pos_coord['INDEL_INS'], read.reference_name, pos,
+                        read.reference_name, pos + 1, '+-')
 
                 for start, end in zip(dels_start, dels_end):
 
@@ -132,8 +129,8 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
                         max_cigar_del = del_size
 
                     split_pos_coord['INDEL_DEL'] = append_coord(
-                        split_pos_coord['INDEL_DEL'], read.reference_name,
-                        start, read.reference_name, end)
+                        split_pos_coord['INDEL_DEL'], read.reference_name, start,
+                        read.reference_name, end, '+-')
 
             if read.has_tag('SA'):
 
@@ -187,30 +184,29 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
                         sv_type = 'ND'
 
                         if clipped_string == 'right' and read.reference_name == chr_SA:
-                            if read.reference_end < pos_SA:
+                            if read.reference_start < pos_SA:
                                 sv_type = 'DEL'
                             else:
                                 sv_type = 'DUP'
                         elif clipped_string == 'left' and read.reference_name == chr_SA:
                             if read.reference_start > pos_SA:
-                                sv_type = 'DEL'
-                            else:
                                 sv_type = 'DUP'
-                        elif clipped_string == 'both' and read.reference_name == chr_SA:
+                            else:
                                 sv_type = 'DEL'
+                        elif clipped_string == 'both' and read.reference_name == chr_SA:
+                            sv_type = 'DEL'
 
                         if read.reference_name == chr_SA and \
-                                not read.mate_is_unmapped and \
-                                read.is_reverse == read.mate_is_reverse and \
-                                read.reference_name == read.next_reference_name:
+                                strand_str[read.is_reverse] == strand_str[read.mate_is_reverse]:
                             sv_type = 'INV'
 
                         if read.reference_name != chr_SA:
-                            sv_type = 'TRA'
+                            sv_type = 'CTX'
 
                         dist = abs(
                             clipped_pos -
                             pos_SA) if read.reference_name == chr_SA else 0
+                        dist = (dist - bam_mean) / bam_stddev if read.reference_name == chr_SA else 0
 
                         # if sv_type == 'TRA':
                         #     print('{} {} {} => {}:{}-{} {} {} {}'.format(
@@ -221,9 +217,14 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
                         #         read.query_name
                         #     ))
 
+                        if strand_str[read.is_reverse] == strand_SA:
+                            strand_info = '+-'
+                        else:
+                            strand_info = strand_str[read.is_reverse]+strand_SA
+
                         split_pos_coord[sv_type] = append_coord(
                             split_pos_coord[sv_type],
-                            read.reference_name, clipped_pos, chr_SA, pos_SA)
+                            read.reference_name, clipped_pos, chr_SA, pos_SA, strand_info)
 
                         split_reads[
                             read.reference_name][clipped_ch][clipped_pos] += 1
@@ -240,7 +241,11 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
     # Look for INS positions:
     for chrom in chr_list:
         for k in ['right', 'left']:
-            clipped_pos_dict[k][chrom] = set(clipped_pos_dict[k][chrom])
+            clipped_pos_dict_cnt = Counter(clipped_pos_dict[k][chrom])
+            clipped_pos_dict[k][chrom] = set([
+                int(key) for key, val in clipped_pos_dict_cnt.items()
+                if val >= 3]
+            )
 
     # based on artificial INS
     for chrom in chr_list:
@@ -250,14 +255,14 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
                     set(range(p - 1, p + 1, 1))
                     & clipped_pos_dict['left'][chrom]) > 0:
                 split_pos_coord['INS'] = append_coord(split_pos_coord['INS'],
-                                                      chrom, p, chrom, p + 1)
+                                                      chrom, p, chrom, p + 1, '+-')
         for p in clipped_pos_dict['left'][chrom]:
             # is the right clipped position close to the left clipped position of a neighboring read?
             if len(
                     set(range(p - 1, p + 1, 1))
                     & clipped_pos_dict['right'][chrom]) > 0:
                 split_pos_coord['INS'] = append_coord(split_pos_coord['INS'],
-                                                      chrom, p, chrom, p + 1)
+                                                      chrom, p, chrom, p + 1, '+-')
 
     # Count the number of split reads per position
     for chrom in chr_list:
@@ -279,7 +284,7 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
                              chrom,
                              len([
                                  p for p, c in split_pos_cnt[k][chrom].items()
-                                 if c >= min_support
+                                 if c >= min_sr_support
                              ])))
     # for chr1,pos1,chr2,pos2 in split_pos_coord['DEL']:
     #     print('{}:{}-{}:{}'.format(chr1, pos1, chr2, pos2))
@@ -301,12 +306,12 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
         for k in ['right', 'left']:
             positions_with_min_support[k][chrom] = [
                 p for p, c in total_reads_cnt[k][chrom].items()
-                if c >= min_support
+                if c >= min_sr_support
             ]
 
             logging.info('Number of ' + k + '-split positions' +
                          ' on Chr%s with min %d support: %d' %
-                         (chrom, min_support,
+                         (chrom, min_sr_support,
                           len(positions_with_min_support[k][chrom])))
     for k in total_reads_coord.keys():
         logging.info('Number of unique pair of total positions ' + k +
@@ -327,8 +332,8 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
             total_reads_coord_min_support[k] = total_reads_coord[k]
         else:
             total_reads_coord_min_support[k] = [
-                (chr1, pos1, chr2, pos2)
-                for chr1, pos1, chr2, pos2 in total_reads_coord[k]
+                (chr1, pos1, chr2, pos2, strand_info)
+                for chr1, pos1, chr2, pos2, strand_info in total_reads_coord[k]
                 if pos1 in positions_with_min_support_set[chr1]
                    or pos2 in positions_with_min_support_set[chr2]
             ]
@@ -348,18 +353,18 @@ def get_split_read_positions(ibam, chr_list, outFile, outBedpe):
     # Write BEDPE
     with gzip.open(outBedpe, 'wt') as fout:
         for k in total_reads_coord_min_support.keys():
-            for chr1, pos1, chr2, pos2 in total_reads_coord_min_support[k]:
+            for chr1, pos1, chr2, pos2, strand_info in total_reads_coord_min_support[k]:
+                assert len(strand_info) == 2
                 fout.write('\t'.join([
                     chr1,
                     str(pos1),
                     str(pos1 + 1), chr2,
                     str(pos2),
-                    str(pos2 + 1), k
+                    str(pos2 + 1), k, '*', strand_info[0], strand_info[1]
                 ]) + '\n')
 
 
 def main():
-
     # Parse the arguments of the script
     parser = argparse.ArgumentParser(description='Get split reads positions')
     parser.add_argument('-b',
@@ -387,11 +392,22 @@ def main():
         '--outputpath',
         type=str,
         default='.',
-        help="Specify output path")
+        help="Specify output path"
+    )
     parser.add_argument('-l',
                         '--logfile',
                         default='split_reads.log',
                         help='File in which to write logs.')
+    parser.add_argument('-m',
+                        '--min_mapq',
+                        type=int,
+                        default=10,
+                        help='Minimum read mapping quality')
+    parser.add_argument('-s',
+                        '--min_sr_support',
+                        type=int,
+                        default=1,
+                        help='Minimum number of split reads')
 
     args = parser.parse_args()
 
@@ -413,6 +429,8 @@ def main():
 
     get_split_read_positions(ibam=args.bam,
                              chr_list=args.chrlist.split(','),
+                             min_mapq=args.min_mapq,
+                             min_sr_support=args.min_sr_support,
                              outFile=output_file,
                              outBedpe=output_file_bedpe)
 

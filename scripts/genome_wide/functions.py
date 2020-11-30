@@ -7,6 +7,9 @@ import numpy as np
 import pysam
 import twobitreader as twobit
 from cigar import Cigar
+from statistics import mean, stdev
+import pandas as pd
+# import matplotlib.pyplot as plt
 
 del_min_size = 50
 ins_min_size = 50
@@ -456,8 +459,8 @@ def load_all_clipped_read_positions(win_hlen,
         if clipped_type == 'SR':
 
             locations_sr[chrom] = [
-                (chr1, pos1, chr2, pos2)
-                for chr1, pos1, chr2, pos2 in total_reads_coord_min_support
+                (chr1, pos1, chr2, pos2, strand_info)
+                for chr1, pos1, chr2, pos2, strand_info in total_reads_coord_min_support
                 if chr1 in chr_dict.keys() and chr2 in chr_dict.keys() and chr1
                 == chrom and win_hlen <= pos1 <= (chr_dict[chr1] - win_hlen)
                 and win_hlen <= pos2 <= (chr_dict[chr2] - win_hlen)
@@ -567,6 +570,7 @@ def load_all_clipped_read_positions(win_hlen,
 
         return cpos_list_right, cpos_list_left
 
+
 def load_windows(win_file):
 
     npzfile = np.load(win_file, allow_pickle=True, mmap_mode='r')
@@ -582,17 +586,77 @@ def save_windows(X, y, win_file):
              data=X,
              labels=y)
 
-def chr_dict_from_bed(input_bed):
 
-    # Check file existence
-    assert os.path.isfile(input_bed), input_bed + ' not found!'
-    # Dictionary. Keys: chromosome name, values: chromosome lengths
-    d = {}
+def get_chr_dict(fasta_file):
 
-    with (open(input_bed, 'r')) as bed:
-        for line in bed:
-            columns = line.rstrip().split("\t")
-            d[columns[0]] = int(columns[2]) - int(columns[1])
+    d = dict()
 
-    return d
+    with pysam.FastaFile(filename=fasta_file, filepath_index=fasta_file + '.fai') as fa:
+        for i,seqid in enumerate(fa.references):
+            d[seqid] = fa.lengths[i] - 1
+        return d
+
+
+def estimate_insert_size(ibam, pysam_bam, min_mapq):
+
+    base =os.path.basename(ibam)
+    prefix = os.path.splitext(base)[0]
+
+    isize_out = os.path.join(
+        os.path.dirname(ibam),
+        prefix+'.insert_size.csv'
+    )
+    # print(isize_out)
+
+    # n_bins = 100
+
+    # fig, axs = plt.subplots(1, 1, sharey=True, tight_layout=True)
+
+    isize_distr = []
+    i = 0
+
+    for read in pysam_bam.fetch():
+        if (not read.is_unmapped) and read.mapping_quality >= min_mapq \
+                and read.is_reverse != read.mate_is_reverse \
+                and read.reference_name == read.next_reference_name:
+            dist = abs(read.reference_start - read.next_reference_start)
+
+            if dist < 10 ** 3:
+
+                isize_distr.append(
+                    dist
+                )
+
+                if i == 2 * 10 ** 6:
+                    break
+                i += 1
+
+    df = pd.DataFrame({'mean': [mean(isize_distr)],
+                       'sd': [stdev(isize_distr)]
+                        })
+
+    df.to_csv(isize_out, index=False)
+
+    # axs.hist(isize_distr, bins=n_bins)
+    # plt.show()
+
+    return df
+
+
+def get_insert_size(ibam, pysam_bam, min_mapq):
+
+    base =os.path.basename(ibam)
+    prefix = os.path.splitext(base)[0]
+
+    isize_file = os.path.join(
+        os.path.dirname(ibam),
+        prefix+'.insert_size.csv'
+    )
+
+    if os.path.exists(isize_file):
+        df = pd.read_csv(isize_file)
+    else:
+        df = estimate_insert_size(ibam, pysam_bam, min_mapq)
+
+    return df.at[0, 'mean'], df.at[0, 'sd']
 

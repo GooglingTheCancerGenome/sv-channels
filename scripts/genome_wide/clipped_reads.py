@@ -12,7 +12,7 @@ import pysam
 from functions import *
 
 
-def get_clipped_reads(ibam, chr_list, outFile):
+def get_clipped_reads(ibam, chr_list, minMAPQ, outFile):
     '''
 
     :param ibam: input BAM alignment file
@@ -23,9 +23,6 @@ def get_clipped_reads(ibam, chr_list, outFile):
 
     # Check if the BAM file in input exists
     assert os.path.isfile(ibam)
-
-    config = get_config_file()
-    minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
 
     # Dictionary to store number of clipped reads per position
     clipped_reads = dict()
@@ -39,9 +36,9 @@ def get_clipped_reads(ibam, chr_list, outFile):
 
         # For left- and right-clipped reads
         for split_direction in [
-                'left_F', 'left_R', 'right_F', 'right_R', 'disc_right_F',
-                'disc_right_R', 'disc_left_F', 'disc_left_R', 'D_left_F',
-                'D_left_R', 'D_right_F', 'D_right_R', 'I_F', 'I_R'
+            'left_F', 'left_R', 'right_F', 'right_R', 'disc_right_F',
+            'disc_right_R', 'disc_left_F', 'disc_left_R', 'D_left_F',
+            'D_left_R', 'D_right_F', 'D_right_R', 'I_F', 'I_R'
         ]:
             clipped_reads[chrom][split_direction] = defaultdict(int)
 
@@ -67,11 +64,11 @@ def get_clipped_reads(ibam, chr_list, outFile):
         clipped_reads_translocation[chrom] = dict()
 
         # Mate is mapped before or after?
-        for mate_position in ['before', 'after']:
+        for mate_position in ['before', 'after', 'before_split', 'after_split']:
             clipped_reads_inversion[chrom][mate_position] = defaultdict(int)
             clipped_reads_duplication[chrom][mate_position] = defaultdict(int)
 
-        for orientation in ['opposite', 'same']:
+        for orientation in ['opposite', 'same', 'opposite_split', 'same_split']:
             clipped_reads_translocation[chrom][orientation] = defaultdict(int)
 
     # Open BAM file
@@ -81,8 +78,8 @@ def get_clipped_reads(ibam, chr_list, outFile):
     iter = bamfile.fetch()
 
     # Log information every n_r reads
-    n_r = 10**6
-    #print(n_r)
+    n_r = 10 ** 6
+    # print(n_r)
     last_t = time()
     # print(type(last_t))
     for i, read in enumerate(iter, start=1):
@@ -142,88 +139,107 @@ def get_clipped_reads(ibam, chr_list, outFile):
                             # print('Clipped at the start: %s -> %s' % (str(read.cigarstring), str(read.cigartuples)))
                             # print('Pos:%d, clipped_pos:%d' % (read.reference_start, read.get_reference_positions()[0]))
                             # print('start:'+str(read.get_reference_positions()[0])+'=='+str(read.reference_start))
-                            #if ref_pos not in clipped_reads['left'].keys():
+                            # if ref_pos not in clipped_reads['left'].keys():
                             #    clipped_reads['left'][ref_pos] = 1
-                            #else:
-                            if not read.is_reverse:
-                                clipped_reads[read.reference_name]['left_F'][
-                                    ref_pos] += 1
-                                if not read.is_proper_pair:
-                                    clipped_reads[read.reference_name][
-                                        'disc_left_F'][ref_pos] += 1
-                            else:
-                                clipped_reads[read.reference_name]['left_R'][
-                                    ref_pos] += 1
-                                if not read.is_proper_pair:
-                                    clipped_reads[read.reference_name][
-                                        'disc_left_R'][ref_pos] += 1
+                            # else:
+                            if not has_suppl_aln(read):
+                                if not read.is_reverse:
+                                    clipped_reads[read.reference_name]['left_F'][
+                                        ref_pos] += 1
+                                    if not read.is_proper_pair:
+                                        clipped_reads[read.reference_name][
+                                            'disc_left_F'][ref_pos] += 1
+                                else:
+                                    clipped_reads[read.reference_name]['left_R'][
+                                        ref_pos] += 1
+                                    if not read.is_proper_pair:
+                                        clipped_reads[read.reference_name][
+                                            'disc_left_R'][ref_pos] += 1
 
                             # DUPlication, channel 2
                             # Read is mapped on the Reverse strand and mate is mapped on the Forward strand
                             if read.is_reverse and not read.mate_is_reverse \
-                                and read.reference_start < read.next_reference_start: # Mate is mapped after read
-                                clipped_reads_duplication[
-                                    read.reference_name]['after'][ref_pos] += 1
+                                    and read.reference_start < read.next_reference_start:  # Mate is mapped after read
+                                if not has_suppl_aln(read):
+                                    clipped_reads_duplication[
+                                        read.reference_name]['after'][ref_pos] += 1
+                                else:
+                                    clipped_reads_duplication[
+                                        read.reference_name]['after_split'][ref_pos] += 1
 
                         # Read is right-clipped
                         elif is_right_clipped(read):
                             # print('Clipped at the end: %s -> %s' % (str(read.cigarstring), str(read.cigartuples)))
                             # print('Pos:%d, clipped_pos:%d' %(read.reference_end, read.get_reference_positions()[-1]))
                             # print('end: '+str(read.get_reference_positions()[-1]) + '==' + str(read.reference_end))
-                            #if ref_pos not in clipped_reads['right'].keys():
+                            # if ref_pos not in clipped_reads['right'].keys():
                             #    clipped_reads['right'][ref_pos] = 1
-                            #else:
-                            if not read.is_reverse:
-                                clipped_reads[read.reference_name]['right_F'][
-                                    ref_pos] += 1
-                                if not read.is_proper_pair:
-                                    clipped_reads[read.reference_name][
-                                        'disc_right_F'][ref_pos] += 1
-                            else:
-                                clipped_reads[read.reference_name]['right_R'][
-                                    ref_pos] += 1
-                                if not read.is_proper_pair:
-                                    clipped_reads[read.reference_name][
-                                        'disc_right_R'][ref_pos] += 1
+                            # else:
+                            if not has_suppl_aln(read):
+                                if not read.is_reverse:
+                                    clipped_reads[read.reference_name]['right_F'][
+                                        ref_pos] += 1
+                                    if not read.is_proper_pair:
+                                        clipped_reads[read.reference_name][
+                                            'disc_right_F'][ref_pos] += 1
+                                else:
+                                    clipped_reads[read.reference_name]['right_R'][
+                                        ref_pos] += 1
+                                    if not read.is_proper_pair:
+                                        clipped_reads[read.reference_name][
+                                            'disc_right_R'][ref_pos] += 1
 
                             # DUPlication, channel 1
                             # Read is mapped on the Forward strand and mate is mapped on the Reverse strand
                             if not read.is_reverse and read.mate_is_reverse:
                                 # Mate is mapped before read
                                 if read.reference_start > read.next_reference_start:
-                                    clipped_reads_duplication[
-                                        read.
-                                        reference_name]['before'][ref_pos] += 1
+                                    if not has_suppl_aln(read):
+                                        clipped_reads_duplication[
+                                            read.
+                                                reference_name]['before'][ref_pos] += 1
+                                    else:
+                                        clipped_reads_duplication[
+                                            read.
+                                                reference_name]['before_split'][ref_pos] += 1
 
                         # The following if statement takes care of the inversion channels
                         # Read and mate are mapped on the same strand: either Forward-Forward or Reverse-Reverse
 
                     elif read.is_reverse == read.mate_is_reverse:
-                        if is_clipped(read):
+                        if is_clipped(read) and not has_suppl_aln(read):
                             # Mate is mapped before read
                             if read.reference_start > read.next_reference_start:
-                                #if ref_pos not in clipped_reads_inversion['before'].keys():
+                                # if ref_pos not in clipped_reads_inversion['before'].keys():
                                 #    clipped_reads_inversion['before'][ref_pos] = 1
-                                #else:
-                                #print('Before')
-                                #print(read)
+                                # else:
+                                # print('Before')
+                                # print(read)
                                 # print('{}:Inversion before at {}:{}'.format(
                                 #     read.query_name,
                                 #     read.reference_name, ref_pos))
-                                clipped_reads_inversion[read.reference_name][
-                                    'before'][ref_pos] += 1
+                                if not has_suppl_aln(read):
+                                    clipped_reads_inversion[read.reference_name][
+                                        'before'][ref_pos] += 1
+                                else:
+                                    clipped_reads_inversion[read.reference_name][
+                                        'before_split'][ref_pos] += 1
                             # Mate is mapped after read
                             else:
-                                #if ref_pos not in clipped_reads_inversion['after'].keys():
+                                # if ref_pos not in clipped_reads_inversion['after'].keys():
                                 #    clipped_reads_inversion['after'][ref_pos] = 1
-                                #else:
-                                #print('After')
-                                #print(read)
+                                # else:
+                                # print('After')
+                                # print(read)
                                 # print('{}:Inversion after at {}:{}'.format(
                                 #     read.query_name,
                                 #     read.reference_name, ref_pos))
-                                clipped_reads_inversion[
-                                    read.reference_name]['after'][ref_pos] += 1
+                                if not has_suppl_aln(read):
+                                    clipped_reads_inversion[
+                                        read.reference_name]['after'][ref_pos] += 1
+                                else:
+                                    clipped_reads_inversion[
+                                        read.reference_name]['after_split'][ref_pos] += 1
 
                 else:
                     if is_clipped(read):
@@ -232,15 +248,23 @@ def get_clipped_reads(ibam, chr_list, outFile):
                             #     read.query_name,
                             #     read.reference_name, ref_pos,
                             #     read.next_reference_name, read.next_reference_start))
-                            clipped_reads_translocation[
-                                read.reference_name]['opposite'][ref_pos] += 1
+                            if not has_suppl_aln(read):
+                                clipped_reads_translocation[
+                                    read.reference_name]['opposite'][ref_pos] += 1
+                            else:
+                                clipped_reads_translocation[
+                                    read.reference_name]['opposite_split'][ref_pos] += 1
                         else:
                             # print('{}:Translocation same at {}:{}->{}:{}'.format(
                             #     read.query_name,
                             #     read.reference_name, ref_pos,
                             #     read.next_reference_name, read.next_reference_start))
-                            clipped_reads_translocation[
-                                read.reference_name]['same'][ref_pos] += 1
+                            if not has_suppl_aln(read):
+                                clipped_reads_translocation[
+                                    read.reference_name]['same'][ref_pos] += 1
+                            else:
+                                clipped_reads_translocation[
+                                    read.reference_name]['same_split'][ref_pos] += 1
 
     # for mate_position in ['after', 'before']:
     #     print([(pos, clipped_reads_inversion[mate_position][pos]) \
@@ -261,40 +285,33 @@ def get_clipped_reads(ibam, chr_list, outFile):
 
 def main():
 
-    # Default BAM file for testing
-    # On the HPC
-    #wd = '/hpc/cog_bioinf/ridder/users/lsantuari/Datasets/DeepSV/artificial_data/run_test_INDEL/samples/T0/BAM/T0/mapping'
-    #inputBAM = wd + "T0_dedup.bam"
-    # Locally
-    wd = '/Users/lsantuari/Documents/Data/HPC/DeepSV/Artificial_data/run_test_INDEL/BAM/'
-    inputBAM = wd + "T1_dedup.bam"
-
-    # inputBAM = "/Users/lsantuari/Documents/mount_points/hpc_giab/RMNISTHS_30xdownsample.bam"
-
-    # Default chromosome is 17 for the artificial data
-
     parser = argparse.ArgumentParser(
         description='Create channels with number of left/right clipped reads')
     parser.add_argument('-b',
                         '--bam',
                         type=str,
-                        default=inputBAM,
+                        default='../../data/test.bam',
                         help="Specify input file (BAM)")
     parser.add_argument('-c',
                         '--chrlist',
                         type=str,
-                        default='17',
+                        default='12,22',
                         help="Comma separated list of chromosomes to consider")
     parser.add_argument('-o',
                         '--out',
                         type=str,
                         default='clipped_reads.json.gz',
                         help="Specify output")
+    parser.add_argument('-m',
+                        '--min_mapq',
+                        type=int,
+                        default=10,
+                        help='Minimum read mapping quality')
     parser.add_argument(
         '-p',
         '--outputpath',
         type=str,
-        default='/Users/lsantuari/Documents/Processed/channel_maker_output',
+        default='.',
         help="Specify output path")
     parser.add_argument('-l',
                         '--logfile',
@@ -318,6 +335,7 @@ def main():
     t0 = time()
     get_clipped_reads(ibam=args.bam,
                       chr_list=args.chrlist.split(','),
+                      minMAPQ=args.min_mapq,
                       outFile=output_file)
     logging.info('Time: clipped reads on BAM %s: %f' % (args.bam,
                                                         (time() - t0)))

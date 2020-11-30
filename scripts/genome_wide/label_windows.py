@@ -14,11 +14,6 @@ from intervaltree import IntervalTree
 from functions import *
 from label_classes import SVRecord
 
-with open('parameters.json', 'r') as f:
-    config = json.load(f)
-
-HPC_MODE = config["DEFAULT"]["HPC_MODE"]
-
 
 def read_vcf(invcf):
 
@@ -41,9 +36,8 @@ def read_vcf(invcf):
         pos2_end = var.end + var.ciend[1] + 1
         svtype = var.svtype
 
-        if svtype == "DEL":
-            sv_list.append((chrom1, pos1_start, pos1_end, chrom2, pos2_start,
-                            pos2_end, svtype))
+        sv_list.append((chrom1, pos1_start, pos1_end, chrom2, pos2_start,
+                        pos2_end, svtype))
 
     logging.info('{} SVs'.format(len(sv_list)))
 
@@ -69,7 +63,7 @@ def read_bedpe(inbedpe, svtype_to_select):
                 svtype = "DEL"
 
             if svtype_to_select == svtype:
-                if svtype in ['DEL', 'INV', 'DUP', 'TRA']:
+                if svtype in ['DEL', 'INV', 'DUP', 'CTX']:
                     sv_list.append((chrom1, pos1_start, pos1_end, chrom2,
                                     pos2_start, pos2_end, svtype))
                 elif svtype == "INS":
@@ -102,7 +96,7 @@ def filter_bedpe(inbedpe, sv_id_list, outDir):
             sv_id = '_'.join(
                 (svtype, chrom1, str(pos1_start), chrom2, str(pos2_start)))
 
-            if svtype in ['DEL', 'INS', 'INV', 'DUP', 'TRA'] and sv_id not in sv_id_list:
+            if svtype in ['DEL', 'INS', 'INV', 'DUP', 'CTX'] and sv_id not in sv_id_list:
                 lines_to_keep.append(line)
 
         fileout = os.path.join(outDir, 'uncaptured_SVs.bedpe')
@@ -130,11 +124,67 @@ def read_svcaller_bedpe(inbedpe):
             chrom2, pos2_start, pos2_end = str(columns[3]), int(
                 columns[4]), int(columns[5])
 
-            cr_pos.append((chrom1, pos1_start, chrom2, pos2_start))
+            cr_pos.append((chrom1, pos1_start, chrom2, pos2_start, '**'))
 
     logging.info('{} candidate positions'.format(len(cr_pos)))
 
     return cr_pos
+
+
+def make_gtrees_from_svlist(sv_list):
+
+    logging.info('Building SV GenomicTrees...')
+    # Tree with windows for candidate positions
+    trees_start = defaultdict(IntervalTree)
+    trees_end = defaultdict(IntervalTree)
+
+    # Populate tree
+    for sv in sv_list:
+        chrom1, pos1_start, pos1_end, chrom2, pos2_start, pos2_end, svtype = sv
+        sv_id = '_'.join(
+            (svtype, chrom1, str(pos1_start), chrom2, str(pos2_start)))
+
+        trees_start[chrom1][pos1_start:pos1_end] = (svtype, sv_id)
+        trees_end[chrom2][pos2_start:pos2_end] = (svtype, sv_id)
+
+    # print('Tree start')
+    # for k in trees_start.keys():
+    #     print('{} : {}'.format( k, len(trees_start[k])))
+    # print('Tree end')
+    # for k in trees_end.keys():
+    #     print('{} : {}'.format( k, len(trees_end[k])))
+
+    return trees_start, trees_end
+
+
+def search_tree_with_cpos(cpos, trees_start, trees_end, win_hlen):
+
+    logging.info('Searching SV GenomicTrees with candidate positions...')
+
+    lookup_start = []
+    lookup_end = []
+
+    # Log info every n_r times
+    n_r = 10**6
+    last_t = time()
+
+    for i, p in enumerate(cpos, start=1):
+
+        if not i % n_r:
+            now_t = time()
+            # print(type(now_t))
+            logging.info(
+                "%d candidate positions processed (%f positions / s)" %
+                (i, n_r / (now_t - last_t)))
+            last_t = time()
+
+        chrom1, pos1, chrom2, pos2, strand_info = p
+        lookup_start.append(trees_start[chrom1].envelop(pos1 - win_hlen,
+                                                        pos1 + win_hlen + 1))
+        lookup_end.append(trees_end[chrom2].envelop(pos2 - win_hlen,
+                                                    pos2 + win_hlen + 1))
+
+    return lookup_start, lookup_end
 
 
 def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
@@ -145,63 +195,10 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
     :return: list, list of clipped read positions whose window completely overlap either the CIPOS interval
     or the CIEND interval
     '''
-    def make_gtrees_from_svlist(sv_list):
-
-        logging.info('Building SV GenomicTrees...')
-        # Tree with windows for candidate positions
-        trees_start = defaultdict(IntervalTree)
-        trees_end = defaultdict(IntervalTree)
-
-        # Populate tree
-        for sv in sv_list:
-            chrom1, pos1_start, pos1_end, chrom2, pos2_start, pos2_end, svtype = sv
-            sv_id = '_'.join(
-                (svtype, chrom1, str(pos1_start), chrom2, str(pos2_start)))
-
-            trees_start[chrom1][pos1_start:pos1_end] = (svtype, sv_id)
-            trees_end[chrom2][pos2_start:pos2_end] = (svtype, sv_id)
-
-        # print('Tree start')
-        # for k in trees_start.keys():
-        #     print('{} : {}'.format( k, len(trees_start[k])))
-        # print('Tree end')
-        # for k in trees_end.keys():
-        #     print('{} : {}'.format( k, len(trees_end[k])))
-
-        return trees_start, trees_end
-
-    def search_tree_with_cpos(cpos, trees_start, trees_end):
-
-        logging.info('Searching SV GenomicTrees with candidate positions...')
-
-        lookup_start = []
-        lookup_end = []
-
-        # Log info every n_r times
-        n_r = 10**6
-        last_t = time()
-
-        for i, p in enumerate(cpos, start=1):
-
-            if not i % n_r:
-                now_t = time()
-                # print(type(now_t))
-                logging.info(
-                    "%d candidate positions processed (%f positions / s)" %
-                    (i, n_r / (now_t - last_t)))
-                last_t = time()
-
-            chrom1, pos1, chrom2, pos2 = p
-            lookup_start.append(trees_start[chrom1][pos1 - win_hlen:pos1 +
-                                                    win_hlen + 1])
-            lookup_end.append(trees_end[chrom2][pos2 - win_hlen:pos2 +
-                                                win_hlen + 1])
-
-        return lookup_start, lookup_end
 
     trees_start, trees_end = make_gtrees_from_svlist(sv_list)
     lookup_start, lookup_end = search_tree_with_cpos(cpos_list, trees_start,
-                                                     trees_end)
+                                                     trees_end, win_hlen)
 
     # print([l for l in lookup_start if len(l) > 0])
     # print([l for l in lookup_end if len(l) > 0])
@@ -212,8 +209,8 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
 
     for p, lu_start, lu_end in zip(cpos_list, lookup_start, lookup_end):
 
-        chrom1, pos1, chrom2, pos2 = p
-        pos_id = '_'.join((chrom1, str(pos1), chrom2, str(pos2)))
+        chrom1, pos1, chrom2, pos2, strand_info = p
+        pos_id = '_'.join((chrom1, str(pos1), chrom2, str(pos2), strand_info))
 
         l1 = len(lu_start)
         l2 = len(lu_end)
@@ -253,7 +250,7 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
                 #     sv_covered.add(lu_start_elem_svid)
                 #     labels[pos_id] = 'UK_overlap_not_matching'
             else:
-                labels[pos_id] = 'UK_single_partial'
+                labels[pos_id] = 'no'+svtype
 
             # else:
             #
@@ -334,7 +331,7 @@ def get_labels(chrlist, chr_dict, win_len, svtype, ground_truth, sv_positions,
     # windows half length
     win_hlen = int(int(win_len) / 2)
 
-    sv_caller_file = os.path.join(channelDataDir, sv_positions + '.bedpe')
+    sv_caller_file = os.path.join('..', '..', 'data', sv_positions + '.bedpe')
     sv_caller_name = os.path.basename(sv_positions)
 
     if os.path.exists(sv_caller_file):
@@ -350,8 +347,8 @@ def get_labels(chrlist, chr_dict, win_len, svtype, ground_truth, sv_positions,
 
     # Keep only positions that can be used to create windows
     cpos_list = [
-        (chrom1, pos1, chrom2, pos2)
-        for chrom1, pos1, chrom2, pos2 in cpos_list if chrom1 in chrlist
+        (chrom1, pos1, chrom2, pos2, strand_info)
+        for chrom1, pos1, chrom2, pos2, strand_info, in cpos_list if chrom1 in chrlist
         and chrom2 in chrlist and win_hlen <= pos1 <= chr_dict[chrom1] -
         win_hlen and win_hlen <= pos2 <= chr_dict[chrom2] - win_hlen
     ]
@@ -381,11 +378,11 @@ def main():
     '''
 
     parser = argparse.ArgumentParser(description='Create labels')
-    parser.add_argument('-b',
-                        '--bed',
+    parser.add_argument('-f',
+                        '--fasta',
                         type=str,
-                        default='../../data/seqs.bed',
-                        help="Specify chromosome regions to consider (BED)")
+                        default='../../data/test.fasta',
+                        help="Specify FASTA file")
     parser.add_argument('-l',
                         '--logfile',
                         type=str,
@@ -409,7 +406,6 @@ def main():
     parser.add_argument('-sv',
                         '--sv_positions',
                         type=str,
-                        #default=os.path.join('..', '..', 'data', 'gridss'),
                         default=os.path.join('..', '..', 'data', 'split_reads'),
                         help="Specify Manta/GRIDSS BEDPE file")
     parser.add_argument('-gt',
@@ -431,11 +427,10 @@ def main():
     args = parser.parse_args()
 
     sv_caller_name = os.path.basename(args.sv_positions)
-    output_dir = os.path.join(args.outputpath, 'labels',
+    output_dir = os.path.join(args.outputpath, 'cnn',
                               'win' + str(args.window),
-                              args.svtype,
-                              sv_caller_name
-                              )
+                              sv_caller_name, 'windows',
+                              args.svtype)
     os.makedirs(output_dir, exist_ok=True)
     # Log file
     logfilename = os.path.join(output_dir, args.logfile)
@@ -450,7 +445,7 @@ def main():
     t0 = time()
 
     # Get dictionary of chromosome lengths
-    chr_dict = chr_dict_from_bed(args.bed)
+    chr_dict = get_chr_dict(args.fasta)
 
     get_labels(chrlist=args.chrlist.split(','),
                chr_dict=chr_dict,
