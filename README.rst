@@ -83,7 +83,7 @@ Execution
 .. code-block:: console
 
   SCH=local  # gridengine or slurm
-  ./run.sh $SCH data/test.bam "12 22" # run jobs locally or on a compute cluster
+  ./run.sh $SCH data/test.bam 12,22 # run jobs locally or on a compute cluster
 
 Glossary of terms
 =================
