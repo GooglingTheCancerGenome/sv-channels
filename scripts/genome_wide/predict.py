@@ -1,28 +1,22 @@
 import argparse
 import os
-import pandas as pd
 import subprocess
 
-from tensorflow.keras.utils import to_categorical
+import pandas as pd
 from tensorflow.keras.models import load_model
+from tensorflow.keras.utils import to_categorical
 
-from model_functions import \
-    evaluate_model, get_data
+from model_functions import evaluate_model, get_data
 
 
 def predict(input_data, sample_name, svtype, model_fn, model_name, output_dir):
-
     os.makedirs(output_dir, exist_ok=True)
-
     X, y, win_ids = get_data(input_data, True, svtype)
     y_binary = to_categorical(y, num_classes=params['n_classes'])
-
-    print('Predicting {} with model trained on {}...'.format(sample_name, model_name))
-
+    print('Predicting {} with model trained on {}...'.format(
+        sample_name, model_name))
     model = load_model(model_fn)
-
     results = pd.DataFrame()
-
     intermediate_results, metrics = evaluate_model(model,
                                                    X, y_binary, win_ids,
                                                    results,
@@ -34,13 +28,11 @@ def predict(input_data, sample_name, svtype, model_fn, model_name, output_dir):
 
 
 def main():
-
     default_win = 200
     default_path = os.path.join('./cnn/win'+str(default_win), 'split_reads')
-    def_windows_file = os.path.join(default_path, 'windows', 'DEL', 'windows_en.npz')
-
+    def_windows_file = os.path.join(
+        default_path, 'windows', 'DEL', 'windows_en.npz')
     parser = argparse.ArgumentParser(description='Use model to predict')
-
     parser.add_argument('-m',
                         '--model',
                         type=str,
@@ -89,27 +81,19 @@ def main():
                         '--output',
                         type=str,
                         default='results',
-                        help="Output folder"
-                        )
-
+                        help="Output folder")
     args = parser.parse_args()
-
-    global params
     mapclasses = {args.svtype: 0, 'no' + args.svtype: 1}
-
     # Parameters
+    global params
     params = {
         'mapclasses': mapclasses,
         'n_classes': len(mapclasses.keys())
     }
-
     windows_list = args.input.split(',')
-
     predict(windows_list, args.sample_name, args.svtype,
             args.model, args.model_name, os.path.join(args.output, args.svtype))
-
     out_prefix = os.path.join(args.output, "sv-channels")
-
     merge_sv_calls = ' '.join([
         "cd ../R; "
         "Rscript merge_sv_calls.R",
@@ -131,7 +115,8 @@ def main():
         "-i", os.path.join("../genome_wide", out_prefix+'.bedpe'),
         "-b", args.twobit,
         "-s", args.sample_name,
-        "-o", os.path.join("../genome_wide", out_prefix+'.'+args.sample_name+'.vcf')
+        "-o", os.path.join("../genome_wide", out_prefix +
+                           '.'+args.sample_name+'.vcf')
     ])
     print(bedpe_to_vcf)
     cmd_out = subprocess.run(bedpe_to_vcf, shell=True, check=True)

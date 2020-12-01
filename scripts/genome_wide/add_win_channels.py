@@ -1,10 +1,11 @@
-import pysam
 import argparse
 import logging
 from time import time
-import numpy as np
 
-from functions import load_windows, save_windows, is_left_clipped, is_right_clipped
+import numpy as np
+import pysam
+from functions import (is_left_clipped, is_right_clipped, load_windows,
+                       save_windows)
 
 
 def init_log(logfile):
@@ -16,7 +17,6 @@ def init_log(logfile):
 
 
 def parse_args():
-
     default_win = 25
     parser = argparse.ArgumentParser(
         description='Add window specific channels')
@@ -34,22 +34,27 @@ def parse_args():
     parser.add_argument('-i',
                         '--input',
                         type=str,
-                        default='./cnn/win'+str(default_win)+'/split_reads/windows/DEL/windows.npz',
+                        default='./cnn/win' +
+                        str(default_win)+'/split_reads/windows/DEL/windows.npz',
                         help="input file")
     parser.add_argument('-o',
                         '--output',
                         type=str,
-                        default='./cnn/win'+str(default_win)+'/split_reads/windows/DEL/windows_en.npz',
+                        default='./cnn/win' +
+                        str(default_win) +
+                        '/split_reads/windows/DEL/windows_en.npz',
                         help="output file")
     parser.add_argument('-l',
                         '--logfile',
-                        default='./cnn/win'+str(default_win)+'/split_reads/windows/DEL/windows_en.log',
+                        default='./cnn/win' +
+                        str(default_win) +
+                        '/split_reads/windows/DEL/windows_en.log',
                         help='File in which to write logs.')
     parser.add_argument('-lp',
                         '--log_every_n_pos',
                         type=int,
                         default=1000,
-                        help='Write in log file every log_every_n_pos positions')
+                        help='Write in log file every N positions')
     parser.add_argument('-p',
                         '--padding',
                         type=int,
@@ -72,12 +77,10 @@ def get_channels():
         # SV type channels
         'DUP_A', 'DUP_B', 'INV_A', 'INV_B', 'TRA_O', 'TRA_S'
     ]
-    ch = {k: v for v, k in enumerate(ch)}
-    return ch
+    return {k: v for v, k in enumerate(ch)}
 
 
-def update_channel(X, ch, iter, read, win_mid_pos, is_second_win, win_len, padding):
-
+def update_channel(X, ch, counter, read, win_mid_pos, is_second_win, win_len, padding):
     if is_left_clipped(read) and not is_right_clipped(read):
         clipping = 'L'
     elif not is_left_clipped(read) and is_right_clipped(read):
@@ -95,35 +98,19 @@ def update_channel(X, ch, iter, read, win_mid_pos, is_second_win, win_len, paddi
         clipped_state = 'AR'
 
     orientation = 'R' if read.is_reverse else 'F'
-
     start_win = win_len + padding if is_second_win else 0
     end_win = win_len * 2 + padding if is_second_win else win_len
-
     abs_start = int(win_mid_pos - int(win_len / 2)) if win_len % 2 == 0 else \
         int(win_mid_pos - int(win_len + 1 / 2))
-
     abs_end = int(win_mid_pos + int(win_len / 2)) if win_len % 2 == 0 else \
         int(win_mid_pos + int(win_len + 1 / 2))
-
     start = max(read.reference_start, abs_start)
     end = min(read.reference_end, abs_end)
-
-    # print('reference_start:{}, reference_end:{}'.format(s0, e0))
-    #rel_start = start - abs_start
-    #rel_end = end - abs_start
-
     rel_start = start_win + start - abs_start
     rel_end = start_win + end - abs_start
 
-    # print(read)
-    # print('start_win={}\nend_win={}\nabs_start={}\nabs_end={}\nstart={}\nend={}\nrel_start={}\nrel_end={}\n'.format(
-    #     start_win, end_win, abs_start,
-    #     abs_end, start, end, rel_start,
-    #     rel_end))
-
     assert rel_start >= 0
     assert rel_end >= 0
-
     assert start_win <= rel_start <= end_win
     assert start_win <= rel_end <= end_win
 
@@ -144,60 +131,47 @@ def update_channel(X, ch, iter, read, win_mid_pos, is_second_win, win_len, paddi
         rel_pos = np.arange(max(start_win, rel_start), min(rel_end, end_win))
 
     if not skip:
-
-        # print('relative reference_start:{}, relative reference_end:{}'.format(s, e))
         k = '_'.join([orientation, clipped_state, clipping])
-
         if k in ch.keys():
-            X[iter, rel_pos, ch[k]] += 1
-
+            X[counter, rel_pos, ch[k]] += 1
         if not read.is_proper_pair:
             k = '_'.join(['DR', orientation])
             if k in ch.keys():
-                X[iter, rel_pos, ch[k]] += 1
-
+                X[counter, rel_pos, ch[k]] += 1
         if read.is_reverse and not read.mate_is_reverse \
                 and read.reference_start < read.next_reference_start:
             k = '_'.join(['DUP', 'A'])
             if k in ch.keys():
-                X[iter, rel_pos, ch[k]] += 1
-
+                X[counter, rel_pos, ch[k]] += 1
         if not read.is_reverse and read.mate_is_reverse \
                 and read.reference_start > read.next_reference_start:
             k = '_'.join(['DUP', 'B'])
             if k in ch.keys():
-                X[iter, rel_pos, ch[k]] += 1
-
+                X[counter, rel_pos, ch[k]] += 1
         if read.is_reverse == read.mate_is_reverse:
             if read.reference_start < read.next_reference_start:
                 k = '_'.join(['INV', 'B'])
                 if k in ch.keys():
-                    X[iter, rel_pos, ch[k]] += 1
+                    X[counter, rel_pos, ch[k]] += 1
             else:
                 k = '_'.join(['INV', 'A'])
                 if k in ch.keys():
-                    X[iter, rel_pos, ch[k]] += 1
-
+                    X[counter, rel_pos, ch[k]] += 1
         if read.reference_name != read.next_reference_name:
             if read.is_reverse == read.mate_is_reverse:
                 if read.reference_start < read.next_reference_start:
                     k = '_'.join(['TRA', 'S'])
                     if k in ch.keys():
-                        X[iter, rel_pos, ch[k]] += 1
+                        X[counter, rel_pos, ch[k]] += 1
                 else:
                     k = '_'.join(['TRA', 'O'])
                     if k in ch.keys():
-                        X[iter, rel_pos, ch[k]] += 1
-
+                        X[counter, rel_pos, ch[k]] += 1
     return X
 
 
 def add_channels(args, aln):
-
     win = args.win if args.win % 2 == 0 else args.win + 1
-    ifile = args.input
-    padding = args.padding
-    log_every_n_pos = args.log_every_n_pos
 
     def get_reads(chrom, pos):
         return [read for read in aln.fetch(chrom, pos - int(win / 2), pos + int(win / 2))]
@@ -205,9 +179,8 @@ def add_channels(args, aln):
     # Load the windows
     logging.info("Loading windows...")
     last_t = time()
-    X, y = load_windows(ifile)
-    now_t = time()
-    logging.info("Windows loaded in {} seconds".format(now_t - last_t))
+    X, y = load_windows(args.input)
+    logging.info("Windows loaded in %f seconds" % (time() - last_t))
 
     # Load the channels
     ch = get_channels()
@@ -216,17 +189,13 @@ def add_channels(args, aln):
     # Initialize numpy array
     X_enh = np.zeros(shape=(X.shape[:2] + (len(ch),)), dtype=np.int8)
 
-    # print(X.shape)
-    # print(X_enh.shape)
-
     for i, p in enumerate(y.keys(), start=0):
-
         # Every n_r alignments, write log informations
-        if not i % log_every_n_pos and i != 0:
+        if not i % args.log_every_n_pos and i != 0:
             # Record the current time
             now_t = time()
             logging.info("%d positions processed (%f positions / s)" %
-                         (i, log_every_n_pos / (now_t - last_t)))
+                         (i, args.log_every_n_pos / (now_t - last_t)))
             last_t = time()
 
         # Get genomic coordinates
@@ -238,48 +207,45 @@ def add_channels(args, aln):
         win2_reads = get_reads(chrom2, pos2)
 
         # Which reads are in both windows?
-        win1_read_names_set = set([read.query_name for read in win1_reads])
-        win2_read_names_set = set([read.query_name for read in win2_reads])
+        win1_read_names_set = {read.query_name for read in win1_reads}
+        win2_read_names_set = {read.query_name for read in win2_reads}
         common_read_names = win1_read_names_set & win2_read_names_set
 
         # Only consider reads common to both windows
-        win1_reads = {r for r in win1_reads if r.query_name in common_read_names and not r.is_unmapped}
-        win2_reads = {r for r in win2_reads if r.query_name in common_read_names and not r.is_unmapped}
+        win1_reads = {
+            r for r in win1_reads if r.query_name in common_read_names and not r.is_unmapped}
+        win2_reads = {
+            r for r in win2_reads if r.query_name in common_read_names and not r.is_unmapped}
 
         for r in win1_reads:
-            X_enh = update_channel(X_enh, ch, i, r, pos1, False, win, padding)
+            X_enh = update_channel(X_enh, ch, i, r, pos1,
+                                   False, win, args.padding)
 
         for r in win2_reads:
-            X_enh = update_channel(X_enh, ch, i, r, pos2, True, win, padding)
+            X_enh = update_channel(X_enh, ch, i, r, pos2,
+                                   True, win, args.padding)
 
     for i in np.arange(X_enh.shape[2]):
-        logging.info('win channels array:' + \
-                     'non-zero elements at index {}:{}'.format(i, np.argwhere(X_enh[i, :] != 0).shape[0]))
+        logging.info("win channels array: non-zero elements at index %d:%d" %
+                     (i, np.argwhere(X_enh[i, :] != 0).shape[0]))
 
     X = np.concatenate((X, X_enh), axis=2)
     print(X.shape)
 
     for i in np.arange(X.shape[2]):
-        logging.info('full channels array:' + \
-                     'NaN elements at index {}:{}'.format(i, len(np.argwhere(np.isnan(X[i, :])))))
-
+        logging.info("full channels array: NaN elements at index %d:%d" %
+                     (i, len(np.argwhere(np.isnan(X[i, :])))))
     return X, y
 
 
 def main():
-    # parse arguments
     args = parse_args()
-    # initialize log file
     init_log(args.logfile)
-
     t0 = time()
 
-    aln = pysam.AlignmentFile(args.bam, "rb")
-
-    X, y = add_channels(args, aln)
-
-    save_windows(X, y, args.output)
-
+    with pysam.AlignmentFile(args.bam, "rb") as bam:
+        X, y = add_channels(args, bam)
+        save_windows(X, y, args.output)
     logging.info('Finished in %f seconds' % (time() - t0))
 
 

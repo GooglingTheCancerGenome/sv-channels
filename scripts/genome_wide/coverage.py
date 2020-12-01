@@ -1,26 +1,23 @@
 import argparse
 import logging
 import os
-import numpy as np
-import pysam
 from time import time
 
-from functions import get_config_file, get_insert_size
+import numpy as np
+import pysam
+
+from functions import get_insert_size
 
 
 def is_discordant(read, bam_mean, bam_stddev):
-
     dist = read.next_reference_start - read.reference_start
-
     if dist > 0 and abs(dist) <= bam_mean + bam_stddev:
         return False
-    else:
-        return True
+    return True
 
 
 def is_properly_mapped(read):
     '''
-
     :param read: AlignedSegment
     :return: True if all these conditions are valid:
         - read and mate are mapped on the same chromosome,
@@ -43,70 +40,46 @@ def get_coverage(ibam, chrName, minMAPQ, outFile):
     :param outFile: output file for the coverage array
     :return: None
     '''
-
-    # Open BAM file
     bamfile = pysam.AlignmentFile(ibam, "rb")
-
     bam_mean, bam_stddev = get_insert_size(ibam, bamfile, minMAPQ)
-
-    # Get chromosome length from BAM header
     header_dict = bamfile.header
     chrLen = [i['LN'] for i in header_dict['SQ'] if i['SN'] == chrName][0]
-
     start_pos = 0
     stop_pos = chrLen
-
-    # Numpy array to store the coverage
     cov = np.zeros((chrLen, 5))
-
-    # Log information every n_r base pair positions
     n_r = 10 ** 6
-    # print(n_r)
     last_t = time()
-    # print(type(last_t))
 
-    # Pysam iterator to fetch the reads
-    iter = bamfile.fetch(chrName, start_pos, stop_pos)
-
-    for i, read in enumerate(iter, start=1):
-
+    for i, read in enumerate(bamfile.fetch(chrName, start_pos, stop_pos), start=1):
         # Every n_r alignments, write log informations
         if not i % n_r:
-            # Record the current time
-            now_t = time()
-            # print(type(now_t))
             logging.info("%d alignments processed (%f alignments / s)" %
-                         (i, n_r / (now_t - last_t)))
-
+                         (i, n_r / (time() - last_t)))
             last_t = time()
 
         if not read.is_unmapped and read.mapping_quality >= minMAPQ:
+            if is_properly_mapped(read):
+                cov[read.reference_start:read.reference_end - 1, 0] += 1
+            read_discordant = is_discordant(read, bam_mean, bam_stddev)
 
-                if is_properly_mapped(read):
-                    cov[read.reference_start:read.reference_end - 1, 0] += 1
-
-                read_discordant = is_discordant(read, bam_mean, bam_stddev)
-
-                if not read.mate_is_unmapped:
-                    if read_discordant:
-                        if read.is_reverse:
-                            cov[read.reference_start:read.reference_end - 1, 2] += 1
-                        else:
-                            cov[read.reference_start:read.reference_end - 1, 1] += 1
-                    if not read.is_proper_pair:
-                        if read.is_reverse:
-                            cov[read.reference_start:read.reference_end - 1, 4] += 1
-                        else:
-                            cov[read.reference_start:read.reference_end - 1, 3] += 1
-
+            if not read.mate_is_unmapped:
+                if read_discordant:
+                    if read.is_reverse:
+                        cov[read.reference_start:read.reference_end - 1, 2] += 1
+                    else:
+                        cov[read.reference_start:read.reference_end - 1, 1] += 1
+                if not read.is_proper_pair:
+                    if read.is_reverse:
+                        cov[read.reference_start:read.reference_end - 1, 4] += 1
+                    else:
+                        cov[read.reference_start:read.reference_end - 1, 3] += 1
     logging.info(cov.shape)
 
     for i in np.arange(cov.shape[1]):
-        logging.info('chromosome {} coverage: non-zero elements at index {}:{}'.format(chrName,
-                                                                                       i,
-                                                                                       np.argwhere(
-                                                                                           cov[i, :] != 0).shape[0]))
-        logging.info('mean:{}, sd:{}'.format(np.mean(cov[:, i]), np.std(cov[:, i])))
+        logging.info("chromosome %s coverage: non-zero elements at index %d:%d" %
+                     (chrName, i, np.argwhere(cov[i, :] != 0).shape[0]))
+        logging.info("mean:%f, sd:%f" %
+                     (np.mean(cov[:, i]), np.std(cov[:, i])))
 
     # Save coverage numpy array
     try:
@@ -115,14 +88,11 @@ def get_coverage(ibam, chrName, minMAPQ, outFile):
         logging.info("Out of memory for chr %s and BAM file %s !" %
                      (chrName, ibam))
     os.system('gzip -f ' + outFile)
-
     # To load it
     # cov = np.load(outFile)['coverage']
 
 
 def main():
-    # Default chromosome is 12 for the artificial data
-
     parser = argparse.ArgumentParser(description='Create coverage channel')
     parser.add_argument('-b',
                         '--bam',
@@ -154,25 +124,20 @@ def main():
                         '--logfile',
                         default='coverage.log',
                         help='File in which to write logs.')
-
     args = parser.parse_args()
-
     cmd_name = 'coverage'
     output_dir = os.path.join(args.outputpath, cmd_name)
     os.makedirs(output_dir, exist_ok=True)
     logfilename = os.path.join(output_dir, '_'.join((args.chr, args.logfile)))
     output_file = os.path.join(output_dir, '_'.join((args.chr, args.out)))
-
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(format=FORMAT,
                         filename=logfilename,
                         filemode='w',
                         level=logging.INFO)
-
     t0 = time()
-
-    get_coverage(ibam=args.bam, chrName=args.chr, minMAPQ=args.min_mapq, outFile=output_file)
-
+    get_coverage(ibam=args.bam, chrName=args.chr,
+                 minMAPQ=args.min_mapq, outFile=output_file)
     logging.info('Time: coverage on BAM %s and Chr %s: %f' %
                  (args.bam, args.chr, (time() - t0)))
 

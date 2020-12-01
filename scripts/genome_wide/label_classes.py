@@ -2,10 +2,9 @@ import re
 
 from pysam import VariantRecord
 
-# Classes
-
 __bpRE__ = None
 __symbolicRE__ = None
+
 
 def setupREs():
     '''
@@ -20,11 +19,10 @@ def setupREs():
             r'([ACGTNactgn\.]*)([\[\]])([a-zA-Z0-9\.\_]+:\d+)([\[\]])([ACGTNacgtn\.]*)'
         )
 
+
 class SVRecord:
     def __init__(self, record, svcaller):
-
         ci_slop = 0
-
         # For CHM[1|13] SVs
         svtype_dict = {
             'deletion': 'DEL',
@@ -32,14 +30,12 @@ class SVRecord:
             'inversion': 'INV'
         }
 
-        if type(record) != VariantRecord:
+        if isinstance(record) != VariantRecord:
             raise TypeError('VCF record is not of type pysam.VariantRecord')
-        # logging.info(record)
 
         if record.info['SVTYPE'] == 'BND':
             ct, chr2, pos2, indellen = self.get_bnd_info(record)
         else:
-            # logging.info(record.info['SVTYPE'])
             ct = None
             chr2 = record.chrom
             pos2 = record.stop
@@ -47,8 +43,6 @@ class SVRecord:
                 self.indellen = record.info['SVLEN']
             else:
                 self.indellen = abs(record.stop - record.pos)
-
-        # logging.info(record.info.keys())
 
         self.id = record.id
         self.chrom = record.chrom.replace('chr', '')
@@ -79,16 +73,12 @@ class SVRecord:
             self.ciend = record.info['CIRPOS']
         else:
             self.ciend = (-ci_slop, ci_slop)
-
         self.filter = record.filter
 
         # set SVTYPE
         if svcaller is None:
-
             self.svtype = record.info['SVTYPE']
-
         else:
-
             if self.chrom != self.chrom2:
                 self.svtype = 'BP'
             elif self.insLen >= abs(self.svLen) * 0.7:
@@ -102,13 +92,9 @@ class SVRecord:
 
     @staticmethod
     def stdchrom(chrom):
-
         if chrom[0] == 'c':
             return chrom[3:]
-        else:
-            return chrom
-
-        # Modified from the function ctAndLocFromBkpt in mergevcf
+        return chrom
 
     def locFromBkpt(self, ref, pre, delim1, pair, delim2, post):
         '''
@@ -118,9 +104,7 @@ class SVRecord:
         :return: tuple with connection (3' to 5', 3' to 3', 5' to 5' or 5' to 3'), chromosome and position of the
         second SV endpoint, length of the indel
         '''
-
         chpos = pair.split(':')
-        # logging.info(chpos[0])
         chr2 = self.stdchrom(chpos[0])
         pos2 = int(chpos[1])
         assert delim1 == delim2  # '['..'[' or ']'...']'
@@ -140,7 +124,6 @@ class SVRecord:
             extendRight = False
         else:
             extendRight = True
-
         indellen = len(connectSeq) - len(ref)
 
         if joinedAfter:
@@ -153,7 +136,6 @@ class SVRecord:
                 ct = '5to5'
             else:
                 ct = '5to3'
-
         return ct, chr2, pos2, indellen
 
     def get_bnd_info(self, record):
@@ -165,18 +147,13 @@ class SVRecord:
         second SV endpoint, length of the indel
         '''
         setupREs()
-
         altstr = str(record.alts[0])
         resultBP = re.match(__bpRE__, altstr)
-
         if resultBP:
             ct, chr2, pos2, indellen = self.locFromBkpt(
                 str(record.ref), resultBP.group(1), resultBP.group(2),
                 resultBP.group(3), resultBP.group(4), resultBP.group(5))
-
             res = (ct, chr2, pos2, indellen)
-
         else:
             res = None
-
         return res

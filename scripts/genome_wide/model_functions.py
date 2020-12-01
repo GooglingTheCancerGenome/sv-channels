@@ -1,6 +1,8 @@
 import logging
 import os
 from collections import Counter
+from itertools import cycle
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -67,15 +69,10 @@ def unfold_win_id(win_id):
 def get_data(windows_list, npz_mode, svtype):
 
     def filter_labels(X, y, win_ids):
-        # print(y)
         keep = [i for i, v in enumerate(y) if v in [svtype, 'no' + svtype]]
-        # print(keep)
         X = X[np.array(keep)]
-        # print(y)
         y = [y[i] for i in keep]
         win_ids = [win_ids[i] for i in keep]
-
-        print(Counter(y))
         return X, y, win_ids
 
     X = []
@@ -83,55 +80,34 @@ def get_data(windows_list, npz_mode, svtype):
     win_ids = []
 
     for t in windows_list:
-
         logging.info('Loading data from {}...'.format(t))
-
         npzfile = np.load(t, allow_pickle=True)
-
         X.extend(npzfile['data'])
         labels = npzfile['labels']
         labels = labels.item()
-
         y.extend(labels.values())
         win_ids.extend(labels.keys())
-
         logging.info('Data from {} loaded'.format(t))
-
     X = np.stack(X, axis=0)
-
     logging.info(X.shape)
     logging.info(Counter(y))
-
-    # X, y, win_ids = filter_labels(X, y, win_ids)
-
     mapclasses = {svtype: 0, 'no' + svtype: 1}
-
     y = np.array([mapclasses[i] for i in y])
     win_ids = np.array(win_ids)
-
     return X, y, win_ids
 
 
 def evaluate_model(model, X_test, ytest_binary, win_ids_test,
                    results, mapclasses, output_dir, svtype):
-    # print(mapclasses)
 
     def write_wrong_predictions(probs, predicted, y_index, win_ids_test,
                                 class_labels):
-
-        # print(class_labels)
-
         outdir = os.path.join(output_dir, 'predictions')
         os.makedirs(outdir, exist_ok=True)
-
-        outfile = os.path.join(
-            outdir,
-            'wrong.bedpe')
-
+        outfile = os.path.join(outdir, 'wrong.bedpe')
         lines = []
 
         for prob, p, r, w in zip(probs, predicted, y_index, win_ids_test):
-
             if class_labels[p] != class_labels[r]:
                 sv_score = prob[0]
                 chr1, pos1, chr2, pos2, strand_info = unfold_win_id(w)
@@ -142,107 +118,69 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test,
                     str(int(pos1) + 1),
                     str(chr2),
                     str(pos2),
-                    str(int(pos2) + 1), 'PRED:' + class_labels[p] + '_TRUE:' +
-                                        class_labels[r],
+                    str(int(pos2) + 1), 'PRED:' +
+                    class_labels[p] + '_TRUE:' + class_labels[r],
                     str(sv_score),
                     strand_info[0],
                     strand_info[1]
-                    # str(prob[0]),
-                    # str(prob[1])
                 ]) + '\n')
 
-        f = open(outfile, 'w')
-        try:
+        with open(outfile, 'w') as f:
             # use set to make lines unique
-            for l in lines:
-                f.write(l)
-        finally:
-            f.close()
+            for ln in lines:
+                f.write(ln)
 
     def write_correct_predictions(probs, predicted, y_index, win_ids_test,
                                   class_labels, svtype):
-
-        # print(class_labels)
-
         outdir = os.path.join(output_dir, 'predictions')
         os.makedirs(outdir, exist_ok=True)
-
-        outfile = os.path.join(
-            outdir,
-            'correct.bedpe')
-
+        outfile = os.path.join(outdir, 'correct.bedpe')
         lines = []
         j = 1
-
         for prob, p, r, w in zip(probs, predicted, y_index, win_ids_test):
-
-            # print('{0}_{1}'.format(class_labels[p], class_labels[r]))
-
             if class_labels[p] == svtype:
                 sv_score = prob[0]
                 chr1, pos1, chr2, pos2, strand_info = unfold_win_id(w)
-
-                # print('{0}_{1}:{2}_{3}'.format(chr1, pos1, chr2, pos2))
-
                 lines.append('\t'.join([
                     str(chr1),
                     str(pos1),
                     str(int(pos1) + 1),
                     str(chr2),
                     str(pos2),
-                    str(int(pos2) + 1), 'PRED_' + class_labels[p] +
-                                        '_TRUE_' + class_labels[r] + '_' + str(j),
+                    str(int(pos2) + 1),
+                    'PRED_' + class_labels[p] + '_TRUE_' +
+                    class_labels[r] + '_' + str(j),
                     str(sv_score),
                     strand_info[0],
                     strand_info[1]
-                    # str(prob[0]),
-                    # str(prob[1])
                 ]) + '\n')
                 j += 1
 
-        f = open(outfile, 'w')
-        try:
+        with open(outfile, 'w') as f:
             # use set to make lines unique
-            for l in lines:
-                f.write(l)
-        finally:
-            f.close()
+            for ln in lines:
+                f.write(ln)
 
     dict_sorted = sorted(mapclasses.items(), key=lambda x: x[1])
     class_labels = [i[0] for i in dict_sorted]
-
     n_classes = ytest_binary.shape[1]
-    # print(y_binarized)
-    # print(n_classes)
-
     probs = model.predict(X_test, batch_size=1000, verbose=False)
-
     # columns are predicted, rows are truth
     predicted = probs.argmax(axis=1)
-    # print(predicted)
-    # true
     y_index = ytest_binary.argmax(axis=1)
-    # print(y_index)
-
-    # write predictions
     write_wrong_predictions(probs, predicted, y_index, win_ids_test,
                             class_labels)
     write_correct_predictions(probs, predicted, y_index, win_ids_test,
                               class_labels, svtype)
-
-    # print(y_index)
-
     confusion_matrix = pd.crosstab(pd.Series(y_index), pd.Series(predicted))
     confusion_matrix.index = [class_labels[i] for i in confusion_matrix.index]
-    confusion_matrix.columns = [
-        class_labels[i] for i in confusion_matrix.columns
-    ]
-    confusion_matrix.reindex(columns=[l for l in class_labels], fill_value=0)
+    confusion_matrix.columns = [class_labels[i]
+                                for i in confusion_matrix.columns]
+    confusion_matrix.reindex(columns=class_labels, fill_value=0)
     confusion_matrix.to_csv(os.path.join(
-        output_dir, 'confusion_matrix.csv'),
-        sep='\t')
+        output_dir, 'confusion_matrix.csv'), sep='\t')
 
-    # For each class
+    # dictionaries for each class
     precision = dict()
     recall = dict()
     f1_score_metric = dict()
@@ -261,36 +199,26 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test,
     # A "micro-average": quantifying score on all classes jointly
     precision["micro"], recall["micro"], _ = precision_recall_curve(
         ytest_binary.ravel(), probs.ravel())
-
     average_precision["weighted"] = average_precision_score(ytest_binary,
                                                             probs,
                                                             average="weighted")
-    # print(
-    #     'Average precision score, weighted over all classes: {0:0.2f}'.format(
-    #         average_precision["weighted"]))
-
     f1_score_metric["weighted"] = f1_score(y_index,
                                            predicted,
                                            average="weighted")
-
     results = results.append(
         {
             "test_set_size": X_test.shape[0],
             "average_precision_score": average_precision["weighted"],
             "f1_score": f1_score_metric["weighted"]
-        },
-        ignore_index=True)
+        }, ignore_index=True)
 
     plot_precision_recall(mapclasses, precision, recall,
                           average_precision, output_dir)
-
-    return results, (average_precision, precision, recall, thresholds,
-                     f1_score_metric)
+    return results, (average_precision, precision, recall, thresholds, f1_score_metric)
 
 
 def plot_precision_recall(mapclasses, precision, recall,
                           average_precision, output_dir):
-    from itertools import cycle
     # setup plot details
     colors = cycle(
         ['navy', 'turquoise', 'darkorange', 'cornflowerblue', 'teal'])
