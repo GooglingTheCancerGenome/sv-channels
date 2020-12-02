@@ -427,6 +427,7 @@ def load_all_clipped_read_positions(win_hlen,
 
     logging.info('Loading SR positions')
 
+    total_reads_coord_min_support = []
     chrlist = get_chr_list()
     chr_list = chrlist  # if sampleName != 'T1' else ['17']
 
@@ -438,20 +439,19 @@ def load_all_clipped_read_positions(win_hlen,
         left_clipped_pos_cnt, right_clipped_pos_cnt = json.loads(
             fin.read().decode('utf-8'))
 
-    if svtype == 'DEL':
-        total_reads_coord_min_support = total_reads_coord_min_support_json['DEL'] + \
-            total_reads_coord_min_support_json['INDEL_DEL']
-    elif svtype == 'INS':
-        total_reads_coord_min_support = total_reads_coord_min_support_json['INS'] + \
-            total_reads_coord_min_support_json['INDEL_INS']
-    else:
-        total_reads_coord_min_support = total_reads_coord_min_support_json[
-            svtype]
+    if svtype in total_reads_coord_min_support_json:
+        if svtype in ('DEL', 'INDEL_DEL'):
+            total_reads_coord_min_support = total_reads_coord_min_support_json['DEL'] + \
+                total_reads_coord_min_support_json['INDEL_DEL']
+        elif svtype in ('INS', 'INDEL_INS'):
+            total_reads_coord_min_support = total_reads_coord_min_support_json['INS'] + \
+                total_reads_coord_min_support_json['INDEL_INS']
+        else:
+            total_reads_coord_min_support = total_reads_coord_min_support_json[svtype]
 
     locations_sr = dict()
     locations_cr_r = dict()
     locations_cr_l = dict()
-
     positions_cr = dict()
 
     for chrom in chr_list:
