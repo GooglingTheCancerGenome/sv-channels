@@ -203,38 +203,18 @@ def create_carray(ibam, chrom, twobit, bigwig, outDir, cmd_name):
     current_channel = 'mappability'
     logging.info("Adding channel %s at index %d" %
                  (current_channel, channel_index))
-
-    # test data
-    if chr_array.shape[0] == 2000000:
-        # test data
-        chr_array[:, channel_index] = np.array(bw_map.values(
-            chrom, 0, chr_array.shape[0]),
-            dtype=np.float32)
-    else:
-        # real data
-        chr_array[:, channel_index] = np.array(bw_map.values(
-            chrom, 0, chrlen),
-            dtype=np.float32)
-
+    chr_array[:, channel_index] = np.array(bw_map.values(
+        chrom, 0, chrlen),
+        dtype=np.float32)
     channel_index += 1
-
     current_channel = 'one_hot_encoding'
     logging.info("Adding channel %s at index %d" %
                  (current_channel, channel_index))
-
     nuc_list = ['A', 'T', 'C', 'G', 'N']
-
     chr_array[:, channel_index:channel_index +
               len(nuc_list)] = get_one_hot_sequence_by_list(twobit, chrom, list(np.arange(chrlen)))
     channel_index += len(nuc_list)
-
     logging.info("chr_array shape: %s" % str(chr_array.shape))
-
-    # dask_array = da.from_array(chr_array, chunks=("auto", -1))
-    # outfile = os.path.join(outDir, sampleName, cmd_name, sampleName + '_' + chrom + '.hdf5')
-    # logging.info("Writing HDF5...")
-    # da.to_hdf5(outfile, '/' + 'chr' + chrom, dask_array)  # , compression='lzf', shuffle=False)
-
     outfile = os.path.join(outDir, cmd_name, chrom + '_carray')
     logging.info("Writing carray...")
     a = bz.carray(chr_array, rootdir=outfile, mode='w')
