@@ -6,6 +6,11 @@ python:
   - "3.7"
 services:
   - docker
+addons:
+  sonarcloud:
+    organization: "gtcg"
+    token:
+      secure: "hP0aZ6UU1bJX8qf3p0vS9HcobIi+SaxxIi7IcpxK6nvxBhaMwkyiG+geTvmEhsGsZ74Sqg7gqcpRpPFoWpG9J4beNP/aenuWX+VS1FnCoeLoYsFyT2HSXOpeub9W3ZlIH9w2cPoBJwiSZFN3ir0iwqEQbB/cXxjbkkmtYkQe3UetsksIpGiCebEosuJVjclDA8CHUu2EM8wqsqopC33lbo4fw2tAe9fWJns35+TBHu5Yend0PQukxH0sQtPPzBKN1yU+liCI7gUCqUG6LOFw4vnF6l8XgiJcZZPKvwXaIzvLOz6Ee+2ncXuRDotNj/XhjAe64N/v85lVuPusL5II3o6RF8wSu5EEYfKa/FsfVuICn5EIPPU1DvavESDMUocZD/fyZBuZvS8MmMYte5JWRnwWUpjUAnzBrS04D1tPzhu9Fc7HxaZ7w+bT9PIgDkVjsjwfyJfRidEfOdnpARnJpdAUYe/b9yxDPVfM6d/l5PvwBmiCZ4fLmC9CVZiHyAZqYvl/CCBFEdD1h0WXRum1M+fZdJNyrKVjfi7JTjDjv/VsR1DDS9AmH8lfi0/CrUKt16RVkeSZmje8xqkXv4AducNB+mekzmTvluumR/RLZ9xaeI1ddFMXFk906rRzbrg66FXXunSv45Wvt4d+zmRewIfLkobOJ+soLT/FcUO3HGc="
 env:
   global:
     - PREFIX=gtcg/xenon
@@ -24,3 +29,4 @@ install:
   - docker exec -u xenon -t $SCH ./install.sh
 script:
   - docker exec -u xenon -t $SCH ./run.sh $SCH $BAM $SEQIDS
+  - sonar-scanner
