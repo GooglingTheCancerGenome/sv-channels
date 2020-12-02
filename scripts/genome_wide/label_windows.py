@@ -197,7 +197,7 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
     logging.info(Counter(labels.values()))
     sv_coverage = int(len(sv_covered) / len(sv_list) * 100)
     logging.info("SV coverage: %d/%d=%d" %
-                 len(sv_covered), len(sv_list), sv_coverage)
+                 (len(sv_covered), len(sv_list), sv_coverage))
     filename, file_extension = os.path.splitext(ground_truth)
 
     if file_extension == '.bedpe':

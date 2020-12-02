@@ -56,8 +56,8 @@ def get_windows(carrays_dir, outDir, chrom_list, win, label_file_path, mode, npz
     n_channels = chr_array[chrom_list[0]].shape[1]
     logging.info("%d channels" % n_channels)
     labels = get_labels(label_file_path)
-    logging.info("%d labels found: %d" %
-                 (len(labels), Counter(labels.values())))
+    logging.info("%d labels found: %s" %
+                 (len(labels), str(Counter(labels.values()))))
 
     if mode == 'training':
         labels_positive = {k: v for k, v in labels.items() if v == 'DEL'}
@@ -101,7 +101,7 @@ def get_windows(carrays_dir, outDir, chrom_list, win, label_file_path, mode, npz
 
         if npz_mode:
             numpy_array = np.stack(numpy_array, axis=0)
-            logging.info("Numpy array shape: %s" % numpy_array.shape)
+            logging.info("Numpy array shape: %s" % str(numpy_array.shape))
             for i in np.arange(numpy_array.shape[2]):
                 logging.info("windows array: non-zero elements at index %d:%d" %
                              (i, np.argwhere(numpy_array[i, :] != 0).shape[0]))
