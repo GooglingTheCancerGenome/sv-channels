@@ -251,74 +251,73 @@ done
 
 waiting
 
-exit 0
-# Train and test model
-for sv in "${SV_TYPES[@]}"; do
-    for c in "${SV_CALLS[@]}"; do
-        for cv in "${CV_MODES[@]}"; do
-            p=train
-            out_dir="cnn/win$WIN_SZ/$c"
-            train_dir="$out_dir/windows/$sv/windows_en.npz"
-            cmd="python $p.py \
-              --training_sample_name \"$SAMPLE\" \
-              --training_windows \"$train_dir\" \
-              --test_sample_name \"$SAMPLE\" \
-              --test_windows \"$train_dir\" \
-              -k $KFOLD \
-              -e $EPOCHS \
-              -p \"$out_dir\" \
-              -s $sv \
-              -cv $cv \
-              -l $p.log"
-            JOB_ID=$(submit "$cmd" "$p-$sv-$c")
-            JOBS+=($JOB_ID)
-        done
-    done
-done
+# # Train and test model
+# for sv in "${SV_TYPES[@]}"; do
+#     for c in "${SV_CALLS[@]}"; do
+#         for cv in "${CV_MODES[@]}"; do
+#             p=train
+#             out_dir="cnn/win$WIN_SZ/$c"
+#             train_dir="$out_dir/windows/$sv/windows_en.npz"
+#             cmd="python $p.py \
+#               --training_sample_name \"$SAMPLE\" \
+#               --training_windows \"$train_dir\" \
+#               --test_sample_name \"$SAMPLE\" \
+#               --test_windows \"$train_dir\" \
+#               -k $KFOLD \
+#               -e $EPOCHS \
+#               -p \"$out_dir\" \
+#               -s $sv \
+#               -cv $cv \
+#               -l $p.log"
+#             JOB_ID=$(submit "$cmd" "$p-$sv-$c")
+#             JOBS+=($JOB_ID)
+#         done
+#     done
+# done
 
-waiting
+# waiting
 
-# merge SV calls
-cd ../R
-p=merge_sv_calls
-for c in "${SV_CALLS[@]}"; do
-    for m in "${CV_MODES[@]}"; do
-        win_dir="../genome_wide/cnn/win$WIN_SZ"
-        sv_dir="$win_dir/$c/$m"
-        bedpe="$win_dir/sv-channels.$c.$m.$SAMPLE"
-        cmd="$p.R \
-          -i \"$sv_dir\" \
-          -f \"$EXCL_LIST\" \
-          -n \"$REF_REG\" \
-          -m $c \
-          -o \"$bedpe\""
-        JOB_ID=$(submit "$cmd" "$p-$c-$m")
-        JOBS+=($JOB_ID)
-    done
-done
+# # merge SV calls
+# cd ../R
+# p=merge_sv_calls
+# for c in "${SV_CALLS[@]}"; do
+#     for m in "${CV_MODES[@]}"; do
+#         win_dir="../genome_wide/cnn/win$WIN_SZ"
+#         sv_dir="$win_dir/$c/$m"
+#         bedpe="$win_dir/sv-channels.$c.$m.$SAMPLE"
+#         cmd="$p.R \
+#           -i \"$sv_dir\" \
+#           -f \"$EXCL_LIST\" \
+#           -n \"$REF_REG\" \
+#           -m $c \
+#           -o \"$bedpe\""
+#         JOB_ID=$(submit "$cmd" "$p-$c-$m")
+#         JOBS+=($JOB_ID)
+#     done
+# done
 
-waiting
+# waiting
 
-# convert BEDPE to VCF
-cd ../utils
-for c in "${SV_CALLS[@]}"; do
-    for m in "${CV_MODES[@]}"; do
-        p=bedpe_to_vcf
-        win_dir="../genome_wide/cnn/win$WIN_SZ"
-        prefix="$win_dir/sv-channels.$c.$m.$SAMPLE"
-        bedpe="$prefix.bedpe"
-        vcf="$prefix.vcf"
-        cmd="python $p.py \
-          -i \"$bedpe\" \
-          -b \"$TWOBIT\" \
-          -o \"$vcf\" \
-          -s \"$SAMPLE\""
-        JOB_ID=$(submit "$cmd" "$p-$c-$m")
-        JOBS+=($JOB_ID)
-    done
-done
+# # convert BEDPE to VCF
+# cd ../utils
+# for c in "${SV_CALLS[@]}"; do
+#     for m in "${CV_MODES[@]}"; do
+#         p=bedpe_to_vcf
+#         win_dir="../genome_wide/cnn/win$WIN_SZ"
+#         prefix="$win_dir/sv-channels.$c.$m.$SAMPLE"
+#         bedpe="$prefix.bedpe"
+#         vcf="$prefix.vcf"
+#         cmd="python $p.py \
+#           -i \"$bedpe\" \
+#           -b \"$TWOBIT\" \
+#           -o \"$vcf\" \
+#           -s \"$SAMPLE\""
+#         JOB_ID=$(submit "$cmd" "$p-$c-$m")
+#         JOBS+=($JOB_ID)
+#     done
+# done
 
-waiting
+# waiting
 
 ETIME=$(date +%s)
 echo "Processing ${#JOBS[@]} jobs took $((ETIME - STIME)) sec to complete."
