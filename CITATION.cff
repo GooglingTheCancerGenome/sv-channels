@@ -38,9 +38,10 @@ keywords:
   - "WGS"
   - "BAM"
   - "VCF"
+  - "CNN"
 
 license: Apache-2.0
 message: "If you use this software, please cite it using these metadata"
-repository-code: "https://github.com/GooglingTheCancerGenome/sv-chaplin"
-title: sv-chaplin
-version: "0.0.0"  # FIXME
+repository-code: "https://github.com/GooglingTheCancerGenome/sv-channels"
+title: sv-channels
+version: "0.1.0"
