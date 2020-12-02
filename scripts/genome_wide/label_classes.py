@@ -30,7 +30,7 @@ class SVRecord:
             'inversion': 'INV'
         }
 
-        if isinstance(record) != VariantRecord:
+        if isinstance(record, VariantRecord) is False:
             raise TypeError('VCF record is not of type pysam.VariantRecord')
 
         if record.info['SVTYPE'] == 'BND':
