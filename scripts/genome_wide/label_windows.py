@@ -192,7 +192,7 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
             sv_covered = sv_covered | (lu_start_set & lu_end_set)
             labels[pos_id] = svtype
         else:
-            labels[pos_id] = 'no'+svtype
+            labels[pos_id] = 'no' + svtype
 
     logging.info(Counter(labels.values()))
     sv_coverage = int(len(sv_covered) / len(sv_list) * 100)
@@ -264,7 +264,7 @@ def main():
                         help="Comma separated list of chromosomes to consider")
     parser.add_argument('-w',
                         '--window',
-                        type=str,
+                        type=int,
                         default=200,
                         help="Specify window size")
     parser.add_argument('-s',
