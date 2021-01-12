@@ -3,25 +3,26 @@ import json
 import logging
 import os
 from itertools import groupby
+from statistics import mean, stdev
+
 import numpy as np
+import pandas as pd
 import pysam
 import twobitreader as twobit
 from cigar import Cigar
-from statistics import mean, stdev
-import pandas as pd
+
 # import matplotlib.pyplot as plt
 
 del_min_size = 50
 ins_min_size = 50
+
 '''
 Generic functions used in the channel scripts
 '''
 
 
-# Return if a read is clipped on the left
 def is_left_clipped(read):
     '''
-
     :param read: read object of the class pysam.AlignedSegment
     :return: True if the read is soft (4) or hard (5) clipped on the left, False otherwise
     '''
@@ -31,10 +32,8 @@ def is_left_clipped(read):
     return False
 
 
-# Return if a read is clipped on the right
 def is_right_clipped(read):
     '''
-
     :param read: read object of the class pysam.AlignedSegment
     :return: True if the read is soft (4) or hard (5) clipped on the right, False otherwise
     '''
@@ -44,10 +43,8 @@ def is_right_clipped(read):
     return False
 
 
-# Return if a read is clipped on the right or on the left
 def is_clipped(read):
     '''
-
     :param read: read object of the class pysam.AlignedSegment
     :return: True if the read is soft (4) or hard (5) clipped on the left or on the right, False otherwise
     '''
@@ -61,7 +58,6 @@ def has_suppl_aln(read):
     return read.has_tag('SA')
 
 
-# Return chromosome and starting position of a supplementary alignment (split reads)
 def get_suppl_aln(read):
     '''
     This function returns the chromosome and start position of the first supplementary alignment ('SA' tag) for a read.
@@ -85,29 +81,20 @@ def get_suppl_aln(read):
         return result
 
     if len(read.get_tag('SA')) > 0:
-
-        # print(read.get_tag('SA'))
         # get first supplemental alignment
         supp_aln = read.get_tag('SA').split(';')[0]
         sa_info = supp_aln.split(',')
-        # print(supp_aln)
-        # print(sa_info)
         chr_sa = sa_info[0]
         start_sa = int(sa_info[1])
         strand_sa = sa_info[2]
         cigar_sa = sa_info[3]
         mapq_sa = sa_info[4]
-        nm_sa = sa_info[5]
 
         if int(mapq_sa) < 10:
             return None
-
-        # print('{} {} {}'.format(chr_sa, start_sa, strand_sa))
         start_sa -= 1
-
         return chr_sa, start_sa, strand_sa, cigar_sa
-    else:
-        return None
+    return None
 
 
 # Return start and end position of deletions and insertions
@@ -141,14 +128,12 @@ def get_indels(read):
 
 def has_indels(read):
     if read.cigartuples is not None:
-        cigar_set = set([ct[0] for ct in read.cigartuples])
+        cigar_set = {ct[0] for ct in read.cigartuples}
         # D is 2, I is 1
         if len(set([1, 2]) & cigar_set) > 0:
             return True
-        else:
-            return False
-    else:
         return False
+    return False
 
 
 # Return the mate of a read. Get read mate from BAM file
@@ -161,16 +146,14 @@ def get_read_mate(read, bamfile):
     :param bamfile: BAM file containing both the read and its mate
     :return: mate, object of the class pysam.AlignedSegment, if a mate for the read is found. Return None otherwise.
     '''
-    # print(read)
     # The mate is located at:
     # chromosome: read.next_reference_name
     # positions: [read.next_reference_start, read.next_reference_start+1]
     # Fetch all the reads in that location and retrieve the mate
-    iter = bamfile.fetch(read.next_reference_name,
-                         read.next_reference_start,
-                         read.next_reference_start + 1,
-                         multiple_iterators=True)
-    for mate in iter:
+    for mate in bamfile.fetch(read.next_reference_name,
+                              read.next_reference_start,
+                              read.next_reference_start + 1,
+                              multiple_iterators=True):
         # A read and its mate have the same query_name
         if mate.query_name == read.query_name:
             # Check if read is first in pair (read1) and mate is second in pair (read2) or viceversa
@@ -199,34 +182,22 @@ def get_reference_sequence(HPC_MODE, REF_GENOME):
 
 def is_flanked_by_n(chrname, pos, HPC_MODE, REF_GENOME):
     genome = get_reference_sequence(HPC_MODE, REF_GENOME)
-
     if "N" in genome['chr' + chrname][pos - 1:pos + 1].upper():
         return True
-    else:
-        return False
+    return False
 
 
 # Return a one-hot encoding for the chromosome region chr:start-stop
 # with Ns encoded as 1 and other chromosomes encoded as 0
 def get_one_hot_sequence(chrname, start, stop, nuc, HPC_MODE, REF_GENOME):
     genome = get_reference_sequence(HPC_MODE, REF_GENOME)
-
-    # ltrdict = {'a': 1, 'c': 2, 'g': 3, 't': 4, 'n': 0}
-
-    # N one-hot
-    # ltrdict = {'a': 0, 'c': 0, 'g': 0, 't': 0, 'n': 1}
-    # return np.array([ltrdict[x.lower()] for x in genome['chr'+chrname][start:stop]])
-
     if chrname == 'MT':
         chrname = 'M'
-
     chrname = chrname if REF_GENOME == 'GRCh38' else 'chr' + chrname
 
     return np.array([
         1 if x.lower() == nuc.lower() else 0
-        for x in genome[chrname][start:stop]
-    ],
-                    dtype=np.uint8)
+        for x in genome[chrname][start:stop]], dtype=np.uint8)
 
 
 def get_one_hot_sequence_by_list(twobitfile, chrname, positions):
@@ -234,13 +205,11 @@ def get_one_hot_sequence_by_list(twobitfile, chrname, positions):
     whole_chrom = str(genome[chrname])
     nuc_list = ['A', 'T', 'C', 'G', 'N']
     res = np.zeros(shape=(len(positions), len(nuc_list)), dtype=np.uint32)
-
     for i, nuc in enumerate(nuc_list, start=0):
         res[:, i] = np.array([
             1 if whole_chrom[pos].lower() == nuc.lower() else 0
             for pos in positions
         ])
-
     return res
 
 
@@ -314,12 +283,10 @@ def get_chr_len_dict(ibam):
     return chr_dict
 
 
-def load_clipped_read_positions_by_chr(sampleName, chrName, chr_dict, win_hlen,
-                                       channel_dir):
+def load_clipped_read_positions_by_chr(sampleName, chrName, chr_dict, win_hlen, channel_dir):
+
     def get_filepath(vec_type):
-        fn = os.path.join(channel_dir, sampleName, vec_type,
-                          vec_type + '.json.gz')
-        return fn
+        return os.path.join(channel_dir, sampleName, vec_type, vec_type + '.json.gz')
 
     logging.info('Loading SR positions for Chr%s' % chrName)
 
@@ -329,110 +296,64 @@ def load_clipped_read_positions_by_chr(sampleName, chrName, chr_dict, win_hlen,
     with gzip.GzipFile(get_filepath('clipped_read_pos'), 'rb') as fin:
         positions_cr = json.loads(fin.read().decode('utf-8'))
 
-    # print(locations)
     locations = [(chr1, pos1, chr2, pos2)
                  for chr1, pos1, chr2, pos2 in locations
                  if chr1 in chr_dict.keys() and chr2 in chr_dict.keys()
                  and win_hlen <= pos1 <= (chr_dict[chr1] - win_hlen)
                  and win_hlen <= pos2 <= (chr_dict[chr2] - win_hlen)]
-
-    positions_cr_l = set(
-        [int(k) + 1 for k, v in positions_cr.items() if v >= min_CR_support])
-    positions_cr_r = set(
-        [int(k) - 1 for k, v in positions_cr.items() if v >= min_CR_support])
+    positions_cr_l = {
+        int(k) + 1 for k, v in positions_cr.items() if v >= min_CR_support}
+    positions_cr_r = {
+        int(k) - 1 for k, v in positions_cr.items() if v >= min_CR_support}
     positions_cr = positions_cr_l | positions_cr_r
-
-    # for pos in positions_cr:
-    #     print('{}:{}'.format(chrName, pos))
-
-    # print(positions_cr)
     locations = [(chr1, pos1, chr2, pos2)
                  for chr1, pos1, chr2, pos2 in locations
                  if (chr1 == chrName and pos1 in positions_cr) or (
                      chr2 == chrName and pos2 in positions_cr)]
-
-    logging.info('{} positions'.format(len(locations)))
-
+    logging.info("%d positions" % len(locations))
     return locations
 
 
-def load_all_clipped_read_positions_by_chr(sampleName, win_hlen, chr_dict,
-                                           output_dir):
-
+def load_all_clipped_read_positions_by_chr(sampleName, win_hlen, chr_dict, output_dir):
     cr_pos_file = os.path.join(
-        output_dir, sampleName,
-        'candidate_positions_' + sampleName + '.json.gz')
-
+        output_dir, sampleName, 'candidate_positions_' + sampleName + '.json.gz')
     if os.path.exists(cr_pos_file):
-
         logging.info('Loading existing candidate positions file...')
-
         with gzip.GzipFile(cr_pos_file, 'rb') as fin:
             cpos_list = json.loads(fin.read().decode('utf-8'))
-        fin.close()
-
         return cpos_list
 
-    else:
-
-        cpos_list = []
-
-        chrlist = get_chr_list()
-        chr_list = chrlist if sampleName != 'T1' else ['17']
-
-        for chrName in chr_list:
-            logging.info(
-                'Loading candidate positions for Chr{}'.format(chrName))
-            cpos = load_clipped_read_positions(sampleName, chrName, chr_dict,
-                                               win_hlen, output_dir)
-            cpos_list.extend(cpos)
-            logging.info('Candidate positions for Chr{}: {}'.format(
-                chrName, len(cpos)))
-
-        logging.info('Writing candidate positions file {}'.format(cr_pos_file))
-
-        with gzip.GzipFile(cr_pos_file, 'wb') as f:
-            f.write(json.dumps(cpos_list).encode('utf-8'))
-        f.close()
-
-        return cpos_list
+    cpos_list = []
+    chrlist = get_chr_list()
+    chr_list = chrlist if sampleName != 'T1' else ['17']
+    for chrName in chr_list:
+        logging.info("Loading candidate positions for Chr%s" % str(chrName))
+        cpos = load_clipped_read_positions(
+            sampleName, chrName, chr_dict, win_hlen, output_dir)
+        cpos_list.extend(cpos)
+        logging.info("Candidate positions for Chr%s: %d" %
+                     (str(chrName), len(cpos)))
+    logging.info("Writing candidate positions file %s" % cr_pos_file)
+    with gzip.GzipFile(cr_pos_file, 'wb') as f:
+        f.write(json.dumps(cpos_list).encode('utf-8'))
+    return cpos_list
 
 
-def load_all_clipped_read_positions(win_hlen,
-                                    svtype,
-                                    chr_dict,
-                                    output_dir,
-                                    clipped_type="SR"):
-
+def load_all_clipped_read_positions(win_hlen, svtype, chr_dict, output_dir, clipped_type="SR"):
     config = get_config_file()
     min_CR_support = config["DEFAULT"]["MIN_CR_SUPPORT"]
 
-    # cr_pos_file = os.path.join(output_dir, svtype + '_candidate_positions_' + clipped_type + '.json.gz')
-    #
-    # if os.path.exists(cr_pos_file):
-    #
-    #     logging.info('Loading existing candidate positions file...')
-    #
-    #     with gzip.GzipFile(cr_pos_file, 'rb') as fin:
-    #         cpos_list = json.loads(fin.read().decode('utf-8'))
-    #     fin.close()
-    #
-    #     return cpos_list
-    #
-    # else:
-
     def get_filepath(vec_type):
-        fn = os.path.join(output_dir, vec_type, vec_type + '.json.gz')
-        return fn
+        return os.path.join(output_dir, vec_type, vec_type + '.json.gz')
 
     logging.info('Loading SR positions')
-
     chrlist = get_chr_list()
     chr_list = chrlist  # if sampleName != 'T1' else ['17']
 
     with gzip.GzipFile(get_filepath('split_reads'), 'rb') as fin:
         positions_with_min_support_ls, positions_with_min_support_rs, total_reads_coord_min_support_json, \
-        split_reads, split_read_distance = json.loads(fin.read().decode('utf-8'))
+            split_reads, split_read_distance = json.loads(
+                fin.read().decode('utf-8'))
 
     with gzip.GzipFile(get_filepath('clipped_read_pos'), 'rb') as fin:
         left_clipped_pos_cnt, right_clipped_pos_cnt = json.loads(
@@ -445,19 +366,15 @@ def load_all_clipped_read_positions(win_hlen,
         total_reads_coord_min_support = total_reads_coord_min_support_json['INS'] + \
             total_reads_coord_min_support_json['INDEL_INS']
     else:
-        total_reads_coord_min_support = total_reads_coord_min_support_json[
-            svtype]
+        total_reads_coord_min_support = total_reads_coord_min_support_json[svtype]
 
     locations_sr = dict()
     locations_cr_r = dict()
     locations_cr_l = dict()
-
     positions_cr = dict()
 
     for chrom in chr_list:
-
         if clipped_type == 'SR':
-
             locations_sr[chrom] = [
                 (chr1, pos1, chr2, pos2, strand_info)
                 for chr1, pos1, chr2, pos2, strand_info in total_reads_coord_min_support
@@ -465,56 +382,19 @@ def load_all_clipped_read_positions(win_hlen,
                 == chrom and win_hlen <= pos1 <= (chr_dict[chr1] - win_hlen)
                 and win_hlen <= pos2 <= (chr_dict[chr2] - win_hlen)
             ]
-
-            # if svtype in ['DEL', 'INV', 'DUP', 'TRA']:
-            #
-            #     if chrom in left_clipped_pos_cnt.keys():
-            #         positions_cr_l = set([
-            #             int(k) for k, v in left_clipped_pos_cnt[chrom].items()
-            #             if v >= min_CR_support
-            #         ])
-            #     else:
-            #         positions_cr_l = set()
-            #     if chrom in right_clipped_pos_cnt.keys():
-            #         positions_cr_r = set([
-            #             int(k)
-            #             for k, v in right_clipped_pos_cnt[chrom].items()
-            #             if v >= min_CR_support
-            #         ])
-            #     else:
-            #         positions_cr_r = set()
-            #
-            #     positions_cr[chrom] = positions_cr_l | positions_cr_r
-            #
-            #     # for pos in positions_cr:
-            #     #     print('{}:{}'.format(chrName, pos))
-            #
-            #     # print(positions_cr)
-            #     locations_sr[chrom] = [
-            #         (chr1, pos1, chr2, pos2)
-            #         for chr1, pos1, chr2, pos2 in locations_sr[chrom]
-            #         if (chr1 == chrom and pos1 in positions_cr[chr1]) or (
-            #             chr2 == chrom and pos2 in positions_cr[chr2])
-            #     ]
-
-            logging.info('Chr{}: {} positions'.format(
-                chrom, len(locations_sr[chrom])))
+            logging.info("Chr%s: %d positions" %
+                         (str(chrom), len(locations_sr[chrom])))
 
         elif clipped_type == 'CR':
-
             if chrom in left_clipped_pos_cnt.keys():
-                positions_cr_l = set([
-                    int(k) for k, v in left_clipped_pos_cnt[chrom].items()
-                    if v >= min_CR_support
-                ])
+                positions_cr_l = {
+                    int(k) for k, v in left_clipped_pos_cnt[chrom].items() if v >= min_CR_support}
             else:
                 positions_cr_l = set()
 
             if chrom in right_clipped_pos_cnt.keys():
-                positions_cr_r = set([
-                    int(k) for k, v in right_clipped_pos_cnt[chrom].items()
-                    if v >= min_CR_support
-                ])
+                positions_cr_r = {
+                    int(k) for k, v in right_clipped_pos_cnt[chrom].items() if v >= min_CR_support}
             else:
                 positions_cr_r = set()
 
@@ -528,51 +408,31 @@ def load_all_clipped_read_positions(win_hlen,
                 ]
 
     if clipped_type == 'SR':
-
         cpos_list = []
         for chrom in chr_list:
             if chrom in locations_sr.keys():
                 cpos_list.extend(locations_sr[chrom])
-
-        logging.info('{} candidate positions'.format(len(cpos_list)))
-
-        # logging.info('Writing candidate positions file {}'.format(cr_pos_file))
-
-        # with gzip.GzipFile(cr_pos_file, 'wb') as f:
-        #     f.write(json.dumps(cpos_list).encode('utf-8'))
-        # f.close()
-
+        logging.info("%d candidate positions" % len(cpos_list))
         return cpos_list
 
-    elif clipped_type == 'CR':
-
+    if clipped_type == 'CR':
         cpos_list_right = []
         cpos_list_left = []
-
         for chrom in chr_list:
             if chrom in locations_cr_r.keys():
                 cpos_list_right.extend(locations_cr_r[chrom])
-
         for chrom in chr_list:
             if chrom in locations_cr_l.keys():
                 cpos_list_left.extend(locations_cr_l[chrom])
-
-        logging.info('Right-clipped: {} candidate positions'.format(
-            len(cpos_list_right)))
-        logging.info('Left-clipped: {} candidate positions'.format(
-            len(cpos_list_left)))
-
-        logging.info('Writing candidate positions file {}'.format(cr_pos_file))
-
-        # with gzip.GzipFile(cr_pos_file, 'wb') as f:
-        #     f.write(json.dumps((cpos_list_right, cpos_list_left)).encode('utf-8'))
-        # f.close()
-
+        logging.info("Right-clipped: %d candidate positions" %
+                     len(cpos_list_right))
+        logging.info("Left-clipped: %d candidate positions" %
+                     len(cpos_list_left))
+        logging.info("Writing candidate positions file %s" % cr_pos_file)
         return cpos_list_right, cpos_list_left
 
 
 def load_windows(win_file):
-
     npzfile = np.load(win_file, allow_pickle=True, mmap_mode='r')
     X = npzfile['data']
     y = npzfile['labels']
@@ -581,37 +441,22 @@ def load_windows(win_file):
 
 
 def save_windows(X, y, win_file):
-
-    np.savez(file=win_file,
-             data=X,
-             labels=y)
+    np.savez(file=win_file, data=X, labels=y)
 
 
 def get_chr_dict(fasta_file):
-
     d = dict()
-
     with pysam.FastaFile(filename=fasta_file, filepath_index=fasta_file + '.fai') as fa:
-        for i,seqid in enumerate(fa.references):
+        for i, seqid in enumerate(fa.references):
             d[seqid] = fa.lengths[i] - 1
         return d
 
 
 def estimate_insert_size(ibam, pysam_bam, min_mapq):
-
-    base =os.path.basename(ibam)
+    base = os.path.basename(ibam)
     prefix = os.path.splitext(base)[0]
-
-    isize_out = os.path.join(
-        os.path.dirname(ibam),
-        prefix+'.insert_size.csv'
-    )
-    # print(isize_out)
-
-    # n_bins = 100
-
-    # fig, axs = plt.subplots(1, 1, sharey=True, tight_layout=True)
-
+    isize_out = os.path.join(os.path.dirname(
+        ibam), prefix + '.insert_size.csv')
     isize_distr = []
     i = 0
 
@@ -620,43 +465,24 @@ def estimate_insert_size(ibam, pysam_bam, min_mapq):
                 and read.is_reverse != read.mate_is_reverse \
                 and read.reference_name == read.next_reference_name:
             dist = abs(read.reference_start - read.next_reference_start)
-
             if dist < 10 ** 3:
-
-                isize_distr.append(
-                    dist
-                )
-
+                isize_distr.append(dist)
                 if i == 2 * 10 ** 6:
                     break
                 i += 1
 
     df = pd.DataFrame({'mean': [mean(isize_distr)],
-                       'sd': [stdev(isize_distr)]
-                        })
-
+                       'sd': [stdev(isize_distr)]})
     df.to_csv(isize_out, index=False)
-
-    # axs.hist(isize_distr, bins=n_bins)
-    # plt.show()
-
     return df
 
 
 def get_insert_size(ibam, pysam_bam, min_mapq):
-
-    base =os.path.basename(ibam)
+    base = os.path.basename(ibam)
     prefix = os.path.splitext(base)[0]
-
-    isize_file = os.path.join(
-        os.path.dirname(ibam),
-        prefix+'.insert_size.csv'
-    )
-
+    isize_file = os.path.join(os.path.dirname(ibam), prefix+'.insert_size.csv')
     if os.path.exists(isize_file):
         df = pd.read_csv(isize_file)
     else:
         df = estimate_insert_size(ibam, pysam_bam, min_mapq)
-
     return df.at[0, 'mean'], df.at[0, 'sd']
-

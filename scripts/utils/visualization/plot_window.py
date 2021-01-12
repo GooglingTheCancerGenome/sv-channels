@@ -1,11 +1,12 @@
+import argparse
+import os
+from collections import Counter
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import minmax_scale
 from matplotlib import colors
-import matplotlib.pyplot as plt
-import argparse
-from collections import Counter
-import os
+from sklearn.preprocessing import minmax_scale
 
 
 def get_data(windows_list):
@@ -67,8 +68,10 @@ def plot_window(X, y, w,  idx, outdir):
 def main():
 
     default_win = 200
-    default_path = os.path.join('../genome_wide/cnn/win'+str(default_win), 'split_reads')
-    def_windows_file = os.path.join(default_path, 'windows', 'DEL', 'windows_en.npz')
+    default_path = os.path.join(
+        '../genome_wide/cnn/win'+str(default_win), 'split_reads')
+    def_windows_file = os.path.join(
+        default_path, 'windows', 'DEL', 'windows_en.npz')
 
     parser = argparse.ArgumentParser(description='Use model to predict')
 
@@ -102,7 +105,7 @@ def main():
 
     args = parser.parse_args()
 
-    #grep 'DEL' test.bedpe | awk '{print $1"\t"$2"\t"$3"\n"$4"\t"$5"\t"$6}' > test.igv.DEL.bed
+    # grep 'DEL' test.bedpe | awk '{print $1"\t"$2"\t"$3"\n"$4"\t"$5"\t"$6}' > test.igv.DEL.bed
 
     os.makedirs(os.path.join(args.output_dir, args.svtype), exist_ok=True)
 
@@ -117,4 +120,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -5,17 +5,17 @@ Split VCF into SVs that overlaps SR positions and SVs that do not
 """
 
 import argparse
+import gzip
 import os
 import sys
-import gzip
-from intervaltree import IntervalTree
 from collections import defaultdict
 from time import time
 
-sys.path.append('../genome_wide/')
-
 from functions import *
+from intervaltree import IntervalTree
 from label_windows import *
+
+sys.path.append('../genome_wide/')
 
 
 def parse_cl_args(in_args, caller):
@@ -25,7 +25,6 @@ def parse_cl_args(in_args, caller):
     :param in_args: All command line arguments
     :return: None
     """
-
     if caller == 'test':
         mypath = os.path.join(pathout, 'test.bedpe')
     else:
@@ -57,14 +56,9 @@ def parse_cl_args(in_args, caller):
 
 
 def get_srpos_from_bedpe(inbedpe):
-
-    # Check file existence
-    assert os.path.isfile(inbedpe), inbedpe + ' not found!'
     # Dictionary with chromosome keys to store SVs
     srpos = []
-
     with gzip.GzipFile(inbedpe, 'rb') as fin:
-
         for line in fin.readlines():
             columns = line.decode('utf8').rstrip().split("\t")
             # print(columns)
@@ -73,116 +67,65 @@ def get_srpos_from_bedpe(inbedpe):
             chrom2, pos2_start, pos2_end = str(columns[3]), int(
                 columns[4]), int(columns[5])
             svtype = columns[6]
-            # print('{}:{}-{}:{}'.format(chrom1, pos1_start, chrom2, pos2_start))
             srpos.append((chrom1, pos1_start, chrom2, pos2_start))
-
-    # print('counting {} split read positions'.format(len(srpos)))
-    # print(sv_list)
-
     return srpos
 
 
 def create_gtrees(sv_list):
-
     print('Building SV GenomicTrees...')
     # Tree with windows for candidate positions
     trees_start = defaultdict(IntervalTree)
     trees_end = defaultdict(IntervalTree)
-
     # Populate tree
     for i, sv in enumerate(sv_list, start=0):
         chrom1, pos1_start, pos1_end, chrom2, pos2_start, pos2_end, svtype = sv
         sv_id = '_'.join(
             (chrom1, str(pos1_start), chrom2, str(pos2_start)))
-
         trees_start[chrom1][pos1_start:pos1_end] = (i, sv_id)
         trees_end[chrom2][pos2_start:pos2_end] = (i, sv_id)
-
-    # print('Tree start')
-    # for k in trees_start.keys():
-    #     print('{} : {}'.format( k, len(trees_start[k])))
-    # print('Tree end')
-    # for k in trees_end.keys():
-    #     print('{} : {}'.format( k, len(trees_end[k])))
-
     return trees_start, trees_end
 
 
 def search_tree_with_bedpe(cpos, trees_start, trees_end, win_hlen):
-
     print('Searching SV GenomicTrees with candidate positions...')
-
     lookup_start = []
     lookup_end = []
-
     # Log info every n_r times
     n_r = 10**4
     last_t = time()
-
     for i, p in enumerate(cpos, start=1):
-
-        # if not i % n_r:
-        #     now_t = time()
-        #     # print(type(now_t))
-        #     print(
-        #         "%d candidate positions processed (%f positions / s)" %
-        #         (i, n_r / (now_t - last_t)))
-        #     last_t = time()
-
         chrom1, pos1, chrom2, pos2 = p
-        lookup_start.append(trees_start[chrom1][pos1 - win_hlen:pos1 + win_hlen + 1])
-        lookup_end.append(trees_end[chrom2][pos2 - win_hlen:pos2 + win_hlen + 1])
-
+        lookup_start.append(trees_start[chrom1]
+                            [pos1 - win_hlen:pos1 + win_hlen + 1])
+        lookup_end.append(
+            trees_end[chrom2][pos2 - win_hlen:pos2 + win_hlen + 1])
     return lookup_start, lookup_end
 
 
 def main():
-
     srpos = get_srpos_from_bedpe(os.path.join(pathout, 'split_reads.bedpe.gz'))
-
     for caller in ['manta', 'gridss', 'lumpy', 'delly', 'test']:
-    #for caller in ['manta']:
-
         print('Considering {}:'.format(caller))
-
         args = parse_cl_args(sys.argv[1:], caller)
-
-        win_hlen = int(args.win / 2) if args.win % 2 == 0 else int((args.win + 1) / 2)
-
+        win_hlen = int(
+            args.win / 2) if args.win % 2 == 0 else int((args.win + 1) / 2)
         filename, file_extension = os.path.splitext(args.input)
-
         if file_extension == '.vcf':
             sv_list = read_vcf(args.input)
             sv_list = [i for i in sv_list if i[-1] == args.svtype]
         elif file_extension == '.bedpe':
             sv_list = read_bedpe(args.input, args.svtype)
-
-        # print(len(sv_list))
         trees_start, trees_end = create_gtrees(sv_list)
-
-        #print(trees_start)
-        #print(trees_end)
-
-        lookup_start, lookup_end = search_tree_with_bedpe(srpos, trees_start, trees_end, win_hlen)
-
-        #print(lookup_start)
-
+        lookup_start, lookup_end = search_tree_with_bedpe(
+            srpos, trees_start, trees_end, win_hlen)
         idx = []
-
         for i, x in enumerate(zip(srpos, lookup_start, lookup_end), start=0):
-
             p, lu_start, lu_end = x
-
             l1 = len(lu_start)
             l2 = len(lu_end)
-
-            #print('{} <=> {}' .format(l1, l2))
-
             if l1 > 0 and l2 > 0:
-
                 lu_start_set = []
                 lu_end_set = []
-
                 for s in lu_start:
                     lu_start_elem_start, lu_start_elem_end, lu_start_elem_data = s
                     lu_start_i, lu_start_elem_svid = lu_start_elem_data
@@ -194,20 +137,15 @@ def main():
                     lu_end_set.append(lu_end_i)
 
                 olap = set(lu_start_set) & set(lu_end_set)
-
                 if len(olap) > 0:
-                    # print('{} => {}'.format(p, lu_start_set & lu_end_set))
                     idx.extend(olap)
 
         print('list of indices: {}'.format(len(idx)))
-
         out = open(args.output, 'w')
         out_nosr = open(args.output_nosr, 'w')
         j = 0
         sr_lines = nosr_lines = 0
-
         with open(args.input, 'r') as fin:
-
             for line in fin.readlines():
                 if line[0] == '#':
                     out.write(line)
@@ -221,7 +159,6 @@ def main():
                         nosr_lines += 1
                     j += 1
 
-
         print('{} SVs => with SR:{}({}%); without:{}({}%)'.format(
             sr_lines+nosr_lines,
             sr_lines,
@@ -229,14 +166,11 @@ def main():
             nosr_lines,
             nosr_lines / (sr_lines + nosr_lines)*100,
         ))
-
         out.close()
         out_nosr.close()
 
 
 if __name__ == "__main__":
-
     global pathout
     pathout = '/Users/lsantuari/Documents/Processed/SPIDER/split_reads/NA12878'
-
     main()

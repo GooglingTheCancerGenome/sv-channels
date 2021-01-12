@@ -17,32 +17,24 @@ def get_range(dictionary, begin, end):
 
 def load_chr_array(channel_data_dir, chrlist):
     chr_array = dict()
-
     for c in chrlist:
-        carray_file = os.path.join(channel_data_dir, 'chr_array',
-                                   c + '_carray')
-        logging.info('Loading file: {}'.format(carray_file))
-        assert os.path.exists(carray_file), carray_file + ' not found'
+        carray_file = os.path.join(
+            channel_data_dir, 'chr_array', c + '_carray')
+        logging.info("Loading file %s" % carray_file)
         chr_array[c] = bcolz.open(rootdir=carray_file)
-        logging.info('Array shape: {}'.format(chr_array[c].shape))
-
+        logging.info("Array shape: %s" % str(chr_array[c].shape))
     return chr_array
 
 
 def get_labels(label_file):
-    # 'label_window_pairs_on_svcallset.json.gz')
-    # 'label_window_pairs_on_split_read_positions.json.gz')
     with gzip.GzipFile(label_file, 'r') as fin:
-        labels = json.loads(fin.read().decode('utf-8'))
-
-    return labels
+        return json.loads(fin.read().decode('utf-8'))
 
 
 def split_labels(labels):
     p = {}
     n = {}
     for k, v in labels.items():
-
         if v == 'DEL':
             p[k] = v
         elif v == 'noDEL':
@@ -58,73 +50,39 @@ def unfold_win_id(win_id):
 
 
 def get_windows(carrays_dir, outDir, chrom_list, win, label_file_path, mode, npz_mode, padding_len):
-
     if win % 2 != 0:
         win += 1
-
     chr_array = load_chr_array(carrays_dir, chrom_list)
     n_channels = chr_array[chrom_list[0]].shape[1]
-    logging.info('{} channels'.format(n_channels))
-
+    logging.info("%d channels" % n_channels)
     labels = get_labels(label_file_path)
-    # labels = get_range(labels, 0, 10000)
-
-    # if sampleName == 'T1':
-    #     labels = {k: v for k, v in labels.items() if same_chr_in_winid(k)}
-
-    logging.info('{} labels found: {}'.format(len(labels),
-                                              Counter(labels.values())))
+    logging.info("%d labels found: %s" %
+                 (len(labels), str(Counter(labels.values()))))
 
     if mode == 'training':
-
         labels_positive = {k: v for k, v in labels.items() if v == 'DEL'}
         labels_negative = {k: v for k, v in labels.items() if v == 'noDEL'}
-        labels_negative = get_range(labels_negative, 0,
-                                    len(labels_positive.keys()))
+        labels_negative = get_range(
+            labels_negative, 0, len(labels_positive.keys()))
         labels_set = {'positive': labels_positive, 'negative': labels_negative}
-        # labels_set = {'negative': labels_negative}
-
     elif mode == 'test':
-
         labels_set = {'test': labels}
-
     win_hlen = int(int(win) / 2)
 
     for labs_name, labs in labels_set.items():
-
-        logging.info('Creating {}...'.format(labs_name))
-
+        logging.info("Creating %s..." % str(labs_name))
         n_r = 10 ** 5
-        # print(n_r)
         last_t = time()
         i = 1
-
-        # outfile = os.path.join(outDir, 'windows')
-        # bcolz_array = bcolz.carray(bcolz.zeros(shape=(0, int(win) * 2 +
-        #                                               padding_len, n_channels),
-        #                                        dtype=np.float32),
-        #                            mode='w',
-        #                            rootdir=outfile + '_carray')
-
-        padding = np.zeros(shape=(padding_len, n_channels),
-                              dtype=np.float32)
-
+        padding = np.zeros(shape=(padding_len, n_channels), dtype=np.float32)
         if npz_mode:
             numpy_array = []
-
-        logging.info('Creating dask_arrays_win1 and dask_arrays_win2...')
+        logging.info('Creating np.arrays win1 and win2...')
         for chr1, pos1, chr2, pos2, strand_info in map(unfold_win_id, labs.keys()):
-            # logging.info("chr1={} pos1={} chr2={} pos2={}".format(
-            #    chr1, pos1, chr2, pos2))
             if not i % n_r:
-                # Record the current time
-                now_t = time()
-                # print(type(now_t))
-                logging.info(
-                    "%d window pairs processed (%f window pairs / s)" %
-                    (i, n_r / (now_t - last_t)))
+                logging.info("%d window pairs processed (%f window pairs / s)" %
+                             (i, n_r / (time() - last_t)))
                 last_t = time()
-
             partial_array = list()
             d = chr_array[chr1][pos1 - win_hlen:pos1 + win_hlen, :]
             partial_array.append(d)
@@ -133,52 +91,26 @@ def get_windows(carrays_dir, outDir, chrom_list, win, label_file_path, mode, npz
             partial_array.append(d)
 
             try:
-                # print(len(partial_array))
                 full_array = np.concatenate(partial_array, axis=0)
-
                 if npz_mode:
                     numpy_array.append(full_array)
-
             except ValueError:
-
                 print('{}:{}-{}:{}'.format(chr1, pos1, chr2, pos2))
-
                 for d in numpy_array:
-                   print(d.shape)
-
-            # print(type(dask_array))
-            # bcolz_array.append(dask_array)
-
-        # bcolz_array.append(dask_array)
-        # bcolz_array.attrs['labels'] = labs
-        # bcolz_array.flush()
-        # logging.info(bcolz_array.shape)
+                    print(d.shape)
 
         if npz_mode:
-
             numpy_array = np.stack(numpy_array, axis=0)
-
-            logging.info('Numpy array shape: {}'.format(numpy_array.shape))
-
+            logging.info("Numpy array shape: %s" % str(numpy_array.shape))
             for i in np.arange(numpy_array.shape[2]):
-                logging.info('windows array:' + \
-                             'non-zero elements at index {}:{}'.format(i,
-                                                                       np.argwhere(numpy_array[i, :] != 0).shape[0]))
-
+                logging.info("windows array: non-zero elements at index %d:%d" %
+                             (i, np.argwhere(numpy_array[i, :] != 0).shape[0]))
             np.savez(file=os.path.join(outDir, 'windows'),
                      data=numpy_array,
                      labels=labs)
-        else:
-            logging.info('Enable bcolz!')
 
 
 def main():
-    '''
-    Main function for parsing the input arguments and calling the function to create windows
-    :return: None
-    '''
-
-
     parser = argparse.ArgumentParser(
         description='Create windows from chromosome arrays')
     parser.add_argument('-b',
@@ -230,22 +162,16 @@ def main():
                         type=int,
                         default=10,
                         help="Length of the padding in between windows")
-
     args = parser.parse_args()
-
     output_dir = args.outputpath
     os.makedirs(output_dir, exist_ok=True)
     logfilename = os.path.join(output_dir, args.logfile)
-    # output_file = os.path.join(output_dir, args.out)
-
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(format=FORMAT,
                         filename=logfilename,
                         filemode='w',
                         level=logging.INFO)
-
     t0 = time()
-
     get_windows(carrays_dir=args.carraydir,
                 outDir=output_dir,
                 chrom_list=args.chrlist.split(','),
@@ -254,8 +180,6 @@ def main():
                 mode=args.mode,
                 npz_mode=args.save_npz,
                 padding_len=args.padding)
-
-    # print('Elapsed time channel_maker_real on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))
     logging.info('Elapsed time create_windows = %f seconds' % (time() - t0))
 
 

@@ -44,8 +44,8 @@ https://badgen.net/ to see which other badges are available.)
    :target: https://doi.org/10.000/FIXME
    :alt: Zenodo Badge
 
-.. |CII Best Practices Badge| image:: https://bestpractices.coreinfrastructure.org/projects/FIXME/badge
-   :target: https://bestpractices.coreinfrastructure.org/projects/FIXME
+.. |CII Best Practices Badge| image:: https://bestpractices.coreinfrastructure.org/projects/sv-channels/badge
+   :target: https://bestpractices.coreinfrastructure.org/projects/sv-channels
    :alt: CII Best Practices Badge
 
 .. |Travis CI| image:: https://travis-ci.org/GooglingTheCancerGenome/sv-channels.svg?branch=iss32
@@ -57,10 +57,6 @@ https://badgen.net/ to see which other badges are available.)
     :scale: 100%
     :target: https://sv-channels.readthedocs.io/en/latest/?badge=latest
 
-
-The project setup is documented in `a separate document <project_setup.rst>`_.
-Feel free to remove this document (and/or the link to this document) if you
-don't need it.
 
 ***********************
 Documentation for users
@@ -85,35 +81,6 @@ Execution
   SCH=local  # gridengine or slurm
   ./run.sh $SCH data/test.bam 12,22 # run jobs locally or on a compute cluster
 
-Glossary of terms
-=================
-
-.. list-table::
-   :header-rows: 1
-
-   * - Term
-     - Description
-
-****************************
-Documentation for developers
-****************************
-
-Installation
-============
-
-.. code-block:: console
-
-  git clone https://github.com/GooglingTheCancerGenome/sv-channels.git
-  cd sv-channels
-  conda update -y conda  # update Conda
-  conda env create -n sv-channels -f environment.yaml
-  conda activate sv-channels
-
-Run tests (including coverage) with:
-
-.. code-block:: console
-
-
 Flowchart
 =========
 
@@ -130,7 +97,6 @@ have a look at the `contribution guidelines <CONTRIBUTING.rst>`_.
 *****************************
 Documentation for maintainers
 *****************************
-
 
 *******
 License
@@ -149,12 +115,3 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-
-
-*******
-Credits
-*******
-
-This package was created with `Cookiecutter
-<https://github.com/audreyr/cookiecutter>`_ and the `NLeSC/python-template
-<https://github.com/NLeSC/python-template>`_.

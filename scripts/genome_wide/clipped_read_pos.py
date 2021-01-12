@@ -13,44 +13,29 @@ from functions import *
 
 def get_clipped_read_positions(ibam, chr_list, outFile):
     '''
-    
     :param ibam: input BAM alignment file
     :param chrName: chromosome name to consider
     :param outFile: output file for the dictionary of clipped read positions
     :return: None. Outputs a dictionary with the positions of clipped read positions as keys and
     the number of clipped reads per position as values
     ''' ''
-
-    # Check if the BAM file in input exists
-    assert os.path.isfile(ibam)
-
     # Minimum read mapping quality to consider
     config = get_config_file()
     minMAPQ = config["DEFAULT"]["MIN_MAPQ"]
-
-    # Load the BAM file
     bamfile = pysam.AlignmentFile(ibam, "rb")
-
     # List to store the clipped read positions
     right_clipped_pos = defaultdict(list, {k: [] for k in chr_list})
     left_clipped_pos = defaultdict(list, {k: [] for k in chr_list})
-
     right_clipped_pos_by_query = dict()
     left_clipped_pos_by_query = dict()
-
-    # Pysam iterator to fetch the reads
-    iter = bamfile.fetch()
-
     # Print every n_r alignments processed
     n_r = 10 ** 6
     # Record the current time
     last_t = time()
-
     rc_mate_set = defaultdict(set)
     lc_mate_set = defaultdict(set)
 
-    for i, read in enumerate(iter, start=1):
-
+    for i, read in enumerate(bamfile.fetch(), start=1):
         # Every n_r alignments, write log informations
         if not i % n_r:
             # Record the current time
@@ -63,24 +48,15 @@ def get_clipped_read_positions(ibam, chr_list, outFile):
         # Both read and mate should be mapped, read should have a minimum mapping quality
         # if (not read.is_unmapped) and (not read.mate_is_unmapped) and read.mapping_quality >= minMAPQ:
         if (not read.is_unmapped) and read.mapping_quality >= minMAPQ and not has_suppl_aln(read):
-
             if (read.query_name, read.reference_start
                 ) in lc_mate_set[read.next_reference_name]:
                 if read.query_name in left_clipped_pos_by_query.keys():
-                    # print('Found left clipped {} at position {}:{}'.format(read.query_name,
-                    #                                                        read.next_reference_name,
-                    #                                                        left_clipped_pos_by_query[read.query_name]
-                    #                                                        ))
                     left_clipped_pos[read.next_reference_name].append(
                         left_clipped_pos_by_query[read.query_name])
 
             if (read.query_name, read.reference_start
                 ) in rc_mate_set[read.next_reference_name]:
                 if read.query_name in right_clipped_pos_by_query.keys():
-                    # print('Found right clipped {} at position {}:{}'.format(read.query_name,
-                    #                                                         read.next_reference_name,
-                    #                                                         right_clipped_pos_by_query[read.query_name]
-                    #                                                         ))
                     right_clipped_pos[read.next_reference_name].append(
                         right_clipped_pos_by_query[read.query_name])
 
@@ -113,20 +89,12 @@ def get_clipped_read_positions(ibam, chr_list, outFile):
         logging.info('Unique positions on Chr{} right clipped, not split {}'.format(
             chrom, len(right_clipped_pos_cnt[chrom])))
 
-    # Write
     with gzip.GzipFile(outFile, 'w') as fout:
         fout.write(
-            json.dumps(
-                (left_clipped_pos_cnt, right_clipped_pos_cnt)).encode('utf-8'))
-
-    # to load it:
-    # with gzip.GzipFile(outFile, 'r') as fin:
-    #     left_clipped_pos_cnt, right_clipped_pos_cnt = json.loads(fin.read().decode('utf-8'))
+            json.dumps((left_clipped_pos_cnt, right_clipped_pos_cnt)).encode('utf-8'))
 
 
 def main():
-
-    # Parse the arguments of the script
     parser = argparse.ArgumentParser(description='Get clipped reads positions')
     parser.add_argument('-b',
                         '--bam',
@@ -153,16 +121,12 @@ def main():
                         '--logfile',
                         default='clipped_read_pos.log',
                         help='File in which to write logs.')
-
     args = parser.parse_args()
-
     cmd_name = 'clipped_read_pos'
     output_dir = os.path.join(args.outputpath, cmd_name)
     os.makedirs(output_dir, exist_ok=True)
     logfilename = os.path.join(output_dir, args.logfile)
     output_file = os.path.join(output_dir, args.out)
-
-    # Log file
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(format=FORMAT,
                         filename=logfilename,
@@ -173,7 +137,7 @@ def main():
     get_clipped_read_positions(ibam=args.bam,
                                chr_list=args.chrlist.split(','),
                                outFile=output_file)
-    logging.info('Time: clipped read positions on BAM %s: %f' %
+    logging.info("Time: clipped read positions on BAM %s: %f" %
                  (args.bam, (time() - t0)))
 
 

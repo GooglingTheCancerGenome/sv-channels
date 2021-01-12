@@ -7,28 +7,19 @@ from collections import defaultdict
 from time import time
 
 import pysam
-
 from functions import *
 
 
 def get_clipped_read_distance(ibam, chrName, min_mapq, outFile):
     '''
-
     :param ibam: BAM file in input
     :param chrName: chromosome to consider
     :param outFile: output file where to store the clipped_read_distance dictionary
     :return:
     '''
-
-    # Check if the BAM file in input exists
-    assert os.path.isfile(ibam)
-
-    # open BAM file
     bamfile = pysam.AlignmentFile(ibam, "rb")
-
     bam_mean, bam_stddev = get_insert_size(ibam, bamfile, min_mapq)
-
-    # get chromosome length from BAM header
+    # get chromosome length
     header_dict = bamfile.header
     chrLen = [i['LN'] for i in header_dict['SQ'] if i['SN'] == chrName][0]
 
@@ -44,13 +35,11 @@ def get_clipped_read_distance(ibam, chrName, min_mapq, outFile):
 
     def set_distance(direction, read, dist):
         '''
-
         :param direction: forward/reverse read direction
         :param read: read object of the class pysam.AlignedSegment
         :param dist: read to mate distance
         :return: None. Adds dist to the list of distances at a clipped read position for a certain read direction
         '''
-
         if direction == 'forward':
             pos = read.reference_end + 1
         elif direction == 'reverse':
@@ -73,19 +62,12 @@ def get_clipped_read_distance(ibam, chrName, min_mapq, outFile):
     # Consider all the chromosome: interval [0, chrLen]
     start_pos = 0
     stop_pos = chrLen
-    # Fetch the reads mapped on the chromosome
-    iter = bamfile.fetch(chrName, start_pos, stop_pos)
-
     # Log information every n_r reads
     n_r = 10 ** 6
-    # print(n_r)
     last_t = time()
-    # print(type(last_t))
-    for i, read in enumerate(iter, start=1):
-
+    for i, read in enumerate(bamfile.fetch(chrName, start_pos, stop_pos), start=1):
         if not i % n_r:
             now_t = time()
-            # print(type(now_t))
             logging.info("%d alignments processed (%f alignments / s)" %
                          (i, n_r / (now_t - last_t)))
             last_t = time()
@@ -108,16 +90,10 @@ def get_clipped_read_distance(ibam, chrName, min_mapq, outFile):
     with gzip.GzipFile(outFile, 'w') as fout:
         fout.write(json.dumps(clipped_read_distance).encode('utf-8'))
 
-    # to load it:
-    # with gzip.GzipFile(outFile, 'r') as fin:
-    #     clipped_read_distance = json.loads(fin.read().decode('utf-8'))
-
 
 def main():
-
     parser = argparse.ArgumentParser(
-        description=
-        'Create channels with distance between clipped/non-clipped reads')
+        description='Create channels with distance between clipped/non-clipped reads')
     parser.add_argument('-b',
                         '--bam',
                         type=str,
@@ -147,22 +123,17 @@ def main():
                         type=int,
                         default=10,
                         help='Minimum read mapping quality')
-
-
     args = parser.parse_args()
-
     cmd_name = 'clipped_read_distance'
     output_dir = os.path.join(args.outputpath, cmd_name)
     os.makedirs(output_dir, exist_ok=True)
     logfilename = os.path.join(output_dir, '_'.join((args.chr, args.logfile)))
     output_file = os.path.join(output_dir, '_'.join((args.chr, args.out)))
-
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(format=FORMAT,
                         filename=logfilename,
                         filemode='w',
                         level=logging.INFO)
-
     t0 = time()
     get_clipped_read_distance(ibam=args.bam,
                               chrName=args.chr,
@@ -170,6 +141,7 @@ def main():
                               outFile=output_file)
     logging.info('Time: clipped read distance on BAM %s and Chr %s: %f' %
                  (args.bam, args.chr, (time() - t0)))
+
 
 if __name__ == '__main__':
     main()

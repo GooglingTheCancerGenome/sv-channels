@@ -1,42 +1,38 @@
-import pyBigWig
 import argparse
+
+import pyBigWig
 
 
 def extract_regions(bwfile, bedfile, chsizefile, bwoutfile):
     bw = pyBigWig.open(bwfile)
-
     bed_el = []
     intervals = []
-
     for line in open(bedfile):
         cols = line.strip().split()
         intervals.append(bw.intervals(cols[0], int(cols[1]), int(cols[2])))
         bed_el.append((cols[0], int(cols[1]), int(cols[2])))
-
     bwout = pyBigWig.open(bwoutfile, 'w')
 
     # add header
     header = []
     for line in open(chsizefile):
-        l = line.strip().split()
-        header.append((l[0], int(l[1])))
+        line = line.strip().split()
+        header.append((line[0], int(line[1])))
     bwout.addHeader(header)
 
-    for i, l in enumerate(intervals):
-        chroms = [bed_el[i][0]] * len(l)
-        starts = [t[0] for t in l]
-        ends = [t[1] for t in l]
-        values = [t[2] for t in l]
-
+    for i, iv in enumerate(intervals):
+        chroms = [bed_el[i][0]] * len(iv)
+        starts = [t[0] for t in iv]
+        ends = [t[1] for t in iv]
+        values = [t[2] for t in iv]
         bwout.addEntries(chroms, starts, ends, values)
-
     bw.close()
     bwout.close()
 
 
 def main():
-
-    parser = argparse.ArgumentParser(description='Extract a set of BED regions from a BigWig file')
+    parser = argparse.ArgumentParser(
+        description='Extract a set of BED regions from a BigWig file')
     parser.add_argument('-bw', '--bigwig', type=str,
                         default='',
                         help="input BigWig file")

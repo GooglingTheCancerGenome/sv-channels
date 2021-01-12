@@ -6,34 +6,24 @@ import gzip
 import json
 import logging
 import os
-import sys
-
 from time import time
 
-import bcolz
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
-from tensorflow.keras.models import Sequential
-
-from tensorflow.keras.utils import to_categorical
-from tensorflow.keras.models import load_model
-
-from tensorflow.keras.layers import Dense, Activation, Convolution1D, Lambda, \
-    Convolution2D, Flatten, \
-    Reshape, LSTM, Dropout, TimeDistributed, BatchNormalization
-
-from tensorflow.keras.regularizers import l2
-from tensorflow.keras.optimizers import Adam
-
-from tensorflow.keras.callbacks import (CSVLogger, EarlyStopping, ModelCheckpoint,
-                                        TensorBoard)
-
 from sklearn.model_selection import StratifiedKFold, train_test_split
+from tensorflow.keras.callbacks import (EarlyStopping, ModelCheckpoint,
+                                        TensorBoard)
+from tensorflow.keras.layers import (Activation, BatchNormalization,
+                                     Convolution1D, Dense, Dropout, Flatten,
+                                     Lambda, Reshape, TimeDistributed)
+from tensorflow.keras.models import Sequential, load_model
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.regularizers import l2
+from tensorflow.keras.utils import to_categorical
 
-from model_functions import \
-    evaluate_model, get_data  # create_model_with_mcfly, train_model_with_mcfly
+from model_functions import (  # create_model_with_mcfly, train_model_with_mcfly
+    evaluate_model, get_data)
 
 
 def get_labels(channel_data_dir, win):
@@ -146,7 +136,8 @@ def train(model_fn, params, X_train, y_train, y_train_binary):
 
     nosv_count, sv_count = np.bincount(y_train)
     total_count = len(y_train)
-    logging.info('nosv_count:{}, sv_count:{}, total_count:{}'.format(nosv_count, sv_count, total_count))
+    logging.info('nosv_count:{}, sv_count:{}, total_count:{}'.format(
+        nosv_count, sv_count, total_count))
 
     weight_nosv = (1 / nosv_count) * (total_count) / 2.0
     weight_sv = (1 / sv_count) * (total_count) / 2.0
@@ -222,7 +213,8 @@ def cross_validation(training_windows, outDir, npz_mode, svtype, kfold):
         model_dir = os.path.join(outDir, 'kfold', svtype,
                                  str(index + 1))
 
-        cv_train_and_evaluate(X, y, y_binary, win_ids, train_indices, test_indices, model_dir, svtype)
+        cv_train_and_evaluate(X, y, y_binary, win_ids,
+                              train_indices, test_indices, model_dir, svtype)
 
 
 def cross_validation_by_chrom(training_windows, outDir, npz_mode, svtype, chrlist):
@@ -253,7 +245,8 @@ def cross_validation_by_chrom(training_windows, outDir, npz_mode, svtype, chrlis
 
         model_dir = os.path.join(outDir, 'chrom', svtype, chrom)
 
-        cv_train_and_evaluate(X, y, y_binary, win_ids, train_indices, test_indices, model_dir, svtype)
+        cv_train_and_evaluate(X, y, y_binary, win_ids,
+                              train_indices, test_indices, model_dir, svtype)
 
 
 def train_and_test_model(training_name, test_name, training_windows, test_windows,
@@ -276,7 +269,8 @@ def train_and_test_model(training_name, test_name, training_windows, test_window
     y_train_binary = to_categorical(y_train, num_classes=params['n_classes'])
     y_test_binary = to_categorical(y_test, num_classes=params['n_classes'])
 
-    model_dir = os.path.join(outDir, 'trained_on_' + training_name + '_tested_on_' + test_name)
+    model_dir = os.path.join(outDir, 'trained_on_' +
+                             training_name + '_tested_on_' + test_name)
     os.makedirs(model_dir, exist_ok=True)
     model_fn = os.path.join(model_dir, 'model.hdf5')
 
@@ -297,10 +291,9 @@ def train_and_test_model(training_name, test_name, training_windows, test_window
 def main():
     default_win = 200
     default_path = os.path.join('./cnn/win' + str(default_win), 'split_reads')
-    def_windows_file = os.path.join(default_path, 'windows', 'DEL', 'windows_en.npz')
-
+    def_windows_file = os.path.join(
+        default_path, 'windows', 'DEL', 'windows_en.npz')
     parser = argparse.ArgumentParser(description='Train and test model')
-
     parser.add_argument('-p',
                         '--outputpath',
                         type=str,
@@ -400,12 +393,9 @@ def main():
                         type=int,
                         default=1,
                         help="Regularization rate = 10 ** (-regularization_rate_exp)")
-
     args = parser.parse_args()
-
     global mapclasses
     mapclasses = {args.svtype: 0, 'no' + args.svtype: 1}
-
     global model_params
     model_params = {
         'batch_size': args.batch_size,
@@ -418,14 +408,9 @@ def main():
         'learning_rate_exp': args.learning_rate_exp,
         'regularization_rate_exp': args.regularization_rate_exp
     }
-
     output_dir = args.outputpath
-
     os.makedirs(output_dir, exist_ok=True)
-
     logfilename = os.path.join(output_dir, args.logfile)
-    # output_file = os.path.join(output_dir, args.out)
-
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(format=FORMAT,
                         filename=logfilename,
@@ -433,9 +418,7 @@ def main():
                         level=logging.INFO)
 
     print('Writing log file to {}'.format(logfilename))
-
     t0 = time()
-
     training_windows_list = args.training_windows.split(',')
     test_windows_list = args.test_windows.split(',')
 
@@ -446,7 +429,6 @@ def main():
         assert os.path.exists(t)
 
     if len(set(test_windows_list) & set(training_windows_list)) == 0:
-
         train_and_test_model(
             training_name=args.training_sample_name,
             test_name=args.test_sample_name,
@@ -456,30 +438,19 @@ def main():
             npz_mode=args.load_npz,
             svtype=args.svtype
         )
-
     else:
-
         if args.cv == 'kfold':
-
-            cross_validation(
-                training_windows=training_windows_list,
-                outDir=output_dir,
-                npz_mode=args.load_npz,
-                svtype=args.svtype,
-                kfold=args.kfold
-            )
-
+            cross_validation(training_windows=training_windows_list,
+                             outDir=output_dir,
+                             npz_mode=args.load_npz,
+                             svtype=args.svtype,
+                             kfold=args.kfold)
         elif args.cv == 'chrom':
-
-            cross_validation_by_chrom(
-                training_windows=training_windows_list,
-                outDir=output_dir,
-                npz_mode=args.load_npz,
-                svtype=args.svtype,
-                chrlist=args.chrlist
-            )
-
-    # print('Elapsed time channel_maker_real on BAM %s and Chr %s = %f' % (args.bam, args.chr, time() - t0))
+            cross_validation_by_chrom(training_windows=training_windows_list,
+                                      outDir=output_dir,
+                                      npz_mode=args.load_npz,
+                                      svtype=args.svtype,
+                                      chrlist=args.chrlist)
     logging.info('Elapsed time training and testing = %f seconds' %
                  (time() - t0))
 

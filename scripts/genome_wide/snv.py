@@ -12,18 +12,14 @@ from functions import *
 
 
 def get_snvs(ibam, itwobit, chrName, max_coverage, outFile):
+
     def get_snv_number(query_seq_list, reference_base):
 
         reference_base = reference_base.upper()
         if len(query_seq_list) > 0 and reference_base != 'N':
             cnt = Counter(list(map(lambda x: x.upper(), query_seq_list)))
-            return cnt['A'] + cnt['T'] + cnt['C'] + cnt['G'] - cnt[
-                reference_base]
-        else:
-            return 0
-
-    # Check if the BAM file in input exists
-    assert os.path.isfile(ibam)
+            return cnt['A'] + cnt['T'] + cnt['C'] + cnt['G'] - cnt[reference_base]
+        return 0
 
     # Load the BAM file
     bamfile = pysam.AlignmentFile(ibam, "rb")
@@ -31,32 +27,18 @@ def get_snvs(ibam, itwobit, chrName, max_coverage, outFile):
     header_dict = bamfile.header
     # Get the chromosome length from the header
     chrLen = [i['LN'] for i in header_dict['SQ'] if i['SN'] == chrName][0]
-
     # Fetch reads over the entire chromosome between positions [0, chrLen]
     start_pos = 0
     stop_pos = chrLen
-
     reference_sequence = twobit.TwoBitFile(itwobit)
-
     snv_list = ['BQ', 'SNV', 'MAPQ']
     snv_array = np.zeros(shape=(stop_pos, len(snv_list)), dtype=np.float32)
-    # print(snv_array.shape)
     snv_dict = {v: n for n, v in enumerate(snv_list)}
-    # print(snv_dict)
-    # Print every n_r alignments processed
-    n_r = 10 ** 6
-    # Record the current time
-    last_t = time()
 
     for pileupcolumn in bamfile.pileup(chrName,
                                        start_pos,
                                        stop_pos,
                                        stepper='all'):
-
-        # pileupcolumn.set_min_base_quality(0)
-        # print("\ncoverage at base %s = %s" %
-        #       (pileupcolumn.pos, pileupcolumn.nsegments))
-
         if 0 < pileupcolumn.nsegments < max_coverage and start_pos <= pileupcolumn.pos <= stop_pos:
             quals = pileupcolumn.get_query_qualities()
             if len(quals) > 0:
@@ -66,39 +48,31 @@ def get_snvs(ibam, itwobit, chrName, max_coverage, outFile):
             if len(quals) > 0:
                 snv_array[pileupcolumn.pos, snv_dict['MAPQ']] = np.median(
                     quals)
-
             try:
-
                 query_seq_list = pileupcolumn.get_query_sequences()
-
                 snv_number = get_snv_number(
                     query_seq_list,
                     reference_sequence[chrName][pileupcolumn.pos])
-
                 snv_array[pileupcolumn.pos, snv_dict['SNV']] = snv_number / pileupcolumn.nsegments \
                     if pileupcolumn.nsegments != 0 else 0
 
             except AssertionError as error:
                 # Output expected AssertionErrors.
                 logging.info(error)
-                logging.info('Position {}:{} has {} nsegments'.format(
-                    chrName, pileupcolumn.pos, pileupcolumn.nsegments))
+                logging.info("Position %s:%d has %d nsegments" % (
+                    str(chrName), pileupcolumn.pos, pileupcolumn.nsegments))
                 continue
 
     for i in np.arange(snv_array.shape[1]):
-        logging.info('snv array {}: non-zero elements at index {}:{}'.format(chrName,
-                                                                             i,
-                                                                             np.argwhere(snv_array[:, i] != 0).shape[
-                                                                                 0]))
+        logging.info("snv array %s: non-zero elements at index %d:%d" %
+                     (str(chrName), i, np.argwhere(snv_array[:, i] != 0).shape[0]))
 
     # Write the output
-    # snv_array = np.delete(snv_array, 2, 0)
     np.save(file=outFile, arr=snv_array)
     os.system('gzip -f ' + outFile)
 
 
 def main():
-    # Parse the arguments of the script
     parser = argparse.ArgumentParser(description='Get SNV info')
     parser.add_argument('-b',
                         '--bam',
@@ -134,20 +108,12 @@ def main():
                         type=int,
                         default=1000,
                         help='Consider only regions with coverage less than max_coverage to speed up the processing')
-
     args = parser.parse_args()
-
-    # Log file
-
     cmd_name = 'snv'
-
     output_dir = os.path.join(args.outputpath, cmd_name)
-
     os.makedirs(output_dir, exist_ok=True)
-
     logfilename = os.path.join(output_dir, '_'.join((args.chr, args.logfile)))
     output_file = os.path.join(output_dir, '_'.join((args.chr, args.out)))
-
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(format=FORMAT,
                         filename=logfilename,
@@ -160,8 +126,8 @@ def main():
              chrName=args.chr,
              max_coverage=args.max_coverage,
              outFile=output_file)
-    logging.info('Time: SNVs on BAM %s and Chr %s: %f' % (args.bam, args.chr,
-                                                          (time() - t0)))
+    logging.info('Time: SNVs on BAM %s and Chr %s: %f' %
+                 (args.bam, args.chr, (time() - t0)))
 
 
 if __name__ == '__main__':
