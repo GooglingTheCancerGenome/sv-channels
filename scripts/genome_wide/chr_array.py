@@ -93,7 +93,7 @@ def create_carray(ibam, chrom, twobit, bigwig, outDir, cmd_name):
     chrlen = get_chr_len(ibam, chrom)
     channel_index = 0
     n_channels = 54
-    chr_array = np.zeros(shape=(chrlen, n_channels), dtype=np.float64)
+    chr_array = np.zeros(shape=(chrlen, n_channels), dtype=np.half)
     bw_map = pyBigWig.open(bigwig)
     # dictionary of key choices
     direction_list = {
@@ -147,7 +147,7 @@ def create_carray(ibam, chrom, twobit, bigwig, outDir, cmd_name):
                                       dtype=int)
                     vals = np.fromiter(channel_data[chrom][current_channel]
                                        [split_direction].values(),
-                                       dtype=np.float32)
+                                       dtype=np.half)
                     if len(idx) > 0:
                         chr_array[idx, channel_index] = vals
                         assert chr_array[idx, channel_index].any(), \
@@ -205,7 +205,7 @@ def create_carray(ibam, chrom, twobit, bigwig, outDir, cmd_name):
                  (current_channel, channel_index))
     chr_array[:, channel_index] = np.array(bw_map.values(
         chrom, 0, chrlen),
-        dtype=np.float32)
+        dtype=np.half)
     channel_index += 1
     current_channel = 'one_hot_encoding'
     logging.info("Adding channel %s at index %d" %
@@ -222,7 +222,7 @@ def create_carray(ibam, chrom, twobit, bigwig, outDir, cmd_name):
 
 
 def main():
-    default_chr = '22'
+    default_chr = '12'
     parser = argparse.ArgumentParser(
         description='Create channels from saved data')
     parser.add_argument('-b',

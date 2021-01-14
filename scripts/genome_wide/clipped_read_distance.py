@@ -102,7 +102,7 @@ def main():
     parser.add_argument('-c',
                         '--chr',
                         type=str,
-                        default='12',
+                        default='22',
                         help="Specify chromosome")
     parser.add_argument('-o',
                         '--out',
