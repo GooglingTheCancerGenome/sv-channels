@@ -46,7 +46,7 @@ def get_coverage(ibam, chrName, minMAPQ, outFile):
     chrLen = [i['LN'] for i in header_dict['SQ'] if i['SN'] == chrName][0]
     start_pos = 0
     stop_pos = chrLen
-    cov = np.zeros((chrLen, 5), dtype=np.int)
+    cov = np.zeros((chrLen, 5), dtype=np.uint8)
     n_r = 10 ** 6
     last_t = time()
 

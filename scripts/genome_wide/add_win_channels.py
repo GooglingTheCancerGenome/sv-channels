@@ -187,7 +187,7 @@ def add_channels(args, aln):
     # get starting time
     last_t = time()
     # Initialize numpy array
-    X_enh = np.zeros(shape=(X.shape[:2] + (len(ch),)), dtype=np.half)
+    X_enh = np.zeros(shape=(X.shape[:2] + (len(ch),)), dtype=np.uint8)
 
     for i, p in enumerate(y.keys(), start=0):
         # Every n_r alignments, write log informations
