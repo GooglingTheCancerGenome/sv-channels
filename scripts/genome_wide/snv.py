@@ -32,7 +32,7 @@ def get_snvs(ibam, itwobit, chrName, max_coverage, outFile):
     stop_pos = chrLen
     reference_sequence = twobit.TwoBitFile(itwobit)
     snv_list = ['BQ', 'SNV', 'MAPQ']
-    snv_array = np.zeros(shape=(stop_pos, len(snv_list)), dtype=np.float32)
+    snv_array = np.zeros(shape=(stop_pos, len(snv_list)), dtype=np.half)
     snv_dict = {v: n for n, v in enumerate(snv_list)}
 
     for pileupcolumn in bamfile.pileup(chrName,

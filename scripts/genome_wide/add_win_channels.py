@@ -17,7 +17,7 @@ def init_log(logfile):
 
 
 def parse_args():
-    default_win = 25
+    default_win = 200
     parser = argparse.ArgumentParser(
         description='Add window specific channels')
 
@@ -187,7 +187,7 @@ def add_channels(args, aln):
     # get starting time
     last_t = time()
     # Initialize numpy array
-    X_enh = np.zeros(shape=(X.shape[:2] + (len(ch),)), dtype=np.int8)
+    X_enh = np.zeros(shape=(X.shape[:2] + (len(ch),)), dtype=np.uint8)
 
     for i, p in enumerate(y.keys(), start=0):
         # Every n_r alignments, write log informations
@@ -245,6 +245,7 @@ def main():
 
     with pysam.AlignmentFile(args.bam, "rb") as bam:
         X, y = add_channels(args, bam)
+        X = X.astype(np.half)
         save_windows(X, y, args.output)
     logging.info('Finished in %f seconds' % (time() - t0))
 

@@ -83,11 +83,11 @@ def create_model(dim_length, dim_channels, outputdim):
     model.add(Activation('relu'))  # Relu activation
 
     # Adding one more FC layer
-    model.add(
-        Dense(units=model_params['fc_nodes'],
-              kernel_regularizer=l2(regularization_rate),
-              kernel_initializer=weightinit))  # Fully connected layer
-    model.add(Activation('relu'))  # Relu activation
+    # model.add(
+    #     Dense(units=model_params['fc_nodes'],
+    #           kernel_regularizer=l2(regularization_rate),
+    #           kernel_initializer=weightinit))  # Fully connected layer
+    # model.add(Activation('relu'))  # Relu activation
 
     model.add(Dense(units=outputdim, kernel_initializer=weightinit))
     model.add(BatchNormalization())
@@ -156,10 +156,10 @@ def train(model_fn, params, X_train, y_train, y_train_binary):
         epochs=model_params['epochs'],
         shuffle=True,
         class_weight=class_weights,
-        verbose=1,
+        verbose=0,
         callbacks=callbacks)
 
-    model = load_model(model_fn)
+    # model = load_model(model_fn)
 
     return model, history, X_train.shape[0], int(X_train.shape[0] *
                                                  model_params['validation_split'])
@@ -199,8 +199,9 @@ def cv_train_and_evaluate(X, y, y_binary, win_ids, train_indices, test_indices, 
     results.to_csv(os.path.join(model_dir, 'metrics.csv'), sep='\t')
 
 
-def cross_validation(training_windows, outDir, npz_mode, svtype, kfold):
-    X, y, win_ids = get_data(training_windows, npz_mode, svtype)
+def cross_validation(training_windows, outDir, svtype, kfold):
+
+    X, y, win_ids = get_data(training_windows, svtype)
     y_binary = to_categorical(y, num_classes=len(mapclasses.keys()))
 
     # Instantiate the cross validator
@@ -217,8 +218,8 @@ def cross_validation(training_windows, outDir, npz_mode, svtype, kfold):
                               train_indices, test_indices, model_dir, svtype)
 
 
-def cross_validation_by_chrom(training_windows, outDir, npz_mode, svtype, chrlist):
-    X, y, win_ids = get_data(training_windows, npz_mode, svtype)
+def cross_validation_by_chrom(training_windows, outDir, svtype, chrlist):
+    X, y, win_ids = get_data(training_windows, svtype)
     y_binary = to_categorical(y, num_classes=len(mapclasses.keys()))
 
     # print(win_ids)
@@ -250,10 +251,10 @@ def cross_validation_by_chrom(training_windows, outDir, npz_mode, svtype, chrlis
 
 
 def train_and_test_model(training_name, test_name, training_windows, test_windows,
-                         outDir,
-                         npz_mode, svtype):
-    X_test, y_test, win_ids_test = get_data(training_windows, npz_mode, svtype)
-    X_test, y_test, win_ids_test = get_data(test_windows, npz_mode, svtype)
+                         outDir, svtype):
+
+    X_train, y_train, win_ids_train = get_data(training_windows, svtype)
+    X_test, y_test, win_ids_test = get_data(test_windows, svtype)
 
     # Parameters
     params = {
@@ -346,12 +347,12 @@ def main():
     parser.add_argument('-e',
                         '--epochs',
                         type=int,
-                        default=1,
+                        default=10,
                         help="Number of epochs")
     parser.add_argument('-b',
                         '--batch_size',
                         type=int,
-                        default=32,
+                        default=4,
                         help="Batch size")
     parser.add_argument('-val',
                         '--validation_split',
@@ -366,22 +367,22 @@ def main():
     parser.add_argument('-cnn_layers',
                         '--cnn_layers',
                         type=int,
-                        default=4,
+                        default=2,
                         help="Number of convolutional layers")
     parser.add_argument('-cnn_filters',
                         '--cnn_filters',
                         type=int,
-                        default=8,
+                        default=32,
                         help="Number of convolutional filters")
     parser.add_argument('-kernel_size',
                         '--kernel_size',
                         type=int,
-                        default=7,
+                        default=5,
                         help="Number of convolutional filters")
     parser.add_argument('-fc_nodes',
                         '--fc_nodes',
                         type=int,
-                        default=16,
+                        default=6,
                         help="Number of neurons in the dense layer")
     parser.add_argument('-learning_rate_exp',
                         '--learning_rate_exp',
@@ -433,22 +434,19 @@ def main():
             training_name=args.training_sample_name,
             test_name=args.test_sample_name,
             training_windows=training_windows_list,
-            test_windows=args.test_windowsr,
+            test_windows=args.test_windows,
             outDir=output_dir,
-            npz_mode=args.load_npz,
             svtype=args.svtype
         )
     else:
         if args.cv == 'kfold':
             cross_validation(training_windows=training_windows_list,
                              outDir=output_dir,
-                             npz_mode=args.load_npz,
                              svtype=args.svtype,
                              kfold=args.kfold)
         elif args.cv == 'chrom':
             cross_validation_by_chrom(training_windows=training_windows_list,
                                       outDir=output_dir,
-                                      npz_mode=args.load_npz,
                                       svtype=args.svtype,
                                       chrlist=args.chrlist)
     logging.info('Elapsed time training and testing = %f seconds' %

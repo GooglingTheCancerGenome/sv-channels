@@ -23,6 +23,7 @@ def load_chr_array(channel_data_dir, chrlist):
         logging.info("Loading file %s" % carray_file)
         chr_array[c] = bcolz.open(rootdir=carray_file)
         logging.info("Array shape: %s" % str(chr_array[c].shape))
+        logging.info("Array data type: %s" % str(chr_array[c].dtype))
     return chr_array
 
 
@@ -74,7 +75,7 @@ def get_windows(carrays_dir, outDir, chrom_list, win, label_file_path, mode, npz
         n_r = 10 ** 5
         last_t = time()
         i = 1
-        padding = np.zeros(shape=(padding_len, n_channels), dtype=np.float32)
+        padding = np.zeros(shape=(padding_len, n_channels), dtype=np.half)
         if npz_mode:
             numpy_array = []
         logging.info('Creating np.arrays win1 and win2...')
@@ -105,6 +106,7 @@ def get_windows(carrays_dir, outDir, chrom_list, win, label_file_path, mode, npz
             for i in np.arange(numpy_array.shape[2]):
                 logging.info("windows array: non-zero elements at index %d:%d" %
                              (i, np.argwhere(numpy_array[i, :] != 0).shape[0]))
+            numpy_array= numpy_array.astype(np.half)
             np.savez(file=os.path.join(outDir, 'windows'),
                      data=numpy_array,
                      labels=labs)
@@ -131,7 +133,7 @@ def main():
     parser.add_argument('-p',
                         '--outputpath',
                         type=str,
-                        default='./cnn/win25/split_reads/windows/DEL',
+                        default='./cnn/win200/split_reads/windows/DEL',
                         help="Specify output path")
     parser.add_argument('-l',
                         '--logfile',
@@ -140,12 +142,12 @@ def main():
     parser.add_argument('-w',
                         '--window',
                         type=int,
-                        default=25,
+                        default=200,
                         help="Specify window size")
     parser.add_argument('-lb',
                         '--labels',
                         type=str,
-                        default='./cnn/win25/split_reads/windows/DEL/labels.json.gz',
+                        default='./cnn/win200/split_reads/windows/DEL/labels.json.gz',
                         help="Specify label file")
     parser.add_argument('-m',
                         '--mode',
