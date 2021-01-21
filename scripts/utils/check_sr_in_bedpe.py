@@ -55,7 +55,7 @@ def parse_cl_args(in_args, caller):
     return args
 
 
-def get_srpos_from_bedpe(inbedpe):
+def get_srpos_from_bedpe(inbedpe, svtype):
     # Dictionary with chromosome keys to store SVs
     srpos = []
     with gzip.GzipFile(inbedpe, 'rb') as fin:
@@ -66,23 +66,25 @@ def get_srpos_from_bedpe(inbedpe):
                 columns[1]), int(columns[2])
             chrom2, pos2_start, pos2_end = str(columns[3]), int(
                 columns[4]), int(columns[5])
-            svtype = columns[6]
-            srpos.append((chrom1, pos1_start, chrom2, pos2_start))
+            type = columns[6]
+            if svtype == type:
+                srpos.append((chrom1, pos1_start, chrom2, pos2_start))
     return srpos
 
 
-def create_gtrees(sv_list):
+def create_gtrees(sr_list, win_hlen):
     print('Building SV GenomicTrees...')
     # Tree with windows for candidate positions
     trees_start = defaultdict(IntervalTree)
     trees_end = defaultdict(IntervalTree)
     # Populate tree
-    for i, sv in enumerate(sv_list, start=0):
-        chrom1, pos1_start, pos1_end, chrom2, pos2_start, pos2_end, svtype = sv
+    for i, sr in enumerate(sr_list, start=0):
+        # print(sr)
+        chrom1, pos1, chrom2, pos2 = sr
         sv_id = '_'.join(
-            (chrom1, str(pos1_start), chrom2, str(pos2_start)))
-        trees_start[chrom1][pos1_start:pos1_end] = (i, sv_id)
-        trees_end[chrom2][pos2_start:pos2_end] = (i, sv_id)
+            (chrom1, str(pos1), chrom2, str(pos2)))
+        trees_start[chrom1][pos1-win_hlen:pos1+win_hlen+1] = (i, sv_id)
+        trees_end[chrom2][pos2-win_hlen:pos2+win_hlen+1] = (i, sv_id)
     return trees_start, trees_end
 
 
@@ -94,22 +96,23 @@ def search_tree_with_bedpe(cpos, trees_start, trees_end, win_hlen):
     n_r = 10**4
     last_t = time()
     for i, p in enumerate(cpos, start=1):
-        chrom1, pos1, chrom2, pos2 = p
-        lookup_start.append(trees_start[chrom1]
-                            [pos1 - win_hlen:pos1 + win_hlen + 1])
+        # print(p)
+        chrom1, pos1_start, pos1_end, chrom2, pos2_start, pos2_end, svtype = p
+        lookup_start.append(trees_start[chrom1].envelop(pos1_start, pos1_end))
         lookup_end.append(
-            trees_end[chrom2][pos2 - win_hlen:pos2 + win_hlen + 1])
+            trees_end[chrom2].envelop(pos2_start, pos2_end))
     return lookup_start, lookup_end
 
 
 def main():
 
-    srpos = get_srpos_from_bedpe(os.path.join(pathout, 'split_reads.bedpe.gz'))
-
     for caller in ['manta', 'gridss', 'lumpy', 'delly', 'test']:
 
         print('Considering {}:'.format(caller))
         args = parse_cl_args(sys.argv[1:], caller)
+
+        srpos = get_srpos_from_bedpe(os.path.join(pathout, 'split_reads.bedpe.gz'), args.svtype)
+
         win_hlen = int(
             args.win / 2) if args.win % 2 == 0 else int((args.win + 1) / 2)
         filename, file_extension = os.path.splitext(args.input)
@@ -119,10 +122,11 @@ def main():
         elif file_extension == '.bedpe':
             sv_list = read_bedpe(args.input, args.svtype)
 
-        trees_start, trees_end = create_gtrees(sv_list)
+        trees_start, trees_end = create_gtrees(srpos, win_hlen)
         lookup_start, lookup_end = search_tree_with_bedpe(
-            srpos, trees_start, trees_end, win_hlen)
+            sv_list, trees_start, trees_end, win_hlen)
         idx = []
+
         for i, x in enumerate(zip(srpos, lookup_start, lookup_end), start=0):
             p, lu_start, lu_end = x
             l1 = len(lu_start)
@@ -163,68 +167,13 @@ def main():
                         nosr_lines += 1
                     j += 1
 
-        print('{} SVs => with SR:{}({}%); without:{}({}%)'.format(
+        print('{} SRs => with SV:{}({}%); without SV:{}({}%)'.format(
             sr_lines+nosr_lines,
             sr_lines,
             sr_lines/(sr_lines + nosr_lines) * 100,
             nosr_lines,
             nosr_lines / (sr_lines + nosr_lines) * 100,
         ))
-
-        trees_start, trees_end = create_gtrees(sv_list)
-        lookup_start, lookup_end = search_tree_with_bedpe(
-            srpos, trees_start, trees_end, win_hlen)
-        idx = []
-        for i, x in enumerate(zip(srpos, lookup_start, lookup_end), start=0):
-            p, lu_start, lu_end = x
-            l1 = len(lu_start)
-            l2 = len(lu_end)
-            if l1 > 0 and l2 > 0:
-                lu_start_set = []
-                lu_end_set = []
-                for s in lu_start:
-                    lu_start_elem_start, lu_start_elem_end, lu_start_elem_data = s
-                    lu_start_i, lu_start_elem_svid = lu_start_elem_data
-                    lu_start_set.append(lu_start_i)
-
-                for s in lu_end:
-                    lu_end_elem_start, lu_end_elem_end, lu_end_elem_data = s
-                    lu_end_i, lu_end_elem_svid = lu_end_elem_data
-                    lu_end_set.append(lu_end_i)
-
-                olap = set(lu_start_set) & set(lu_end_set)
-                if len(olap) > 0:
-                    idx.extend(olap)
-
-        print('list of indices: {}'.format(len(idx)))
-        out = open(args.output, 'w')
-        out_nosr = open(args.output_nosr, 'w')
-        j = 0
-        sr_lines = nosr_lines = 0
-        with open(args.input, 'r') as fin:
-            for line in fin.readlines():
-                if line[0] == '#':
-                    out.write(line)
-                    out_nosr.write(line)
-                else:
-                    if j in set(idx):
-                        out.write(line)
-                        sr_lines += 1
-                    else:
-                        out_nosr.write(line)
-                        nosr_lines += 1
-                    j += 1
-
-        print('{} SVs => with SR:{}({}%); without:{}({}%)'.format(
-            sr_lines + nosr_lines,
-            sr_lines,
-            sr_lines / (sr_lines + nosr_lines) * 100,
-            nosr_lines,
-            nosr_lines / (sr_lines + nosr_lines) * 100,
-        ))
-
-        out.close()
-        out_nosr.close()
 
 
 if __name__ == "__main__":
