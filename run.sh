@@ -298,7 +298,7 @@ waiting
          win_dir="../genome_wide/cnn/win$WIN_SZ"
          sv_dir="$win_dir/$c/$m"
          bedpe="$win_dir/sv-channels.$c.$m.$SAMPLE"
-         cmd="$p.R \
+         cmd="Rscript $p.R \
            -i \"$sv_dir\" \
            -f \"$EXCL_LIST\" \
            -n \"$REF_REG\" \
