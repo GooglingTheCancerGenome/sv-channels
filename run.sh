@@ -330,7 +330,10 @@ waiting
      done
  done
 
-# waiting
+waiting
+
+#cd ../genome_wide
+#p=predict.py
 
 ETIME=$(date +%s)
 echo "Processing ${#JOBS[@]} jobs took $((ETIME - STIME)) sec to complete."
