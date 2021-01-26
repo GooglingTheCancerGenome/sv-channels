@@ -207,7 +207,7 @@ for c in "${SV_CALLS[@]}"; do
         p=label_windows
         cmd="python $p.py \
           -f \"$FASTA\" \
-          -c \"$SEQ_IDS\" \
+          -c \"$SEQ_IDS_CSV\" \
           -w $WIN_SZ \
           -gt \"$BEDPE\" \
           -s $sv \
