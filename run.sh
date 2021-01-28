@@ -106,7 +106,7 @@ waiting
 # convert SV calls (i.e. truth set and sv-callers output) in VCF to BEDPE files
 cd scripts/R
 p=vcf2bedpe
-for vcf in $(find "$BASE_DIR" -mindepth 3 -name "*.vcf"); do
+for vcf in $(find "$BASE_DIR" -mindepth 1 -name "*.vcf"); do
     prefix="$(basename "$vcf" .vcf)"
     bedpe="$BASE_DIR/$prefix.bedpe"
     cmd="./$p.R -i \"$vcf\" -o \"$bedpe\""
