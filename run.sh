@@ -83,38 +83,30 @@ eval "$(conda shell.bash hook)"
 conda activate $CONDA_ENV
 conda list
 
-# extract N's from sequence into BED
-p=seqkit
-cmd="$p locate -i -P -r -p "N+" --bed \"$FASTA\" -o \"$REF_REG\""
-JOB_ID=$(submit "$cmd" "$p")
-JOBS+=($JOB_ID)
-
 # convert input FASTA to 2bit
 p=faToTwoBit
 cmd="$p \"$FASTA\" \"$TWOBIT\""
 JOB_ID=$(submit "$cmd" "$p")
 JOBS+=($JOB_ID)
 
-# compute genome mappability
-p=genmap
-cmd="./$p.sh \"$FASTA\" \"$BIGWIG\" $KMERS $MAX_MISMATCH"
+waiting
+
+# extract N's from sequence into BED
+p=Ns_to_bed
+cmd="python scripts/utils/$p.py -c \"$SEQ_IDS_CSV\" -t \"$TWOBIT\" -b \"$REF_REG\""
 JOB_ID=$(submit "$cmd" "$p")
 JOBS+=($JOB_ID)
-
-waiting
 
 # convert SV calls (i.e. truth set and sv-callers output) in VCF to BEDPE files
 cd scripts/R
 p=vcf2bedpe
-for vcf in $(find "$BASE_DIR" -mindepth 1 -name "*.vcf"); do
+for vcf in $(find "$BASE_DIR" -mindepth 1 -name "*.vcf" | grep -v "htz-sv*"); do
     prefix="$(basename "$vcf" .vcf)"
     bedpe="$BASE_DIR/$prefix.bedpe"
     cmd="./$p.R -i \"$vcf\" -o \"$bedpe\""
     JOB_ID=$(submit "$cmd" "$p-$prefix")
     JOBS+=($JOB_ID)
 done
-
-waiting
 
 # submit jobs to output "channel" files (*.json.gz and *.npy.gz)
 cd ../genome_wide
