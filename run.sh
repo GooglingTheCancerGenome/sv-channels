@@ -183,7 +183,6 @@ for s in "${SEQ_IDS[@]}"; do
     -b \"$BAM\" \
     -c $s \
     -t \"$TWOBIT\" \
-    -m \"$BIGWIG\" \
     -o $p.npy \
     -p . \
     -l $p.log"
