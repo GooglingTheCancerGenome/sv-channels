@@ -347,7 +347,7 @@ done
 # list "channel" files
 echo "-------------"
 echo "Output files:"
-#ls
+ls
 find -type f -name "*.json.gz" | grep "." || exit 1
 find -type f -name "*.npy.gz" | grep "." || exit 1
 
