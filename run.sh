@@ -89,7 +89,6 @@ cmd="$p \"$FASTA\" \"$TWOBIT\""
 JOB_ID=$(submit "$cmd" "$p")
 JOBS+=($JOB_ID)
 
-
 waiting
 
 # extract N's from sequence into BED
@@ -350,6 +349,8 @@ echo "Output files:"
 ls
 find -type f -name "*.json.gz" | grep "." || exit 1
 find -type f -name "*.npy.gz" | grep "." || exit 1
+find -type f -name "*.npz" | grep "." || exit 1
+
 
 # exit with non-zero if there are failed jobs
 [[ $(jq ".statuses | .[] | select(.done==true and .exitCode!=0)" $JOBS_LOG) ]] \
