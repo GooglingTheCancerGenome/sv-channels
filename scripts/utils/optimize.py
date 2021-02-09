@@ -34,7 +34,6 @@ dimensions = [dim_cnn_filters, dim_cnn_layers, dim_cnn_kernel_size, dim_cnn_fc_n
 
 default_parameters = [8, 1, 7, 6, 1e-4, 1e-1]
 
-path_best_model = './best_model.keras'
 best_accuracy = 0.0
 
 
@@ -138,7 +137,7 @@ def fitness(cnn_filters, cnn_layers, cnn_kernel_size, cnn_fc_nodes,
 
 def optimize(args):
 
-    global train_X, val_X, train_y, val_y, class_weights, batch_size, max_epoch
+    global train_X, val_X, train_y, val_y, class_weights, batch_size, max_epoch, path_best_model
 
     randomState = 46
     np.random.seed(randomState)
@@ -146,6 +145,7 @@ def optimize(args):
 
     batch_size = args.batch_size
     max_epoch = args.epochs
+    path_best_model = args.model
 
     X, y = load_windows(args.windows)
     y = y.values()
@@ -162,10 +162,10 @@ def optimize(args):
         X, y, test_size=args.validation_split, random_state=2, stratify=y, shuffle=True)
 
     search_result = gp_minimize(func=fitness, dimensions=dimensions, acq_func='EI',
-                                n_calls=200, x0=default_parameters, random_state=7, n_jobs=-1)
+                                n_calls=args.ncalls, x0=default_parameters, random_state=7, n_jobs=-1)
 
     hyps = np.asarray(search_result.x)
-    np.save('./hyperparams.npy', hyps, allow_pickle=False)
+    np.save(args.hparams, hyps, allow_pickle=False)
 
 
 def main():
@@ -206,6 +206,16 @@ def main():
                         type=str,
                         default='DEL',
                         help="Type of SV")
+    parser.add_argument('-m',
+                        '--model',
+                        type=str,
+                        default='best_model.keras',
+                        help="Best model")
+    parser.add_argument('-p',
+                        '--hparams',
+                        type=str,
+                        default='hyperparams.npy',
+                        help="File with hyperparameters")
     args = parser.parse_args()
 
     log_format = '%(asctime)s %(message)s'
