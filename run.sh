@@ -323,8 +323,7 @@ waiting
 
 waiting
 
-#cd ../genome_wide
-#p=predict.py
+cd ../genome_wide
 
 ETIME=$(date +%s)
 echo "Processing ${#JOBS[@]} jobs took $((ETIME - STIME)) sec to complete."
@@ -346,7 +345,7 @@ done
 # list "channel" files
 echo "-------------"
 echo "Output files:"
-ls
+#ls
 find -type f -name "*.json.gz" | grep "." || exit 1
 find -type f -name "*.npy.gz" | grep "." || exit 1
 find -type f -name "*.npz" | grep "." || exit 1
