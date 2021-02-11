@@ -11,7 +11,10 @@ from time import time
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
 from sklearn.model_selection import StratifiedKFold, train_test_split
+from sklearn.utils.class_weight import compute_class_weight
+
 from tensorflow.keras.callbacks import (EarlyStopping, ModelCheckpoint,
                                         TensorBoard)
 from tensorflow.keras.layers import (Activation, BatchNormalization,
@@ -51,6 +54,7 @@ def train_and_test_data(sampleName, npz_mode, svtype):
 
 
 def create_model(dim_length, dim_channels, outputdim):
+
     weightinit = 'lecun_uniform'  # weight initialization
 
     learning_rate = 10 ** (-model_params['learning_rate_exp'])
@@ -91,7 +95,7 @@ def create_model(dim_length, dim_channels, outputdim):
 
     model.add(Dense(units=outputdim, kernel_initializer=weightinit))
     model.add(BatchNormalization())
-    model.add(Activation("sigmoid"))  # Final classification layer
+    model.add(Activation("softmax"))  # Final classification layer
 
     model.compile(loss='categorical_crossentropy',
                   optimizer=Adam(lr=learning_rate),
@@ -112,12 +116,12 @@ def train(model_fn, params, X_train, y_train, y_train_binary):
     logging.info('Creating model...')
     model = create_model(params['dim'], params['n_channels'],
                          params['n_classes'])
-
-    # earlystop = EarlyStopping(monitor='val_loss',
-    #                           min_delta=0,
-    #                           patience=3,
-    #                           verbose=1,
-    #                           restore_best_weights=True)
+    logging.info(model.summary())
+    earlystop = EarlyStopping(monitor='val_loss',
+                              min_delta=0,
+                              patience=3,
+                              verbose=1,
+                              restore_best_weights=True)
 
     checkpoint = ModelCheckpoint(model_fn,
                                  monitor='val_loss',
@@ -132,18 +136,10 @@ def train(model_fn, params, X_train, y_train, y_train_binary):
     #                          write_graph=True,
     #                          write_images=True)
 
-    callbacks = [checkpoint]
+    callbacks = [earlystop, checkpoint]
 
-    nosv_count, sv_count = np.bincount(y_train)
-    total_count = len(y_train)
-    logging.info('nosv_count:{}, sv_count:{}, total_count:{}'.format(
-        nosv_count, sv_count, total_count))
-
-    weight_nosv = (1 / nosv_count) * (total_count) / 2.0
-    weight_sv = (1 / sv_count) * (total_count) / 2.0
-
-    class_weights = {0: weight_sv, 1: weight_nosv}
-    logging.info('class_weights: {}'.format(class_weights))
+    class_weights = compute_class_weight('balanced', np.unique(y_train), y_train)
+    class_weights = {i: v for i, v in enumerate(class_weights)}
 
     logging.info('Fitting model...')
 
@@ -158,8 +154,6 @@ def train(model_fn, params, X_train, y_train, y_train_binary):
         class_weight=class_weights,
         verbose=1,
         callbacks=callbacks)
-
-    model = load_model(model_fn)
 
     return model, history, X_train.shape[0], int(X_train.shape[0] *
                                                  model_params['validation_split'])
@@ -289,7 +283,8 @@ def train_and_test_model(training_name, test_name, training_windows, test_window
 
 
 def main():
-    default_win = 200
+
+    default_win = 25
     default_path = os.path.join('./cnn/win' + str(default_win), 'split_reads')
     def_windows_file = os.path.join(
         default_path, 'windows', 'DEL', 'windows_en.npz')
