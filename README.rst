@@ -67,6 +67,11 @@ Installation
 
 .. code-block:: console
 
+  # download Miniconda3 installer
+  wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+  # install Conda (respond by 'yes')
+  bash miniconda.sh
+
   git clone https://github.com/GooglingTheCancerGenome/sv-channels.git
   cd sv-channels
   conda update -y conda  # update Conda
@@ -79,7 +84,10 @@ Execution
 .. code-block:: console
 
   SCH=local  # gridengine or slurm
-  ./run.sh $SCH data/test.bam 12,22 # run jobs locally or on a compute cluster
+  BAM=data/test.bam
+  SEQIDS="12,22"
+  SVTYPES="INV,DEL,INS,INV,DUP,CTX"
+  ./run.sh $SCH data/test.bam $BAM $SEQIDS $SVTYPES # run jobs locally or on a compute cluster
 
 Flowchart
 =========
