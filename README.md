@@ -3,7 +3,14 @@
 [![DOI](https://zenodo.org/badge/DOI/10.000/FIXME.svg)](https://doi.org/10.000/FIXME)
 [![Build Status](https://travis-ci.org/GooglingTheCancerGenome/sv-channels.svg?branch=master)](https://travis-ci.org/GooglingTheCancerGenome/sv-channels)
 
-Please add a paragraph about this tool.
+**sv-channels** is a Deep Learning workflow for calling structural variants (SVs) in short read alignment data (BAM format) using 1-dimensional Convolutional Neural Networks. It was tested on a benchmark dataset with [three cell lines](https://zenodo.org/record/4001614#.YCz4ixNKhlM): two samples from the [Genome in a Bottle](https://www.nist.gov/programs-projects/genome-bottle) consortium (NA12878 and NA24385) and one synthetic diploid sample (CHM1_CHM13).
+
+**sv-channels** supports five major types of SVs:
+- deletions (DEL);
+- insertions (INS);
+- inversions (INV);
+- tandem duplications (DUP);
+- inter-chromosomal translocations (CTX).
 
 # Dependencies
 
@@ -13,6 +20,7 @@ Please add a paragraph about this tool.
 
 The [workflow](doc/sv-channels.svg) includes the following (major) steps:
 
+Model training:
 - A
 - B
 
