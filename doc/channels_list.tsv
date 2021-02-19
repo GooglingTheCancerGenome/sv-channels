@@ -1,0 +1,80 @@
+channel number	channel	description	measure	window-based	clipped	split	read orientation	mate orientation	recorded position
+1	coverage	read coverage	count	NA	NA	NA	NA	NA	base where the coverage is counted
+2	discordant_fwd	discordant reads: with pair distance greater than one standard deviation	count	NA	NA	NA	forward	any	base where the coverage is counted
+3	discordant_rev	discordant reads: with pair distance greater than one standard deviation	count	NA	NA	NA	reverse	any	base where the coverage is counted
+4	not_proper_pair_fwd	reads with bwa mem (Li H., 2013) is_proper_pair flag set to FALSE	count	NA	NA	NA	forward	any	base where the coverage is counted
+5	not_proper_pair_rev	reads with bwa mem (Li H., 2013) is_proper_pair flag set to FALSE	count	NA	NA	NA	reverse	any	base where the coverage is counted
+6	median_base_quality	base quality	median	NA	NA	NA	NA	NA	base where the quality is counted
+7	median_mapping_quality	read mapping quality (MAPQ)	median	NA	NA	NA	NA	NA	base where the quality is counted
+8	non_ref_bases_frequency	non-reference bases	frequency	NA	NA	NA	NA	NA	base where the frequency is counted
+9	clipped_left_fwd	left clipped reads	count	NA	Y	N	forward	any	clipped base
+10	clipped_left_rev	left clipped reads	count	NA	Y	N	reverse	any	clipped base
+11	clipped_right_fwd	right clipped reads	count	NA	Y	N	forward	any	clipped base
+12	clipped_right_rev	right clipped reads	count	NA	Y	N	reverse	any	clipped base
+13	discordant_clipped_left_fwd	left clipped discordant reads	count	NA	Y	N	forward	any	clipped base
+14	discordant_clipped_left_rev	left clipped discordant reads	count	NA	Y	N	reverse	any	clipped base
+15	discordant_clipped_right_fwd	right clipped discordant reads	count	NA	Y	N	forward	any	clipped base
+16	discordant_clipped_right_rev	right clipped discordant reads	count	NA	Y	N	reverse	any	clipped base
+17	INDEL_CIGAR_D_left_fwd	reads with deletion marked with 'D' in CIGAR string	count	NA	N	N	forward	any	left base of the deleted bases in CIGAR string
+18	INDEL_CIGAR_D_left_rev	reads with deletion marked with 'D' in CIGAR string	count	NA	N	N	reverse	any	left base of the deleted bases in CIGAR string
+19	INDEL_CIGAR_D_right_fwd	reads with deletion marked with 'D' in CIGAR string	count	NA	N	N	forward	any	right base of the deleted bases in CIGAR string
+20	INDEL_CIGAR_D_right_rev	reads with deletion marked with 'D' in CIGAR string	count	NA	N	N	reverse	any	right base of the deleted bases in CIGAR string
+21	INDEL_CIGAR_I_fwd	reads with deletion marked with 'I' in CIGAR string	count	NA	N	N	forward	any	left base of the inserted bases in CIGAR string
+22	INDEL_CIGAR_I_rev	reads with deletion marked with 'I' in CIGAR string	count	NA	N	N	reverse	any	left base of the inserted bases in CIGAR string
+23	split_left_fwd	left split reads	count	NA	Y	Y	NA	NA	split base
+24	split_left_rev	left split reads	count	NA	Y	Y	NA	NA	split base
+25	split_right_fwd	right split reads	count	NA	Y	Y	NA	NA	split base
+26	split_right_rev	right split reads	count	NA	Y	Y	NA	NA	split base
+27	clipped_distance_left_fwd	left clipped reads	paired-end distance	NA	Y	N	forward	reverse	clipped base
+28	clipped_distance_right_fwd	right clipped reads	paired-end distance	NA	Y	N	forward	reverse	clipped base
+29	distance_all_fwd	all reads	paired-end distance	NA	NA	NA	forward	reverse	clipped base
+30	clipped_distance_left_rev	left clipped reads	paired-end distance	NA	Y	N	forward	reverse	clipped base
+31	clipped_distance_right_rev	right clipped reads	paired-end distance	NA	Y	N	forward	reverse	clipped base
+32	distance_all_rev	all reads	paired-end distance	NA	NA	NA	forward	reverse	clipped base
+33	inversion_mate_before	clipped reads in a pair with same orientation for which the read is mapped before the mate	count	NA	NA	NA	same as mate	same as read	clipped base
+34	inversion_mate_after	clipped reads in a pair with same orientation for which the read is mapped after the mate	count	NA	NA	NA	same as mate	same as read	clipped base
+35	inversion_split_mate_before	split reads with same orientation for which the read is mapped before the mate	count	NA	Y	Y	same as mate	same as read	split base
+36	inversion_split_mate_after	split reads with same orientation for which the read is mapped after the mate	count	NA	Y	Y	same as mate	same as read	split base
+37	duplication_mate_before	the reverse mate is mapped before the forward right clipped read	count	NA	Y	N	reverse	forward	clipped base
+38	duplication_mate_after	the forward mate is mapped after the reverse left clipped read	count	NA	Y	N	forward	reverse	clipped base
+39	duplication_split_mate_before	the reverse split part is mapped before the forward split read	count	NA	Y	Y	forward	reverse	split base
+40	duplication_split_mate_after	the forward split part is mapped after the reverse split read	count	NA	Y	Y	reverse	forward	split base
+41	translocation_opposite_orientation	clipped read where mate is mapped on a different chromosome with the opposite orientation	count	NA	Y	N	opposite of mate	opposite of read	clipped base
+42	translocation_same_orientation	clipped read where mate is mapped on a different chromosome with the same orientation	count	NA	Y	N	same as mate	same as read	clipped base
+43	translocation_opposite_orientation_split	split reads are mapped on different chromosomes with opposite orientation	count	NA	Y	Y	opposite of mate	opposite of read	split base
+44	translocation_same_orientation_split	split reads are mapped on different chromosomes with same orientation	count	NA	Y	Y	same as mate	same as read	split base
+45	split_distance_left_fwd	left split reads	paired-end distance	NA	Y	Y	forward	reverse	split base
+46	split_distance_left_rev	left split reads	paired-end distance	NA	Y	Y	forward	reverse	split base
+47	split_distance_right_fwd	right split reads	paired-end distance	NA	Y	Y	forward	reverse	split base
+48	split_distance_right_rev	right split reads	paired-end distance	NA	Y	Y	forward	reverse	split base
+49	one_hot_A	A is 1, other bases are 0	binary	NA	NA	NA	NA	NA	same base
+50	one_hot_T	T is 1, other bases are 0	binary	NA	NA	NA	NA	NA	same base
+51	one_hot_C	C is 1, other bases are 0	binary	NA	NA	NA	NA	NA	same base
+52	one_hot_G	G is 1, other bases are 0	binary	NA	NA	NA	NA	NA	same base
+53	one_hot_N	N is 1, other bases are 0	binary	NA	NA	NA	NA	NA	same base
+54	common_all_fwd_not_clipped	all reads	count	read in one window and mate in the other	NA	NA	forward	reverse	clipped base
+55	common_all_rev_not_clipped	all reads	count	read in one window and mate in the other	NA	NA	reverse	forward	clipped base
+56	common_split_left_fwd	left split reads	count	one split part in one window and the other part in the other window	Y	Y	forward	reverse	split base
+57	common_split_left_fwd	left split reads	count	one split part in one window and the other part in the other window	Y	Y	forward	reverse	split base
+58	common_split_both_sides_fwd	reads split on both sides	count	one split part in one window and the other part in the other window	Y	Y	forward	reverse	split base
+59	common_split_right_rev	right split reads	count	one split part in one window and the other part in the other window	Y	Y	reverse	forward	split base
+60	common_split_right_rev	right split reads	count	one split part in one window and the other part in the other window	Y	Y	reverse	forward	split base
+61	common_split_both_sides_rev	reads split on both sides	count	one split part in one window and the other part in the other window	Y	Y	reverse	forward	split base
+62	common_not_split_fwd	reads not split	count	one split part in one window and the other part in the other window	Y	Y	forward	reverse	split base
+63	common_not_split_rev	reads not split	count	one split part in one window and the other part in the other window	Y	Y	reverse	forward	split base
+64	common_clipped_left_fwd	left clipped reads	count	read in one window and mate in the other	Y	N	forward	reverse	clipped base
+65	common_clipped_right_fwd	right clipped reads	count	read in one window and mate in the other	Y	N	forward	reverse	clipped base
+66	common_clipped_left_rev	left clipped reads	count	read in one window and mate in the other	Y	N	reverse	forward	clipped base
+67	common_clipped_right_rev	right clipped reads	count	read in one window and mate in the other	Y	N	reverse	forward	clipped base
+68	common_clipped_both_sides_fwd	reads clipped on both sides	count	read in one window and mate in the other	Y	N	forward	reverse	clipped base
+69	common_clipped_both_sides_rev	reads clipped on both sides	count	read in one window and mate in the other	Y	N	reverse	forward	clipped base
+70	common_not_clipped_fwd	all reads	count	read in one window and mate in the other	NA	NA	forward	reverse	all bases covered by read in the window
+71	common_not_clipped_rev	all reads	count	read in one window and mate in the other	NA	NA	reverse	forward	all bases covered by read in the window
+72	common_discordant_fwd	clipped discordant reads: with pair distance greater than one standard deviation	count	read in one window and mate in the other	Y	N	forward	reverse	clipped base
+73	common_discordant_rev	clipped discordant reads: with pair distance greater than one standard deviation	count	read in one window and mate in the other	Y	N	reverse	forward	clipped base
+74	common_duplication_mate_after	the reverse mate/split part is mapped before the forward right clipped read/split read	count	read in one window and mate in the other	Y	NA	forward	reverse	clipped base
+75	common_duplication_mate_before	the forward mate/split part is mapped after the reverse left clipped read/split read	count	read in one window and mate in the other	Y	NA	reverse	forward	clipped base
+76	common_inversion_mate_after	clipped reads in a pair/split read with same orientation for which the read is mapped before the mate/split part	count	read in one window and mate in the other	Y	NA	same as mate	same as read	clipped base
+77	common_inversion_mate_before	clipped reads in a pair/split read with same orientation for which the read is mapped after the mate/split part	count	read in one window and mate in the other	Y	NA	same as mate	same as read	clipped base
+78	common_translocation_opposite	clipped reads in a pair/split reads are mapped on different chromosomes with opposite orientation	count	read in one window and mate in the other	Y	NA	opposite of mate	opposite of read	clipped base
+79	common_translocation_same	clipped reads in a pair/split reads are mapped on different chromosomes with same orientation	count	read in one window and mate in the other	Y	NA	same as mate	same as read	clipped base
