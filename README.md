@@ -31,11 +31,7 @@ Once a trained model is generated and the BAM file for the test set is converted
 ## Dependencies
 
 -   [Conda](https://conda.io/)
--   [Python](https://www.python.org/)
--   [R](https://www.r-project.org/)
--   [Open JDK](https://openjdk.java.net/)
-
-See [`environment.yaml`](/environment.yaml) for more details.
+-   listed in [`environment.yaml`](/environment.yaml)
 
 **1. Clone this repo.**
 
