@@ -26,3 +26,4 @@ dependencies:
   - ucsc-bedgraphtobigwig=377
   - ucsc-fatotwobit=377
   - seqkit=0.14.0
+  - scikit-optimize

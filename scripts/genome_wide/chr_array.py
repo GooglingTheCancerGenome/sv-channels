@@ -89,12 +89,14 @@ def load_channel(chr_list, outDir, ch):
     return channel_data
 
 
-def create_carray(ibam, chrom, twobit, bigwig, outDir, cmd_name):
+def create_carray(ibam, chrom, twobit, outDir, cmd_name):
+
     chrlen = get_chr_len(ibam, chrom)
     channel_index = 0
-    n_channels = 54
+    n_channels = 53
+
     chr_array = np.zeros(shape=(chrlen, n_channels), dtype=np.float64)
-    bw_map = pyBigWig.open(bigwig)
+
     # dictionary of key choices
     direction_list = {
         'clipped_reads': [
@@ -200,13 +202,6 @@ def create_carray(ibam, chrom, twobit, bigwig, outDir, cmd_name):
 
                 del channel_data[chrom][current_channel][split_direction]
 
-    current_channel = 'mappability'
-    logging.info("Adding channel %s at index %d" %
-                 (current_channel, channel_index))
-    chr_array[:, channel_index] = np.array(bw_map.values(
-        chrom, 0, chrlen),
-        dtype=np.float32)
-    channel_index += 1
     current_channel = 'one_hot_encoding'
     logging.info("Adding channel %s at index %d" %
                  (current_channel, channel_index))
@@ -235,11 +230,6 @@ def main():
                         type=str,
                         default=default_chr,
                         help="Specify chromosome")
-    parser.add_argument('-m',
-                        '--map',
-                        type=str,
-                        default='../../data/test.bw',
-                        help="Specify input file (bigWig)")
     parser.add_argument('-t',
                         '--twobit',
                         type=str,
@@ -281,7 +271,6 @@ def main():
     create_carray(ibam=args.bam,
                   chrom=args.chr,
                   twobit=args.twobit,
-                  bigwig=args.map,
                   outDir=args.outputpath,
                   cmd_name=cmd_name)
     logging.info('Elapsed time channel_maker_real = %f mins' % (time() - t0))

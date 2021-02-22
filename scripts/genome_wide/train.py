@@ -11,7 +11,10 @@ from time import time
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
 from sklearn.model_selection import StratifiedKFold, train_test_split
+from sklearn.utils.class_weight import compute_class_weight
+
 from tensorflow.keras.callbacks import (EarlyStopping, ModelCheckpoint,
                                         TensorBoard)
 from tensorflow.keras.layers import (Activation, BatchNormalization,
@@ -51,10 +54,11 @@ def train_and_test_data(sampleName, npz_mode, svtype):
 
 
 def create_model(dim_length, dim_channels, outputdim):
+
     weightinit = 'lecun_uniform'  # weight initialization
 
-    learning_rate = 10 ** (-model_params['learning_rate_exp'])
-    regularization_rate = 10 ** (-model_params['regularization_rate_exp'])
+    learning_rate = model_params['learning_rate']
+    regularization_rate = model_params['regularization_rate']
 
     model = Sequential()
 
@@ -91,7 +95,7 @@ def create_model(dim_length, dim_channels, outputdim):
 
     model.add(Dense(units=outputdim, kernel_initializer=weightinit))
     model.add(BatchNormalization())
-    model.add(Activation("sigmoid"))  # Final classification layer
+    model.add(Activation("softmax"))  # Final classification layer
 
     model.compile(loss='categorical_crossentropy',
                   optimizer=Adam(lr=learning_rate),
@@ -112,12 +116,12 @@ def train(model_fn, params, X_train, y_train, y_train_binary):
     logging.info('Creating model...')
     model = create_model(params['dim'], params['n_channels'],
                          params['n_classes'])
-
-    # earlystop = EarlyStopping(monitor='val_loss',
-    #                           min_delta=0,
-    #                           patience=3,
-    #                           verbose=1,
-    #                           restore_best_weights=True)
+    logging.info(model.summary())
+    earlystop = EarlyStopping(monitor='val_loss',
+                              min_delta=0,
+                              patience=3,
+                              verbose=1,
+                              restore_best_weights=True)
 
     checkpoint = ModelCheckpoint(model_fn,
                                  monitor='val_loss',
@@ -132,18 +136,10 @@ def train(model_fn, params, X_train, y_train, y_train_binary):
     #                          write_graph=True,
     #                          write_images=True)
 
-    callbacks = [checkpoint]
+    callbacks = [earlystop, checkpoint]
 
-    nosv_count, sv_count = np.bincount(y_train)
-    total_count = len(y_train)
-    logging.info('nosv_count:{}, sv_count:{}, total_count:{}'.format(
-        nosv_count, sv_count, total_count))
-
-    weight_nosv = (1 / nosv_count) * (total_count) / 2.0
-    weight_sv = (1 / sv_count) * (total_count) / 2.0
-
-    class_weights = {0: weight_sv, 1: weight_nosv}
-    logging.info('class_weights: {}'.format(class_weights))
+    class_weights = compute_class_weight('balanced', np.unique(y_train), y_train)
+    class_weights = {i: v for i, v in enumerate(class_weights)}
 
     logging.info('Fitting model...')
 
@@ -158,8 +154,6 @@ def train(model_fn, params, X_train, y_train, y_train_binary):
         class_weight=class_weights,
         verbose=1,
         callbacks=callbacks)
-
-    model = load_model(model_fn)
 
     return model, history, X_train.shape[0], int(X_train.shape[0] *
                                                  model_params['validation_split'])
@@ -289,7 +283,8 @@ def train_and_test_model(training_name, test_name, training_windows, test_window
 
 
 def main():
-    default_win = 200
+
+    default_win = 25
     default_path = os.path.join('./cnn/win' + str(default_win), 'split_reads')
     def_windows_file = os.path.join(
         default_path, 'windows', 'DEL', 'windows_en.npz')
@@ -366,33 +361,33 @@ def main():
     parser.add_argument('-cnn_layers',
                         '--cnn_layers',
                         type=int,
-                        default=4,
+                        default=3,
                         help="Number of convolutional layers")
     parser.add_argument('-cnn_filters',
                         '--cnn_filters',
                         type=int,
-                        default=8,
+                        default=15,
                         help="Number of convolutional filters")
     parser.add_argument('-kernel_size',
                         '--kernel_size',
                         type=int,
-                        default=7,
+                        default=4,
                         help="Number of convolutional filters")
     parser.add_argument('-fc_nodes',
                         '--fc_nodes',
                         type=int,
-                        default=16,
+                        default=6,
                         help="Number of neurons in the dense layer")
-    parser.add_argument('-learning_rate_exp',
-                        '--learning_rate_exp',
-                        type=int,
-                        default=4,
-                        help="Learning rate = 10 ** (-learning_rate_exp)")
-    parser.add_argument('-regularization_rate_exp',
-                        '--regularization_rate_exp',
-                        type=int,
-                        default=1,
-                        help="Regularization rate = 10 ** (-regularization_rate_exp)")
+    parser.add_argument('-learning_rate',
+                        '--learning_rate',
+                        type=float,
+                        default=3.80247940e-04,
+                        help="initial learning rate")
+    parser.add_argument('-regularization_rate',
+                        '--regularization_rate',
+                        type=float,
+                        default=2.00180567e-04,
+                        help="regularization rate")
     args = parser.parse_args()
     global mapclasses
     mapclasses = {args.svtype: 0, 'no' + args.svtype: 1}
@@ -405,8 +400,8 @@ def main():
         'cnn_filters': args.cnn_filters,
         'kernel_size': args.kernel_size,
         'fc_nodes': args.fc_nodes,
-        'learning_rate_exp': args.learning_rate_exp,
-        'regularization_rate_exp': args.regularization_rate_exp
+        'learning_rate': args.learning_rate,
+        'regularization_rate': args.regularization_rate
     }
     output_dir = args.outputpath
     os.makedirs(output_dir, exist_ok=True)

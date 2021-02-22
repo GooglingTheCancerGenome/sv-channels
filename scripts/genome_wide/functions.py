@@ -260,14 +260,6 @@ def get_chr_list():
     return chrlist
 
 
-# def get_chr_list():
-#
-#     chrlist = ['chr' + str(c) for c in list(np.arange(1, 23))]
-#     chrlist.extend(['chrX', 'chrY'])
-#
-#     return chrlist
-
-
 def get_chr_len_dict(ibam):
     chr_list = get_chr_list()
     # check if the BAM file exists
@@ -347,8 +339,9 @@ def load_all_clipped_read_positions(win_hlen, svtype, chr_dict, output_dir, clip
         return os.path.join(output_dir, vec_type, vec_type + '.json.gz')
 
     logging.info('Loading SR positions')
-    chrlist = get_chr_list()
-    chr_list = chrlist  # if sampleName != 'T1' else ['17']
+
+    total_reads_coord_min_support = []
+    chr_list = get_chr_list()
 
     with gzip.GzipFile(get_filepath('split_reads'), 'rb') as fin:
         positions_with_min_support_ls, positions_with_min_support_rs, total_reads_coord_min_support_json, \
@@ -359,14 +352,15 @@ def load_all_clipped_read_positions(win_hlen, svtype, chr_dict, output_dir, clip
         left_clipped_pos_cnt, right_clipped_pos_cnt = json.loads(
             fin.read().decode('utf-8'))
 
-    if svtype == 'DEL':
-        total_reads_coord_min_support = total_reads_coord_min_support_json['DEL'] + \
-            total_reads_coord_min_support_json['INDEL_DEL']
-    elif svtype == 'INS':
-        total_reads_coord_min_support = total_reads_coord_min_support_json['INS'] + \
-            total_reads_coord_min_support_json['INDEL_INS']
-    else:
-        total_reads_coord_min_support = total_reads_coord_min_support_json[svtype]
+    if svtype in total_reads_coord_min_support_json:
+        if svtype in ('DEL', 'INDEL_DEL'):
+            total_reads_coord_min_support = total_reads_coord_min_support_json['DEL'] + \
+                total_reads_coord_min_support_json['INDEL_DEL']
+        elif svtype in ('INS', 'INDEL_INS'):
+            total_reads_coord_min_support = total_reads_coord_min_support_json['INS'] + \
+                total_reads_coord_min_support_json['INDEL_INS']
+        else:
+            total_reads_coord_min_support = total_reads_coord_min_support_json[svtype]
 
     locations_sr = dict()
     locations_cr_r = dict()

@@ -3,29 +3,28 @@
 set -xe
 
 # check input arg(s)
-if [ $# -ne "3" ]; then
-  echo "Usage: $0 [SCHEDULER {local,gridengine,slurm}] [BAM file] [SEQID1,2,...]"
+if [ $# -ne "4" ]; then
+  echo "Usage: $0 [SCHEDULER] [BAM file] [SEQIDS] [SVTYPES]"
   exit 1
 fi
 
 # set variables
-SCH=$1  # scheduler type
+SCH=$1  # scheduler types: local, gridengine or slurm
 BAM="$(realpath -s "$2")"
 BASE_DIR="$(dirname "$BAM")"
 SAMPLE="$(basename "$BAM" .bam)"
-SEQ_IDS=$3
-SV_TYPES=(DEL)  # INS INV DUP CTX)
-SV_CALLS=(split_reads gridss)  # manta delly lumpy)
-CV_MODES=(kfold chrom)  # cross validation modes
-KMERS=19
-MAX_MISMATCH=2
+SEQ_IDS_CSV=$3  # e.g., chromosomes: 1,2,...X,Y
+SV_TYPES_CSV=$4  # INV,DEL,INS,INV,DUP,CTX
+SEQ_IDS=($(echo "$SEQ_IDS_CSV" | tr ',' ' '))
+SV_TYPES=($(echo "$SV_TYPES_CSV" | tr ',' ' '))
+SV_CALLS=(split_reads)  # manta delly lumpy)
+CV_MODES=(kfold)  # cross validation modes
 KFOLD=2  # k-fold cross validation
 EPOCHS=1  # epochs
 WIN_SZ=25  # window size in bp
 PREFIX="$BASE_DIR/$SAMPLE"
 FASTA="$PREFIX.fasta"
 TWOBIT="$PREFIX.2bit"
-BIGWIG="$PREFIX.bw"
 BEDPE="$PREFIX.bedpe"
 EXCL_LIST="$BASE_DIR/ENCFF001TDO.bed"
 REF_REG="$BASE_DIR/reference_N_regions.bed"
@@ -81,30 +80,24 @@ eval "$(conda shell.bash hook)"
 conda activate $CONDA_ENV
 conda list
 
-# extract N's from sequence into BED
-p=seqkit
-cmd="$p locate -i -P -r -p "N+" --bed \"$FASTA\" -o \"$REF_REG\""
-JOB_ID=$(submit "$cmd" "$p")
-JOBS+=($JOB_ID)
-
 # convert input FASTA to 2bit
 p=faToTwoBit
 cmd="$p \"$FASTA\" \"$TWOBIT\""
 JOB_ID=$(submit "$cmd" "$p")
 JOBS+=($JOB_ID)
 
-# compute genome mappability
-p=genmap
-cmd="./$p.sh \"$FASTA\" \"$BIGWIG\" $KMERS $MAX_MISMATCH"
+waiting
+
+# extract N's from sequence into BED
+p=Ns_to_bed
+cmd="python scripts/utils/$p.py -c \"$SEQ_IDS_CSV\" -t \"$TWOBIT\" -b \"$REF_REG\""
 JOB_ID=$(submit "$cmd" "$p")
 JOBS+=($JOB_ID)
-
-waiting
 
 # convert SV calls (i.e. truth set and sv-callers output) in VCF to BEDPE files
 cd scripts/R
 p=vcf2bedpe
-for vcf in $(find "$BASE_DIR" -mindepth 3 -name "*.vcf"); do
+for vcf in $(find "$BASE_DIR" -mindepth 1 -name "*.vcf" | grep -v "htz-sv*"); do
     prefix="$(basename "$vcf" .vcf)"
     bedpe="$BASE_DIR/$prefix.bedpe"
     cmd="./$p.R -i \"$vcf\" -o \"$bedpe\""
@@ -112,14 +105,12 @@ for vcf in $(find "$BASE_DIR" -mindepth 3 -name "*.vcf"); do
     JOBS+=($JOB_ID)
 done
 
-waiting
-
 # submit jobs to output "channel" files (*.json.gz and *.npy.gz)
 cd ../genome_wide
 p=clipped_reads
 cmd="python $p.py \
   -b \"$BAM\" \
-  -c \"$SEQ_IDS\" \
+  -c \"$SEQ_IDS_CSV\" \
   -o $p.json.gz \
   -p . \
   -l $p.log"
@@ -129,7 +120,7 @@ JOBS+=($JOB_ID)
 p=clipped_read_pos
 cmd="python $p.py \
   -b \"$BAM\" \
-  -c \"$SEQ_IDS\" \
+  -c \"$SEQ_IDS_CSV\" \
   -o $p.json.gz \
   -p . \
   -l $p.log"
@@ -139,7 +130,7 @@ JOBS+=($JOB_ID)
 p=split_reads
 cmd="python $p.py \
   -b \"$BAM\" \
-  -c \"$SEQ_IDS\" \
+  -c \"$SEQ_IDS_CSV\" \
   -o $p.json.gz \
   -ob $p.bedpe.gz \
   -p . \
@@ -147,7 +138,7 @@ cmd="python $p.py \
 JOB_ID=$(submit "$cmd" "$p")
 JOBS+=($JOB_ID)
 
-for s in $(echo "$SEQ_IDS" | tr ',' ' '); do  # per chromosome
+for s in "${SEQ_IDS[@]}"; do  # per chromosome
   p=clipped_read_distance
   cmd="python $p.py \
     -b \"$BAM\" \
@@ -183,13 +174,12 @@ done
 waiting
 
 # generate chromosome arrays from the channels as well as label window pairs
-for s in $(echo "$SEQ_IDS" | tr ',' ' '); do
+for s in "${SEQ_IDS[@]}"; do
   p=chr_array
   cmd="python $p.py \
     -b \"$BAM\" \
     -c $s \
     -t \"$TWOBIT\" \
-    -m \"$BIGWIG\" \
     -o $p.npy \
     -p . \
     -l $p.log"
@@ -205,7 +195,7 @@ for c in "${SV_CALLS[@]}"; do
         p=label_windows
         cmd="python $p.py \
           -f \"$FASTA\" \
-          -c \"$SEQ_IDS\" \
+          -c \"$SEQ_IDS_CSV\" \
           -w $WIN_SZ \
           -gt \"$BEDPE\" \
           -s $sv \
@@ -228,7 +218,7 @@ for c in "${SV_CALLS[@]}"; do
         lb="$out/labels.json.gz"
         cmd="python $p.py \
           -b \"$BAM\" \
-          -c \"$SEQ_IDS\" \
+          -c \"$SEQ_IDS_CSV\" \
           -lb \"$lb\" -ca . \
           -w $WIN_SZ \
           -p \"$out\" \
@@ -262,73 +252,75 @@ done
 
 waiting
 
-# # Train and test model
-# for sv in "${SV_TYPES[@]}"; do
-#     for c in "${SV_CALLS[@]}"; do
-#         for cv in "${CV_MODES[@]}"; do
-#             p=train
-#             out_dir="cnn/win$WIN_SZ/$c"
-#             train_dir="$out_dir/windows/$sv/windows_en.npz"
-#             cmd="python $p.py \
-#               --training_sample_name \"$SAMPLE\" \
-#               --training_windows \"$train_dir\" \
-#               --test_sample_name \"$SAMPLE\" \
-#               --test_windows \"$train_dir\" \
-#               -k $KFOLD \
-#               -e $EPOCHS \
-#               -p \"$out_dir\" \
-#               -s $sv \
-#               -cv $cv \
-#               -l $p.log"
-#             JOB_ID=$(submit "$cmd" "$p-$sv-$c")
-#             JOBS+=($JOB_ID)
-#         done
-#     done
-# done
+ # Train and test model
+ for sv in "${SV_TYPES[@]}"; do
+     for c in "${SV_CALLS[@]}"; do
+         for cv in "${CV_MODES[@]}"; do
+             p=train
+             out_dir="cnn/win$WIN_SZ/$c"
+             train_dir="$out_dir/windows/$sv/windows_en.npz"
+             cmd="python $p.py \
+               --training_sample_name \"$SAMPLE\" \
+               --training_windows \"$train_dir\" \
+               --test_sample_name \"$SAMPLE\" \
+               --test_windows \"$train_dir\" \
+               -k $KFOLD \
+               -e $EPOCHS \
+               -p \"$out_dir\" \
+               -s $sv \
+               -cv $cv \
+               -l $p.log"
+             JOB_ID=$(submit "$cmd" "$p-$sv-$c")
+             JOBS+=($JOB_ID)
+         done
+     done
+ done
 
-# waiting
+ waiting
 
-# # merge SV calls
-# cd ../R
-# p=merge_sv_calls
-# for c in "${SV_CALLS[@]}"; do
-#     for m in "${CV_MODES[@]}"; do
-#         win_dir="../genome_wide/cnn/win$WIN_SZ"
-#         sv_dir="$win_dir/$c/$m"
-#         bedpe="$win_dir/sv-channels.$c.$m.$SAMPLE"
-#         cmd="$p.R \
-#           -i \"$sv_dir\" \
-#           -f \"$EXCL_LIST\" \
-#           -n \"$REF_REG\" \
-#           -m $c \
-#           -o \"$bedpe\""
-#         JOB_ID=$(submit "$cmd" "$p-$c-$m")
-#         JOBS+=($JOB_ID)
-#     done
-# done
+ # merge SV calls
+ cd ../R
+ p=merge_sv_calls
+ for c in "${SV_CALLS[@]}"; do
+     for m in "${CV_MODES[@]}"; do
+         win_dir="../genome_wide/cnn/win$WIN_SZ"
+         sv_dir="$win_dir/$c/$m"
+         bedpe="$win_dir/sv-channels.$c.$m.$SAMPLE"
+         cmd="Rscript $p.R \
+           -i \"$sv_dir\" \
+           -f \"$EXCL_LIST\" \
+           -n \"$REF_REG\" \
+           -m $c \
+           -o \"$bedpe\""
+         JOB_ID=$(submit "$cmd" "$p-$c-$m")
+         JOBS+=($JOB_ID)
+     done
+ done
 
-# waiting
+ waiting
 
-# # convert BEDPE to VCF
-# cd ../utils
-# for c in "${SV_CALLS[@]}"; do
-#     for m in "${CV_MODES[@]}"; do
-#         p=bedpe_to_vcf
-#         win_dir="../genome_wide/cnn/win$WIN_SZ"
-#         prefix="$win_dir/sv-channels.$c.$m.$SAMPLE"
-#         bedpe="$prefix.bedpe"
-#         vcf="$prefix.vcf"
-#         cmd="python $p.py \
-#           -i \"$bedpe\" \
-#           -b \"$TWOBIT\" \
-#           -o \"$vcf\" \
-#           -s \"$SAMPLE\""
-#         JOB_ID=$(submit "$cmd" "$p-$c-$m")
-#         JOBS+=($JOB_ID)
-#     done
-# done
+ # convert BEDPE to VCF
+ cd ../utils
+ for c in "${SV_CALLS[@]}"; do
+     for m in "${CV_MODES[@]}"; do
+         p=bedpe_to_vcf
+         win_dir="../genome_wide/cnn/win$WIN_SZ"
+         prefix="$win_dir/sv-channels.$c.$m.$SAMPLE"
+         bedpe="$prefix.bedpe"
+         vcf="$prefix.vcf"
+         cmd="python $p.py \
+           -i \"$bedpe\" \
+           -b \"$TWOBIT\" \
+           -o \"$vcf\" \
+           -s \"$SAMPLE\""
+         JOB_ID=$(submit "$cmd" "$p-$c-$m")
+         JOBS+=($JOB_ID)
+     done
+ done
 
 waiting
+
+cd ../genome_wide
 
 ETIME=$(date +%s)
 echo "Processing ${#JOBS[@]} jobs took $((ETIME - STIME)) sec to complete."
@@ -350,9 +342,11 @@ done
 # list "channel" files
 echo "-------------"
 echo "Output files:"
-#ls
+ls
 find -type f -name "*.json.gz" | grep "." || exit 1
 find -type f -name "*.npy.gz" | grep "." || exit 1
+find -type f -name "*.npz" | grep "." || exit 1
+
 
 # exit with non-zero if there are failed jobs
 [[ $(jq ".statuses | .[] | select(.done==true and .exitCode!=0)" $JOBS_LOG) ]] \

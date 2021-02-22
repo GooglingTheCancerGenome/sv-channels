@@ -16,10 +16,11 @@ env:
     - PREFIX=gtcg/xenon
     - BAM=data/test.bam
     - SEQIDS="12,22"
+    - SVTYPES="INV,DEL,INS,INV,DUP,CTX"
   matrix:
-    - PORT=10022 IMG=gridengine TAG=6 SCH=local
-    - PORT=10023 IMG=gridengine TAG=6 SCH=gridengine
-    - PORT=10024 IMG=slurm TAG=19 SCH=slurm
+    - PORT=10024 IMG=gridengine TAG=6 SCH=local
+    - PORT=10025 IMG=gridengine TAG=6 SCH=gridengine
+    - PORT=10026 IMG=slurm TAG=19 SCH=slurm
 install:
   - docker run -d -p $PORT:22 --name $SCH $PREFIX-$IMG:$TAG
   - sleep 10
@@ -28,5 +29,4 @@ install:
   - docker exec -t $SCH chown -R xenon:xenon /home/xenon
   - docker exec -u xenon -t $SCH ./install.sh
 script:
-  - docker exec -u xenon -t $SCH ./run.sh $SCH $BAM $SEQIDS
-  - sonar-scanner
+  - docker exec -u xenon -t $SCH ./run.sh $SCH $BAM $SEQIDS $SVTYPES

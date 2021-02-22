@@ -195,9 +195,13 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
             labels[pos_id] = 'no' + svtype
 
     logging.info(Counter(labels.values()))
-    sv_coverage = int(len(sv_covered) / len(sv_list) * 100)
-    logging.info("SV coverage: %d/%d=%d" %
-                 (len(sv_covered), len(sv_list), sv_coverage))
+
+    try:
+        sv_coverage = int(len(sv_covered) / len(sv_list) * 100)
+    except ZeroDivisionError:
+        sv_coverage = 0
+    logging.info("SV coverage: %d%%" % sv_coverage)
+
     filename, file_extension = os.path.splitext(ground_truth)
 
     if file_extension == '.bedpe':

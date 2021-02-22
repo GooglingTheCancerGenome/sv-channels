@@ -24,8 +24,8 @@ authors:
     orcid: https://orcid.org/0000-0002-3689-6959
 
 cff-version: "1.0.3"
-date-released: "2020-01-01"  # FIXME
-doi: 10.5281/zenodo.3725664
+date-released: "2021-02-22"
+doi: 10.5281/zenodo.4555454
 keywords:
   - "bioinformatics"
   - "deep learning"
