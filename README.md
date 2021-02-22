@@ -1,9 +1,9 @@
 # sv-channels
 
-[![DOI](https://zenodo.org/badge/DOI/10.000/FIXME.svg)](https://doi.org/10.000/FIXME)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4555454.svg)](https://doi.org/10.5281/zenodo.4555454)
 [![Build Status](https://travis-ci.org/GooglingTheCancerGenome/sv-channels.svg?branch=master)](https://travis-ci.org/GooglingTheCancerGenome/sv-channels)
 
-*sv-channels* is a Deep Learning workflow for calling structural variants (SVs) in short read alignment data using one-dimensional Convolutional Neural Networks (CNN). It has been tested on a benchmark dataset with [three cell lines](https://zenodo.org/record/4001614#.YCz4ixNKhlM): two samples (NA12878 and NA24385) from the [Genome in a Bottle](https://www.nist.gov/programs-projects/genome-bottle) consortium and one [synthetic diploid](https://www.nature.com/articles/s41592-018-0054-7) sample (CHM1_CHM13).
+*sv-channels* is a Deep Learning workflow for calling structural variants (SVs) in short read alignment data using one-dimensional Convolutional Neural Networks (CNN). It has been tested on a benchmark dataset with [three cell lines](https://doi.org/10.5281/zenodo.4001614): two samples (NA12878 and NA24385) from the [Genome in a Bottle](https://www.nist.gov/programs-projects/genome-bottle) consortium and one [synthetic diploid](https://doi.org/10.1038/s41592-018-0054-7) sample (CHM1_CHM13).
 
 *sv-channels* supports five SV types:
 - deletions (DEL)
@@ -60,11 +60,11 @@ conda activate sv-channels
 
 **3. Execution.**
 
--   **input files**:
-    - read alignment in [BAM format](https://samtools.github.io/hts-specs/SAMv1.pdf)
-    - reference genome used to map the reads in [FASTA format](https://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&PAGE_TYPE=BlastDocs&DOC_TYPE=BlastHelp)
--   **output files**:
-    - SV callset in [VCF format](https://samtools.github.io/hts-specs/VCFv4.3.pdf)
+-   **input**:
+    - read alignment in [BAM](https://samtools.github.io/hts-specs/SAMv1.pdf) format
+    - reference genome used to map the reads in [FASTA](https://www.ncbi.nlm.nih.gov/BLAST/fasta.shtml) format
+-   **output**:
+    - SV callset in [VCF](https://samtools.github.io/hts-specs/VCFv4.3.pdf) format
 
 ```bash
 SCH=local  # gridengine or slurm
