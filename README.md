@@ -18,7 +18,7 @@ The [workflow](doc/sv-channels.svg) includes the following key steps:
 
 First, split read positions are extracted from the BAM files as candidate regions for SV breakpoints. For each pair of split read positions (rightmost position of the first split part and leftmost position of the second split part) a 2D Numpy array called *window* is constructed. The shape of a window is [*window_size*, *number_of_channels*], where the genomic interval encompassing the window is centered on the split read position with a context of \[-100 bp, +100 bp\) for a *window_size* of 200 bp. From all the reads overlapping this genomic interval and from the relative segment subsequence of the reference sequence 79 (*number_of_channels*) channels are constructed, where each channel encode a signal that can be used for SV calling. The list of channels can be found [here](https://github.com/GooglingTheCancerGenome/sv-channels/blob/dev-merge/doc/channels_list.tsv). The two windows are joined as *linked-windows* with a zero padding 2D array of shape [10, *number_of_channels*] in between to avoid artifacts related to the CNN kernel in the part at the interface between the two windows. The linked-windows are labelled as *SV* when the split read positions overlap the SV callset used as the ground truth and *noSV* otherwise, where *SV* is either DEL,INS,INV,DUP or CTX according to the SV type.
 
-![Figure1](https://github.com/GooglingTheCancerGenome/sv-channels/blob/dev-merge/doc/figure1.png)
+![Figure1](https://github.com/GooglingTheCancerGenome/sv-channels/blob/master/doc/figure1.png)
 
 **Model training**
 
