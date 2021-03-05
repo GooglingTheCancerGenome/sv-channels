@@ -1,6 +1,6 @@
 # sv-channels
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4555454.svg)](https://doi.org/10.5281/zenodo.4555454)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4584797.svg)](https://doi.org/10.5281/zenodo.4584797)
 [![Build Status](https://travis-ci.org/GooglingTheCancerGenome/sv-channels.svg?branch=master)](https://travis-ci.org/GooglingTheCancerGenome/sv-channels)
 
 *sv-channels* is a Deep Learning workflow for calling structural variants (SVs) in short read alignment data using one-dimensional Convolutional Neural Networks (CNN). It has been tested on a benchmark dataset with [three cell lines](https://doi.org/10.5281/zenodo.4001614): two samples (NA12878 and NA24385) from the [Genome in a Bottle](https://www.nist.gov/programs-projects/genome-bottle) consortium and one [synthetic diploid](https://doi.org/10.1038/s41592-018-0054-7) sample (CHM1_CHM13).
@@ -16,9 +16,9 @@ The [workflow](doc/sv-channels.svg) includes the following key steps:
 
 **Transform read alignments into channels**
 
-First, split read positions are extracted from the BAM files as candidate regions for SV breakpoints. For each pair of split read positions (rightmost position of the first split part and leftmost position of the second split part) a 2D Numpy array called *window* is constructed. The shape of a window is [*window_size*, *number_of_channels*], where the genomic interval encompassing the window is centered on the split read position with a context of \[-100 bp, +100 bp\) for a *window_size* of 200 bp. From all the reads overlapping this genomic interval and from the relative segment subsequence of the reference sequence 79 (*number_of_channels*) channels are constructed, where each channel encode a signal that can be used for SV calling. The list of channels can be found [here](https://github.com/GooglingTheCancerGenome/sv-channels/blob/dev-merge/doc/channels_list.tsv). The two windows are joined as *linked-windows* with a zero padding 2D array of shape [10, *number_of_channels*] in between to avoid artifacts related to the CNN kernel in the part at the interface between the two windows. The linked-windows are labelled as *SV* when the split read positions overlap the SV callset used as the ground truth and *noSV* otherwise, where *SV* is either DEL,INS,INV,DUP or CTX according to the SV type.
+First, split read positions are extracted from the BAM files as candidate regions for SV breakpoints. For each pair of split read positions (rightmost position of the first split part and leftmost position of the second split part) a 2D Numpy array called *window* is constructed. The shape of a window is [*window_size*, *number_of_channels*], where the genomic interval encompassing the window is centered on the split read position with a context of \[-100 bp, +100 bp\) for a *window_size* of 200 bp. From all the reads overlapping this genomic interval and from the relative segment subsequence of the reference sequence 79 (*number_of_channels*) channels are constructed, where each channel encode a signal that can be used for SV calling. The list of channels can be found [here](doc/channels_list.tsv). The two windows are joined as *linked-windows* with a zero padding 2D array of shape [10, *number_of_channels*] in between to avoid artifacts related to the CNN kernel in the part at the interface between the two windows. The linked-windows are labelled as *SV* when the split read positions overlap the SV callset used as the ground truth and *noSV* otherwise, where *SV* is either DEL,INS,INV,DUP or CTX according to the SV type.
 
-![Figure1](https://github.com/GooglingTheCancerGenome/sv-channels/blob/dev-merge/doc/figure1.png)
+![Figure1](doc/figure1.png)
 
 **Model training**
 
