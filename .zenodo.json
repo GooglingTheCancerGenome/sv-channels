@@ -31,7 +31,8 @@
         "SV calling",
         "WGS",
         "BAM",
-        "VCF"
+        "VCF",
+        "CNN"
     ],
     "license": {
         "id": "Apache-2.0"

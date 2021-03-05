@@ -1,6 +1,6 @@
 # sv-channels
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4555454.svg)](https://doi.org/10.5281/zenodo.4555454)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4584797.svg)](https://doi.org/10.5281/zenodo.4584797)
 [![Build Status](https://travis-ci.org/GooglingTheCancerGenome/sv-channels.svg?branch=master)](https://travis-ci.org/GooglingTheCancerGenome/sv-channels)
 
 *sv-channels* is a Deep Learning workflow for calling structural variants (SVs) in short read alignment data using one-dimensional Convolutional Neural Networks (CNN). It has been tested on a benchmark dataset with [three cell lines](https://doi.org/10.5281/zenodo.4001614): two samples (NA12878 and NA24385) from the [Genome in a Bottle](https://www.nist.gov/programs-projects/genome-bottle) consortium and one [synthetic diploid](https://doi.org/10.1038/s41592-018-0054-7) sample (CHM1_CHM13).
