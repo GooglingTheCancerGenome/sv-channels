@@ -87,14 +87,14 @@ p <-
     "-i",
     help = paste("path to the CSV file with SV callsets (VCF)"),
     type = "character",
-    default = '/Users/lsantuari/Documents/Projects/GTCG/sv-channels/sv-channels_manuscript/Figures/F5/callsets_NA24385_manta_kfold.csv'
+    default = '/Users/lsantuari/Documents/Projects/GTCG/sv-channels/sv-channels_manuscript/Figures/F3/callsets_NA24385.csv'
   )
 p <-
   add_argument(p,
                "-t",
                help = "path to the truth set",
                type = "character",
-               default = '/Users/lsantuari/Documents/Processed/SPIDER/split_reads/NA24385/nstd167_nosr.vcf')
+               default = '/Users/lsantuari/Documents/Processed/SPIDER/split_reads/NA24385/nstd167.GRCh37.variant_call.vcf')
 p <-
   add_argument(p,
                "-s",
@@ -102,6 +102,19 @@ p <-
                type = "character",
                default = 'NA24385')
 
+p <-
+  add_argument(p,
+               "-sr",
+               help = "path to split reads in BEDPE format",
+               type = "character",
+               default = '/Users/lsantuari/Documents/Processed/SPIDER/split_reads/NA24385/split_reads_real.bedpe')
+
+p <-
+  add_argument(p,
+               "-b",
+               help = "consider only split read positions?",
+               type = "boolean",
+               default = FALSE)
 
 # parse the command line arguments
 argv <- parse_args(p)
@@ -110,7 +123,13 @@ callsets <- read.csv(argv$i, header=FALSE)
 sv_regions <- list()
 for(i in 1:nrow(callsets))
 {
+  if(tools::file_ext(callsets[i,2]) == 'vcf')
+  {
   sv_regions[[callsets[i,1]]] <- load_vcf(callsets[i,2], 'DEL', callsets[i,1])
+  }else if(tools::file_ext(callsets[i,2]) == 'bedpe')
+  {
+  sv_regions[[callsets[i,1]]] <- pairs2breakpointgr(rtracklayer::import(callsets[i,2]))
+  }
 }
 # exclude callsets with zero calls
 sv_regions <- sv_regions[sapply(sv_regions, length) != 0]
@@ -119,8 +138,65 @@ for (c in names(sv_regions))
   sv_regions[[c]]$caller <- c
 }
 
-truth_set <- load_vcf(argv$t, 'DEL', 'truth_set')
-#truth_set <- pairs2breakpointgr(rtracklayer::import(argv$t))
+if(tools::file_ext(argv$t) == 'vcf')
+{
+  truth_set <- load_vcf(argv$t, 'DEL', 'truth_set')
+}else if(tools::file_ext(argv$t) == 'bedpe')
+{
+  truth_set <- pairs2breakpointgr(rtracklayer::import(argv$t))
+}
+
+if(argv$b)
+{
+  
+# Consider only SVs with split read positions?
+split_reads <- pairs2breakpointgr(rtracklayer::import(argv$sr))
+
+for (c in names(sv_regions))
+{
+print(c)
+myHits <- findBreakpointOverlaps(
+  sv_regions[[c]],
+  split_reads,
+  # read pair based callers make imprecise calls.
+  # A margin around the call position is required when matching with the truth set
+  maxgap = 100,
+  # Since we added a maxgap, we also need to restrict the mismatch between the
+  # size of the events. We don't want to match a 100bp deletion with a
+  # 5bp duplication. This will happen if we have a 100bp margin but don't also
+  # require an approximate size match as well
+  sizemargin = 0.25,
+  ignore.strand = TRUE,
+  # We also don't want to match a 20bp deletion with a 20bp deletion 80bp away
+  # by restricting the margin based on the size of the event, we can make sure
+  # that simple events actually do overlap
+  restrictMarginToSizeMultiple = 0.5
+)
+print(length(unique(queryHits(myHits))))
+sv_regions[[c]] <- sv_regions[[c]][unique(queryHits(myHits)),]
+sv_regions[[c]] <- sv_regions[[c]][sv_regions[[c]]$partner %in% names(sv_regions[[c]])]
+}
+
+myHits <- findBreakpointOverlaps(
+  truth_set,
+  split_reads,
+  # read pair based callers make imprecise calls.
+  # A margin around the call position is required when matching with the truth set
+  maxgap = 100,
+  # Since we added a maxgap, we also need to restrict the mismatch between the
+  # size of the events. We don't want to match a 100bp deletion with a
+  # 5bp duplication. This will happen if we have a 100bp margin but don't also
+  # require an approximate size match as well
+  sizemargin = 0.25,
+  ignore.strand = TRUE,
+  # We also don't want to match a 20bp deletion with a 20bp deletion 80bp away
+  # by restricting the margin based on the size of the event, we can make sure
+  # that simple events actually do overlap
+  restrictMarginToSizeMultiple = 0.5
+)
+truth_set <- truth_set[unique(queryHits(myHits)),]
+
+}
 
 for (c in names(sv_regions))
 {
@@ -146,7 +222,7 @@ for (c in names(sv_regions))
         truth_set,
         # read pair based callers make imprecise calls.
         # A margin around the call position is required when matching with the truth set
-        maxgap = 200,
+        maxgap = 100,
         # Since we added a maxgap, we also need to restrict the mismatch between the
         # size of the events. We don't want to match a 100bp deletion with a
         # 5bp duplication. This will happen if we have a 100bp margin but don't also
