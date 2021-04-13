@@ -7,8 +7,8 @@ import json
 import logging
 import os
 from time import time
+import joblib
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -25,8 +25,78 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.regularizers import l2
 from tensorflow.keras.utils import to_categorical
 
+from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
+
+from skopt.utils import use_named_args  # decorator to convert a list of parameters to named arguments
+from skopt import gp_minimize  # Bayesian optimization using Gaussian Processes
+
+from sklearn.metrics import accuracy_score
+
+from skopt.space import Real, Integer
+
 from model_functions import (  # create_model_with_mcfly, train_model_with_mcfly
     evaluate_model, get_data)
+
+counter = 0
+
+# onstep and make_objective functions adapted from the notebook "Bayesian Optimization Workshop" by Luca Massaron
+# https://colab.research.google.com/github/lmassaron/kaggledays-2019-gbdt/blob/master/skopt_workshop_part2.ipynb#scrollTo=Gc9IfCbORvux
+
+
+def onstep(res):
+
+    global counter
+    x0 = res.x_iters  # List of input points
+    y0 = res.func_vals  # Evaluation of input points
+    print('Last eval: ', x0[-1],
+          ' - Score ', y0[-1])
+    print('Current iter: ', counter,
+          ' - Score ', res.fun,
+          ' - Args: ', res.x)
+    joblib.dump((x0, y0), 'checkpoint.pkl')  # Saving a checkpoint to disk
+    counter += 1
+
+
+def make_objective(create_model, X, y, space, cv, scoring, class_weights, callbacks,
+                   train_params, verbose=0):
+
+    # This decorator converts your objective function with named arguments into one that
+    # accepts a list as argument, while doing the conversion automatically.
+    @use_named_args(space)
+    def objective(**params):
+
+        arch_params = create_model.__code__.co_varnames
+
+        objective_model_params = {p: params[p] for p in params if p in arch_params}
+        fit_params = {p: params[p] for p in params if p not in arch_params}
+
+        model = KerasClassifier(build_fn=create_model,
+                                outputdim=train_params['n_classes'],
+                                shape=X.shape,
+                                verbose=verbose,
+                                **objective_model_params)
+
+        score = list()
+        print("Testing parameters:", params)
+        print(model.sk_params)
+        for j, (train_index, test_index) in enumerate(cv.split(X, y)):
+
+            model.fit(X[train_index, :], to_categorical(y[train_index]),
+                      epochs=model_params['epochs'],
+                      batch_size=model_params['batch_size'],
+                      shuffle=True,
+                      validation_split=model_params['validation_split'],
+                      verbose=0,
+                      callbacks=callbacks,
+                      class_weight=class_weights,
+                      **fit_params)
+            val_preds = model.predict(X[test_index, :])
+            score.append(scoring(y_true=y[test_index], y_pred=val_preds))
+
+        print("CV scores:", score)
+        return np.mean(score) * -1
+
+    return objective
 
 
 def get_labels(channel_data_dir, win):
@@ -53,25 +123,20 @@ def train_and_test_data(sampleName, npz_mode, svtype):
     return X_train, X_test, y_train, y_test, win_ids_train, win_ids_test
 
 
-def create_model(dim_length, dim_channels, outputdim):
-
+def create_model(shape, outputdim, learning_rate, regularization_rate,
+                 filters, layers, kernel_size, fc_nodes):
     weightinit = 'lecun_uniform'  # weight initialization
-
-    learning_rate = model_params['learning_rate']
-    regularization_rate = model_params['regularization_rate']
 
     model = Sequential()
 
-    model.add(BatchNormalization(input_shape=(dim_length, dim_channels)))
+    model.add(BatchNormalization(input_shape=(shape[1], shape[2])))
 
-    filters = [model_params['cnn_filters']] * model_params['cnn_layers']
+    filters_list = [filters] * layers
 
-    for filter_number in filters:
-        # model.add(MaxPooling1D(pool_size=5, strides=None, padding='same'))
-
+    for filter_number in filters_list:
         model.add(
             Convolution1D(filter_number,
-                          kernel_size=model_params['kernel_size'],
+                          kernel_size=(kernel_size,),
                           padding='same',
                           kernel_regularizer=l2(regularization_rate),
                           kernel_initializer=weightinit))
@@ -81,14 +146,7 @@ def create_model(dim_length, dim_channels, outputdim):
     model.add(Flatten())
 
     model.add(
-        Dense(units=model_params['fc_nodes'],
-              kernel_regularizer=l2(regularization_rate),
-              kernel_initializer=weightinit))  # Fully connected layer
-    model.add(Activation('relu'))  # Relu activation
-
-    # Adding one more FC layer
-    model.add(
-        Dense(units=model_params['fc_nodes'],
+        Dense(units=fc_nodes,
               kernel_regularizer=l2(regularization_rate),
               kernel_initializer=weightinit))  # Fully connected layer
     model.add(Activation('relu'))  # Relu activation
@@ -101,33 +159,34 @@ def create_model(dim_length, dim_channels, outputdim):
                   optimizer=Adam(lr=learning_rate),
                   metrics=['accuracy'])
 
-    # i = 0
-    # for model, params, model_types in [model]:
-    #     logging.info('model ' + str(i))
-    #     i = i + 1
-    #     logging.info(params)
-    #     logging.info(model.summary())
-
     return model
 
 
-def train(model_fn, params, X_train, y_train, y_train_binary):
-    # Design model
-    logging.info('Creating model...')
-    model = create_model(params['dim'], params['n_channels'],
-                         params['n_classes'])
-    logging.info(model.summary())
+def train(model_fn, model_fn_checkpoint, train_params, X_train, y_train, y_train_binary):
+
+    dimensions = [
+        Integer(low=4, high=16, name='filters'),
+        Integer(low=1, high=6, name='layers'),
+        Integer(low=1, high=8, name='kernel_size'),
+        Integer(low=4, high=10, name='fc_nodes'),
+        Real(low=1e-4, high=1e-1, prior='log-uniform', name='learning_rate'),
+        Real(low=1e-4, high=1e-1, prior='log-uniform', name='regularization_rate')
+    ]
+
+    # Setting a 5-fold stratified cross-validation (note: shuffle=True)
+    skf = StratifiedKFold(n_splits=3, shuffle=True, random_state=0)
+
     earlystop = EarlyStopping(monitor='val_loss',
                               min_delta=0,
                               patience=3,
-                              verbose=1,
+                              verbose=0,
                               restore_best_weights=True)
 
-    checkpoint = ModelCheckpoint(model_fn,
+    checkpoint = ModelCheckpoint(model_fn_checkpoint,
                                  monitor='val_loss',
                                  mode='min',
                                  save_best_only=True,
-                                 verbose=1)
+                                 verbose=0)
 
     # csv_logger = CSVLogger(os.path.join(channel_data_dir, 'training.log'))
     #
@@ -141,25 +200,51 @@ def train(model_fn, params, X_train, y_train, y_train_binary):
     class_weights = compute_class_weight('balanced', np.unique(y_train), y_train)
     class_weights = {i: v for i, v in enumerate(class_weights)}
 
-    logging.info('Fitting model...')
+    objective = make_objective(create_model,
+                               X_train, y_train,
+                               space=dimensions,
+                               cv=skf,
+                               scoring=accuracy_score,
+                               class_weights=class_weights,
+                               callbacks=callbacks,
+                               train_params=train_params,
+                               verbose=0)
 
-    # Train model on dataset
-    history = model.fit(
-        X_train,
-        y_train_binary,
-        validation_split=model_params['validation_split'],
-        batch_size=model_params['batch_size'],
-        epochs=model_params['epochs'],
-        shuffle=True,
-        class_weight=class_weights,
-        verbose=1,
-        callbacks=callbacks)
+    gp_round = gp_minimize(func=objective,
+                           dimensions=dimensions,
+                           acq_func='gp_hedge',  # Expected Improvement.
+                           n_calls=10,
+                           callback=[onstep],
+                           random_state=1)
 
-    return model, history, X_train.shape[0], int(X_train.shape[0] *
-                                                 model_params['validation_split'])
+    best_parameters = gp_round.x
+    best_result = gp_round.fun
+    print(best_parameters, best_result)
+
+    model = create_model(X_train.shape,
+                         outputdim=train_params['n_classes'],
+                         learning_rate=best_parameters[4],
+                         regularization_rate=best_parameters[5],
+                         filters=best_parameters[0],
+                         layers=best_parameters[1],
+                         kernel_size=best_parameters[2],
+                         fc_nodes=best_parameters[3]
+                         )
+
+    model.fit(x=X_train, y=y_train_binary,
+              epochs=model_params['epochs'], batch_size=model_params['batch_size'],
+              shuffle=True,
+              validation_split=model_params['validation_split'],
+              class_weight=class_weights,
+              verbose=1,
+              callbacks=callbacks)
+
+    return X_train.shape[0], int(X_train.shape[0] *
+                                 model_params['validation_split'])
 
 
 def cv_train_and_evaluate(X, y, y_binary, win_ids, train_indices, test_indices, model_dir, svtype):
+
     # Generate batches from indices
     X_train, X_test = X[train_indices], X[test_indices]
     y_train, y_test = y[train_indices], y[test_indices]
@@ -178,11 +263,12 @@ def cv_train_and_evaluate(X, y, y_binary, win_ids, train_indices, test_indices, 
 
     os.makedirs(model_dir, exist_ok=True)
     model_fn = os.path.join(model_dir, 'model.hdf5')
+    model_fn_checkpoint = os.path.join(model_dir, 'model.checkpoint.hdf5')
 
-    model, history, train_set_size, validation_set_size = train(
-        model_fn, params, X_train, y_train, y_train_binary)
+    train_set_size, validation_set_size = train(
+         model_fn, model_fn_checkpoint, params, X_train, y_train, y_train_binary)
 
-    model.save(model_fn)
+    model = load_model(model_fn_checkpoint)
 
     results = pd.DataFrame()
 
@@ -194,6 +280,7 @@ def cv_train_and_evaluate(X, y, y_binary, win_ids, train_indices, test_indices, 
 
 
 def cross_validation(training_windows, outDir, npz_mode, svtype, kfold):
+
     X, y, win_ids = get_data(training_windows, npz_mode, svtype)
     y_binary = to_categorical(y, num_classes=len(mapclasses.keys()))
 
@@ -267,10 +354,11 @@ def train_and_test_model(training_name, test_name, training_windows, test_window
                              training_name + '_tested_on_' + test_name)
     os.makedirs(model_dir, exist_ok=True)
     model_fn = os.path.join(model_dir, 'model.hdf5')
+    model_fn_checkpoint = os.path.join(model_dir, 'model.checkpoint.hdf5')
 
     print('Training model on {}...'.format(training_name))
     model, history, train_set_size, validation_set_size = train(
-        model_fn, params,
+        model_fn, model_fn_checkpoint, params,
         X_train, y_train, y_train_binary)
 
     results = pd.DataFrame()
