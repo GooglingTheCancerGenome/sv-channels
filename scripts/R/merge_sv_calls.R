@@ -121,7 +121,7 @@ for (svtype in sv_types)
       # 5bp duplication. This will happen if we have a 100bp margin but don't also
       # require an approximate size match as well
       sizemargin = sizemargin,
-      ignore.strand = TRUE,
+      ignore.strand = FALSE,
       # We also don't want to match a 20bp deletion with a 20bp deletion 80bp away
       # by restricting the margin based on the size of the event, we can make sure
       # that simple events actually do overlap
