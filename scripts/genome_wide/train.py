@@ -30,7 +30,7 @@ from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
 from skopt.utils import use_named_args  # decorator to convert a list of parameters to named arguments
 from skopt import gp_minimize  # Bayesian optimization using Gaussian Processes
 
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import f1_score
 
 from skopt.space import Real, Integer
 
@@ -91,7 +91,7 @@ def make_objective(create_model, X, y, space, cv, scoring, class_weights, callba
                       class_weight=class_weights,
                       **fit_params)
             val_preds = model.predict(X[test_index, :])
-            score.append(scoring(y_true=y[test_index], y_pred=val_preds))
+            score.append(scoring(y_true=y[test_index], y_pred=val_preds, average='weighted'))
 
         print("CV scores:", score)
         return np.mean(score) * -1
@@ -204,7 +204,7 @@ def train(model_fn, model_fn_checkpoint, train_params, X_train, y_train, y_train
                                X_train, y_train,
                                space=dimensions,
                                cv=skf,
-                               scoring=accuracy_score,
+                               scoring=f1_score,
                                class_weights=class_weights,
                                callbacks=callbacks,
                                train_params=train_params,
