@@ -99,21 +99,28 @@ for (svtype in sv_types)
   sv_regions[[svtype]] <-
     load_bedpe(bedpe.file, regions_for_filtering, ref_regions)
 
+  if (svtype == 'INS')
+  {
+      maxgap <- 5
+      sizemargin <- NULL
+  }else{
+      maxgap <- 100
+      sizemargin <- 0.25
+  }
 
   # Merge SVs
-  if (svtype != 'INS')
-  {
+
     hits <- findBreakpointOverlaps(
       sv_regions[[svtype]],
       sv_regions[[svtype]],
       # read pair based callers make imprecise calls.
       # A margin around the call position is required when matching with the truth set
-      maxgap = 100,
+      maxgap = maxgap,
       # Since we added a maxgap, we also need to restrict the mismatch between the
       # size of the events. We don't want to match a 100bp deletion with a
       # 5bp duplication. This will happen if we have a 100bp margin but don't also
       # require an approximate size match as well
-      sizemargin = 0.25,
+      sizemargin = sizemargin,
       ignore.strand = TRUE,
       # We also don't want to match a 20bp deletion with a 20bp deletion 80bp away
       # by restricting the margin based on the size of the event, we can make sure
@@ -135,7 +142,7 @@ for (svtype in sv_types)
     sv_regions[[svtype]] <- sv_regions[[svtype]][unique(aggdata$x)]
     sv_regions[[svtype]] <-
       sv_regions[[svtype]][sv_regions[[svtype]]$partner %in% names(sv_regions[[svtype]])]
-  }
+
   }
   print(length(sv_regions[[svtype]]))
   }
