@@ -164,7 +164,10 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test,
     dict_sorted = sorted(mapclasses.items(), key=lambda x: x[1])
     class_labels = [i[0] for i in dict_sorted]
     n_classes = ytest_binary.shape[1]
-    probs = model.predict(X_test, batch_size=1000, verbose=False)
+    win1_end = int(X_test.shape[1] / 2 - 5)
+    win2_start = int(X_test.shape[1] / 2 + 5)
+    probs = model.predict([X_test[:, :win1_end, :], X_test[:, win2_start:, :]],
+                          batch_size=1000, verbose=False)
     # columns are predicted, rows are truth
     predicted = probs.argmax(axis=1)
     y_index = ytest_binary.argmax(axis=1)

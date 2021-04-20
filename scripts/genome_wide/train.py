@@ -19,8 +19,9 @@ from tensorflow.keras.callbacks import (EarlyStopping, ModelCheckpoint,
                                         TensorBoard)
 from tensorflow.keras.layers import (Activation, BatchNormalization,
                                      Convolution1D, Dense, Dropout, Flatten,
-                                     Lambda, Reshape, TimeDistributed)
-from tensorflow.keras.models import Sequential, load_model
+                                     Lambda, Reshape, TimeDistributed,
+                                     concatenate, Input)
+from tensorflow.keras.models import Sequential, Model, load_model
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.regularizers import l2
 from tensorflow.keras.utils import to_categorical
@@ -39,12 +40,12 @@ from model_functions import (  # create_model_with_mcfly, train_model_with_mcfly
 
 counter = 0
 
+
 # onstep and make_objective functions adapted from the notebook "Bayesian Optimization Workshop" by Luca Massaron
 # https://colab.research.google.com/github/lmassaron/kaggledays-2019-gbdt/blob/master/skopt_workshop_part2.ipynb#scrollTo=Gc9IfCbORvux
 
 
 def onstep(res):
-
     global counter
     x0 = res.x_iters  # List of input points
     y0 = res.func_vals  # Evaluation of input points
@@ -59,18 +60,16 @@ def onstep(res):
 
 def make_objective(create_model, X, y, space, cv, scoring, class_weights, callbacks,
                    train_params, verbose=0):
-
     # This decorator converts your objective function with named arguments into one that
     # accepts a list as argument, while doing the conversion automatically.
     @use_named_args(space)
     def objective(**params):
-
         arch_params = create_model.__code__.co_varnames
 
         objective_model_params = {p: params[p] for p in params if p in arch_params}
         fit_params = {p: params[p] for p in params if p not in arch_params}
 
-        model = KerasClassifier(build_fn=create_model,
+        model = KerasClassifier(build_fn=create_model2,
                                 outputdim=train_params['n_classes'],
                                 shape=X.shape,
                                 verbose=verbose,
@@ -79,9 +78,13 @@ def make_objective(create_model, X, y, space, cv, scoring, class_weights, callba
         score = list()
         print("Testing parameters:", params)
         print(model.sk_params)
-        for j, (train_index, test_index) in enumerate(cv.split(X, y)):
 
-            model.fit(X[train_index, :], to_categorical(y[train_index]),
+        win1_end = int(X.shape[1] / 2 - 5)
+        win2_start = int(X.shape[1] / 2 + 5)
+
+        for j, (train_index, test_index) in enumerate(cv.split(X, y)):
+            model.fit([X[train_index, :win1_end], X[train_index, win2_start:]],
+                      to_categorical(y[train_index]),
                       epochs=model_params['epochs'],
                       batch_size=model_params['batch_size'],
                       shuffle=True,
@@ -90,7 +93,8 @@ def make_objective(create_model, X, y, space, cv, scoring, class_weights, callba
                       callbacks=callbacks,
                       class_weight=class_weights,
                       **fit_params)
-            val_preds = model.predict(X[test_index, :])
+            val_preds = model.model.predict([X[test_index, :win1_end], X[test_index, win2_start:]])
+            val_preds = np.argmax(val_preds, axis=1)
             score.append(scoring(y_true=y[test_index], y_pred=val_preds, average='weighted'))
 
         print("CV scores:", score)
@@ -162,8 +166,53 @@ def create_model(shape, outputdim, learning_rate, regularization_rate,
     return model
 
 
-def train(model_fn, model_fn_checkpoint, train_params, X_train, y_train, y_train_binary):
+def create_model2(shape, outputdim, learning_rate, regularization_rate,
+                  filters, layers, kernel_size, fc_nodes):
+    weightinit = 'lecun_uniform'  # weight initialization
 
+    dim1 = int(shape[1] / 2 - 5)
+    input_A = Input(shape=(dim1, shape[2]), name="window1")
+    input_B = Input(shape=(dim1, shape[2]), name="window2")
+
+    filters_list = [filters] * layers
+
+    layers = []
+    for input in [input_A, input_B]:
+        layer1 = BatchNormalization()(input)
+        for filter_number in filters_list:
+            layer1 = Convolution1D(filter_number,
+                                   kernel_size=(kernel_size,),
+                                   padding='same',
+                                   kernel_regularizer=l2(regularization_rate),
+                                   kernel_initializer=weightinit)(layer1)
+            layer1 = BatchNormalization()(layer1)
+            layer1 = Activation('relu')(layer1)
+        layer1 = Flatten()(layer1)
+        layers.append(layer1)
+
+    concat = concatenate([layers[0], layers[1]])
+
+    layer2 = Dense(units=fc_nodes,
+                   kernel_regularizer=l2(regularization_rate),
+                   kernel_initializer=weightinit)(concat)
+    layer2 = Activation('relu')(layer2)  # Relu activation
+
+    layer2 = Dense(units=outputdim, kernel_initializer=weightinit)(layer2)
+    layer2 = BatchNormalization()(layer2)
+
+    output = Activation("softmax")(layer2)  # Final classification layer
+
+    model = Model(inputs=[input_A, input_B],
+                  outputs=[output])
+
+    model.compile(loss='categorical_crossentropy',
+                  optimizer=Adam(lr=learning_rate),
+                  metrics=['accuracy'])
+
+    return model
+
+
+def train(model_fn, model_fn_checkpoint, train_params, X_train, y_train, y_train_binary):
     dimensions = [
         Integer(low=4, high=16, name='filters'),
         Integer(low=1, high=6, name='layers'),
@@ -200,38 +249,54 @@ def train(model_fn, model_fn_checkpoint, train_params, X_train, y_train, y_train
     class_weights = compute_class_weight('balanced', np.unique(y_train), y_train)
     class_weights = {i: v for i, v in enumerate(class_weights)}
 
-    objective = make_objective(create_model,
-                               X_train, y_train,
-                               space=dimensions,
-                               cv=skf,
-                               scoring=f1_score,
-                               class_weights=class_weights,
-                               callbacks=callbacks,
-                               train_params=train_params,
-                               verbose=0)
+    if model_params['optimize']:
+        objective = make_objective(create_model2,
+                                   X_train, y_train,
+                                   space=dimensions,
+                                   cv=skf,
+                                   scoring=f1_score,
+                                   class_weights=class_weights,
+                                   callbacks=callbacks,
+                                   train_params=train_params,
+                                   verbose=0)
 
-    gp_round = gp_minimize(func=objective,
-                           dimensions=dimensions,
-                           acq_func='gp_hedge',  # Expected Improvement.
-                           n_calls=10,
-                           callback=[onstep],
-                           random_state=1)
+        gp_round = gp_minimize(func=objective,
+                               dimensions=dimensions,
+                               acq_func='gp_hedge',  # Expected Improvement.
+                               n_calls=model_params['gp_calls'],
+                               callback=[onstep],
+                               random_state=1)
 
-    best_parameters = gp_round.x
-    best_result = gp_round.fun
-    print(best_parameters, best_result)
+        best_parameters = gp_round.x
+        best_result = gp_round.fun
+        print(best_parameters, best_result)
 
-    model = create_model(X_train.shape,
-                         outputdim=train_params['n_classes'],
-                         learning_rate=best_parameters[4],
-                         regularization_rate=best_parameters[5],
-                         filters=best_parameters[0],
-                         layers=best_parameters[1],
-                         kernel_size=best_parameters[2],
-                         fc_nodes=best_parameters[3]
-                         )
+        model = create_model2(X_train.shape,
+                              outputdim=train_params['n_classes'],
+                              learning_rate=best_parameters[4],
+                              regularization_rate=best_parameters[5],
+                              filters=best_parameters[0],
+                              layers=best_parameters[1],
+                              kernel_size=best_parameters[2],
+                              fc_nodes=best_parameters[3]
+                              )
 
-    model.fit(x=X_train, y=y_train_binary,
+    else:
+
+        model = create_model2(X_train.shape,
+                              outputdim=train_params['n_classes'],
+                              learning_rate=model_params['learning_rate'],
+                              regularization_rate=model_params['regularization_rate'],
+                              filters=model_params['cnn_filters'],
+                              layers=model_params['cnn_layers'],
+                              kernel_size=model_params['kernel_size'],
+                              fc_nodes=model_params['fc_nodes']
+                              )
+
+    win1_end = int(X_train.shape[1] / 2 - 5)
+    win2_start = int(X_train.shape[1] / 2 + 5)
+
+    model.fit(x=[X_train[:, :win1_end, :], X_train[:, win2_start:, :]], y=y_train_binary,
               epochs=model_params['epochs'], batch_size=model_params['batch_size'],
               shuffle=True,
               validation_split=model_params['validation_split'],
@@ -244,7 +309,6 @@ def train(model_fn, model_fn_checkpoint, train_params, X_train, y_train, y_train
 
 
 def cv_train_and_evaluate(X, y, y_binary, win_ids, train_indices, test_indices, model_dir, svtype):
-
     # Generate batches from indices
     X_train, X_test = X[train_indices], X[test_indices]
     y_train, y_test = y[train_indices], y[test_indices]
@@ -266,7 +330,7 @@ def cv_train_and_evaluate(X, y, y_binary, win_ids, train_indices, test_indices, 
     model_fn_checkpoint = os.path.join(model_dir, 'model.checkpoint.hdf5')
 
     train_set_size, validation_set_size = train(
-         model_fn, model_fn_checkpoint, params, X_train, y_train, y_train_binary)
+        model_fn, model_fn_checkpoint, params, X_train, y_train, y_train_binary)
 
     model = load_model(model_fn_checkpoint)
 
@@ -280,7 +344,6 @@ def cv_train_and_evaluate(X, y, y_binary, win_ids, train_indices, test_indices, 
 
 
 def cross_validation(training_windows, outDir, npz_mode, svtype, kfold):
-
     X, y, win_ids = get_data(training_windows, npz_mode, svtype)
     y_binary = to_categorical(y, num_classes=len(mapclasses.keys()))
 
@@ -371,7 +434,6 @@ def train_and_test_model(training_name, test_name, training_windows, test_window
 
 
 def main():
-
     default_win = 25
     default_path = os.path.join('./cnn/win' + str(default_win), 'split_reads')
     def_windows_file = os.path.join(
@@ -476,6 +538,17 @@ def main():
                         type=float,
                         default=2.00180567e-04,
                         help="regularization rate")
+    parser.add_argument('-gp_calls',
+                        '--gp_calls',
+                        type=int,
+                        default=10,
+                        help="Number of calls of gp_minimize")
+    parser.add_argument('-optimize',
+                        '--optimize',
+                        type=bool,
+                        default=False,
+                        help="Use gp_minimize?")
+
     args = parser.parse_args()
     global mapclasses
     mapclasses = {args.svtype: 0, 'no' + args.svtype: 1}
@@ -489,7 +562,9 @@ def main():
         'kernel_size': args.kernel_size,
         'fc_nodes': args.fc_nodes,
         'learning_rate': args.learning_rate,
-        'regularization_rate': args.regularization_rate
+        'regularization_rate': args.regularization_rate,
+        'gp_calls': args.gp_calls,
+        'optimize': args.optimize
     }
     output_dir = args.outputpath
     os.makedirs(output_dir, exist_ok=True)
