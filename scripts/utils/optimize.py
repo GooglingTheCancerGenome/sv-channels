@@ -69,7 +69,7 @@ def create_model(X, outputdim, learning_rate, regularization_rate,
 
     model.add(Dense(units=outputdim, kernel_initializer=weightinit))
     model.add(BatchNormalization())
-    model.add(Activation("sigmoid"))  # Final classification layer
+    model.add(Activation("softmax"))  # Final classification layer
 
     model.compile(loss='categorical_crossentropy',
                   optimizer=Adam(lr=learning_rate),
@@ -116,7 +116,7 @@ def fitness(cnn_filters, cnn_layers, cnn_kernel_size, cnn_fc_nodes,
 
     validation_data = (val_X, val_y)
 
-    history = model.fit(x=train_X[:3000], y=train_y[:3000],
+    history = model.fit(x=train_X, y=train_y,
                         epochs=max_epoch, batch_size=batch_size,
                         shuffle=True,
                         validation_data=validation_data,
@@ -147,8 +147,16 @@ def optimize(args):
     max_epoch = args.epochs
     path_best_model = args.model
 
-    X, y = load_windows(args.windows)
-    y = y.values()
+    # training data
+    windows = args.windows.split(',')
+    X =[]
+    y =[]
+    for winID in windows:
+        X_temp, y_temp = load_windows(winID)
+        X.append(X_temp)
+        y.extend(y_temp.values())
+    X = np.concatenate(X, axis=0)
+
     mapclasses = {args.svtype: 0, 'no' + args.svtype: 1}
     y = np.array([mapclasses[i] for i in y])
     classes = np.array(np.unique(y))
@@ -158,8 +166,24 @@ def optimize(args):
 
     y = to_categorical(y, num_classes=2)
 
-    train_X, val_X, train_y, val_y = train_test_split(
-        X, y, test_size=args.validation_split, random_state=2, stratify=y, shuffle=True)
+    train_X = X
+    train_y = y
+
+    # validation data
+    val_windows = args.validation_windows.split(',')
+    X =[]
+    y =[]
+    for winID in val_windows:
+        X_temp, y_temp = load_windows(winID)
+        X.append(X_temp)
+        y.extend(y_temp.values())
+    X = np.concatenate(X, axis=0)
+
+    y = np.array([mapclasses[i] for i in y])
+    y = to_categorical(y, num_classes=2)
+
+    val_X = X
+    val_y = y
 
     search_result = gp_minimize(func=fitness, dimensions=dimensions, acq_func='EI',
                                 n_calls=args.ncalls, x0=default_parameters, random_state=7, n_jobs=-1)
@@ -174,6 +198,11 @@ def main():
 
     parser.add_argument('-w',
                         '--windows',
+                        type=str,
+                        default='../genome_wide/cnn/win25/split_reads/windows/DEL/windows_en.npz',
+                        help="Comma separated list of training data")
+    parser.add_argument('-v',
+                        '--validation_windows',
                         type=str,
                         default='../genome_wide/cnn/win25/split_reads/windows/DEL/windows_en.npz',
                         help="Comma separated list of training data")
@@ -194,13 +223,8 @@ def main():
     parser.add_argument('-n',
                         '--ncalls',
                         type=int,
-                        default=50,
+                        default=200,
                         help="Number of calls of the fitness function")
-    parser.add_argument('-val',
-                        '--validation_split',
-                        type=float,
-                        default=0.3,
-                        help="Percent of training set to use for validation")
     parser.add_argument('-s',
                         '--svtype',
                         type=str,
