@@ -331,7 +331,7 @@ def load_all_clipped_read_positions_by_chr(sampleName, win_hlen, chr_dict, outpu
     return cpos_list
 
 
-def load_all_clipped_read_positions(win_hlen, svtype, chr_dict, output_dir, clipped_type="SR"):
+def load_all_clipped_read_positions(win_hlen, svtype, chr_dict, chr_list, output_dir, clipped_type="SR"):
     config = get_config_file()
     min_CR_support = config["DEFAULT"]["MIN_CR_SUPPORT"]
 
@@ -341,7 +341,6 @@ def load_all_clipped_read_positions(win_hlen, svtype, chr_dict, output_dir, clip
     logging.info('Loading SR positions')
 
     total_reads_coord_min_support = []
-    chr_list = get_chr_list()
 
     with gzip.GzipFile(get_filepath('split_reads'), 'rb') as fin:
         positions_with_min_support_ls, positions_with_min_support_rs, total_reads_coord_min_support_json, \

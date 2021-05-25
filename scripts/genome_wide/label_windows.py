@@ -219,7 +219,7 @@ def get_labels(chrlist, chr_dict, win_len, svtype, ground_truth, sv_positions, c
         cpos_list = read_svcaller_bedpe(sv_caller_file)
     elif sv_caller_name == 'split_reads':
         cpos_list = load_all_clipped_read_positions(
-            win_hlen, svtype, chr_dict, channelDataDir)
+            win_hlen, svtype, chr_dict, chrlist, channelDataDir)
     else:
         sys.exit('I cannot find {} nor {}'.format(
             sv_caller_file, sv_caller_name))
