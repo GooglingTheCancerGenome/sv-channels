@@ -18,6 +18,8 @@ from tensorflow.keras.layers import (Activation, BatchNormalization,
                                      Convolution1D, Dense, Flatten)
 from tensorflow.keras.models import Sequential, load_model
 
+import pandas as pd
+
 sys.path.append('../genome_wide/')
 from functions import load_windows
 
@@ -125,6 +127,12 @@ def fitness(cnn_filters, cnn_layers, cnn_kernel_size, cnn_fc_nodes,
                         callbacks=callbacks)
 
     accuracy = history.history['val_accuracy'][-1]
+
+    hist_df = pd.DataFrame(history.history)
+    hist_csv_file = 'history.csv'
+    with open(hist_csv_file, mode='w') as f:
+        hist_df.to_csv(f)
+
     print()
     print('Accuracy: {0:.2%}'.format(accuracy))
     if accuracy > best_accuracy:
