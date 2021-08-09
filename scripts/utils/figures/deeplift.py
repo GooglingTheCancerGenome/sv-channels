@@ -2,15 +2,13 @@ from __future__ import print_function
 
 import tensorflow
 print("Tensorflow version:", tensorflow.__version__)
-import keras
-print("Keras version:", keras.__version__)
 import numpy
 print("Numpy version:", numpy.__version__)
 
 import os
 import numpy as np
-from keras.models import load_model
-from keras.models import model_from_json
+from tensorflow.keras.models import load_model
+from tensorflow.keras.models import model_from_json
 
 import deeplift
 from deeplift.util import compile_func
