@@ -20,12 +20,12 @@ def find_signals_for_event(apos, bpos, signals2d, signals1d, expand=250):
 
     # only need to search apos since we propagate b, a to a, b before this...
     # but...
-    aidxl = np.searchsorted(signals2d.a_pos, apos - expand, side="left")
-    aidxr = np.searchsorted(signals2d.a_pos, apos + expand, side="right")
+    aidxl = np.searchsorted(signals2d["a_pos"], apos - expand, side="left")
+    aidxr = np.searchsorted(signals2d["a_pos"], apos + expand, side="right")
 
     # need b-side for events like splits from b that go to another chrom.
-    bidxl = np.searchsorted(signals2d.b_pos, bpos - expand, side="left")
-    bidxr = np.searchsorted(signals2d.b_pos, bpos + expand, side="right")
+    bidxl = np.searchsorted(signals2d["b_pos"], bpos - expand, side="left")
+    bidxr = np.searchsorted(signals2d["b_pos"], bpos + expand, side="right")
 
     # make sure we don't grab same values more than once.
     bidxl = max(bidxl, aidxr)
@@ -34,21 +34,21 @@ def find_signals_for_event(apos, bpos, signals2d, signals1d, expand=250):
     subset = signals2d[aidxl: aidxr]
 
     # same chrom and with expected bounds on both ends.
-    selection = (subset.b_pos >= (bpos - expand)) & (subset.b_pos <= (bpos + expand)) & (subset.a_chrom == subset.b_chrom)
+    selection = (subset["b_pos"] >= (bpos - expand)) & (subset["b_pos"] <= (bpos + expand)) & (subset["a_chrom"] == subset["b_chrom"])
     result['shared'] = subset[selection]
     result['left-only'] = subset[~selection][["a_chrom", "a_pos", "event"]].tolist()
 
     subsetb = signals2d[bidxl: bidxr]
-    selectionb = (subsetb.a_pos >= apos - expand) & (subsetb.a_pos <= apos + expand) & (subsetb.a_chrom == subsetb.b_chrom)
+    selectionb = (subsetb["a_pos"] >= apos - expand) & (subsetb["a_pos"] <= apos + expand) & (subsetb["a_chrom"] == subsetb["b_chrom"])
     result['right-only'] =  subsetb[~selectionb][["a_chrom", "a_pos", "event"]].tolist()
 
     
     # 1d search ...
-    idxl = np.searchsorted(signals1d.pos, apos - expand, side="left")
-    idxr = np.searchsorted(signals1d.pos, apos + expand, side="right")
+    idxl = np.searchsorted(signals1d["pos"], apos - expand, side="left")
+    idxr = np.searchsorted(signals1d["pos"], apos + expand, side="right")
 
-    bidxl = np.searchsorted(signals1d.pos, bpos - expand, side="left")
-    bidxr = np.searchsorted(signals1d.pos, bpos + expand, side="right")
+    bidxl = np.searchsorted(signals1d["pos"], bpos - expand, side="left")
+    bidxr = np.searchsorted(signals1d["pos"], bpos + expand, side="right")
 
     bidxl = max(bidxl, idxl)
     bidxr = max(bidxr, bidxl)
@@ -68,12 +68,13 @@ def fill_arr(channels, events, posns, pos, offset):
         channels[events[i], pos] += 1
 
 
-def generate_channels_for_event(r, apos, bpos, expand, gap, depths):
+def generate_channels_for_event(apos, bpos, signals1d, signals2d, expand, gap, depths):
+    r = find_signals_for_event(apos, bpos, signals2d, signals1d, expand=expand)
 
     channels = np.zeros((max(Event), 4 * expand + gap), dtype=np.int32)
 
-    fill_arr(channels, np.asarray(r["shared"].event), np.asarray(r["shared"].a_pos), apos, expand)
-    fill_arr(channels, np.asarray(r["shared"].event), np.asarray(r["shared"].b_pos), bpos, 3 * expand + gap)
+    fill_arr(channels, np.asarray(r["shared"]["event"]), np.asarray(r["shared"]["a_pos"]), apos, expand)
+    fill_arr(channels, np.asarray(r["shared"]["event"]), np.asarray(r["shared"]["b_pos"]), bpos, 3 * expand + gap)
 
     fill_arr(channels, r["left-only"]["event"],  r["left-only"]["pos"], apos, expand)
     fill_arr(channels, r["right-only"]["event"], r["right-only"]["pos"], bpos, 3 * expand + gap)
@@ -96,26 +97,26 @@ if __name__ == "__main__":
         ], dtype=[('a_chrom', 'S8'), ('a_pos', np.int32),
                   ('b_chrom', 'S8'), ('b_pos', np.int32),
                   ('event', 'i2')
-                  ]).view(np.recarray)
+                  ])
 
     signals1d = np.array([
         ("chr1", 100, Event(3)),
         ("chr1", 400, Event(3)),
-        ], dtype=[('chrom', 'S8'), ('pos', np.int32), ('event', 'i2')]).view(np.recarray)
+        ], dtype=[('chrom', 'S8'), ('pos', np.int32), ('event', 'i2')])
 
 
     apos, bpos = (100, 400)
     print(f"querying {apos}, {bpos}")
 
-    print("all")
-    print(signals2d.tolist())
+    #print("all")
+    #print(signals2d.tolist())
 
     expand = 100
     gap = 10
 
-    r = find_signals_for_event(100, 400, signals2d, signals1d, expand=expand)
-    for k, v in r.items():
-        print(k)
-        print(v.tolist())
+    #r = find_signals_for_event(100, 400, signals2d, signals1d, expand=expand)
+    #for k, v in r.items():
+    #    print(k)
+    #    print(v.tolist())
 
-    print(generate_channels_for_event(r, apos, bpos, expand, gap, depths))
+    print(generate_channels_for_event(apos, bpos, signals1d, signals2d, expand, gap, depths))
