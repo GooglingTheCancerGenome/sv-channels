@@ -1,5 +1,6 @@
 import numpy as np
 import numba
+import zarr
 
 import sys
 import os
@@ -54,29 +55,36 @@ def find_signals_for_event(apos, bpos, signals2d, signals1d, expand=250):
 
     result['left-only'].extend(signals1d[idxl:idxr])
     result['right-only'].extend(signals1d[bidxl:bidxr])
+    result['left-only'] = np.array(result['left-only'], dtype=[('chrom', 'S8'), ('pos', np.int32), ('event', 'i2')])
+    result['right-only'] = np.array(result['right-only'], dtype=[('chrom', 'S8'), ('pos', np.int32), ('event', 'i2')])
 
     return result
 
 @numba.jit(nopython=True)
-def fill_2d(channels, events, posns, pos, offset):
+def fill_arr(channels, events, posns, pos, offset):
    
     for i in range(len(events)):
         pos = posns[i] - pos + offset
-        print(posns[i], pos, offset)
         channels[events[i], pos] += 1
 
 
-def generate_channels_for_event(r, apos, bpos, expand, gap):
+def generate_channels_for_event(r, apos, bpos, expand, gap, depths):
 
     channels = np.zeros((max(Event), 4 * expand + gap), dtype=np.int32)
 
-    fill_2d(channels, np.asarray(r["shared"].event), np.asarray(r["shared"].a_pos), apos, expand)
-    fill_2d(channels, np.asarray(r["shared"].event), np.asarray(r["shared"].b_pos), bpos, 3 * expand + gap)
+    fill_arr(channels, np.asarray(r["shared"].event), np.asarray(r["shared"].a_pos), apos, expand)
+    fill_arr(channels, np.asarray(r["shared"].event), np.asarray(r["shared"].b_pos), bpos, 3 * expand + gap)
 
+    fill_arr(channels, r["left-only"]["event"],  r["left-only"]["pos"], apos, expand)
+    fill_arr(channels, r["right-only"]["event"], r["right-only"]["pos"], bpos, 3 * expand + gap)
 
     return channels
 
 if __name__ == "__main__":
+
+    outdir = "sv-channels"
+    chrom = "1"
+    depths = zarr.open(f"{outdir}/depths.{chrom}.bin", mode='r')
 
     signals2d = np.array([
         ("chr1", 100, "chr3", 400, Event(1)),
@@ -108,9 +116,6 @@ if __name__ == "__main__":
     r = find_signals_for_event(100, 400, signals2d, signals1d, expand=expand)
     for k, v in r.items():
         print(k)
-        if hasattr(v, "tolist"):
-            print(v.tolist())
-        else:
-            print(v)
+        print(v.tolist())
 
-    print(generate_channels_for_event(r, apos, bpos, expand, gap))
+    print(generate_channels_for_event(r, apos, bpos, expand, gap, depths))
