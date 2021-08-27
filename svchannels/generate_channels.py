@@ -61,17 +61,23 @@ def find_signals_for_event(apos, bpos, signals2d, signals1d, expand=250):
     return result
 
 @numba.jit(nopython=True)
-def fill_arr(channels, events, posns, pos, offset):
+def fill_arr(channels, events, posns, opos, offset):
+
+    pmax = channels.shape[1]
    
     for i in range(len(events)):
-        pos = posns[i] - pos + offset
-        channels[events[i], pos] += 1
+        pos = posns[i] - opos + offset
+        if pos < pmax and pos >= 0:
+          channels[events[i], pos] += 1
 
 
 def generate_channels_for_event(apos, bpos, signals1d, signals2d, expand, gap, depths):
     r = find_signals_for_event(apos, bpos, signals2d, signals1d, expand=expand)
 
     channels = np.zeros((max(Event), 4 * expand + gap), dtype=np.int32)
+    # TODO: handle apos - expand < 0
+    channels[0, 0:2*expand] = depths[apos - expand:apos + expand]
+    channels[0, 2*expand+gap:] = depths[bpos - expand:bpos + expand]
 
     fill_arr(channels, np.asarray(r["shared"]["event"]), np.asarray(r["shared"]["a_pos"]), apos, expand)
     fill_arr(channels, np.asarray(r["shared"]["event"]), np.asarray(r["shared"]["b_pos"]), bpos, 3 * expand + gap)
@@ -88,24 +94,23 @@ if __name__ == "__main__":
     depths = zarr.open(f"{outdir}/depths.{chrom}.bin", mode='r')
 
     signals2d = np.array([
-        ("chr1", 100, "chr3", 400, Event(1)),
-        ("chr1", 200, "chr1", 300, Event(2)),
-        ("chr1", 200, "chr1", 400, Event(3)),
-        ("chr1", 200, "chr2", 400, Event(4)),
-        ("chr1", 400, "chr1", 200, Event(5)),
-        ("chr1", 500, "chr1", 900, Event(6))
+        ("chr1", 11100, "chr3", 11400, Event(1)),
+        ("chr1", 11200, "chr1", 11300, Event(2)),
+        ("chr1", 11200, "chr1", 11400, Event(3)),
+        ("chr1", 11200, "chr2", 11400, Event(4)),
+        ("chr1", 11400, "chr1", 11200, Event(5)),
+        ("chr1", 11500, "chr1", 11900, Event(6))
         ], dtype=[('a_chrom', 'S8'), ('a_pos', np.int32),
                   ('b_chrom', 'S8'), ('b_pos', np.int32),
                   ('event', 'i2')
                   ])
 
     signals1d = np.array([
-        ("chr1", 100, Event(3)),
-        ("chr1", 400, Event(3)),
+        ("chr1", 11100, Event(3)),
+        ("chr1", 11400, Event(3)),
         ], dtype=[('chrom', 'S8'), ('pos', np.int32), ('event', 'i2')])
 
-
-    apos, bpos = (100, 400)
+    apos, bpos = (11100, 11400)
     print(f"querying {apos}, {bpos}")
 
     #print("all")
