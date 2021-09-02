@@ -87,6 +87,46 @@ def generate_channels_for_event(apos, bpos, signals1d, signals2d, expand, gap, d
 
     return channels
 
+def xopen(filepath):
+    import io
+    with open(filepath, 'rb') as test_f:
+        if test_f.read(2) == b'\x1f\x8b':
+          import gzip
+          return io.TextIOWrapper(gzip.open(filepath, 'rb'))
+        else:
+          return io.TextIOWrapper(open(filepath, 'rb'))
+
+def main(args=sys.argv[1:]):
+    import argparse
+    import glob
+    import re
+    p = argparse.ArgumentParser()
+    p.add_argument("directory", help="sample-specific directory created by svchannels extract")
+    p.add_argument("bedpe")
+
+    a = p.parse_args(args)
+
+    bins = glob.glob(a.directory + "/depths*.bin")
+    bin_patt = f"^{a.directory.rstrip('/')}\/depths\.(.+)\.bin$"
+    bin_patt = re.compile(bin_patt)
+    depths_by_chrom = {}
+    for bin in bins:
+      try:
+        chrom = bin_patt.match(bin).groups(1)[0]
+        depths_by_chrom[chrom] = zarr.open(bin, mode='r')
+      except AttributeError:
+        raise ValueError(f"unable to find chrom in {bin}")
+   
+
+
+    for line in xopen(a.bedpe):
+        print(line.strip())
+        break
+    
+
+    
+
+
 if __name__ == "__main__":
 
     outdir = "sv-channels"
@@ -125,3 +165,5 @@ if __name__ == "__main__":
     #    print(v.tolist())
 
     print(generate_channels_for_event(apos, bpos, signals1d, signals2d, expand, gap, depths))
+
+    main()
