@@ -147,6 +147,8 @@ def main(args=sys.argv[1:]):
         if int(toks[4]) < int(toks[1]):
             toks[4], toks[1] = toks[1], toks[4]
         n += 1
+        clen = len(depths_by_chrom[toks[0]])
+        if int(toks[4]) >= clen - expand: continue
         # here, sv_chan is shape (n_channels, 2 * expand + gap) can accumulate these and send to learner.
         sv_chan = generate_channels_for_event(int(toks[1]), int(toks[4]), e1d, e2d, expand, gap, depths_by_chrom[toks[0]])
  
