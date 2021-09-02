@@ -160,43 +160,44 @@ def main(args=sys.argv[1:]):
 if __name__ == "__main__":
     import pandas as pd
 
-    outdir = "sv-channels"
-    chrom = "1"
-    depths = zarr.open(f"{outdir}/depths.{chrom}.bin", mode='r')
+    if False:
+        outdir = "sv-channels"
+        chrom = "1"
+        depths = zarr.open(f"{outdir}/depths.{chrom}.bin", mode='r')
 
-    signals2d = np.array([
-        ("chr1", 11100, "chr3", 11400, Event(1)),
-        ("chr1", 11200, "chr1", 11300, Event(2)),
-        ("chr1", 11200, "chr1", 11400, Event(3)),
-        ("chr1", 11200, "chr2", 11400, Event(4)),
-        ("chr1", 11400, "chr1", 11200, Event(5)),
-        ("chr1", 11500, "chr1", 11900, Event(6))
-        ], dtype=[('a_chrom', 'S8'), ('a_pos', np.int32),
+        signals2d = np.array([
+            ("chr1", 11100, "chr3", 11400, Event(1)),
+            ("chr1", 11200, "chr1", 11300, Event(2)),
+            ("chr1", 11200, "chr1", 11400, Event(3)),
+            ("chr1", 11200, "chr2", 11400, Event(4)),
+            ("chr1", 11400, "chr1", 11200, Event(5)),
+            ("chr1", 11500, "chr1", 11900, Event(6))
+            ], dtype=[('a_chrom', 'S8'), ('a_pos', np.int32),
                   ('b_chrom', 'S8'), ('b_pos', np.int32),
                   ('event', 'i2')
                   ])
-    signals2d = pd.DataFrame(signals2d)
+        signals2d = pd.DataFrame(signals2d)
 
-    signals1d = np.array([
-        ("chr1", 11100, Event(3)),
-        ("chr1", 11400, Event(3)),
-        ], dtype=[('chrom', 'S8'), ('pos', np.int32), ('event', 'i2')])
-    signals1d = pd.DataFrame(signals1d)
+        signals1d = np.array([
+            ("chr1", 11100, Event(3)),
+            ("chr1", 11400, Event(3)),
+            ], dtype=[('chrom', 'S8'), ('pos', np.int32), ('event', 'i2')])
+        signals1d = pd.DataFrame(signals1d)
 
-    apos, bpos = (11100, 11400)
-    print(f"querying {apos}, {bpos}")
+        apos, bpos = (11100, 11400)
+        print(f"querying {apos}, {bpos}")
 
-    #print("all")
-    #print(signals2d.tolist())
+        #print("all")
+        #print(signals2d.tolist())
 
-    expand = 100
-    gap = 10
+        expand = 100
+        gap = 10
 
-    #r = find_signals_for_event(100, 400, signals2d, signals1d, expand=expand)
-    #for k, v in r.items():
-    #    print(k)
-    #    print(v.tolist())
+        #r = find_signals_for_event(100, 400, signals2d, signals1d, expand=expand)
+        #for k, v in r.items():
+        #    print(k)
+        #    print(v.tolist())
 
-    #print(generate_channels_for_event(apos, bpos, signals1d, signals2d, expand, gap, depths))
+        #print(generate_channels_for_event(apos, bpos, signals1d, signals2d, expand, gap, depths))
 
     main()
