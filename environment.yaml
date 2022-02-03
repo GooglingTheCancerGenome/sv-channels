@@ -27,3 +27,6 @@ dependencies:
   - ucsc-fatotwobit=377
   - seqkit=0.14.0
   - scikit-optimize
+  - pyfaidx
+  - zarr
+  - numba
