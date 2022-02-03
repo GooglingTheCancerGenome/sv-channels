@@ -3,8 +3,8 @@
 set -xe
 
 # check input arg(s)
-if [ $# -ne "4" ]; then
-  echo "Usage: $0 [SCHEDULER] [BAM file] [SEQIDS] [SVTYPES]"
+if [ $# -ne "2" ]; then
+  echo "Usage: $0 [SCHEDULER] [BAM file]"
   exit 1
 fi
 
@@ -21,6 +21,13 @@ EXPAND=250
 GAP=10
 SIGNALS_DIR="sv-channels"
 SVCALLER="manta"
+
+JOBS=()  # array of job IDs
+JOBS_LOG=jobs.json  # job accounting log
+RTIME=20  # runtime in minutes
+SLTIME=1  # sleep X minutes
+STIME=$(date +%s)
+CONDA_ENV="sv-channels"  # conda env in gtcg/xenon-* docker images
 
 # define functions
 submit () {  # submit a job via Xenon CLI
@@ -68,7 +75,7 @@ conda activate $CONDA_ENV
 conda list
 
 # convert SV calls (i.e. truth set and sv-callers output) in VCF to BEDPE files
-cd scripts/R
+cd ../scripts/R
 p=vcf2bedpe
 for vcf in $(find "$BASE_DIR" -mindepth 1 -name "*.vcf" | grep -v "htz-sv*"); do
     prefix="$(basename "$vcf" .vcf)"
