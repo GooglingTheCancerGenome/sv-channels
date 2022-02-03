@@ -56,6 +56,9 @@ class Event(enum.IntEnum):
 
     MATE_UNMAPPED = enum.auto()
 
+    def __str__(self):
+        return str(self.value)
+
 CONSUME_REF = {BAM_CMATCH, BAM_CDEL, BAM_CREF_SKIP, BAM_CEQUAL, BAM_CDIFF}
 
 def sa_end(pos, cigar, patt=re.compile("(\d+)(\w)")):
