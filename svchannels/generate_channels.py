@@ -152,12 +152,12 @@ def main(args=sys.argv[1:]):
     print(f"[svchannels] read {len(e2d)} 2D events and {len(e1d)} 1d events", file=sys.stderr)
     t0 = time.time()
     n = 0
-    expand = args.expand
-    gap = args.gap
+    expand = a.expand
+    gap = a.gap
 
     sv_chan = []
     # write the lines considered to file
-    file_object = open('sv_positions.bedpe', 'w')
+    file_object = open(f'{a.directory}/sv_positions.{a.gap}.{a.expand}.bedpe', 'w')
 
     dups_toks = set()
     for line in xopen(a.bedpe):
