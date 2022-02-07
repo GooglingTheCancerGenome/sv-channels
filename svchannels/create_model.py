@@ -122,7 +122,7 @@ def fitness(cnn_filters, cnn_layers, cnn_kernel_size, cnn_fc_nodes,
 
     validation_data = (val_X, val_y)
 
-    history = model.fit(x=train_X[:3000], y=train_y[:3000],
+    history = model.fit(x=train_X, y=train_y,
                         epochs=max_epoch, batch_size=batch_size,
                         shuffle=True,
                         validation_data=validation_data,
