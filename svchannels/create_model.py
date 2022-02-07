@@ -153,8 +153,18 @@ def optimize(args):
     max_epoch = args.epochs
     path_best_model = args.model
 
-    train_X, y = load_windows(args.windows, args.labels)
-    y = y.values()
+    windows = args.windows.split(',')
+    labels = args.labels.split(',')
+
+    X = []
+    y = []
+    for w, l in zip(windows, labels):
+        partial_X, partial_y = load_windows(w, l)
+        X.extend(partial_X)
+        y.extend(partial_y.values())
+
+    train_X = np.stack(X, axis=0)
+
     mapclasses = {args.svtype: 0, 'no' + args.svtype: 1}
     y = np.array([mapclasses[i] for i in y])
     classes = np.array(np.unique(y))
@@ -193,13 +203,13 @@ def main():
     parser.add_argument('-w',
                         '--windows',
                         type=str,
-                        default='sv_chan.zarr',
+                        default='sv_chan.zarr,sv_chan.zarr',
                         help="Comma separated list of training data")
     parser.add_argument('-lab',
                         '--labels',
                         type=str,
-                        default='labels/labels.json.gz',
-                        help="JSON.GZ file for labels")
+                        default='labels/labels.json.gz,labels/labels.json.gz',
+                        help="Comma separated list of JSON.GZ file for labels")
     parser.add_argument('-l',
                         '--logfile',
                         default='optimize.log',
