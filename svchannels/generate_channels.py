@@ -128,12 +128,12 @@ def main(args=sys.argv[1:]):
     p = argparse.ArgumentParser()
     p.add_argument("directory", help="sample-specific directory created by svchannels extract")
     p.add_argument("bedpe")
-    parser.add_argument(
+    p.add_argument(
         '--expand',
         type=int,
         default=250,
         help="Specify width of single windows")
-    parser.add_argument(
+    p.add_argument(
         '--gap',
         type=int,
         default=10,
@@ -152,8 +152,8 @@ def main(args=sys.argv[1:]):
     print(f"[svchannels] read {len(e2d)} 2D events and {len(e1d)} 1d events", file=sys.stderr)
     t0 = time.time()
     n = 0
-    expand = args.expand
-    gap = args.gap
+    expand = a.expand
+    gap = a.gap
 
     sv_chan = []
     # write the lines considered to file
