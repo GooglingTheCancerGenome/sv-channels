@@ -53,7 +53,7 @@ def main():
                         default='sv_chan.zarr',
                         help="Specify list of windows"
                         )
-    parser.add_argument('-i',
+    parser.add_argument('-lab',
                         '--labels',
                         type=str,
                         default='labels/labels.json.gz',
@@ -90,6 +90,11 @@ def main():
                         type=str,
                         default='results',
                         help="Output folder")
+    parser.add_argument('-svc',
+                        '--sv_channels',
+                        type=str,
+                        default='sv_channels',
+                        help="Output folder")
     args = parser.parse_args()
     mapclasses = {args.svtype: 0, 'no' + args.svtype: 1}
     # Parameters
@@ -101,8 +106,8 @@ def main():
     windows_list = args.input.split(',')
     labels_list = args.labels.split(',')
     predict(windows_list, labels_list, args.sample_name, args.svtype,
-            args.model, args.model_name, os.path.join(args.output, args.svtype))
-    out_prefix = os.path.join(args.output, "sv-channels")
+            args.model, args.model_name, args.output)
+    out_prefix = args.sv_channels
     merge_sv_calls = ' '.join([
         "cd ../R; "
         "Rscript merge_sv_calls.R",

@@ -40,7 +40,6 @@ def get_data(windows_list, labels_list, svtype):
         with gzip.GzipFile(l, 'r') as fin:
             labels = json.loads(fin.read().decode('utf-8'))
 
-        labels = labels.item()
         y.extend(labels.values())
         win_ids.extend(labels.keys())
         logging.info('Data from {} loaded'.format(t))
