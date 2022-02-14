@@ -38,7 +38,7 @@ def main():
     parser.add_argument('-m',
                         '--model',
                         type=str,
-                        default='manta_model.keras',
+                        default='best_model.keras',
                         help="TensorFlow model in HDF5 format"
                         )
     parser.add_argument('-n',
@@ -73,17 +73,17 @@ def main():
     parser.add_argument('-fe',
                         '--encode_blacklist',
                         type=str,
-                        default='../../data/ENCFF001TDO.bed',
+                        default='../data/ENCFF001TDO.bed',
                         help="ENCODE blacklist")
     parser.add_argument('-fn',
                         '--n_regions',
                         type=str,
-                        default='../../data/reference_N_regions.bed',
+                        default='../data/reference_N_regions.bed',
                         help="Regions in the genome containing Ns")
     parser.add_argument('-tb',
                         '--twobit',
                         type=str,
-                        default='../../data/test.2bit',
+                        default='../data/test.2bit',
                         help="TwoBit reference genome")
     parser.add_argument('-o',
                         '--output',
@@ -109,27 +109,28 @@ def main():
             args.model, args.model_name, args.output)
     out_prefix = args.sv_channels
     merge_sv_calls = ' '.join([
-        "cd ../R; "
+        "cd ", os.path.join(args.sv_channels, "/scripts/R"),"; "
         "Rscript merge_sv_calls.R",
-        "-i", os.path.join("../genome_wide", args.output),
+        "-i", os.path.join(args.sv_channels, "/scripts/genome_wide", args.output),
         "-f", args.encode_blacklist,
         "-n", args.n_regions,
         "-m split_reads",
-        "-o", os.path.join("../genome_wide", out_prefix)
+        "-o", os.path.join(args.sv_channels, "/scripts/genome_wide", args.output)
     ])
     print(merge_sv_calls)
     cmd_out = subprocess.run(merge_sv_calls, shell=True, check=True)
     print(cmd_out)
 
-    assert os.path.join("../utils/bedpe_to_vcf.py")
-    assert os.path.join("../genome_wide", out_prefix+'.bedpe')
+    assert os.path.join(args.sv_channels, "/scripts/utils/bedpe_to_vcf.py")
+    assert os.path.join(args.sv_channels, "/scripts/genome_wide", out_prefix+'.bedpe')
 
     bedpe_to_vcf = ' '.join([
-        "source activate sv-channels; python ../utils/bedpe_to_vcf.py",
-        "-i", os.path.join("../genome_wide", out_prefix+'.bedpe'),
+        "source activate sv-channels; python ",
+        os.path.join(args.sv_channels, "/scripts/utils/bedpe_to_vcf.py"),
+        "-i", os.path.join(args.sv_channels, "/scripts/genome_wide", out_prefix+'.bedpe'),
         "-b", args.twobit,
         "-s", args.sample_name,
-        "-o", os.path.join("../genome_wide", out_prefix +
+        "-o", os.path.join(args.sv_channels, "/scripts/genome_wide", out_prefix +
                            '.'+args.sample_name+'.vcf')
     ])
     print(bedpe_to_vcf)
