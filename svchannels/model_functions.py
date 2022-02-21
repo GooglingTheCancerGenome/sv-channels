@@ -18,7 +18,8 @@ def unfold_win_id(win_id):
     if len(win_id.split('_')) == 5:
         chr1, pos1, chr2, pos2, strand_info = win_id.split('_')
         return chr1, pos1, chr2, pos2, strand_info
-    else return None
+    else:
+        return None
 
 
 def get_data(windows_list, labels_list, svtype):
