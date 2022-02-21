@@ -14,9 +14,11 @@ from sklearn.metrics import (average_precision_score, f1_score,
 
 
 def unfold_win_id(win_id):
-    chr1, pos1, chr2, pos2, strand_info = win_id.split('_')
 
-    return chr1, pos1, chr2, pos2, strand_info
+    if len(win_id.split('_')) == 5:
+        chr1, pos1, chr2, pos2, strand_info = win_id.split('_')
+        return chr1, pos1, chr2, pos2, strand_info
+    else return None
 
 
 def get_data(windows_list, labels_list, svtype):
@@ -32,7 +34,7 @@ def get_data(windows_list, labels_list, svtype):
     y = []
     win_ids = []
 
-    for t,l in zip(windows_list, labels_list):
+    for t, l in zip(windows_list, labels_list):
         logging.info('Loading data from {}...'.format(t))
         X_partial = zarr.load(t)
         X.extend(X_partial)
@@ -66,20 +68,24 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test,
         for prob, p, r, w in zip(probs, predicted, y_index, win_ids_test):
             if class_labels[p] != class_labels[r]:
                 sv_score = prob[0]
-                chr1, pos1, chr2, pos2, strand_info = unfold_win_id(w)
-                # print('{0}_{1}:{2}_{3}'.format(chr1, pos1, chr2, pos2))
-                lines.append('\t'.join([
-                    str(chr1),
-                    str(pos1),
-                    str(int(pos1) + 1),
-                    str(chr2),
-                    str(pos2),
-                    str(int(pos2) + 1), 'PRED:' +
-                    class_labels[p] + '_TRUE:' + class_labels[r],
-                    str(sv_score),
-                    strand_info[0],
-                    strand_info[1]
-                ]) + '\n')
+
+                if unfold_win_id(w) is not None:
+
+                    chr1, pos1, chr2, pos2, strand_info = unfold_win_id(w)
+
+                    # print('{0}_{1}:{2}_{3}'.format(chr1, pos1, chr2, pos2))
+                    lines.append('\t'.join([
+                        str(chr1),
+                        str(pos1),
+                        str(int(pos1) + 1),
+                        str(chr2),
+                        str(pos2),
+                        str(int(pos2) + 1), 'PRED:' +
+                        class_labels[p] + '_TRUE:' + class_labels[r],
+                        str(sv_score),
+                        strand_info[0],
+                        strand_info[1]
+                    ]) + '\n')
 
         with open(outfile, 'w') as f:
             # use set to make lines unique
@@ -96,21 +102,25 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test,
         for prob, p, r, w in zip(probs, predicted, y_index, win_ids_test):
             if class_labels[p] == svtype:
                 sv_score = prob[0]
-                chr1, pos1, chr2, pos2, strand_info = unfold_win_id(w)
-                lines.append('\t'.join([
-                    str(chr1),
-                    str(pos1),
-                    str(int(pos1) + 1),
-                    str(chr2),
-                    str(pos2),
-                    str(int(pos2) + 1),
-                    'PRED_' + class_labels[p] + '_TRUE_' +
-                    class_labels[r] + '_' + str(j),
-                    str(sv_score),
-                    strand_info[0],
-                    strand_info[1]
-                ]) + '\n')
-                j += 1
+
+                if unfold_win_id(w) is not None:
+
+                    chr1, pos1, chr2, pos2, strand_info = unfold_win_id(w)
+
+                    lines.append('\t'.join([
+                        str(chr1),
+                        str(pos1),
+                        str(int(pos1) + 1),
+                        str(chr2),
+                        str(pos2),
+                        str(int(pos2) + 1),
+                        'PRED_' + class_labels[p] + '_TRUE_' +
+                        class_labels[r] + '_' + str(j),
+                        str(sv_score),
+                        strand_info[0],
+                        strand_info[1]
+                    ]) + '\n')
+                    j += 1
 
         with open(outfile, 'w') as f:
             # use set to make lines unique
