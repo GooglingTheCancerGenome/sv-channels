@@ -18,6 +18,7 @@ def predict(input_data, input_labels, sample_name, svtype, model_fn, model_name,
         sample_name, model_name))
     model = load_model(model_fn)
     results = pd.DataFrame()
+
     intermediate_results, metrics = evaluate_model(model,
                                                    X, y_binary, win_ids,
                                                    results,
@@ -30,10 +31,6 @@ def predict(input_data, input_labels, sample_name, svtype, model_fn, model_name,
 
 def main():
 
-    default_win = 250
-    default_path = os.path.join('./cnn/win'+str(default_win), 'split_reads')
-    def_windows_file = os.path.join(
-        default_path, 'windows', 'DEL', 'windows_en.npz')
     parser = argparse.ArgumentParser(description='Use model to predict')
     parser.add_argument('-m',
                         '--model',
@@ -73,12 +70,12 @@ def main():
     parser.add_argument('-fe',
                         '--encode_blacklist',
                         type=str,
-                        default='../data/ENCFF001TDO.bed',
+                        default='../../data/ENCFF001TDO.bed',
                         help="ENCODE blacklist")
     parser.add_argument('-fn',
                         '--n_regions',
                         type=str,
-                        default='../data/reference_N_regions.bed',
+                        default='../../data/reference_N_regions.bed',
                         help="Regions in the genome containing Ns")
     parser.add_argument('-tb',
                         '--twobit',
@@ -93,9 +90,11 @@ def main():
     parser.add_argument('-svc',
                         '--sv_channels',
                         type=str,
-                        default='sv_channels',
+                        default='../',
                         help="Output folder")
+
     args = parser.parse_args()
+
     mapclasses = {args.svtype: 0, 'no' + args.svtype: 1}
     # Parameters
     global params
@@ -103,35 +102,39 @@ def main():
         'mapclasses': mapclasses,
         'n_classes': len(mapclasses.keys())
     }
+
     windows_list = args.input.split(',')
     labels_list = args.labels.split(',')
+
     predict(windows_list, labels_list, args.sample_name, args.svtype,
             args.model, args.model_name, args.output)
-    out_prefix = args.sv_channels
+
+    out_prefix = os.path.join(args.output, "sv-channels")
+
     merge_sv_calls = ' '.join([
-        "cd ", os.path.join(args.sv_channels, "/scripts/R"),"; "
+        "cd ", os.path.join(args.sv_channels, "scripts/R") + "; ",
         "Rscript merge_sv_calls.R",
-        "-i", os.path.join(args.sv_channels, "/scripts/genome_wide", args.output),
+        "-i", os.path.join("../../svchannels", args.output),
         "-f", args.encode_blacklist,
         "-n", args.n_regions,
         "-m split_reads",
-        "-o", os.path.join(args.sv_channels, "/scripts/genome_wide", args.output)
+        "-o", os.path.join("../sv-channels")
     ])
+
     print(merge_sv_calls)
     cmd_out = subprocess.run(merge_sv_calls, shell=True, check=True)
     print(cmd_out)
 
-    assert os.path.join(args.sv_channels, "/scripts/utils/bedpe_to_vcf.py")
-    assert os.path.join(args.sv_channels, "/scripts/genome_wide", out_prefix+'.bedpe')
+    assert os.path.join(args.sv_channels, "scripts/utils/bedpe_to_vcf.py")
+    assert os.path.join(args.sv_channels, "scripts/genome_wide", args.output + '.bedpe')
 
     bedpe_to_vcf = ' '.join([
-        "source activate sv-channels; python ",
-        os.path.join(args.sv_channels, "/scripts/utils/bedpe_to_vcf.py"),
-        "-i", os.path.join(args.sv_channels, "/scripts/genome_wide", out_prefix+'.bedpe'),
+        "source activate sv-channels; pwd; python ",
+        os.path.join(args.sv_channels, "scripts/utils/bedpe_to_vcf.py"),
+        "-i", os.path.join("../scripts/R/sv-channels.DEL.bedpe"),
         "-b", args.twobit,
         "-s", args.sample_name,
-        "-o", os.path.join(args.sv_channels, "/scripts/genome_wide", out_prefix +
-                           '.'+args.sample_name+'.vcf')
+        "-o", os.path.join("../scripts/R/sv-channels.DEL.vcf")
     ])
     print(bedpe_to_vcf)
     cmd_out = subprocess.run(bedpe_to_vcf, shell=True, check=True)
