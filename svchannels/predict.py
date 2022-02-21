@@ -118,7 +118,7 @@ def main():
         "-f", args.encode_blacklist,
         "-n", args.n_regions,
         "-m split_reads",
-        "-o", os.path.join("../sv-channels")
+        "-o", os.path.join("sv-channels")
     ])
 
     print(merge_sv_calls)
