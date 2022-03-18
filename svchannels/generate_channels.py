@@ -121,6 +121,10 @@ def main(args=sys.argv[1:]):
     import pandas as pd
     p = argparse.ArgumentParser()
     p.add_argument("directory", help="sample-specific directory created by svchannels extract")
+    p.add_argument("-z", "--zarr-out", default="sv_chann.zarr", help="output path for zarr file")
+    p.add_argument('--expand', type=int, default=250, help="Specify width of single windows")
+    p.add_argument('--gap', type=int, default=10, help="Specify width of gap")
+
     p.add_argument("bedpe")
 
     a = p.parse_args(args)
@@ -136,27 +140,40 @@ def main(args=sys.argv[1:]):
     print(f"[svchannels] read {len(e2d)} 2D events and {len(e1d)} 1d events", file=sys.stderr)
     t0 = time.time()
     n = 0
-    expand = 250
-    gap = 10
+    expand = a.expand
+    gap = a.gap
+
+    channels = []
+    seen = set()
+    events_fh = open(a.zarr_out + ".events.bedpe", "w")
 
     for line in xopen(a.bedpe):
         toks = line.strip().split()
+        if toks[6] != "DEL": continue
         if toks[0] != toks[3]: continue
         if int(toks[1]) < expand: continue
         if int(toks[4]) < expand: continue
         if int(toks[4]) < int(toks[1]):
             toks[4], toks[1] = toks[1], toks[4]
+        toks_id = str(int(toks[1])) + '_' + str(int(toks[4]))
+        if toks_id in seen: continue
+        seen.add(toks_id)
+        events_fh.write(line)
         n += 1
+
         clen = len(depths_by_chrom[toks[0]])
         if int(toks[4]) >= clen - expand: continue
         # here, sv_chan is shape (n_channels, 2 * expand + gap) can accumulate these and send to learner.
         sv_chan = generate_channels_for_event(int(toks[1]), int(toks[4]), e1d, e2d, expand, gap, depths_by_chrom[toks[0]])
+        channels.append(sv_chan)
  
     t = time.time() - t0
     print(f"generated {n} channels in {t:.1f} seconds ({n/t:.0f} SVs/second)", file=sys.stderr)
-    
 
-    
+    channels = np.stack(channels, axis=0)
+    print(f"shape of sv_chan array is {sv_chan.shape}", file=sys.stderr)
+    zarr.save(a.zarr_out, channels)
+
 
 
 if __name__ == "__main__":
