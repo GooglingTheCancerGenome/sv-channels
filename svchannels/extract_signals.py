@@ -167,7 +167,7 @@ def best_position(aln, side):
         if cigar[-1][0] == BAM_CSOFT_CLIP:
             return aln.reference_end
 
-    if side == "left": return aln.reference_start
+    if side == "right": return aln.reference_start
 
     return aln.reference_end
 
