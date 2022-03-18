@@ -80,12 +80,21 @@ def add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right):
     if mapq < min_mapping_quality: return
     pos = int(pos)
 
+    # NOTE: skipping interchromosomals.
+    if rname != aln.reference_name: return
+
     lookup = {('-', True): Event.SPLIT_MINUS_MINUS,
               ('+', True): Event.SPLIT_PLUS_MINUS,
               ('-', False): Event.SPLIT_MINUS_PLUS,
-              ('+', False): Event.SPLIT_PLUS_PLUS}
+              ('+', False): Event.SPLIT_PLUS_PLUS,
 
-    if rname < aln.reference_name or pos < aln.reference_start:
+              (True, '-'): Event.SPLIT_MINUS_MINUS,
+              (True, '+'): Event.SPLIT_MINUS_PUS,
+              (False, '-'): Event.SPLIT_PLUS_MINUS,
+              (False, '+'): Event.SPLIT_PLUS_PLUS,
+           }
+
+    if pos < aln.reference_start:
         if sa_left:
             li.append((rname, pos, 
                        aln.reference_name, (aln.reference_start if self_left else aln.reference_end),
@@ -128,14 +137,16 @@ def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_qu
                     Event.DEL_REV if aln.is_reverse else Event.DEL_FWD))
             if op in CONSUME_REF:
                 offset += length
+
+        sa_tag = None
         try:
             sa_tag = aln.get_tag("SA")
-            for sa in sa_tag.strip(';').split(";"):
-                add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right)
-                break # only add first split read event.
-
         except KeyError:
             continue
+ 
+        for sa in sa_tag.strip(';').split(";"):
+            add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right)
+            break # only add first split read event.
 
     if proper_pair(a): return
 
