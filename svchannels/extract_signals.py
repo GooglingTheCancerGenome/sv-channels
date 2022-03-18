@@ -87,7 +87,7 @@ def add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right):
               ('+', False): Event.SPLIT_PLUS_PLUS,
 
               (True, '-'): Event.SPLIT_MINUS_MINUS,
-              (True, '+'): Event.SPLIT_MINUS_PUS,
+              (True, '+'): Event.SPLIT_MINUS_PLUS,
               (False, '-'): Event.SPLIT_PLUS_MINUS,
               (False, '+'): Event.SPLIT_PLUS_PLUS,
     }
