@@ -94,6 +94,19 @@ def add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right):
 
     # NOTE!!! not handling interchromosomals for now.
     if rname != aln.reference_name: return
+    
+    # NOTE: current code treats this:
+    #
+    # primary:      supp:
+    # 100M50S->     <- 100S50M
+    # which is a *GOOD* DEL signal as Event.SPLIT_PLUS_MINUS
+    #
+    # and this:
+    #
+    # supp:        primary:
+    # 50S100M->    <-50M100S
+    # which is *NOT* a DEL signals as Event.SPLIT_PLUS_MINUS
+    # the same (though positions are different)
 
     # split is to left of primary.
     if pos < aln.reference_start:
