@@ -80,22 +80,35 @@ def add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right):
     if mapq < min_mapping_quality: return
     pos = int(pos)
 
-    lookup = {('-', True): Event.SPLIT_MINUS_MINUS,
+    lookup = {
+              ('-', True): Event.SPLIT_MINUS_MINUS,
               ('+', True): Event.SPLIT_PLUS_MINUS,
               ('-', False): Event.SPLIT_MINUS_PLUS,
-              ('+', False): Event.SPLIT_PLUS_PLUS}
+              ('+', False): Event.SPLIT_PLUS_PLUS,
 
-    if rname < aln.reference_name or pos < aln.reference_start:
+              (True, '-'): Event.SPLIT_MINUS_MINUS,
+              (True, '+'): Event.SPLIT_MINUS_PUS,
+              (False, '-'): Event.SPLIT_PLUS_MINUS,
+              (False, '+'): Event.SPLIT_PLUS_PLUS,
+    }
+
+    # NOTE!!! not handling interchromosomals for now.
+    if rname != aln.reference_name: return
+
+    # split is to left of primary.
+    if pos < aln.reference_start:
         if sa_left:
             li.append((rname, pos, 
                        aln.reference_name, (aln.reference_start if self_left else aln.reference_end),
                        lookup[(strand, aln.is_reverse)]))
         else:
+            # this, with self_left should be most common
             li.append((rname, sa_end(pos, cigar),
                        aln.reference_name, aln.reference_start if self_left else aln.reference_end,
                        lookup[(strand, aln.is_reverse)]))
-    else:
+    else: # split is right of primary
         if sa_left:
+            # this with self right should be most common
             li.append((aln.reference_name, aln.reference_start if self_left else aln.reference_end,
                        rname, pos,
                        lookup[(aln.is_reverse, strand)]))
@@ -128,14 +141,15 @@ def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_qu
                     Event.DEL_REV if aln.is_reverse else Event.DEL_FWD))
             if op in CONSUME_REF:
                 offset += length
+        sa_tag = None
         try:
             sa_tag = aln.get_tag("SA")
-            for sa in sa_tag.strip(';').split(";"):
-                add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right)
-                break # only add first split read event.
-
         except KeyError:
             continue
+
+        for sa in sa_tag.strip(';').split(";"):
+            add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right)
+            break # only add first split read event.
 
     if proper_pair(a): return
 
@@ -202,12 +216,11 @@ def soft_and_ins(aln, li, min_event_len, min_mapping_quality=15):
     if aln.mapping_quality < min_mapping_quality: return
     # check each end of read
     offset = aln.reference_start
-    for op, length in cigar:
+    for i, (op, length) in enumerate(cigar):
         if op == BAM_CSOFT_CLIP and length >= min_event_len:
-            event = None
-            if offset == aln.reference_start:
+            if i == 0: # softclip at left end of read
                 event = Event.SOFT_LEFT_REV if aln.is_reverse else Event.SOFT_LEFT_FWD
-            else:
+            else: # softclip at right end of read
                 event = Event.SOFT_RIGHT_REV if aln.is_reverse else Event.SOFT_RIGHT_FWD
             li.append((aln.reference_name, offset, event))
 
