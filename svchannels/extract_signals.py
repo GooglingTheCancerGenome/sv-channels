@@ -31,7 +31,8 @@ SAM_RGAUX = 0x00001000
 
 class Event(enum.IntEnum):
 
-    # single-read 1-position
+    # single-read 1-position.
+    # these do not include reads that are soft-clipped on both ends.
     SOFT_LEFT_FWD = enum.auto()
     SOFT_RIGHT_FWD = enum.auto()
     SOFT_LEFT_REV = enum.auto()
@@ -43,6 +44,10 @@ class Event(enum.IntEnum):
     # single-read 2-position
     DEL_FWD = enum.auto()
     DEL_REV = enum.auto()
+
+    # soft-clipped on both ends usually noise
+    SOFT_BOTH = enum.auto() 
+
     # read-pair 2-position
     SPLIT_PLUS_PLUS = enum.auto()
     SPLIT_MINUS_MINUS = enum.auto()
@@ -169,6 +174,11 @@ def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_qu
     # TODO: how to decide which positions to use for discordant?
     # we know that a < b because it came first in the bam
     li.append((a.reference_name, best_position(a, "left"), b.reference_name, best_position(b, "right"), lookup[(a.is_reverse, b.is_reverse)]))
+    # DEBUG
+    last = li[-1]
+    if a.reference_name == b.reference_name and last[1] > last[3]:
+        print("BAD:", a, "\n   :", b)
+        print(last) 
 
 def best_position(aln, side):
     cigar = aln.cigartuples
@@ -210,9 +220,14 @@ def set_depth(aln, depths, chrom_lengths, outdir, min_mapq):
     for s, e in aln.get_blocks():
         _set_depth(arr, s, e)
 
-def soft_and_ins(aln, li, min_event_len, min_mapping_quality=15):
+def soft_and_ins(aln, li, events2d, min_event_len, min_mapping_quality=15):
     cigar = aln.cigartuples
     if cigar is None or len(cigar) < 2: return
+    if cigar[0][0] == BAM_CSOFT_CLIP and cigar[-1][0] == BAM_CSOFT_CLIP:
+        r = aln.reference_name
+        events2d.append((r, aln.reference_start, r, aln.reference_end, Event.SOFT_BOTH))
+        return
+
     if aln.mapping_quality < min_mapping_quality: return
     # check each end of read
     offset = aln.reference_start
@@ -266,8 +281,8 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=16,
         if b.query_name in pairs:
             processed_pairs += 1
             a = pairs.pop(b.query_name)
-            soft_and_ins(a, softs, min_clip_len, min_mapping_quality)
-            soft_and_ins(b, softs, min_clip_len, min_mapping_quality)
+            soft_and_ins(a, softs, events, min_clip_len, min_mapping_quality)
+            soft_and_ins(b, softs, events, min_clip_len, min_mapping_quality)
             add_events(a, b, events, min_clip_len)
         else:
             pairs[b.query_name] = b
