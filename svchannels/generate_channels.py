@@ -234,6 +234,6 @@ if __name__ == "__main__":
         #    print(k)
         #    print(v.tolist())
 
-        # print(generate_channels_for_event(apos, bpos, signals1d, signals2d, expand, gap, depths))
+        print(generate_channels_for_event(apos, bpos, signals1d, signals2d, expand, gap, depths))
 
     main()

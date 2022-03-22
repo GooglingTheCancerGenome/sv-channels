@@ -89,7 +89,7 @@ def add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right):
               ('+', False): Event.SPLIT_PLUS_PLUS,
 
               (True, '-'): Event.SPLIT_MINUS_MINUS,
-              (True, '+'): Event.SPLIT_MINUS_PUS,
+              (True, '+'): Event.SPLIT_MINUS_PLUS,
               (False, '-'): Event.SPLIT_PLUS_MINUS,
               (False, '+'): Event.SPLIT_PLUS_PLUS,
            }
@@ -195,8 +195,9 @@ def _set_depth(arr, s, e):
     # this is the fastest way I've found to do depth.
     arr[s:e] += 1
 
-def set_depth(aln, depths, chrom_lengths, outdir):
+def set_depth(aln, depths, chrom_lengths, outdir, min_mapq):
     if aln.flag & (SAM_FLAGS.FUNMAP): return
+    if aln.mapping_quality < min_mapq: return
 
     if aln.reference_name not in depths:
         write_depths(depths, outdir)
@@ -247,6 +248,8 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=16,
     events = []
     processed_pairs = 0
 
+    fail_flags = (SAM_FLAGS.FQCFAIL | SAM_FLAGS.FDUP | SAM_FLAGS.FSECONDARY | SAM_FLAGS.FSUPPLEMENTARY)
+
     # instead of incrementing numpy array for every cigar event.
     # add here, then when it gets large-enough we can do something faster.
     for i, b in enumerate(bam): # TODO add option to iterate over VCF of putative SV sites.
@@ -254,10 +257,9 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=16,
         if i == 2000000 or (i % 20000000 == 0 and i > 0):
             print(f"[sv-channels] i:{i} ({b.reference_name}:{b.reference_start}) processed-pairs:{processed_pairs} len pairs:{len(pairs)} events:{len(events)} reads/second:{i/(time.time() - t0):.0f}", file=sys.stderr)
 
-        if b.flag & (SAM_FLAGS.FQCFAIL | SAM_FLAGS.FDUP
-                | SAM_FLAGS.FSECONDARY | SAM_FLAGS.FSUPPLEMENTARY): continue 
+        if b.flag & fail_flags: continue 
 
-        set_depth(b, depths, chrom_lengths, outdir)
+        set_depth(b, depths, chrom_lengths, outdir, min_mapping_quality)
 
         if b.query_name in pairs:
             processed_pairs += 1
@@ -284,6 +286,7 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("-o", "--out-dir", help="sample-specific output directory",
             default="sv-channels")
+    p.add_argument("--min-mapping-quality", help="skip reads with mapping quality below this value (default=%(default)s)", type=int, default=10)
     p.add_argument("reference")
     p.add_argument("bam")
 
@@ -297,7 +300,7 @@ def main():
 
     fai = Fasta(a.reference)
 
-    d = iterate(bam, fai, a.out_dir)
+    d = iterate(bam, fai, a.out_dir, min_mapping_quality=a.min_mapping_quality)
     write_text(d["soft_and_insertions"], f"{a.out_dir}/sv-channels.soft_and_insertions.txt.gz")
     write_text(d["events"], f"{a.out_dir}/sv-channels.events2d.txt.gz")
 
