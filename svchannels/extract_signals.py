@@ -184,6 +184,7 @@ def best_position(aln, side):
 
 def write_depths(depths, outdir):
     for chrom, array in depths.items():
+        np.cumsum(array, out=array)
         if len(array) > 10000000:
             print(f"[sv-channels] writing: {chrom}", file=sys.stderr)
         d = zarr.open(f"{outdir}/depths.{chrom}.bin", mode='w',
@@ -193,7 +194,8 @@ def write_depths(depths, outdir):
 @numba.jit(nopython=True)
 def _set_depth(arr, s, e):
     # this is the fastest way I've found to do depth.
-    arr[s:e] += 1
+    arr[s] += 1
+    arr[e] -= 1
 
 def set_depth(aln, depths, chrom_lengths, outdir, min_mapq):
     if aln.flag & (SAM_FLAGS.FUNMAP): return
