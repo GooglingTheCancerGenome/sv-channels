@@ -91,7 +91,7 @@ def main():
                         '--sv_channels',
                         type=str,
                         default='../',
-                        help="Output folder")
+                        help="sv-channels folder")
 
     args = parser.parse_args()
 
@@ -118,7 +118,7 @@ def main():
         "-f", args.encode_blacklist,
         "-n", args.n_regions,
         "-m split_reads",
-        "-o", os.path.join("sv-channels")
+        "-o", os.path.join(args.output, "sv-channels")
     ])
 
     print(merge_sv_calls)
@@ -131,10 +131,10 @@ def main():
     bedpe_to_vcf = ' '.join([
         "source activate sv-channels; pwd; python ",
         os.path.join(args.sv_channels, "scripts/utils/bedpe_to_vcf.py"),
-        "-i", os.path.join("../scripts/R/sv-channels.DEL.bedpe"),
+        "-i", os.path.join(args.output, "sv-channels.DEL.bedpe"),
         "-b", args.twobit,
         "-s", args.sample_name,
-        "-o", os.path.join("../scripts/R/sv-channels.DEL.vcf")
+        "-o", os.path.join(args.output, "sv-channels.DEL.vcf")
     ])
     print(bedpe_to_vcf)
     cmd_out = subprocess.run(bedpe_to_vcf, shell=True, check=True)
