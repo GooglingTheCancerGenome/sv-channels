@@ -129,7 +129,7 @@ def main():
     assert os.path.join(args.sv_channels, "scripts/genome_wide", args.output + '.bedpe')
 
     bedpe_to_vcf = ' '.join([
-        "source activate sv-channels; pwd; python ",
+        "conda activate sv-channels; pwd; python ",
         os.path.join(args.sv_channels, "scripts/utils/bedpe_to_vcf.py"),
         "-i", os.path.join(args.output, "sv-channels.DEL.bedpe"),
         "-b", args.twobit,
