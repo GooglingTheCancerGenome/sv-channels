@@ -186,10 +186,10 @@ def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_qu
     # we know that a < b because it came first in the bam
     li.append((a.reference_name, best_position(a, "left"), b.reference_name, best_position(b, "right"), lookup[(a.is_reverse, b.is_reverse)], a.qname))
     # DEBUG
-    last = li[-1]
-    if a.reference_name == b.reference_name and last[1] > last[3]:
-        print("BAD:", a, "\n   :", b)
-        print(last) 
+    #last = li[-1]
+    #if a.reference_name == b.reference_name and last[1] > last[3]:
+    #    print("BAD:", a, "\n   :", b)
+    #    print(last) 
 
 def best_position(aln, side):
     cigar = aln.cigartuples
@@ -285,6 +285,9 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
 
         if i == 2000000 or (i % 20000000 == 0 and i > 0):
             print(f"[sv-channels] i:{i} ({b.reference_name}:{b.reference_start}) processed-pairs:{processed_pairs} len pairs:{len(pairs)} events:{len(events)} reads/second:{i/(time.time() - t0):.0f}", file=sys.stderr)
+            # removing the debugging stuff, otherwise memory ballons.
+            softs = [tuple(list(s)[:3]) for s in softs]
+            events = [tuple(list(e)[:5]) for e in events]
 
         if b.flag & fail_flags: continue 
 
