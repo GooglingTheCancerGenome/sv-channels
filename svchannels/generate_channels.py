@@ -4,8 +4,13 @@ import re
 import time
 
 import numpy as np
+np.set_printoptions(threshold=5000)
+
 import numba
 import zarr
+
+import matplotlib.image as mpimg
+from matplotlib import pyplot as plt
 
 PACKAGE_PARENT = '..'
 SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
@@ -26,12 +31,9 @@ def find_signals_for_event(apos, bpos, signals2d, signals1d, expand=250):
     aidxr = np.searchsorted(signals2d["a_pos"], apos + expand, side="right")
 
     # need b-side for events like splits from b that go to another chrom.
-    bidxl = np.searchsorted(signals2d["b_pos"], bpos - expand, side="left")
-    bidxr = np.searchsorted(signals2d["b_pos"], bpos + expand, side="right")
-
-    # make sure we don't grab same values more than once.
-    bidxl = max(bidxl, aidxr)
-    bidxr = max(bidxr, bidxl)
+    # TODO: this is a bug! not sorted by b_pos!!!
+    #bidxl = np.searchsorted(signals2d["b_pos"], bpos - expand, side="left")
+    #bidxr = np.searchsorted(signals2d["b_pos"], bpos + expand, side="right")
 
     subset = signals2d[aidxl: aidxr]
 
@@ -39,12 +41,13 @@ def find_signals_for_event(apos, bpos, signals2d, signals1d, expand=250):
     selection = (subset["b_pos"] >= (bpos - expand)) & (subset["b_pos"] <= (bpos + expand)) & (
             subset["a_chrom"] == subset["b_chrom"])
     result['shared'] = subset[selection]
-    result['left-only'] = subset[~selection][["a_chrom", "a_pos", "event"]]  # .tolist()
+    #result['left-only'] = subset[~selection][["a_chrom", "a_pos", "event"]]  # .tolist()
+    #print("before:", result['left-only'] ,"|\n")
 
-    subsetb = signals2d[bidxl: bidxr]
-    selectionb = (subsetb["a_pos"] >= apos - expand) & (subsetb["a_pos"] <= apos + expand) & (
-            subsetb["a_chrom"] == subsetb["b_chrom"])
-    result['right-only'] = subsetb[~selectionb][["a_chrom", "a_pos", "event"]]  # .tolist()
+    #subsetb = signals2d[bidxl: bidxr]
+    #selectionb = (subsetb["a_pos"] >= apos - expand) & (subsetb["a_pos"] <= apos + expand) & (
+    #        subsetb["a_chrom"] == subsetb["b_chrom"])
+    #result['right-only'] = subsetb[~selectionb][["a_chrom", "a_pos", "event"]]  # .tolist()
 
     # 1d search ...
     idxl = np.searchsorted(signals1d["pos"], apos - expand, side="left")
@@ -56,8 +59,10 @@ def find_signals_for_event(apos, bpos, signals2d, signals1d, expand=250):
     bidxl = max(bidxl, idxl)
     bidxr = max(bidxr, bidxl)
 
-    result['left-only'].append(signals1d[idxl:idxr])
-    result['right-only'].append(signals1d[bidxl:bidxr])
+    result['left-only'] = signals1d[idxl:idxr]
+    result['right-only'] = signals1d[bidxl:bidxr]
+    #print("results-left-only:", result['left-only'] ,"|\n")
+    #print("result['left-only']", signals1d[idxl:idxr])
 
     # result['left-only'] = np.array(result['left-only'], dtype=[('chrom', 'S8'), ('pos', np.int32), ('event', 'i2')])
     # result['right-only'] = np.array(result['right-only'], dtype=[('chrom', 'S8'), ('pos', np.int32), ('event', 'i2')])
@@ -95,8 +100,12 @@ def generate_channels_for_event(apos, bpos, signals1d, signals2d, expand, gap, d
         fill_arr(channels, np.asarray(r["right-only"]["event"]), np.asarray(r["right-only"]["pos"]), bpos,
                  3 * expand + gap)
 
-    return channels
-
+    #for i, row in enumerate(channels):
+    #    if i == 0:
+    #        print("depth:", row)
+    #    else:
+    #        print(Event(i), row)
+    #return channels
 
 def xopen(filepath):
     import io
@@ -133,21 +142,23 @@ def main(args=sys.argv[1:]):
         '--expand',
         type=int,
         default=250,
-        help="Specify width of single windows")
+        help="Specify width of single windows (default: %(default)s)")
     p.add_argument(
         '--gap',
         type=int,
         default=10,
-        help="Specify width of gap")
+        help="Specify width of gap (default: %(default)s)")
 
     a = p.parse_args(args)
 
     depths_by_chrom = read_bins(a.directory)
     e2d = pd.read_table(f"{a.directory}/sv-channels.events2d.txt.gz", compression="gzip",
+                        usecols=list(range(5)),
                         names=["a_chrom", "a_pos", "b_chrom", "b_pos", "event"],
                         dtype={"a_chrom": str, "b_chrom": str})
 
     e1d = pd.read_table(f"{a.directory}/sv-channels.soft_and_insertions.txt.gz", compression="gzip",
+                        usecols=list(range(3)),
                         names=["chrom", "pos", "event"],
                         dtype={"chrom": str})
     print(f"[svchannels] read {len(e2d)} 2D events and {len(e1d)} 1d events", file=sys.stderr)
@@ -181,6 +192,10 @@ def main(args=sys.argv[1:]):
                 generate_channels_for_event(int(toks[1]), int(toks[4]), e1d, e2d,
                                             expand, gap, depths_by_chrom[toks[0]])
             )
+            #plt.imshow(sv_chan[-1][1:])
+            #plt.colorbar()
+            #plt.show()
+            #print(sv_chan[-1])
             file_object.write(line)
 
     file_object.close()

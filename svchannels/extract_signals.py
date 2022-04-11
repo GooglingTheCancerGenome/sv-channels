@@ -233,6 +233,7 @@ def set_depth(aln, depths, chrom_lengths, outdir, min_mapq):
 
 def soft_and_ins(aln, li, events2d, min_event_len, min_mapping_quality=15):
     cigar = aln.cigartuples
+
     if cigar is None or len(cigar) < 2: return
     if cigar[0][0] == BAM_CSOFT_CLIP and cigar[-1][0] == BAM_CSOFT_CLIP:
         r = aln.reference_name
@@ -257,7 +258,7 @@ def soft_and_ins(aln, li, events2d, min_event_len, min_mapping_quality=15):
         if op in CONSUME_REF:
             offset += length
 
-def iterate(bam, fai, outdir="sv-channels", min_clip_len=16,
+def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
         min_mapping_quality=10):
 
     depths = {}
