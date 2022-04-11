@@ -54,6 +54,9 @@ class Event(enum.IntEnum):
     SPLIT_MINUS_PLUS = enum.auto()
     SPLIT_PLUS_MINUS = enum.auto()
 
+    SPLIT_LOW_QUALITY       = enum.auto()
+    SPLIT_INTER_CHROMOSOMAL = enum.auto()
+
     DISCORDANT_PLUS_MINUS = enum.auto()
     DISCORDANT_PLUS_PLUS = enum.auto()
     DISCORDANT_MINUS_MINUS = enum.auto()
@@ -62,7 +65,7 @@ class Event(enum.IntEnum):
     MATE_UNMAPPED = enum.auto()
 
     def __str__(self):
-        return str(self.value)
+        return str(self.value) + "\t" + self.name
 
 CONSUME_REF = {BAM_CMATCH, BAM_CDEL, BAM_CREF_SKIP, BAM_CEQUAL, BAM_CDIFF}
 
@@ -77,16 +80,14 @@ def sa_end(pos, cigar, patt=re.compile("(\d+)(\w)")):
 
 def add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right):
     # given an SA from aln, add the appropriate event to li.
-    if aln.mapping_quality < min_mapping_quality: return
     (rname, pos, strand,cigar,mapq, nm) = sa.split(',')
     sa_left = cigar[len(cigar) - 1] != 'S'
 
     mapq = int(mapq)
-    if mapq < min_mapping_quality: return
+    #if mapq < min_mapping_quality: return
     pos = int(pos)
 
-    # NOTE: skipping interchromosomals.
-    if rname != aln.reference_name: return
+    interchromosomal = rname != aln.reference_name
 
     lookup = {('-', True): Event.SPLIT_MINUS_MINUS,
               ('+', True): Event.SPLIT_PLUS_MINUS,
@@ -103,21 +104,29 @@ def add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right):
         if sa_left:
             li.append((rname, pos, 
                        aln.reference_name, (aln.reference_start if self_left else aln.reference_end),
-                       lookup[(strand, aln.is_reverse)]))
+                       lookup[(strand, aln.is_reverse)], aln.qname))
         else:
             li.append((rname, sa_end(pos, cigar),
                        aln.reference_name, aln.reference_start if self_left else aln.reference_end,
-                       lookup[(strand, aln.is_reverse)]))
+                       lookup[(strand, aln.is_reverse)], aln.qname))
     else:
         if sa_left:
             li.append((aln.reference_name, aln.reference_start if self_left else aln.reference_end,
                        rname, pos,
-                       lookup[(aln.is_reverse, strand)]))
+                       lookup[(aln.is_reverse, strand)], aln.qname))
         else:
             li.append((aln.reference_name, aln.reference_start if self_left else aln.reference_end,
                        rname, sa_end(pos, cigar),
-                       lookup[(aln.is_reverse, strand)]))
-
+                       lookup[(aln.is_reverse, strand)], aln.qname))
+    if mapq < min_mapping_quality or aln.mapping_quality < min_mapping_quality: 
+        t = list(li[-1])
+        t[4] = Event.SPLIT_LOW_QUALITY
+        li[-1] = tuple(t)
+    elif interchromosomal:
+        t = list(li[-1])
+        t[4] = Event.SPLIT_INTER_CHROMOSOMAL
+        li[-1] = tuple(t)
+   
 
 def proper_pair(aln):
     # TODO: Luca can adjust this as needed.
@@ -127,21 +136,23 @@ def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_qu
 
     for aln in (a, b):
         offset = aln.reference_start
-        if aln.mapping_quality < min_mapping_quality: continue
+        # NOTE: we skip, but could add these as e.g. SPLIT_LOW_QUALITY
         # we store if this read is left or right clipped here to avoid double
         # iteration over cigar.
         self_left = False
         self_right = False
 
-        for op, length in aln.cigartuples:
-            self_left = offset == aln.reference_start and op == BAM_CSOFT_CLIP
-            self_right = op == BAM_CSOFT_CLIP
+        if aln.mapping_quality >= min_mapping_quality:
+            for i, (op, length) in enumerate(aln.cigartuples):
+                if i == 0:
+                  self_left = op == BAM_CSOFT_CLIP
+                self_right = op == BAM_CSOFT_CLIP
 
-            if op == BAM_CDEL and length >= min_cigar_event_length:
-                li.append((aln.reference_name, offset, aln.reference_name, offset + length,
-                    Event.DEL_REV if aln.is_reverse else Event.DEL_FWD))
-            if op in CONSUME_REF:
-                offset += length
+                if op == BAM_CDEL and length >= min_cigar_event_length:
+                    li.append((aln.reference_name, offset, aln.reference_name, offset + length,
+                        Event.DEL_REV if aln.is_reverse else Event.DEL_FWD, aln.qname))
+                if op in CONSUME_REF:
+                    offset += length
 
         sa_tag = None
         try:
@@ -151,7 +162,7 @@ def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_qu
  
         for sa in sa_tag.strip(';').split(";"):
             add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right)
-            break # only add first split read event.
+            #break # only add first split read event.
 
     if proper_pair(a): return
 
@@ -164,16 +175,16 @@ def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_qu
               (False, True): Event.DISCORDANT_PLUS_MINUS}
 
     if a.is_unmapped and not b.is_unmapped:
-        li.append((b.reference_name, best_position(b, "left"), b.reference_name, best_position(b, "right"), Event.MATE_UNMAPPED))
+        li.append((b.reference_name, best_position(b, "left"), b.reference_name, best_position(b, "right"), Event.MATE_UNMAPPED, a.qname))
         return
     if b.is_unmapped and not a.is_unmapped:
-        li.append((a.reference_name, best_position(a, "left"), a.reference_name, best_position(a, "right"), Event.MATE_UNMAPPED))
+        li.append((a.reference_name, best_position(a, "left"), a.reference_name, best_position(a, "right"), Event.MATE_UNMAPPED, a.qname))
         return
 
 
     # TODO: how to decide which positions to use for discordant?
     # we know that a < b because it came first in the bam
-    li.append((a.reference_name, best_position(a, "left"), b.reference_name, best_position(b, "right"), lookup[(a.is_reverse, b.is_reverse)]))
+    li.append((a.reference_name, best_position(a, "left"), b.reference_name, best_position(b, "right"), lookup[(a.is_reverse, b.is_reverse)], a.qname))
     # DEBUG
     last = li[-1]
     if a.reference_name == b.reference_name and last[1] > last[3]:
@@ -225,7 +236,7 @@ def soft_and_ins(aln, li, events2d, min_event_len, min_mapping_quality=15):
     if cigar is None or len(cigar) < 2: return
     if cigar[0][0] == BAM_CSOFT_CLIP and cigar[-1][0] == BAM_CSOFT_CLIP:
         r = aln.reference_name
-        events2d.append((r, aln.reference_start, r, aln.reference_end, Event.SOFT_BOTH))
+        events2d.append((r, aln.reference_start, r, aln.reference_end, Event.SOFT_BOTH, aln.qname))
         return
 
     if aln.mapping_quality < min_mapping_quality: return
@@ -238,10 +249,10 @@ def soft_and_ins(aln, li, events2d, min_event_len, min_mapping_quality=15):
                 event = Event.SOFT_LEFT_REV if aln.is_reverse else Event.SOFT_LEFT_FWD
             else:
                 event = Event.SOFT_RIGHT_REV if aln.is_reverse else Event.SOFT_RIGHT_FWD
-            li.append((aln.reference_name, offset, event))
+            li.append((aln.reference_name, offset, event, aln.qname))
 
         if op == BAM_CINS and length >= min_event_len:
-            li.append((aln.reference_name, offset, Event.INS_REV if aln.is_reverse else Event.INS_FWD))
+            li.append((aln.reference_name, offset, Event.INS_REV if aln.is_reverse else Event.INS_FWD, aln.qname))
 
         if op in CONSUME_REF:
             offset += length
