@@ -144,7 +144,7 @@ def add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right):
         t = list(li[-1])
         t[4] = Event.SPLIT_INTER_CHROMOSOMAL
         li[-1] = tuple(t)
-   
+
 
 def proper_pair(aln, max_insert_size):
     if (aln.flag & SAM_FLAGS.FPROPER_PAIR) == 0: return False
@@ -175,11 +175,13 @@ def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_qu
 
         if aln.has_tag("SA"):
             sa_tag = aln.get_tag("SA")
- 
+
             for sa in sa_tag.strip(';').split(";"):
                 add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right)
                 #break # only add first split read event.
 
+    if proper_pair(a, max_insert_size): return
+    #if aln.is_proper_pair: print(abs(aln.template_length))
 
     if a.mapping_quality < min_mapping_quality and b.mapping_quality < min_mapping_quality: return
     if proper_pair(a, max_insert_size): return
@@ -298,7 +300,7 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
 
     # keep reads in here. only do anything with pairs. if a read is already in
     # here we have a pair since we are skipping supplementary and secondary.
-    pairs = {} 
+    pairs = {}
 
     chrom_lengths = dict(zip(bam.references, bam.lengths))
 
@@ -393,7 +395,7 @@ def main():
 
     reqd = SAM_QNAME | SAM_FLAG | SAM_RNAME | SAM_POS | SAM_MAPQ | SAM_CIGAR | SAM_RNEXT | SAM_PNEXT | SAM_TLEN | SAM_AUX
     p = 0.99
-    
+
     max_insert = find_max_insert_size(a.bam, a.reference, p)
     print(f"[sv-channels] calculated insert size of {p * 100:.2f}th percentile as: {max_insert}", file=sys.stderr)
 
