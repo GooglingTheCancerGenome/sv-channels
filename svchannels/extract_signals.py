@@ -211,12 +211,13 @@ def write_depths(depths, outdir):
         d = zarr.open(f"{outdir}/depths.{chrom}.bin", mode='w',
                       shape=array.shape, chunks=(10000,), dtype='i4')
         d[:] = array
+        d.close()
 
 @numba.jit(nopython=True)
 def _set_depth(arr, s, e):
     # this is the fastest way I've found to do depth.
     arr[s] += 1
-    arr[e] -= 1
+    arr[e-1] -= 1
 
 def set_depth(aln, depths, chrom_lengths, outdir, min_mapq):
     if aln.flag & (SAM_FLAGS.FUNMAP): return
