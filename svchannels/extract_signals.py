@@ -7,6 +7,7 @@ import numba
 import pickle
 
 import sys
+import os
 import argparse
 import zarr
 from pyfaidx import Fasta
@@ -128,11 +129,11 @@ def add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right):
         li[-1] = tuple(t)
    
 
-def proper_pair(aln):
-    # TODO: Luca can adjust this as needed.
-    return aln.is_proper_pair
+def proper_pair(aln, max_insert_size):
+    if not aln.is_proper_pair: return False
+    return max_insert_size is None or abs(aln.template_length) <= max_insert_size
 
-def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_quality=10):
+def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_quality=10, max_insert_size=None):
 
     for aln in (a, b):
         offset = aln.reference_start
@@ -164,7 +165,8 @@ def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_qu
             add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right)
             #break # only add first split read event.
 
-    if proper_pair(a): return
+    if proper_pair(a, max_insert_size): return
+    #if aln.is_proper_pair: print(abs(aln.template_length))
 
     if a.mapping_quality < min_mapping_quality and b.mapping_quality < min_mapping_quality: return
     # TODO: Luca, what if one read has low MQ?
@@ -175,21 +177,17 @@ def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_qu
               (False, True): Event.DISCORDANT_PLUS_MINUS}
 
     if a.is_unmapped and not b.is_unmapped:
-        li.append((b.reference_name, best_position(b, "left"), b.reference_name, best_position(b, "right"), Event.MATE_UNMAPPED, a.qname))
+        # "right" and "left" don't make sense here, but "right" gives start and "left" gives end, which works.
+        li.append((b.reference_name, best_position(b, "right"), b.reference_name, best_position(b, "left"), Event.MATE_UNMAPPED, a.qname))
         return
     if b.is_unmapped and not a.is_unmapped:
-        li.append((a.reference_name, best_position(a, "left"), a.reference_name, best_position(a, "right"), Event.MATE_UNMAPPED, a.qname))
+        li.append((a.reference_name, best_position(a, "right"), a.reference_name, best_position(a, "left"), Event.MATE_UNMAPPED, a.qname))
         return
 
 
     # TODO: how to decide which positions to use for discordant?
     # we know that a < b because it came first in the bam
     li.append((a.reference_name, best_position(a, "left"), b.reference_name, best_position(b, "right"), lookup[(a.is_reverse, b.is_reverse)], a.qname))
-    # DEBUG
-    #last = li[-1]
-    #if a.reference_name == b.reference_name and last[1] > last[3]:
-    #    print("BAD:", a, "\n   :", b)
-    #    print(last) 
 
 def best_position(aln, side):
     cigar = aln.cigartuples
@@ -211,7 +209,7 @@ def write_depths(depths, outdir):
         d = zarr.open(f"{outdir}/depths.{chrom}.bin", mode='w',
                       shape=array.shape, chunks=(10000,), dtype='i4')
         d[:] = array
-        d.close()
+        del d
 
 @numba.jit(nopython=True)
 def _set_depth(arr, s, e):
@@ -260,7 +258,7 @@ def soft_and_ins(aln, li, events2d, min_event_len, min_mapping_quality=15):
             offset += length
 
 def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
-        min_mapping_quality=10):
+        min_mapping_quality=10, max_insert_size=None):
 
     depths = {}
 
@@ -299,7 +297,7 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
             a = pairs.pop(b.query_name)
             soft_and_ins(a, softs, events, min_clip_len, min_mapping_quality)
             soft_and_ins(b, softs, events, min_clip_len, min_mapping_quality)
-            add_events(a, b, events, min_clip_len)
+            add_events(a, b, events, min_clip_len, max_insert_size=max_insert_size)
         else:
             pairs[b.query_name] = b
 
@@ -307,6 +305,29 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
     write_depths(depths, outdir)
 
     return dict(soft_and_insertions=softs, events=events, depths=depths)
+
+def find_max_insert_size(bam_path, reference, p=0.985):
+    assert p < 1 and p > 0, "expected value between 0 and 1 in find_max_insert_size"
+    reqd = SAM_FLAG | SAM_RNAME | SAM_POS | SAM_MAPQ | SAM_RNEXT | SAM_PNEXT
+    bam = pysam.AlignmentFile(bam_path, "r", threads=2,
+            format_options=[("required_fields=%d" % reqd).encode()],
+            reference_filename=reference)
+    fail_flags = (SAM_FLAGS.FREAD2 | SAM_FLAGS.FQCFAIL | SAM_FLAGS.FDUP | SAM_FLAGS.FSECONDARY | SAM_FLAGS.FSUPPLEMENTARY | SAM_FLAGS.FUNMAP | SAM_FLAGS.FMUNMAP)
+
+    isizes = []
+    skip = 400000
+    n = 300000
+    for aln in bam:
+        flag = aln.flag
+        if aln.mapping_quality < 30 or (flag & fail_flags): continue
+        if aln.reference_id != aln.next_reference_id: continue
+        if (flag & SAM_FLAGS.FREVERSE) == (flag & SAM_FLAGS.FMREVERSE): continue
+        isizes.append(abs(aln.template_length))
+        if len(isizes) - skip > n: break
+    if len(isizes) - skip > n: isizes = isizes[skip:]
+    isizes.sort()
+    print(isizes)
+    return isizes[int(len(isizes) * p)]
 
 def write_text(li, path):
     li.sort()
@@ -324,8 +345,13 @@ def main():
     p.add_argument("bam")
 
     a = p.parse_args()
+    assert os.path.isfile(a.bam), "[svchannels] a file (or link) is required for the [bam] arugument"
 
     reqd = SAM_QNAME | SAM_FLAG | SAM_RNAME | SAM_POS | SAM_MAPQ | SAM_CIGAR | SAM_RNEXT | SAM_PNEXT | SAM_TLEN | SAM_AUX
+    p = 0.999
+    
+    max_insert = find_max_insert_size(a.bam, a.reference, p)
+    print(f"[sv-channels] calculated insert size of {p * 100:.2f}th percentile as: {max_insert}", file=sys.stderr)
 
     bam = pysam.AlignmentFile(a.bam, "r", threads=2,
             format_options=[("required_fields=%d" % reqd).encode()],
@@ -333,7 +359,7 @@ def main():
 
     fai = Fasta(a.reference)
 
-    d = iterate(bam, fai, a.out_dir, min_mapping_quality=a.min_mapping_quality)
+    d = iterate(bam, fai, a.out_dir, min_mapping_quality=a.min_mapping_quality, max_insert_size=max_insert)
     write_text(d["soft_and_insertions"], f"{a.out_dir}/sv-channels.soft_and_insertions.txt.gz")
     write_text(d["events"], f"{a.out_dir}/sv-channels.events2d.txt.gz")
 
