@@ -68,6 +68,18 @@ class Event(enum.IntEnum):
     def __str__(self):
         return str(self.value) + "\t" + self.name
 
+orphanable_events = {
+    Event.SPLIT_PLUS_PLUS,
+    Event.SPLIT_PLUS_MINUS,
+    Event.SPLIT_MINUS_MINUS,
+    Event.SPLIT_MINUS_PLUS,
+    Event.DISCORDANT_PLUS_MINUS,
+    Event.DISCORDANT_PLUS_PLUS,
+    Event.DISCORDANT_MINUS_MINUS,
+    Event.DISCORDANT_MINUS_PLUS,
+}
+
+
 CONSUME_REF = {BAM_CMATCH, BAM_CDEL, BAM_CREF_SKIP, BAM_CEQUAL, BAM_CDIFF}
 
 def sa_end(pos, cigar, patt=re.compile("(\d+)(\w)")):
@@ -107,13 +119,13 @@ def add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right):
                        aln.reference_name, (aln.reference_start if self_left else aln.reference_end),
                        lookup[(strand, aln.is_reverse)], aln.qname))
         else:
-            li.append((rname, sa_end(pos, cigar),
-                       aln.reference_name, aln.reference_start if self_left else aln.reference_end,
+            li.append((rname, sa_end(pos, cigar) - 1,
+                       aln.reference_name, aln.reference_start if self_left else aln.reference_end - 1,
                        lookup[(strand, aln.is_reverse)], aln.qname))
     else:
         if sa_left:
-            li.append((aln.reference_name, aln.reference_start if self_left else aln.reference_end,
-                       rname, pos,
+            li.append((aln.reference_name, aln.reference_start - 1 if self_left else aln.reference_end,
+                       rname, pos - 1,
                        lookup[(aln.is_reverse, strand)], aln.qname))
         else:
             li.append((aln.reference_name, aln.reference_start if self_left else aln.reference_end,
@@ -169,7 +181,6 @@ def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_qu
     #if aln.is_proper_pair: print(abs(aln.template_length))
 
     if a.mapping_quality < min_mapping_quality and b.mapping_quality < min_mapping_quality: return
-    # TODO: Luca, what if one read has low MQ?
 
     lookup = {(True, True): Event.DISCORDANT_MINUS_MINUS,
               (True, False): Event.DISCORDANT_MINUS_PLUS,
@@ -185,7 +196,6 @@ def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_qu
         return
 
 
-    # TODO: how to decide which positions to use for discordant?
     # we know that a < b because it came first in the bam
     li.append((a.reference_name, best_position(a, "left"), b.reference_name, best_position(b, "right"), lookup[(a.is_reverse, b.is_reverse)], a.qname))
 
@@ -326,8 +336,7 @@ def find_max_insert_size(bam_path, reference, p=0.985):
         if len(isizes) - skip > n: break
     if len(isizes) - skip > n: isizes = isizes[skip:]
     isizes.sort()
-    print(isizes)
-    return isizes[int(len(isizes) * p)]
+    return isizes[max(0, int(len(isizes) * p - 1))]
 
 def write_text(li, path):
     li.sort()
