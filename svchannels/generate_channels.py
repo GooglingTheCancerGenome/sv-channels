@@ -152,6 +152,34 @@ def read_bins(directory):
     return depths_by_chrom
 
 
+def plot_event(chan, toks, expand, gap):
+    depth = chan[0]
+    mat = chan[1:].astype('float')
+    counts = mat.sum(axis=1).astype(int)
+    ys, xs = np.where(mat > 0)
+    vals = mat[ys, xs]
+    fig, axes = plt.subplots(2, 1, figsize=(12, 12), sharex=True, gridspec_kw={'height_ratios': [1, 5]})
+    axes[1].scatter(xs, ys, c=vals, s = 36, marker="s")
+    axes[1].set_xlabel("relative position")
+    axes[1].set_ylabel("channel")
+    axes[1].set_yticks(range(max(Event) + len(orphanable_events)))
+    axes[1].set_yticklabels(
+               [f"{Event(i + 1).name} ({counts[i]})" for i in range(max(Event))] + 
+               [f"orphan: {Event(i).name} ({counts[i + len(orphanable_events) - 1]})" for i in range(max(Event) + 1 - len(orphanable_events), max(Event) + 1) ])
+    axes[1].set_ylim(-1, max(Event) + len(orphanable_events))
+    axes[1].set_xlim(0, len(depth))
+    axes[0].plot(depth)
+    axes[0].axvline(x=expand, zorder=-1, ls='--', c='gray')
+    axes[0].axvline(x=3*expand+gap, zorder=-1, ls='--', c='gray')
+    axes[0].axvspan(2*expand, 2*expand + gap, color='lightgray', edgecolor=None)
+    axes[1].axvspan(2*expand, 2*expand + gap, color='lightgray', edgecolor=None)
+    axes[0].set_ylabel("depth")
+
+    fig.suptitle(f"{toks[0]}:{toks[1]}-{toks[4]}")
+
+    plt.tight_layout()
+    plt.show()
+
 def main(args=sys.argv[1:]):
     import argparse
     import pandas as pd
@@ -212,25 +240,7 @@ def main(args=sys.argv[1:]):
                 generate_channels_for_event(toks[0], int(toks[1]), int(toks[4]), e1d, e2d,
                                             expand, gap, depths_by_chrom[toks[0]])
             )
-            mat = sv_chan[-1][1:].astype('float')
-            counts = mat.sum(axis=1).astype(int)
-            ys, xs = np.where(mat > 0)
-            vals = mat[ys, xs]
-            print(ys)
-
-            mat[mat == 0] = np.nan
-            #plt.imshow(mat, aspect='auto', interpolation=None)
-            plt.scatter(xs, ys, c=vals, s = 36, marker="s")
-            #plt.axis("equal")
-            plt.xlabel("relative position")
-            plt.ylabel("channel")
-            plt.yticks(range(max(Event) + len(orphanable_events)), 
-                       [f"{Event(i + 1).name} ({counts[i]})" for i in range(max(Event))] + 
-                       [f"orphan: {Event(i).name} ({counts[i + len(orphanable_events) - 1]})" for i in range(max(Event) + 1 - len(orphanable_events), max(Event) + 1) ])
-            plt.ylim(0, max(Event) + len(orphanable_events))
-            plt.tight_layout()
-            plt.ylim(-1, max(Event) + len(orphanable_events))
-            plt.show()
+            plot_event(sv_chan[-1], toks, expand, gap)
             #print(sv_chan[-1])
             file_object.write(line)
 
