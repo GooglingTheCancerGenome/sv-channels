@@ -294,9 +294,12 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
     # add here, then when it gets large-enough we can do something faster.
     for i, b in enumerate(bam): # TODO add option to iterate over VCF of putative SV sites.
 
-        if i == 2000000 or (i % 20000000 == 0 and i > 0):
+        if i == 2000000 or (i % 2000000 == 0 and i > 0):
             print(f"[sv-channels] i:{i} ({b.reference_name}:{b.reference_start}) processed-pairs:{processed_pairs} len pairs:{len(pairs)} events:{len(events)} reads/second:{i/(time.time() - t0):.0f}", file=sys.stderr)
             # removing the debugging stuff, otherwise memory ballons.
+            softs = [tuple(list(s)[:3]) for s in softs]
+            events = [tuple(list(e)[:5]) for e in events]
+        elif i % 100000 == 0:
             softs = [tuple(list(s)[:3]) for s in softs]
             events = [tuple(list(e)[:5]) for e in events]
 
@@ -359,7 +362,7 @@ def main():
     assert os.path.isfile(a.bam), "[svchannels] a file (or link) is required for the [bam] arugument"
 
     reqd = SAM_QNAME | SAM_FLAG | SAM_RNAME | SAM_POS | SAM_MAPQ | SAM_CIGAR | SAM_RNEXT | SAM_PNEXT | SAM_TLEN | SAM_AUX
-    p = 0.999
+    p = 0.99
     
     max_insert = find_max_insert_size(a.bam, a.reference, p)
     print(f"[sv-channels] calculated insert size of {p * 100:.2f}th percentile as: {max_insert}", file=sys.stderr)

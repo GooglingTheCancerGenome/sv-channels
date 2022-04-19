@@ -106,9 +106,7 @@ def generate_channels_for_event(chrom, apos, bpos, signals1d, signals2d, expand,
     fill_arr(channels, np.asarray(r["shared"]["event"]), np.asarray(r["shared"]["a_pos"]), apos, expand)
     fill_arr(channels, np.asarray(r["shared"]["event"]), np.asarray(r["shared"]["b_pos"]), bpos, 3 * expand + gap)
 
-    # TODO: these left-only and right-only are going into same channels as shared. need to separate.
     if len(r["left-only"]) > 0:
-        #fill_arr(channels, np.asarray(r["left-only"]["event"]), np.asarray(r["left-only"]["pos"]), apos, expand)
         fill_orphan_dicts(channels, r['left-only'], apos, expand)
         print(r["left-only"])
     if len(r["right-only"]) > 0:
@@ -241,7 +239,6 @@ def main(args=sys.argv[1:]):
                                             expand, gap, depths_by_chrom[toks[0]])
             )
             plot_event(sv_chan[-1], toks, expand, gap)
-            #print(sv_chan[-1])
             file_object.write(line)
 
     file_object.close()
