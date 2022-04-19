@@ -50,20 +50,22 @@ class Event(enum.IntEnum):
     SOFT_BOTH = enum.auto() 
 
     # read-pair 2-position
+    SPLIT_LOW_QUALITY       = enum.auto()
+    SPLIT_INTER_CHROMOSOMAL = enum.auto()
+
+    MATE_UNMAPPED = enum.auto()
+
+    # 2 position orphanable
+    # NOTE: orphanable events must be at end of this enum
     SPLIT_PLUS_PLUS = enum.auto()
     SPLIT_MINUS_MINUS = enum.auto()
     SPLIT_MINUS_PLUS = enum.auto()
     SPLIT_PLUS_MINUS = enum.auto()
 
-    SPLIT_LOW_QUALITY       = enum.auto()
-    SPLIT_INTER_CHROMOSOMAL = enum.auto()
-
     DISCORDANT_PLUS_MINUS = enum.auto()
     DISCORDANT_PLUS_PLUS = enum.auto()
     DISCORDANT_MINUS_MINUS = enum.auto()
     DISCORDANT_MINUS_PLUS = enum.auto()
-
-    MATE_UNMAPPED = enum.auto()
 
     def __str__(self):
         return str(self.value) + "\t" + self.name
