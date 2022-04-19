@@ -42,12 +42,15 @@ class Event(enum.IntEnum):
     INS_FWD = enum.auto()
     INS_REV = enum.auto()
 
+    # lots of variants with high NM are usually bad alignments
+    HIGH_NM = enum.auto()
+
+    # soft-clipped on both ends usually noise
+    SOFT_BOTH = enum.auto()
+
     # single-read 2-position
     DEL_FWD = enum.auto()
     DEL_REV = enum.auto()
-
-    # soft-clipped on both ends usually noise
-    SOFT_BOTH = enum.auto() 
 
     # read-pair 2-position
     SPLIT_LOW_QUALITY       = enum.auto()
@@ -242,14 +245,25 @@ def set_depth(aln, depths, chrom_lengths, outdir, min_mapq):
     for s, e in aln.get_blocks():
         _set_depth(arr, s, e)
 
-def soft_and_ins(aln, li, events2d, min_event_len, min_mapping_quality=15):
+def soft_and_ins(aln, li, events2d, min_event_len, min_mapping_quality=15, high_nm=11):
     cigar = aln.cigartuples
+
+    try:
+        if aln.mapping_quality >= min_mapping_quality:
+            nm = aln.get_tag("NM")
+            if nm >= high_nm:
+                for op, length in cigar:
+                    if op == BAM_CINS or op == BAM_CDEL:
+                        nm -= length
+                if nm >= high_nm:
+                    li.append((aln.reference_name, int((aln.reference_start + aln.reference_end) / 2), Event.HIGH_NM, aln.qname))
+    except KeyError:
+        pass
 
     if cigar is None or len(cigar) < 2: return
     if cigar[0][0] == BAM_CSOFT_CLIP and cigar[-1][0] == BAM_CSOFT_CLIP:
         r = aln.reference_name
         events2d.append((r, aln.reference_start, r, aln.reference_end, Event.SOFT_BOTH, aln.qname))
-        return
 
     if aln.mapping_quality < min_mapping_quality: return
     # check each end of read
@@ -270,7 +284,7 @@ def soft_and_ins(aln, li, events2d, min_event_len, min_mapping_quality=15):
             offset += length
 
 def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
-        min_mapping_quality=10, max_insert_size=None):
+        min_mapping_quality=10, max_insert_size=None, debug=False, high_nm=11):
 
     depths = {}
 
@@ -297,9 +311,10 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
         if i == 2000000 or (i % 2000000 == 0 and i > 0):
             print(f"[sv-channels] i:{i} ({b.reference_name}:{b.reference_start}) processed-pairs:{processed_pairs} len pairs:{len(pairs)} events:{len(events)} reads/second:{i/(time.time() - t0):.0f}", file=sys.stderr)
             # removing the debugging stuff, otherwise memory ballons.
-            softs = [tuple(list(s)[:3]) for s in softs]
-            events = [tuple(list(e)[:5]) for e in events]
-        elif i % 100000 == 0:
+            if not debug:
+                softs = [tuple(list(s)[:3]) for s in softs]
+                events = [tuple(list(e)[:5]) for e in events]
+        elif (not debug) and (i % 100000 == 0):
             softs = [tuple(list(s)[:3]) for s in softs]
             events = [tuple(list(e)[:5]) for e in events]
 
@@ -310,9 +325,9 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
         if b.query_name in pairs:
             processed_pairs += 1
             a = pairs.pop(b.query_name)
-            soft_and_ins(a, softs, events, min_clip_len, min_mapping_quality)
-            soft_and_ins(b, softs, events, min_clip_len, min_mapping_quality)
-            add_events(a, b, events, min_clip_len, max_insert_size=max_insert_size)
+            soft_and_ins(a, softs, events, min_clip_len, min_mapping_quality, high_nm)
+            soft_and_ins(b, softs, events, min_clip_len, min_mapping_quality, high_nm)
+            add_events(a, b, events, min_clip_len, min_cigar_event_length=10, max_insert_size=max_insert_size)
         else:
             pairs[b.query_name] = b
 
@@ -343,11 +358,19 @@ def find_max_insert_size(bam_path, reference, p=0.985):
     isizes.sort()
     return isizes[max(0, int(len(isizes) * p - 1))]
 
-def write_text(li, path):
+def write_text(li, path, debug=False):
     li.sort()
     fh = gzip.open(path, mode="wt")
-    for row in li:
-        print("\t".join(str(x) for x in row), file=fh)
+    if debug:
+        for row in li:
+            print("\t".join(str(x) for x in row), file=fh)
+    else:
+        for row in li:
+            row = list(row)
+            if isinstance(row[-1], str): # read-name
+                row = row[:-1]
+            row[-1] = row[-1].value
+            print("\t".join(str(x) for x in row), file=fh)
     fh.close()
 
 def main():
@@ -355,6 +378,7 @@ def main():
     p.add_argument("-o", "--out-dir", help="sample-specific output directory",
             default="sv-channels")
     p.add_argument("--min-mapping-quality", help="skip reads with mapping quality below this value (default=%(default)s)", type=int, default=10)
+    p.add_argument("--debug", help="save debug information in output txt.gz files", action="store_true", default=False)
     p.add_argument("reference")
     p.add_argument("bam")
 
@@ -373,7 +397,7 @@ def main():
 
     fai = Fasta(a.reference)
 
-    d = iterate(bam, fai, a.out_dir, min_mapping_quality=a.min_mapping_quality, max_insert_size=max_insert)
+    d = iterate(bam, fai, a.out_dir, min_mapping_quality=a.min_mapping_quality, max_insert_size=max_insert, debug=a.debug, high_nm=10)
     write_text(d["soft_and_insertions"], f"{a.out_dir}/sv-channels.soft_and_insertions.txt.gz")
     write_text(d["events"], f"{a.out_dir}/sv-channels.events2d.txt.gz")
 

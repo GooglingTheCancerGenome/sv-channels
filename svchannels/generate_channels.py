@@ -108,7 +108,6 @@ def generate_channels_for_event(chrom, apos, bpos, signals1d, signals2d, expand,
 
     if len(r["left-only"]) > 0:
         fill_orphan_dicts(channels, r['left-only'], apos, expand)
-        print(r["left-only"])
     if len(r["right-only"]) > 0:
         # TODO this is broken from find_signals (not getting because not sorted on b
         fill_orphan_dicts(channels, r['right-only'], bpos, 3 * expand + gap)
@@ -238,7 +237,7 @@ def main(args=sys.argv[1:]):
                 generate_channels_for_event(toks[0], int(toks[1]), int(toks[4]), e1d, e2d,
                                             expand, gap, depths_by_chrom[toks[0]])
             )
-            plot_event(sv_chan[-1], toks, expand, gap)
+            #plot_event(sv_chan[-1], toks, expand, gap)
             file_object.write(line)
 
     file_object.close()
