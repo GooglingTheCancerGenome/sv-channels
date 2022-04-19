@@ -9,7 +9,6 @@ np.set_printoptions(threshold=5000)
 import numba
 import zarr
 
-import matplotlib.image as mpimg
 from matplotlib import pyplot as plt
 
 PACKAGE_PARENT = '..'
@@ -81,13 +80,18 @@ def fill_arr(channels, events, posns, opos, offset):
         if pos < pmax and pos >= 0:
             channels[events[i], pos] += 1
 
-def fill_dicts(channels, dicts, opos, offset):
+def fill_orphan_dicts(channels, dicts, opos, offset):
     pmax = channels.shape[1]
+    m = max(Event) - 1
     for d in dicts:
         
         pos = d['a_pos' if 'a_pos' in d else 'pos'] - opos + offset
         if pos < pmax and pos >= 0:
-            channels[d['event'] + len(orphanable_events), pos] += 1
+
+            if Event(d['event']) in orphanable_events:
+                channels[d['event'] + len(orphanable_events), pos] += 1
+            else:
+                channels[d['event'], pos] += 1
 
 
 def generate_channels_for_event(chrom, apos, bpos, signals1d, signals2d, expand, gap, depths):
@@ -105,19 +109,22 @@ def generate_channels_for_event(chrom, apos, bpos, signals1d, signals2d, expand,
     # TODO: these left-only and right-only are going into same channels as shared. need to separate.
     if len(r["left-only"]) > 0:
         #fill_arr(channels, np.asarray(r["left-only"]["event"]), np.asarray(r["left-only"]["pos"]), apos, expand)
-        fill_dicts(channels, r['left-only'], apos, expand)
+        fill_orphan_dicts(channels, r['left-only'], apos, expand)
+        print(r["left-only"])
     if len(r["right-only"]) > 0:
         # TODO this is broken from find_signals (not getting because not sorted on b
-        fill_dicts(channels, r['right-only'], bpos, 3 * expand + gap)
+        fill_orphan_dicts(channels, r['right-only'], bpos, 3 * expand + gap)
 
+    """
     for i, row in enumerate(channels):
         if i == 0:
             print("depth:", row)
         else:
-            if i >= max(Event) - 1:
+            if i > max(Event):
                 print("ORPHAN:", Event(i-len(orphanable_events)), row)
             else:
                 print(Event(i), row)
+    """
     return channels
 
 def xopen(filepath):
@@ -205,9 +212,25 @@ def main(args=sys.argv[1:]):
                 generate_channels_for_event(toks[0], int(toks[1]), int(toks[4]), e1d, e2d,
                                             expand, gap, depths_by_chrom[toks[0]])
             )
-            #plt.imshow(sv_chan[-1][1:])
-            #plt.colorbar()
-            #plt.show()
+            mat = sv_chan[-1][1:].astype('float')
+            counts = mat.sum(axis=1).astype(int)
+            ys, xs = np.where(mat > 0)
+            vals = mat[ys, xs]
+            print(ys)
+
+            mat[mat == 0] = np.nan
+            #plt.imshow(mat, aspect='auto', interpolation=None)
+            plt.scatter(xs, ys, c=vals, s = 36, marker="s")
+            #plt.axis("equal")
+            plt.xlabel("relative position")
+            plt.ylabel("channel")
+            plt.yticks(range(max(Event) + len(orphanable_events)), 
+                       [f"{Event(i + 1).name} ({counts[i]})" for i in range(max(Event))] + 
+                       [f"orphan: {Event(i).name} ({counts[i + len(orphanable_events) - 1]})" for i in range(max(Event) + 1 - len(orphanable_events), max(Event) + 1) ])
+            plt.ylim(0, max(Event) + len(orphanable_events))
+            plt.tight_layout()
+            plt.ylim(-1, max(Event) + len(orphanable_events))
+            plt.show()
             #print(sv_chan[-1])
             file_object.write(line)
 
