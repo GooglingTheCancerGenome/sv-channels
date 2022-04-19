@@ -37,10 +37,10 @@ class Event(enum.IntEnum):
     SOFT_LEFT_FWD = enum.auto()
     SOFT_RIGHT_FWD = enum.auto()
     SOFT_LEFT_REV = enum.auto()
-    SOFT_RIGHT_REV = enum.auto()
+    SOFT_RIGHT_REV = enum.auto() # 4
 
     INS_FWD = enum.auto()
-    INS_REV = enum.auto()
+    INS_REV = enum.auto() # 6
 
     # lots of variants with high NM are usually bad alignments
     HIGH_NM = enum.auto()
@@ -49,8 +49,8 @@ class Event(enum.IntEnum):
     SOFT_BOTH = enum.auto()
 
     # single-read 2-position
-    DEL_FWD = enum.auto()
-    DEL_REV = enum.auto()
+    DEL_FWD = enum.auto() 
+    DEL_REV = enum.auto() # 10
 
     # read-pair 2-position
     SPLIT_LOW_QUALITY       = enum.auto()

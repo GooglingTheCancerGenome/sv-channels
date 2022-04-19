@@ -18,35 +18,39 @@ sys.path.insert(0, os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 from svchannels.extract_signals import Event, orphanable_events
 
 
-def find_signals_for_event(chrom, apos, bpos, signals2d, signals1d, expand=250):
-    # note: only works on same chromosome as implemented.
+def find_signals_for_event(chrom, apos, bpos, signals2d_a, signals2d_b, signals1d, expand=250):
+    # signals2d_a is sorted by A psoition, so we can use search-sorted
+    # we can use that to find things unique to a as well as things shared with a and b.
+    # but we need signals2d_b to find things unique to b.
     result = {}
 
     assert apos <= bpos, ("svchannels: expected apos < bpos, got:", apos, bpos)
 
     # only need to search apos since we propagate b, a to a, b before this...
     # but...
-    aidxl = np.searchsorted(signals2d["a_pos"], apos - expand, side="left")
-    aidxr = np.searchsorted(signals2d["a_pos"], apos + expand, side="right")
+    aidxl = np.searchsorted(signals2d_a["a_pos"], apos - expand, side="left")
+    aidxr = np.searchsorted(signals2d_a["a_pos"], apos + expand, side="right")
 
-    # need b-side for events like splits from b that go to another chrom.
-    # TODO: this is a bug! not sorted by b_pos!!!
-    #bidxl = np.searchsorted(signals2d["b_pos"], bpos - expand, side="left")
-    #bidxr = np.searchsorted(signals2d["b_pos"], bpos + expand, side="right")
-
-    subset = signals2d[aidxl: aidxr]
+    subset = signals2d_a[aidxl: aidxr]
 
     # same chrom and with expected bounds on both ends.
     selection = (subset["b_pos"] >= (bpos - expand)) & (subset["b_pos"] <= (bpos + expand)) & (
             subset["a_chrom"] == chrom) & (subset["b_chrom"] == chrom)
     result['shared'] = subset[selection]
-    result['left-only'] = subset[~selection][["a_chrom", "a_pos", "event"]].to_dict(orient='records')
-    #print("before:", result['left-only'] ,"|\n")
+    result['left-only'] = subset[~selection][["a_chrom", "a_pos", "event"]]
+    result['left-only'].columns = ("chrom", "pos", "event")
+    result['left-only'] = result['left-only'].to_dict(orient='records')
+ 
+    # now repeat for B side.
+    bidxl = np.searchsorted(signals2d_b["b_pos"], bpos - expand, side="left")
+    bidxr = np.searchsorted(signals2d_b["b_pos"], bpos + expand, side="right")
 
-    #subsetb = signals2d[bidxl: bidxr]
-    #selectionb = (subsetb["a_pos"] >= apos - expand) & (subsetb["a_pos"] <= apos + expand) & (
-    #        subsetb["a_chrom"] == subsetb["b_chrom"])
-    #result['right-only'] = subsetb[~selectionb][["a_chrom", "a_pos", "event"]]  # .tolist()
+    subsetb = signals2d_b[bidxl: bidxr]
+    selectionb = (subsetb["a_pos"] >= apos - expand) & (subsetb["a_pos"] <= apos + expand) & (
+            subsetb["a_chrom"] == chrom) & (subsetb["b_chrom"] == chrom)
+    result['right-only'] = subsetb[~selectionb][["b_chrom", "b_pos", "event"]]
+    result['right-only'].columns = ("chrom", "pos", "event")
+    result['right-only'] = result['right-only'].to_dict(orient='records')
 
     # 1d search ...
     idxl = np.searchsorted(signals1d["pos"], apos - expand, side="left")
@@ -59,15 +63,7 @@ def find_signals_for_event(chrom, apos, bpos, signals2d, signals1d, expand=250):
     bidxr = max(bidxr, bidxl)
 
     result['left-only'].extend(signals1d[idxl:idxr].to_dict(orient='records'))
-    result['right-only'] = signals1d[bidxl:bidxr].to_dict(orient='records')
-    #print("results-left-only:", result['left-only'] ,"|\n")
-    #print("result['left-only']", signals1d[idxl:idxr])
-
-    #result['left-only'] = np.array(result['left-only'], dtype=[('chrom', 'S8'), ('pos', np.int32), ('event', 'i2')])
-    # result['right-only'] = np.array(result['right-only'], dtype=[('chrom', 'S8'), ('pos', np.int32), ('event', 'i2')])
-    #result['left-only'].columns = ['chrom', 'pos', 'event']
-    #result['right-only'].columns = ['chrom', 'pos', 'event']
-
+    result['right-only'].extend(signals1d[bidxl:bidxr].to_dict(orient='records'))
     return result
 
 
@@ -85,7 +81,7 @@ def fill_orphan_dicts(channels, dicts, opos, offset):
     m = max(Event) - 1
     for d in dicts:
         
-        pos = d['a_pos' if 'a_pos' in d else 'pos'] - opos + offset
+        pos = d['pos'] - opos + offset
         if pos < pmax and pos >= 0:
 
             if Event(d['event']) in orphanable_events:
@@ -94,8 +90,8 @@ def fill_orphan_dicts(channels, dicts, opos, offset):
                 channels[d['event'], pos] += 1
 
 
-def generate_channels_for_event(chrom, apos, bpos, signals1d, signals2d, expand, gap, depths):
-    r = find_signals_for_event(chrom, apos, bpos, signals2d, signals1d, expand=expand)
+def generate_channels_for_event(chrom, apos, bpos, signals1d, signals2d_a, signals2d_b, expand, gap, depths):
+    r = find_signals_for_event(chrom, apos, bpos, signals2d_a, signals2d_b, signals1d, expand=expand)
 
     channels = np.zeros((max(Event) + 1 + len(orphanable_events), 4 * expand + gap), dtype=np.int32)
     # TODO: handle apos - expand < 0
@@ -197,16 +193,20 @@ def main(args=sys.argv[1:]):
     a = p.parse_args(args)
 
     depths_by_chrom = read_bins(a.directory)
-    e2d = pd.read_table(f"{a.directory}/sv-channels.events2d.txt.gz", compression="gzip",
+    e2d_a = pd.read_table(f"{a.directory}/sv-channels.events2d.txt.gz", compression="gzip",
                         usecols=list(range(5)),
                         names=["a_chrom", "a_pos", "b_chrom", "b_pos", "event"],
                         dtype={"a_chrom": str, "b_chrom": str})
+    e2d_a.sort_values("a_pos", inplace=True)
+    e2d_b = e2d_a.copy(deep=True)
+    e2d_b.sort_values("b_pos", inplace=True)
+
 
     e1d = pd.read_table(f"{a.directory}/sv-channels.soft_and_insertions.txt.gz", compression="gzip",
                         usecols=list(range(3)),
                         names=["chrom", "pos", "event"],
                         dtype={"chrom": str})
-    print(f"[svchannels] read {len(e2d)} 2D events and {len(e1d)} 1d events", file=sys.stderr)
+    print(f"[svchannels] read {len(e2d_a)} 2D events and {len(e1d)} 1d events", file=sys.stderr)
     t0 = time.time()
     n = 0
     expand = a.expand
@@ -234,10 +234,10 @@ def main(args=sys.argv[1:]):
         if toks_id not in dups_toks:
             dups_toks.add(toks_id)
             sv_chan.append(
-                generate_channels_for_event(toks[0], int(toks[1]), int(toks[4]), e1d, e2d,
+                generate_channels_for_event(toks[0], int(toks[1]), int(toks[4]), e1d, e2d_a, e2d_b,
                                             expand, gap, depths_by_chrom[toks[0]])
             )
-            #plot_event(sv_chan[-1], toks, expand, gap)
+            plot_event(sv_chan[-1], toks, expand, gap)
             file_object.write(line)
 
     file_object.close()
