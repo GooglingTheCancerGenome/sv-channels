@@ -147,7 +147,7 @@ def add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right):
    
 
 def proper_pair(aln, max_insert_size):
-    if not aln.is_proper_pair: return False
+    if aln.flag & SAM_FLAGS.FPROPER_PAIR == 0: return False
     return max_insert_size is None or abs(aln.template_length) <= max_insert_size
 
 def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_quality=10, max_insert_size=None):
@@ -159,28 +159,26 @@ def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_qu
         # iteration over cigar.
         self_left = False
         self_right = False
+        chrom = aln.reference_name
 
         if aln.mapping_quality >= min_mapping_quality:
             for i, (op, length) in enumerate(aln.cigartuples):
                 if i == 0:
-                  self_left = op == BAM_CSOFT_CLIP
+                    self_left = op == BAM_CSOFT_CLIP
                 self_right = op == BAM_CSOFT_CLIP
 
                 if op == BAM_CDEL and length >= min_cigar_event_length:
-                    li.append((aln.reference_name, offset, aln.reference_name, offset + length,
+                    li.append((chrom, offset, chrom, offset + length,
                         Event.DEL_REV if aln.is_reverse else Event.DEL_FWD, aln.qname))
                 if op in CONSUME_REF:
                     offset += length
 
-        sa_tag = None
-        try:
+        if aln.has_tag("SA"):
             sa_tag = aln.get_tag("SA")
-        except KeyError:
-            continue
  
-        for sa in sa_tag.strip(';').split(";"):
-            add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right)
-            #break # only add first split read event.
+            for sa in sa_tag.strip(';').split(";"):
+                add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right)
+                #break # only add first split read event.
 
     if proper_pair(a, max_insert_size): return
     #if aln.is_proper_pair: print(abs(aln.template_length))
@@ -194,10 +192,12 @@ def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_qu
 
     if a.is_unmapped and not b.is_unmapped:
         # "right" and "left" don't make sense here, but "right" gives start and "left" gives end, which works.
-        li.append((b.reference_name, best_position(b, "right"), b.reference_name, best_position(b, "left"), Event.MATE_UNMAPPED, a.qname))
+        chrom = b.reference_name
+        li.append((chrom, best_position(b, "right"), chrom, best_position(b, "left"), Event.MATE_UNMAPPED, a.qname))
         return
     if b.is_unmapped and not a.is_unmapped:
-        li.append((a.reference_name, best_position(a, "right"), a.reference_name, best_position(a, "left"), Event.MATE_UNMAPPED, a.qname))
+        chrom = b.reference_name
+        li.append((chrom, best_position(a, "right"), chrom, best_position(a, "left"), Event.MATE_UNMAPPED, a.qname))
         return
 
 
@@ -233,37 +233,39 @@ def _set_depth(arr, s, e):
     arr[e-1] -= 1
 
 def set_depth(aln, depths, chrom_lengths, outdir, min_mapq):
-    if aln.flag & (SAM_FLAGS.FUNMAP): return
     if aln.mapping_quality < min_mapq: return
+    if aln.flag & SAM_FLAGS.FUNMAP: return
 
-    if aln.reference_name not in depths:
+    chrom = aln.reference_name
+    if chrom not in depths:
         write_depths(depths, outdir)
         depths.clear()
-        depths[aln.reference_name] = np.zeros((chrom_lengths[aln.reference_name],), dtype='i4')
+        depths[chrom] = np.zeros((chrom_lengths[chrom],), dtype='i4')
 
-    arr = depths[aln.reference_name]
+    arr = depths[chrom]
     for s, e in aln.get_blocks():
         _set_depth(arr, s, e)
 
 def soft_and_ins(aln, li, events2d, min_event_len, min_mapping_quality=15, high_nm=11):
     cigar = aln.cigartuples
 
-    try:
-        if aln.mapping_quality >= min_mapping_quality:
+    chrom = aln.reference_name
+
+    if aln.mapping_quality >= min_mapping_quality:
+        try:
             nm = aln.get_tag("NM")
             if nm >= high_nm:
                 for op, length in cigar:
                     if op == BAM_CINS or op == BAM_CDEL:
                         nm -= length
                 if nm >= high_nm:
-                    li.append((aln.reference_name, int((aln.reference_start + aln.reference_end) / 2), Event.HIGH_NM, aln.qname))
-    except KeyError:
-        pass
+                    li.append((chrom, int((aln.reference_start + aln.reference_end) / 2), Event.HIGH_NM, aln.qname))
+        except KeyError:
+            pass
 
     if cigar is None or len(cigar) < 2: return
     if cigar[0][0] == BAM_CSOFT_CLIP and cigar[-1][0] == BAM_CSOFT_CLIP:
-        r = aln.reference_name
-        events2d.append((r, aln.reference_start, r, aln.reference_end, Event.SOFT_BOTH, aln.qname))
+        events2d.append((chrom, aln.reference_start, chrom, aln.reference_end, Event.SOFT_BOTH, aln.qname))
 
     if aln.mapping_quality < min_mapping_quality: return
     # check each end of read
@@ -275,13 +277,18 @@ def soft_and_ins(aln, li, events2d, min_event_len, min_mapping_quality=15, high_
                 event = Event.SOFT_LEFT_REV if aln.is_reverse else Event.SOFT_LEFT_FWD
             else:
                 event = Event.SOFT_RIGHT_REV if aln.is_reverse else Event.SOFT_RIGHT_FWD
-            li.append((aln.reference_name, offset, event, aln.qname))
+            li.append((chrom, offset, event, aln.qname))
 
         if op == BAM_CINS and length >= min_event_len:
-            li.append((aln.reference_name, offset, Event.INS_REV if aln.is_reverse else Event.INS_FWD, aln.qname))
+            li.append((chrom, offset, Event.INS_REV if aln.is_reverse else Event.INS_FWD, aln.qname))
 
         if op in CONSUME_REF:
             offset += length
+
+def chop(li, n):
+    for i, v in enumerate(li):
+       if len(v) == n: continue
+       li[i] = tuple(list(v)[:n])
 
 def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
         min_mapping_quality=10, max_insert_size=None, debug=False, high_nm=11):
@@ -312,11 +319,11 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
             print(f"[sv-channels] i:{i} ({b.reference_name}:{b.reference_start}) processed-pairs:{processed_pairs} len pairs:{len(pairs)} events:{len(events)} reads/second:{i/(time.time() - t0):.0f}", file=sys.stderr)
             # removing the debugging stuff, otherwise memory ballons.
             if not debug:
-                softs = [tuple(list(s)[:3]) for s in softs]
-                events = [tuple(list(e)[:5]) for e in events]
+                chop(softs, 3)
+                chop(events, 5)
         elif (not debug) and (i % 100000 == 0):
-            softs = [tuple(list(s)[:3]) for s in softs]
-            events = [tuple(list(e)[:5]) for e in events]
+            chop(softs, 3)
+            chop(events, 5)
 
         if b.flag & fail_flags: continue 
 
