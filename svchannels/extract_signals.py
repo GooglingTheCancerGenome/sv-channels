@@ -3,8 +3,8 @@ import gzip
 from pysam.libcalignedsegment import SAM_FLAGS
 import numpy as np
 import time
-import numba
 import pickle
+import array
 
 import sys
 import os
@@ -218,6 +218,9 @@ def best_position(aln, side):
 
 def write_depths(depths, outdir):
     for chrom, array in depths.items():
+        # convert back to numpy array
+        array = np.frombuffer(array.tobytes(), dtype='i4')
+        array.setflags(write=1)
         np.cumsum(array, out=array)
         if len(array) > 10000000:
             print(f"[sv-channels] writing: {chrom}", file=sys.stderr)
@@ -225,12 +228,6 @@ def write_depths(depths, outdir):
                       shape=array.shape, chunks=(10000,), dtype='i4')
         d[:] = array
         del d
-
-@numba.jit(nopython=True)
-def _set_depth(arr, s, e):
-    # this is the fastest way I've found to do depth.
-    arr[s] += 1
-    arr[e-1] -= 1
 
 def set_depth(aln, depths, chrom_lengths, outdir, min_mapq):
     if aln.mapping_quality < min_mapq: return
@@ -241,10 +238,15 @@ def set_depth(aln, depths, chrom_lengths, outdir, min_mapq):
         write_depths(depths, outdir)
         depths.clear()
         depths[chrom] = np.zeros((chrom_lengths[chrom],), dtype='i4')
+        # faster to set individual values in array.array
+        b = array.array('i')
+        b.frombytes(depths[chrom].tobytes())
+        depths[chrom] = b
 
     arr = depths[chrom]
     for s, e in aln.get_blocks():
-        _set_depth(arr, s, e)
+        arr[s] += 1
+        arr[e-1] -= 1
 
 def soft_and_ins(aln, li, events2d, min_event_len, min_mapping_quality=15, high_nm=11):
     cigar = aln.cigartuples
