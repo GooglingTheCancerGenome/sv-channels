@@ -147,7 +147,7 @@ def add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right):
    
 
 def proper_pair(aln, max_insert_size):
-    if aln.flag & SAM_FLAGS.FPROPER_PAIR == 0: return False
+    if (aln.flag & SAM_FLAGS.FPROPER_PAIR) == 0: return False
     return max_insert_size is None or abs(aln.template_length) <= max_insert_size
 
 def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_quality=10, max_insert_size=None):
@@ -159,9 +159,9 @@ def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_qu
         # iteration over cigar.
         self_left = False
         self_right = False
-        chrom = aln.reference_name
 
         if aln.mapping_quality >= min_mapping_quality:
+            chrom = aln.reference_name
             for i, (op, length) in enumerate(aln.cigartuples):
                 if i == 0:
                     self_left = op == BAM_CSOFT_CLIP
@@ -180,10 +180,9 @@ def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_qu
                 add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right)
                 #break # only add first split read event.
 
-    if proper_pair(a, max_insert_size): return
-    #if aln.is_proper_pair: print(abs(aln.template_length))
 
     if a.mapping_quality < min_mapping_quality and b.mapping_quality < min_mapping_quality: return
+    if proper_pair(a, max_insert_size): return
 
     lookup = {(True, True): Event.DISCORDANT_MINUS_MINUS,
               (True, False): Event.DISCORDANT_MINUS_PLUS,
@@ -196,10 +195,9 @@ def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_qu
         li.append((chrom, best_position(b, "right"), chrom, best_position(b, "left"), Event.MATE_UNMAPPED, a.qname))
         return
     if b.is_unmapped and not a.is_unmapped:
-        chrom = b.reference_name
+        chrom = a.reference_name
         li.append((chrom, best_position(a, "right"), chrom, best_position(a, "left"), Event.MATE_UNMAPPED, a.qname))
         return
-
 
     # we know that a < b because it came first in the bam
     li.append((a.reference_name, best_position(a, "left"), b.reference_name, best_position(b, "right"), lookup[(a.is_reverse, b.is_reverse)], a.qname))
@@ -218,9 +216,8 @@ def best_position(aln, side):
 
 def write_depths(depths, outdir):
     for chrom, array in depths.items():
-        # convert back to numpy array
-        array = np.frombuffer(array.tobytes(), dtype='i4')
-        array.setflags(write=1)
+        # convert back to numpy array for cumsum
+        array = np.asarray(array, dtype='i4')
         np.cumsum(array, out=array)
         if len(array) > 10000000:
             print(f"[sv-channels] writing: {chrom}", file=sys.stderr)
