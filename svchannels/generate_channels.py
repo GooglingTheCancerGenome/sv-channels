@@ -182,7 +182,7 @@ def main(args=sys.argv[1:]):
     p.add_argument(
         '--expand',
         type=int,
-        default=250,
+        default=500,
         help="Specify width of single windows (default: %(default)s)")
     p.add_argument(
         '--gap',

@@ -56,19 +56,19 @@ class Event(enum.IntEnum):
     SPLIT_LOW_QUALITY       = enum.auto()
     SPLIT_INTER_CHROMOSOMAL = enum.auto()
 
-    MATE_UNMAPPED = enum.auto()
+    MATE_UNMAPPED = enum.auto() # 13
 
     # 2 position orphanable
     # NOTE: orphanable events must be at end of this enum
     SPLIT_PLUS_PLUS = enum.auto()
     SPLIT_MINUS_MINUS = enum.auto()
     SPLIT_MINUS_PLUS = enum.auto()
-    SPLIT_PLUS_MINUS = enum.auto()
+    SPLIT_PLUS_MINUS = enum.auto() # 17
 
-    DISCORDANT_PLUS_MINUS = enum.auto()
-    DISCORDANT_PLUS_PLUS = enum.auto()
-    DISCORDANT_MINUS_MINUS = enum.auto()
-    DISCORDANT_MINUS_PLUS = enum.auto()
+    DISCORDANT_PLUS_MINUS = enum.auto() # 18
+    DISCORDANT_PLUS_PLUS = enum.auto() # 19
+    DISCORDANT_MINUS_MINUS = enum.auto() # 20
+    DISCORDANT_MINUS_PLUS = enum.auto() # 21
 
     def __str__(self):
         return str(self.value) + "\t" + self.name
@@ -389,7 +389,7 @@ def main():
     p.add_argument("bam")
 
     a = p.parse_args()
-    assert os.path.isfile(a.bam), "[svchannels] a file (or link) is required for the [bam] arugument"
+    assert os.path.isfile(a.bam), "[svchannels] a file (or link) is required for the [bam] argument"
 
     reqd = SAM_QNAME | SAM_FLAG | SAM_RNAME | SAM_POS | SAM_MAPQ | SAM_CIGAR | SAM_RNEXT | SAM_PNEXT | SAM_TLEN | SAM_AUX
     p = 0.99
