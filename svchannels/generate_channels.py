@@ -6,7 +6,6 @@ import time
 import numpy as np
 np.set_printoptions(threshold=5000)
 
-import numba
 import zarr
 
 from matplotlib import pyplot as plt
@@ -67,7 +66,6 @@ def find_signals_for_event(chrom, apos, bpos, signals2d_a, signals2d_b, signals1
     return result
 
 
-# @numba.jit(nopython=True)
 def fill_arr(channels, events, posns, opos, offset):
     pmax = channels.shape[1]
 
