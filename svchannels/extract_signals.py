@@ -3,10 +3,11 @@ import gzip
 from pysam.libcalignedsegment import SAM_FLAGS
 import numpy as np
 import time
-import numba
 import pickle
+import array
 
 import sys
+import os
 import argparse
 import zarr
 from pyfaidx import Fasta
@@ -31,33 +32,58 @@ SAM_RGAUX = 0x00001000
 
 class Event(enum.IntEnum):
 
-    # single-read 1-position
+    # single-read 1-position.
+    # these do not include reads that are soft-clipped on both ends.
     SOFT_LEFT_FWD = enum.auto()
     SOFT_RIGHT_FWD = enum.auto()
     SOFT_LEFT_REV = enum.auto()
-    SOFT_RIGHT_REV = enum.auto()
+    SOFT_RIGHT_REV = enum.auto() # 4
 
     INS_FWD = enum.auto()
-    INS_REV = enum.auto()
+    INS_REV = enum.auto() # 6
+
+    # lots of variants with high NM are usually bad alignments
+    HIGH_NM = enum.auto()
+
+    # soft-clipped on both ends usually noise
+    SOFT_BOTH = enum.auto()
 
     # single-read 2-position
-    DEL_FWD = enum.auto()
-    DEL_REV = enum.auto()
+    DEL_FWD = enum.auto() 
+    DEL_REV = enum.auto() # 10
+
     # read-pair 2-position
+    SPLIT_LOW_QUALITY       = enum.auto()
+    SPLIT_INTER_CHROMOSOMAL = enum.auto()
+
+    MATE_UNMAPPED = enum.auto() # 13
+
+    # 2 position orphanable
+    # NOTE: orphanable events must be at end of this enum
     SPLIT_PLUS_PLUS = enum.auto()
     SPLIT_MINUS_MINUS = enum.auto()
     SPLIT_MINUS_PLUS = enum.auto()
-    SPLIT_PLUS_MINUS = enum.auto()
+    SPLIT_PLUS_MINUS = enum.auto() # 17
 
-    DISCORDANT_PLUS_MINUS = enum.auto()
-    DISCORDANT_PLUS_PLUS = enum.auto()
-    DISCORDANT_MINUS_MINUS = enum.auto()
-    DISCORDANT_MINUS_PLUS = enum.auto()
-
-    MATE_UNMAPPED = enum.auto()
+    DISCORDANT_PLUS_MINUS = enum.auto() # 18
+    DISCORDANT_PLUS_PLUS = enum.auto() # 19
+    DISCORDANT_MINUS_MINUS = enum.auto() # 20
+    DISCORDANT_MINUS_PLUS = enum.auto() # 21
 
     def __str__(self):
-        return str(self.value)
+        return str(self.value) + "\t" + self.name
+
+orphanable_events = {
+    Event.SPLIT_PLUS_PLUS,
+    Event.SPLIT_PLUS_MINUS,
+    Event.SPLIT_MINUS_MINUS,
+    Event.SPLIT_MINUS_PLUS,
+    Event.DISCORDANT_PLUS_MINUS,
+    Event.DISCORDANT_PLUS_PLUS,
+    Event.DISCORDANT_MINUS_MINUS,
+    Event.DISCORDANT_MINUS_PLUS,
+}
+
 
 CONSUME_REF = {BAM_CMATCH, BAM_CDEL, BAM_CREF_SKIP, BAM_CEQUAL, BAM_CDIFF}
 
@@ -72,16 +98,14 @@ def sa_end(pos, cigar, patt=re.compile("(\d+)(\w)")):
 
 def add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right):
     # given an SA from aln, add the appropriate event to li.
-    if aln.mapping_quality < min_mapping_quality: return
     (rname, pos, strand,cigar,mapq, nm) = sa.split(',')
     sa_left = cigar[len(cigar) - 1] != 'S'
 
     mapq = int(mapq)
-    if mapq < min_mapping_quality: return
+    #if mapq < min_mapping_quality: return
     pos = int(pos)
 
-    # NOTE: skipping interchromosomals.
-    if rname != aln.reference_name: return
+    interchromosomal = rname != aln.reference_name
 
     lookup = {('-', True): Event.SPLIT_MINUS_MINUS,
               ('+', True): Event.SPLIT_PLUS_MINUS,
@@ -98,60 +122,67 @@ def add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right):
         if sa_left:
             li.append((rname, pos, 
                        aln.reference_name, (aln.reference_start if self_left else aln.reference_end),
-                       lookup[(strand, aln.is_reverse)]))
+                       lookup[(strand, aln.is_reverse)], aln.qname))
         else:
-            li.append((rname, sa_end(pos, cigar),
-                       aln.reference_name, aln.reference_start if self_left else aln.reference_end,
-                       lookup[(strand, aln.is_reverse)]))
+            li.append((rname, sa_end(pos, cigar) - 1,
+                       aln.reference_name, aln.reference_start if self_left else aln.reference_end - 1,
+                       lookup[(strand, aln.is_reverse)], aln.qname))
     else:
         if sa_left:
-            li.append((aln.reference_name, aln.reference_start if self_left else aln.reference_end,
-                       rname, pos,
-                       lookup[(aln.is_reverse, strand)]))
+            li.append((aln.reference_name, aln.reference_start - 1 if self_left else aln.reference_end,
+                       rname, pos - 1,
+                       lookup[(aln.is_reverse, strand)], aln.qname))
         else:
             li.append((aln.reference_name, aln.reference_start if self_left else aln.reference_end,
                        rname, sa_end(pos, cigar),
-                       lookup[(aln.is_reverse, strand)]))
+                       lookup[(aln.is_reverse, strand)], aln.qname))
+    if mapq < min_mapping_quality or aln.mapping_quality < min_mapping_quality: 
+        t = list(li[-1])
+        t[4] = Event.SPLIT_LOW_QUALITY
+        li[-1] = tuple(t)
+    elif interchromosomal:
+        t = list(li[-1])
+        t[4] = Event.SPLIT_INTER_CHROMOSOMAL
+        li[-1] = tuple(t)
+   
 
+def proper_pair(aln, max_insert_size):
+    if (aln.flag & SAM_FLAGS.FPROPER_PAIR) == 0: return False
+    return max_insert_size is None or abs(aln.template_length) <= max_insert_size
 
-def proper_pair(aln):
-    # TODO: Luca can adjust this as needed.
-    return aln.is_proper_pair
-
-def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_quality=10):
+def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_quality=10, max_insert_size=None):
 
     for aln in (a, b):
         offset = aln.reference_start
-        if aln.mapping_quality < min_mapping_quality: continue
+        # NOTE: we skip, but could add these as e.g. SPLIT_LOW_QUALITY
         # we store if this read is left or right clipped here to avoid double
         # iteration over cigar.
         self_left = False
         self_right = False
 
-        for op, length in aln.cigartuples:
-            self_left = offset == aln.reference_start and op == BAM_CSOFT_CLIP
-            self_right = op == BAM_CSOFT_CLIP
+        if aln.mapping_quality >= min_mapping_quality:
+            chrom = aln.reference_name
+            for i, (op, length) in enumerate(aln.cigartuples):
+                if i == 0:
+                    self_left = op == BAM_CSOFT_CLIP
+                self_right = op == BAM_CSOFT_CLIP
 
-            if op == BAM_CDEL and length >= min_cigar_event_length:
-                li.append((aln.reference_name, offset, aln.reference_name, offset + length,
-                    Event.DEL_REV if aln.is_reverse else Event.DEL_FWD))
-            if op in CONSUME_REF:
-                offset += length
+                if op == BAM_CDEL and length >= min_cigar_event_length:
+                    li.append((chrom, offset, chrom, offset + length,
+                        Event.DEL_REV if aln.is_reverse else Event.DEL_FWD, aln.qname))
+                if op in CONSUME_REF:
+                    offset += length
 
-        sa_tag = None
-        try:
+        if aln.has_tag("SA"):
             sa_tag = aln.get_tag("SA")
-        except KeyError:
-            continue
  
-        for sa in sa_tag.strip(';').split(";"):
-            add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right)
-            break # only add first split read event.
+            for sa in sa_tag.strip(';').split(";"):
+                add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right)
+                #break # only add first split read event.
 
-    if proper_pair(a): return
 
     if a.mapping_quality < min_mapping_quality and b.mapping_quality < min_mapping_quality: return
-    # TODO: Luca, what if one read has low MQ?
+    if proper_pair(a, max_insert_size): return
 
     lookup = {(True, True): Event.DISCORDANT_MINUS_MINUS,
               (True, False): Event.DISCORDANT_MINUS_PLUS,
@@ -159,16 +190,17 @@ def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_qu
               (False, True): Event.DISCORDANT_PLUS_MINUS}
 
     if a.is_unmapped and not b.is_unmapped:
-        li.append((b.reference_name, best_position(b, "left"), b.reference_name, best_position(b, "right"), Event.MATE_UNMAPPED))
+        # "right" and "left" don't make sense here, but "right" gives start and "left" gives end, which works.
+        chrom = b.reference_name
+        li.append((chrom, best_position(b, "right"), chrom, best_position(b, "left"), Event.MATE_UNMAPPED, a.qname))
         return
     if b.is_unmapped and not a.is_unmapped:
-        li.append((a.reference_name, best_position(a, "left"), a.reference_name, best_position(a, "right"), Event.MATE_UNMAPPED))
+        chrom = a.reference_name
+        li.append((chrom, best_position(a, "right"), chrom, best_position(a, "left"), Event.MATE_UNMAPPED, a.qname))
         return
 
-
-    # TODO: how to decide which positions to use for discordant?
     # we know that a < b because it came first in the bam
-    li.append((a.reference_name, best_position(a, "left"), b.reference_name, best_position(b, "right"), lookup[(a.is_reverse, b.is_reverse)]))
+    li.append((a.reference_name, best_position(a, "left"), b.reference_name, best_position(b, "right"), lookup[(a.is_reverse, b.is_reverse)], a.qname))
 
 def best_position(aln, side):
     cigar = aln.cigartuples
@@ -184,35 +216,56 @@ def best_position(aln, side):
 
 def write_depths(depths, outdir):
     for chrom, array in depths.items():
+        # convert back to numpy array for cumsum
+        array = np.asarray(array, dtype='i4')
         np.cumsum(array, out=array)
         if len(array) > 10000000:
             print(f"[sv-channels] writing: {chrom}", file=sys.stderr)
         d = zarr.open(f"{outdir}/depths.{chrom}.bin", mode='w',
                       shape=array.shape, chunks=(10000,), dtype='i4')
         d[:] = array
-
-@numba.jit(nopython=True)
-def _set_depth(arr, s, e):
-    # this is the fastest way I've found to do depth.
-    arr[s] += 1
-    arr[e] -= 1
+        del d
 
 def set_depth(aln, depths, chrom_lengths, outdir, min_mapq):
-    if aln.flag & (SAM_FLAGS.FUNMAP): return
     if aln.mapping_quality < min_mapq: return
+    if aln.flag & SAM_FLAGS.FUNMAP: return
 
-    if aln.reference_name not in depths:
+    chrom = aln.reference_name
+    if chrom not in depths:
         write_depths(depths, outdir)
         depths.clear()
-        depths[aln.reference_name] = np.zeros((chrom_lengths[aln.reference_name],), dtype='i4')
+        depths[chrom] = np.zeros((chrom_lengths[chrom],), dtype='i4')
+        # faster to set individual values in array.array
+        b = array.array('i')
+        b.frombytes(depths[chrom].tobytes())
+        depths[chrom] = b
 
-    arr = depths[aln.reference_name]
+    arr = depths[chrom]
     for s, e in aln.get_blocks():
-        _set_depth(arr, s, e)
+        arr[s] += 1
+        arr[e-1] -= 1
 
-def soft_and_ins(aln, li, min_event_len, min_mapping_quality=15):
+def soft_and_ins(aln, li, events2d, min_event_len, min_mapping_quality=15, high_nm=11):
     cigar = aln.cigartuples
+
+    chrom = aln.reference_name
+
+    if aln.mapping_quality >= min_mapping_quality:
+        try:
+            nm = aln.get_tag("NM")
+            if nm >= high_nm:
+                for op, length in cigar:
+                    if op == BAM_CINS or op == BAM_CDEL:
+                        nm -= length
+                if nm >= high_nm:
+                    li.append((chrom, int((aln.reference_start + aln.reference_end) / 2), Event.HIGH_NM, aln.qname))
+        except KeyError:
+            pass
+
     if cigar is None or len(cigar) < 2: return
+    if cigar[0][0] == BAM_CSOFT_CLIP and cigar[-1][0] == BAM_CSOFT_CLIP:
+        events2d.append((chrom, aln.reference_start, chrom, aln.reference_end, Event.SOFT_BOTH, aln.qname))
+
     if aln.mapping_quality < min_mapping_quality: return
     # check each end of read
     offset = aln.reference_start
@@ -223,16 +276,21 @@ def soft_and_ins(aln, li, min_event_len, min_mapping_quality=15):
                 event = Event.SOFT_LEFT_REV if aln.is_reverse else Event.SOFT_LEFT_FWD
             else:
                 event = Event.SOFT_RIGHT_REV if aln.is_reverse else Event.SOFT_RIGHT_FWD
-            li.append((aln.reference_name, offset, event))
+            li.append((chrom, offset, event, aln.qname))
 
         if op == BAM_CINS and length >= min_event_len:
-            li.append((aln.reference_name, offset, Event.INS_REV if aln.is_reverse else Event.INS_FWD))
+            li.append((chrom, offset, Event.INS_REV if aln.is_reverse else Event.INS_FWD, aln.qname))
 
         if op in CONSUME_REF:
             offset += length
 
-def iterate(bam, fai, outdir="sv-channels", min_clip_len=16,
-        min_mapping_quality=10):
+def chop(li, n):
+    for i, v in enumerate(li):
+       if len(v) == n: continue
+       li[i] = tuple(list(v)[:n])
+
+def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
+        min_mapping_quality=10, max_insert_size=None, debug=False, high_nm=11):
 
     depths = {}
 
@@ -256,8 +314,15 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=16,
     # add here, then when it gets large-enough we can do something faster.
     for i, b in enumerate(bam): # TODO add option to iterate over VCF of putative SV sites.
 
-        if i == 2000000 or (i % 20000000 == 0 and i > 0):
+        if i == 2000000 or (i % 2000000 == 0 and i > 0):
             print(f"[sv-channels] i:{i} ({b.reference_name}:{b.reference_start}) processed-pairs:{processed_pairs} len pairs:{len(pairs)} events:{len(events)} reads/second:{i/(time.time() - t0):.0f}", file=sys.stderr)
+            # removing the debugging stuff, otherwise memory ballons.
+            if not debug:
+                chop(softs, 3)
+                chop(events, 5)
+        elif (not debug) and (i % 100000 == 0):
+            chop(softs, 3)
+            chop(events, 5)
 
         if b.flag & fail_flags: continue 
 
@@ -266,9 +331,9 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=16,
         if b.query_name in pairs:
             processed_pairs += 1
             a = pairs.pop(b.query_name)
-            soft_and_ins(a, softs, min_clip_len, min_mapping_quality)
-            soft_and_ins(b, softs, min_clip_len, min_mapping_quality)
-            add_events(a, b, events, min_clip_len)
+            soft_and_ins(a, softs, events, min_clip_len, min_mapping_quality, high_nm)
+            soft_and_ins(b, softs, events, min_clip_len, min_mapping_quality, high_nm)
+            add_events(a, b, events, min_clip_len, min_cigar_event_length=10, max_insert_size=max_insert_size)
         else:
             pairs[b.query_name] = b
 
@@ -277,11 +342,41 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=16,
 
     return dict(soft_and_insertions=softs, events=events, depths=depths)
 
-def write_text(li, path):
+def find_max_insert_size(bam_path, reference, p=0.985):
+    assert p < 1 and p > 0, "expected value between 0 and 1 in find_max_insert_size"
+    reqd = SAM_FLAG | SAM_RNAME | SAM_POS | SAM_MAPQ | SAM_RNEXT | SAM_PNEXT
+    bam = pysam.AlignmentFile(bam_path, "r", threads=2,
+            format_options=[("required_fields=%d" % reqd).encode()],
+            reference_filename=reference)
+    fail_flags = (SAM_FLAGS.FREAD2 | SAM_FLAGS.FQCFAIL | SAM_FLAGS.FDUP | SAM_FLAGS.FSECONDARY | SAM_FLAGS.FSUPPLEMENTARY | SAM_FLAGS.FUNMAP | SAM_FLAGS.FMUNMAP)
+
+    isizes = []
+    skip = 400000
+    n = 300000
+    for aln in bam:
+        flag = aln.flag
+        if aln.mapping_quality < 30 or (flag & fail_flags): continue
+        if aln.reference_id != aln.next_reference_id: continue
+        if (flag & SAM_FLAGS.FREVERSE) == (flag & SAM_FLAGS.FMREVERSE): continue
+        isizes.append(abs(aln.template_length))
+        if len(isizes) - skip > n: break
+    if len(isizes) - skip > n: isizes = isizes[skip:]
+    isizes.sort()
+    return isizes[max(0, int(len(isizes) * p - 1))]
+
+def write_text(li, path, debug=False):
     li.sort()
     fh = gzip.open(path, mode="wt")
-    for row in li:
-        print("\t".join(str(x) for x in row), file=fh)
+    if debug:
+        for row in li:
+            print("\t".join(str(x) for x in row), file=fh)
+    else:
+        for row in li:
+            row = list(row)
+            if isinstance(row[-1], str): # read-name
+                row = row[:-1]
+            row[-1] = row[-1].value
+            print("\t".join(str(x) for x in row), file=fh)
     fh.close()
 
 def main():
@@ -289,12 +384,18 @@ def main():
     p.add_argument("-o", "--out-dir", help="sample-specific output directory",
             default="sv-channels")
     p.add_argument("--min-mapping-quality", help="skip reads with mapping quality below this value (default=%(default)s)", type=int, default=10)
+    p.add_argument("--debug", help="save debug information in output txt.gz files", action="store_true", default=False)
     p.add_argument("reference")
     p.add_argument("bam")
 
     a = p.parse_args()
+    assert os.path.isfile(a.bam), "[svchannels] a file (or link) is required for the [bam] argument"
 
     reqd = SAM_QNAME | SAM_FLAG | SAM_RNAME | SAM_POS | SAM_MAPQ | SAM_CIGAR | SAM_RNEXT | SAM_PNEXT | SAM_TLEN | SAM_AUX
+    p = 0.99
+    
+    max_insert = find_max_insert_size(a.bam, a.reference, p)
+    print(f"[sv-channels] calculated insert size of {p * 100:.2f}th percentile as: {max_insert}", file=sys.stderr)
 
     bam = pysam.AlignmentFile(a.bam, "r", threads=2,
             format_options=[("required_fields=%d" % reqd).encode()],
@@ -302,7 +403,7 @@ def main():
 
     fai = Fasta(a.reference)
 
-    d = iterate(bam, fai, a.out_dir, min_mapping_quality=a.min_mapping_quality)
+    d = iterate(bam, fai, a.out_dir, min_mapping_quality=a.min_mapping_quality, max_insert_size=max_insert, debug=a.debug, high_nm=10)
     write_text(d["soft_and_insertions"], f"{a.out_dir}/sv-channels.soft_and_insertions.txt.gz")
     write_text(d["events"], f"{a.out_dir}/sv-channels.events2d.txt.gz")
 

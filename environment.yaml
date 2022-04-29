@@ -28,4 +28,3 @@ dependencies:
   - scikit-optimize
   - pyfaidx
   - zarr
-  - numba
