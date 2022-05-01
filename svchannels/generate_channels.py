@@ -235,7 +235,7 @@ def main(args=sys.argv[1:]):
                 generate_channels_for_event(toks[0], int(toks[1]), int(toks[4]), e1d, e2d_a, e2d_b,
                                             expand, gap, depths_by_chrom[toks[0]])
             )
-            plot_event(sv_chan[-1], toks, expand, gap)
+            #plot_event(sv_chan[-1], toks, expand, gap)
             file_object.write(line)
 
     file_object.close()

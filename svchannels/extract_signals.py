@@ -102,7 +102,7 @@ def add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right):
     sa_left = cigar[len(cigar) - 1] != 'S'
 
     mapq = int(mapq)
-    #if mapq < min_mapping_quality: return
+    if min(mapq, aln.mapping_quality) == 0: return
     pos = int(pos)
 
     interchromosomal = rname != aln.reference_name
@@ -120,7 +120,7 @@ def add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right):
 
     if pos < aln.reference_start:
         if sa_left:
-            li.append((rname, pos, 
+            li.append((rname, pos,
                        aln.reference_name, (aln.reference_start if self_left else aln.reference_end),
                        lookup[(strand, aln.is_reverse)], aln.qname))
         else:
@@ -136,7 +136,7 @@ def add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right):
             li.append((aln.reference_name, aln.reference_start if self_left else aln.reference_end,
                        rname, sa_end(pos, cigar),
                        lookup[(aln.is_reverse, strand)], aln.qname))
-    if mapq < min_mapping_quality or aln.mapping_quality < min_mapping_quality: 
+    if 0 < min(mapq, aln.mapping_quality) < min_mapping_quality:
         t = list(li[-1])
         t[4] = Event.SPLIT_LOW_QUALITY
         li[-1] = tuple(t)
@@ -326,7 +326,7 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
             chop(softs, 3)
             chop(events, 5)
 
-        if b.flag & fail_flags: continue 
+        if b.flag & fail_flags: continue
 
         set_depth(b, depths, chrom_lengths, outdir, min_mapping_quality)
 
@@ -341,8 +341,8 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
 
     print(f"[sv-channels] processed-pairs:{processed_pairs} len pairs:{len(pairs)} events:{len(events)}", file=sys.stderr)
     write_depths(depths, outdir)
-
-    return dict(soft_and_insertions=softs, events=events, depths=depths)
+    write_text(softs, f"{outdir}/sv-channels.soft_and_insertions.txt.gz")
+    write_text(events, f"{outdir}/sv-channels.events2d.txt.gz")
 
 def find_max_insert_size(bam_path, reference, p=0.985):
     assert p < 1 and p > 0, "expected value between 0 and 1 in find_max_insert_size"
@@ -405,9 +405,8 @@ def main():
 
     fai = Fasta(a.reference)
 
-    d = iterate(bam, fai, a.out_dir, min_mapping_quality=a.min_mapping_quality, max_insert_size=max_insert, debug=a.debug, high_nm=10)
-    write_text(d["soft_and_insertions"], f"{a.out_dir}/sv-channels.soft_and_insertions.txt.gz")
-    write_text(d["events"], f"{a.out_dir}/sv-channels.events2d.txt.gz")
+    iterate(bam, fai, a.out_dir, min_mapping_quality=a.min_mapping_quality, max_insert_size=max_insert, debug=a.debug, high_nm=10)
+    print("[sv-channels] done with iteration", file=sys.stderr)
 
 
 if __name__ == "__main__":
