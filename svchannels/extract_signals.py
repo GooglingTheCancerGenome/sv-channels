@@ -361,9 +361,7 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
 
 def find_max_insert_size(bam_path, reference, p=0.985):
     assert p < 1 and p > 0, "expected value between 0 and 1 in find_max_insert_size"
-    reqd = SAM_FLAG | SAM_RNAME | SAM_POS | SAM_MAPQ | SAM_RNEXT | SAM_PNEXT
     bam = pysam.AlignmentFile(bam_path, "r", threads=2,
-            format_options=[("required_fields=%d" % reqd).encode()],
             reference_filename=reference)
     fail_flags = (SAM_FLAGS.FREAD2 | SAM_FLAGS.FQCFAIL | SAM_FLAGS.FDUP | SAM_FLAGS.FSECONDARY | SAM_FLAGS.FSUPPLEMENTARY | SAM_FLAGS.FUNMAP | SAM_FLAGS.FMUNMAP)
 
