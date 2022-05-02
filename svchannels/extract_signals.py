@@ -286,10 +286,12 @@ def soft_and_ins(aln, li, events2d, min_event_len, min_mapping_quality=15, high_
         if op in CONSUME_REF:
             offset += length
 
-def chop(li, n):
-    for i, v in enumerate(li):
+def chop(li, n, look_back):
+    if look_back == 0: return
+    for i, v in enumerate(li[-look_back:], start=max(0, len(li) - look_back)):
        if len(v) == n: continue
-       li[i] = tuple(list(v)[:n])
+       assert li[i] == v
+       li[i] = v[:n]
 
 def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
         min_mapping_quality=10, max_insert_size=None, debug=False, high_nm=11):
@@ -312,6 +314,13 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
 
     fail_flags = (SAM_FLAGS.FQCFAIL | SAM_FLAGS.FDUP | SAM_FLAGS.FSECONDARY | SAM_FLAGS.FSUPPLEMENTARY)
 
+    # this is stupid, but helps performance
+    # by default we store read name and other diagnostic info in softs and
+    # events. if --debug is not used, then we use `chop` to remove that.
+    # this tells chop how far back to look so it doesn't need to iterate over
+    # the entire list.
+    chop_mod = 400000
+
     # instead of incrementing numpy array for every cigar event.
     # add here, then when it gets large-enough we can do something faster.
     for i, b in enumerate(bam): # TODO add option to iterate over VCF of putative SV sites.
@@ -319,13 +328,13 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
         if i == 2000000 or (i % 5000000 == 0 and i > 0):
             print(f"[sv-channels] i:{i} ({b.reference_name}:{b.reference_start}) processed-pairs:{processed_pairs} len pairs:{len(pairs)} events:{len(events)} reads/second:{i/(time.time() - t0):.0f}", file=sys.stderr)
             sys.stderr.flush()
+
+        if not debug:
             # removing the debugging stuff, otherwise memory ballons.
-            if not debug:
-                chop(softs, 3)
-                chop(events, 5)
-        elif (not debug) and (i % 100000 == 0):
-            chop(softs, 3)
-            chop(events, 5)
+            if len(softs) % chop_mod == 0:
+                chop(softs, 3, chop_mod)
+            if len(events) % chop_mod == 0:
+                chop(events, 5, chop_mod)
 
         if b.flag & fail_flags: continue
 
@@ -345,6 +354,9 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
 
     print(f"[sv-channels] processed-pairs:{processed_pairs} len pairs:{len(pairs)} events:{len(events)}", file=sys.stderr)
     write_depths(depths, outdir)
+    if not debug:
+        chop(softs, 3, chop_mod)
+        chop(events, 5, chop_mod)
     write_text(softs, f"{outdir}/sv-channels.soft_and_insertions.txt.gz")
     write_text(events, f"{outdir}/sv-channels.events2d.txt.gz")
 
