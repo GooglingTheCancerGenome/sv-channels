@@ -8,6 +8,7 @@ import array
 
 import sys
 import os
+from pathlib import Path
 import argparse
 import zarr
 from pyfaidx import Fasta
@@ -181,8 +182,6 @@ def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_qu
                 add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right)
                 #break # only add first split read event.
 
-    if proper_pair(a, max_insert_size): return
-    #if aln.is_proper_pair: print(abs(aln.template_length))
 
     if a.mapping_quality < min_mapping_quality and b.mapping_quality < min_mapping_quality: return
     if proper_pair(a, max_insert_size): return
@@ -217,25 +216,25 @@ def best_position(aln, side):
 
     return aln.reference_end
 
-def write_depths(depths, outdir):
+def write_depths(depths, zarr_root):
     for chrom, array in depths.items():
         # convert back to numpy array for cumsum
         array = np.asarray(array, dtype='i4')
         np.cumsum(array, out=array)
+        d = zarr_root.empty(chrom, shape=array.shape, chunks=(10000,), dtype='i4')
         if len(array) > 10000000:
-            print(f"[sv-channels] writing: {chrom}", file=sys.stderr)
-        d = zarr.open(f"{outdir}/depths.{chrom}.bin", mode='w',
-                      shape=array.shape, chunks=(10000,), dtype='i4')
+            print(f"[sv-channels] writing: {d}", file=sys.stderr)
         d[:] = array
+        zarr_root.chunk_store.flush()
         del d
 
-def set_depth(aln, depths, chrom_lengths, outdir, min_mapq):
+def set_depth(aln, depths, chrom_lengths, zarr_root, min_mapq):
     if aln.mapping_quality < min_mapq: return
     if aln.flag & SAM_FLAGS.FUNMAP: return
 
     chrom = aln.reference_name
     if chrom not in depths:
-        write_depths(depths, outdir)
+        write_depths(depths, zarr_root)
         depths.clear()
         depths[chrom] = np.zeros((chrom_lengths[chrom],), dtype='i4')
         # faster to set individual values in array.array
@@ -301,6 +300,9 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
 
     t0 = time.time()
 
+    z = zarr.ZipStore(f'{outdir}/depths.zarr.zip', mode='w')
+    zarr_root = zarr.group(store=z, overwrite=True)
+
     # keep reads in here. only do anything with pairs. if a read is already in
     # here we have a pair since we are skipping supplementary and secondary.
     pairs = {}
@@ -339,7 +341,7 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
 
         if b.flag & fail_flags: continue
 
-        set_depth(b, depths, chrom_lengths, outdir, min_mapping_quality)
+        set_depth(b, depths, chrom_lengths, zarr_root, min_mapping_quality)
 
         if b.query_name in pairs:
             processed_pairs += 1
@@ -356,12 +358,13 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
             pairs[b.query_name] = b
 
     print(f"[sv-channels] processed-pairs:{processed_pairs} len pairs:{len(pairs)} events:{len(events)}", file=sys.stderr)
-    write_depths(depths, outdir)
+    write_depths(depths, zarr_root)
     if not debug:
         chop(softs, 3, chop_mod)
         chop(events, 5, chop_mod)
     write_text(softs, f"{outdir}/sv-channels.soft_and_insertions.txt.gz")
     write_text(events, f"{outdir}/sv-channels.events2d.txt.gz")
+    z.close()
 
 def find_max_insert_size(bam_path, reference, p=0.985):
     assert p < 1 and p > 0, "expected value between 0 and 1 in find_max_insert_size"
@@ -411,7 +414,7 @@ def main():
     assert os.path.isfile(a.bam), "[svchannels] a file (or link) is required for the [bam] argument"
 
     reqd = SAM_QNAME | SAM_FLAG | SAM_RNAME | SAM_POS | SAM_MAPQ | SAM_CIGAR | SAM_RNEXT | SAM_PNEXT | SAM_TLEN | SAM_AUX
-    p = 0.99
+    p = 0.995
 
     max_insert = find_max_insert_size(a.bam, a.reference, p)
     print(f"[sv-channels] calculated insert size of {p * 100:.2f}th percentile as: {max_insert}", file=sys.stderr)
@@ -421,6 +424,13 @@ def main():
             reference_filename=a.reference)
 
     fai = Fasta(a.reference)
+
+    # WTAF: https://stackoverflow.com/a/67299169
+    od = Path(a.out_dir)
+    for parent in reversed(od.parents):
+        parent.mkdir(mode=0o774, exist_ok=True)
+    od.mkdir(mode=0o774, exist_ok=True)
+
 
     iterate(bam, fai, a.out_dir, min_mapping_quality=a.min_mapping_quality, max_insert_size=max_insert, debug=a.debug, high_nm=10)
     print("[sv-channels] done with iteration", file=sys.stderr)
