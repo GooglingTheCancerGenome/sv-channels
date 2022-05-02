@@ -49,7 +49,7 @@ class Event(enum.IntEnum):
     SOFT_BOTH = enum.auto()
 
     # single-read 2-position
-    DEL_FWD = enum.auto() 
+    DEL_FWD = enum.auto()
     DEL_REV = enum.auto() # 10
 
     # read-pair 2-position
@@ -154,7 +154,6 @@ def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_qu
 
     for aln in (a, b):
         offset = aln.reference_start
-        # NOTE: we skip, but could add these as e.g. SPLIT_LOW_QUALITY
         # we store if this read is left or right clipped here to avoid double
         # iteration over cigar.
         self_left = False
@@ -325,7 +324,7 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
     # add here, then when it gets large-enough we can do something faster.
     for i, b in enumerate(bam): # TODO add option to iterate over VCF of putative SV sites.
 
-        if i == 2000000 or (i % 5000000 == 0 and i > 0):
+        if i == 2000000 or (i % 10000000 == 0 and i > 0):
             print(f"[sv-channels] i:{i} ({b.reference_name}:{b.reference_start}) processed-pairs:{processed_pairs} len pairs:{len(pairs)} events:{len(events)} reads/second:{i/(time.time() - t0):.0f}", file=sys.stderr)
             sys.stderr.flush()
 
