@@ -172,6 +172,8 @@ def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_qu
                 if op in CONSUME_REF:
                     offset += length
 
+        # TODO: move this to soft_and_ins so we can drop all tags and save memory
+        # also require calling soft_and_ins earlier
         if aln.has_tag("SA"):
             sa_tag = aln.get_tag("SA")
 
