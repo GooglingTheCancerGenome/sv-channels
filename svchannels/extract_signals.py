@@ -347,8 +347,10 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
             add_events(a, b, events, min_clip_len, min_cigar_event_length=10, max_insert_size=max_insert_size)
         else:
             # we dont use sequence or base-qualities so set them to empty to reduce memory.
-            b.query_sequence = None
-            b.query_qualities = None
+            # only do it for stuff that's far away.
+            if b.reference_id != b.next_reference_id or (b.next_reference_start - b.reference_start) > 100000:
+              b.query_sequence = None
+              b.query_qualities = None
             pairs[b.query_name] = b
 
     print(f"[sv-channels] processed-pairs:{processed_pairs} len pairs:{len(pairs)} events:{len(events)}", file=sys.stderr)
