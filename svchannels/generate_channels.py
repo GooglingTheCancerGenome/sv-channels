@@ -2,6 +2,8 @@ import sys
 import os
 import re
 import time
+from pyfaidx import Fasta
+
 
 import numpy as np
 np.set_printoptions(threshold=5000)
@@ -88,14 +90,17 @@ def fill_orphan_dicts(channels, dicts, opos, offset):
                 channels[d['event'], pos] += 1
 
 
-def generate_channels_for_event(chrom, apos, bpos, signals1d, signals2d_a, signals2d_b, expand, gap, depths):
+def generate_channels_for_event(chrom, apos, bpos, signals1d, signals2d_a, signals2d_b, expand, gap, depths, fasta):
     r = find_signals_for_event(chrom, apos, bpos, signals2d_a, signals2d_b, signals1d, expand=expand)
 
-    channels = np.zeros((max(Event) + 1 + len(orphanable_events), 4 * expand + gap), dtype=np.int32)
+    channels = np.zeros((max(Event) + 1 + len(orphanable_events) + N_onehot, 4 * expand + gap), dtype=np.int32)
     # TODO: handle apos - expand < 0
-    channels[0, 2*expand: 2 * expand + gap] = 0 # -1
+    #channels[0, 2*expand: 2 * expand + gap] = 0 # -1
     channels[0, 0:2 * expand] = depths[apos - expand:apos + expand]
     channels[0, 2 * expand + gap:] = depths[bpos - expand:bpos + expand]
+
+    channels[-N_onehot:, 0: 2 * expand] = onehot(fasta, chrom, apos - expand, apos + expand)
+    channels[-N_onehot:, 2 * expand + gap:] = onehot(fasta, chrom, bpos - expand, bpos + expand)
 
     fill_arr(channels, np.asarray(r["shared"]["event"]), np.asarray(r["shared"]["a_pos"]), apos, expand)
     fill_arr(channels, np.asarray(r["shared"]["event"]), np.asarray(r["shared"]["b_pos"]), bpos, 3 * expand + gap)
@@ -153,11 +158,12 @@ def plot_event(chan, toks, expand, gap):
     axes[1].scatter(xs, ys, c=vals, s = 36, marker="s")
     axes[1].set_xlabel("relative position")
     axes[1].set_ylabel("channel")
-    axes[1].set_yticks(range(max(Event) + len(orphanable_events)))
+    axes[1].set_yticks(range(max(Event) + len(orphanable_events) + len(ONE_HOT)))
     axes[1].set_yticklabels(
                [f"{Event(i + 1).name} ({counts[i]})" for i in range(max(Event))] + 
-               [f"orphan: {Event(i).name} ({counts[i + len(orphanable_events) - 1]})" for i in range(max(Event) + 1 - len(orphanable_events), max(Event) + 1) ])
-    axes[1].set_ylim(-1, max(Event) + len(orphanable_events))
+               [f"orphan: {Event(i).name} ({counts[i + len(orphanable_events) - 1]})" for i in range(max(Event) + 1 - len(orphanable_events), max(Event) + 1) ] +  
+               [o for o in ONE_HOT])
+    axes[1].set_ylim(-1, max(Event) + len(orphanable_events) + len(ONE_HOT))
     axes[1].set_xlim(0, len(depth))
     axes[0].plot(depth)
     axes[0].axvline(x=expand, zorder=-1, ls='--', c='gray')
@@ -170,6 +176,17 @@ def plot_event(chan, toks, expand, gap):
 
     plt.tight_layout()
     plt.show()
+
+ONE_HOT = [np.array(l, dtype='c') for l in "ACTGN"]
+N_onehot = len(ONE_HOT) # ACTGN
+
+def onehot(fa, chrom, start, end, ATGC=ONE_HOT):
+    fr = np.array(fa.get_seq(chrom, start + 1, end), dtype='c') # get_seq expects 1-based coords
+    oh = np.zeros((len(ATGC), end - start), dtype=np.int8)
+    for i, l in enumerate(ATGC):
+        oh[i] = (fr == l)
+    return oh
+
 
 def main(args=sys.argv[1:]):
     import argparse
@@ -187,6 +204,7 @@ def main(args=sys.argv[1:]):
         type=int,
         default=10,
         help="Specify width of gap (default: %(default)s)")
+    p.add_argument("--reference", help="reference fasta file", required=True)
 
     a = p.parse_args(args)
 
@@ -199,6 +217,7 @@ def main(args=sys.argv[1:]):
     e2d_b = e2d_a.copy(deep=True)
     e2d_b.sort_values("b_pos", inplace=True)
 
+    fasta = Fasta(a.reference, as_raw=True)
 
     e1d = pd.read_table(f"{a.directory}/sv-channels.soft_and_insertions.txt.gz", compression="gzip",
                         usecols=list(range(3)),
@@ -233,7 +252,7 @@ def main(args=sys.argv[1:]):
             dups_toks.add(toks_id)
             sv_chan.append(
                 generate_channels_for_event(toks[0], int(toks[1]), int(toks[4]), e1d, e2d_a, e2d_b,
-                                            expand, gap, depths_by_chrom[toks[0]])
+                                            expand, gap, depths_by_chrom[toks[0]], fasta)
             )
             #plot_event(sv_chan[-1], toks, expand, gap)
             file_object.write(line)
