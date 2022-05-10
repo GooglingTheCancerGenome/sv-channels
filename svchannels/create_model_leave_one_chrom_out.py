@@ -10,7 +10,6 @@ import tensorflow as tf
 import numpy as np
 from time import time
 from sklearn.utils.class_weight import compute_class_weight
-from sklearn.model_selection import train_test_split
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.regularizers import l2
 from tensorflow.keras.optimizers import Adam
@@ -28,15 +27,16 @@ dim_cnn_fc_nodes = Integer(low=4, high=10, name='cnn_fc_nodes')
 dim_init_learning_rate = Real(low=1e-4, high=1e-1, prior='log-uniform', name='cnn_init_learning_rate')
 dim_regularization_rate = Real(low=1e-4, high=1e-1, prior='log-uniform', name='cnn_regularization_rate')
 
-dimensions = [dim_cnn_filters, dim_cnn_layers, dim_cnn_kernel_size, dim_cnn_fc_nodes,
-              dim_init_learning_rate, dim_regularization_rate]
+dimensions = [dim_cnn_filters, dim_cnn_layers, dim_cnn_kernel_size,
+              dim_cnn_fc_nodes, dim_init_learning_rate, dim_regularization_rate]
 
 default_parameters = [8, 1, 7, 6, 1e-4, 1e-1]
 
-best_accuracy = 0.0
+global best_accuracy = 0.0
 
 
 def load_windows(win_file, lab_file):
+
     X = zarr.load(win_file)
     with gzip.GzipFile(lab_file, 'r') as fin:
         y = json.loads(fin.read().decode('utf-8'))
@@ -45,7 +45,6 @@ def load_windows(win_file, lab_file):
 
 def create_model(X, outputdim, learning_rate, regularization_rate,
                  filters, layers, kernel_size, fc_nodes):
-
     weightinit = 'lecun_uniform'  # weight initialization
 
     model = Sequential()
@@ -86,8 +85,7 @@ def create_model(X, outputdim, learning_rate, regularization_rate,
 @use_named_args(dimensions=dimensions)
 def fitness(cnn_filters, cnn_layers, cnn_kernel_size, cnn_fc_nodes,
             cnn_init_learning_rate, cnn_regularization_rate):
-    global best_accuracy
-    # best_accuracy = 0.0
+
     print()
     print('cnn_filters: ', cnn_filters)
     print('cnn_layers: ', cnn_layers)
@@ -143,67 +141,70 @@ def optimize(args):
 
     global train_X, val_X, train_y, val_y, class_weights, batch_size, max_epoch, path_best_model
 
+    mapclasses = {args.svtype: 0, 'no' + args.svtype: 1}
+
     randomState = 46
+
     np.random.seed(randomState)
     tf.random.set_seed(randomState)
 
     batch_size = args.batch_size
     max_epoch = args.epochs
-    path_best_model = args.model
 
     # chr_list = [str(i) for i in np.arange(1, 23)]
 
     windows = args.windows.split(',')
     labels = args.labels.split(',')
+    samples = args.samples.split(',')
 
     X = []
     y = []
     win_pos = []
-    for w, l in zip(windows, labels):
+    samples_list = []
+
+    for w, l, s in zip(windows, labels, samples):
+
         partial_X, partial_y = load_windows(w, l)
         X.extend(partial_X)
         y.extend(partial_y.values())
         win_pos.extend(partial_y.keys())
+        # add sample name
+        samples_list.extend([s]*len(partial_y))
 
     X = np.stack(X, axis=0)
 
     first_chrom = [w.split('_')[0] for w in win_pos]
 
-    val_X_orig, val_y_orig = load_windows(args.validation_windows, args.validation_labels)
-    val_y_values = list(val_y_orig.values())
-    val_win_pos = val_y_orig.keys()
+    val_chrom_idx = [i for i, k in enumerate(first_chrom) if k == args.validation_chr]
+    val_X = X[val_chrom_idx]
+    val_y = [y[i] for i in val_chrom_idx]
+    val_y = np.array([mapclasses[i] for i in val_y])
+    val_y = to_categorical(val_y, num_classes=2)
 
-    val_first_chrom = [w.split('_')[0] for w in val_win_pos]
+    chrom_set = sorted(set(first_chrom))
+    if args.validation_chr in chrom_set:
+        chrom_set.remove(args.validation_chr)
 
-    for c in set(first_chrom):
-        print('Running optimization leaving out chromosome {}'.format(c))
+    for c in chrom_set:
 
-        chrom_idx = [i for i, k in enumerate(first_chrom) if k != c]
+        print('Running optimization leaving chromosome {} out'.format(c))
+
+        path_best_model = c + '.' + args.model
+
+        chrom_idx = [i for i, k in enumerate(first_chrom) if k != c and k != args.validation_chr]
         chrom_idx = np.asarray(chrom_idx)
 
         train_X = X[chrom_idx]
         y_nochrom = [y[i] for i in chrom_idx]
 
-        mapclasses = {args.svtype: 0, 'no' + args.svtype: 1}
-
         y_nochrom = np.array([mapclasses[i] for i in y_nochrom])
         classes = np.array(np.unique(y_nochrom))
         y_lab = np.asarray(y_nochrom)
+
         class_weights = compute_class_weight('balanced', classes, y_lab)
         class_weights = {i: v for i, v in enumerate(class_weights)}
 
         train_y = to_categorical(y_lab, num_classes=2)
-
-        val_chrom_idx = [i for i, k in enumerate(val_first_chrom) if k != c]
-
-        val_X = val_X_orig[val_chrom_idx]
-        val_y = [val_y_values[i] for i in val_chrom_idx]
-
-        val_y = np.array([mapclasses[i] for i in val_y])
-        val_y = to_categorical(val_y, num_classes=2)
-
-        # train_X, val_X, train_y, val_y = train_test_split(
-        #    X, y, test_size=args.validation_split, random_state=2, stratify=y, shuffle=True)
 
         search_result = gp_minimize(func=fitness, dimensions=dimensions, acq_func='EI',
                                     n_calls=args.ncalls, x0=default_parameters, random_state=7, n_jobs=-1)
@@ -213,6 +214,7 @@ def optimize(args):
 
 
 def main():
+
     parser = argparse.ArgumentParser(description='Optimize model')
 
     parser.add_argument('-w',
@@ -225,6 +227,11 @@ def main():
                         type=str,
                         default='labels/labels.json.gz,labels/labels.json.gz',
                         help="Comma separated list of JSON.GZ file for labels")
+    parser.add_argument('-sm',
+                        '--samples',
+                        type=str,
+                        default='SAMPLE1,SAMPLE2',
+                        help="Comma separated list of sample names")
     parser.add_argument('-l',
                         '--logfile',
                         default='optimize.log',
@@ -245,15 +252,10 @@ def main():
                         default=50,
                         help="Number of calls of the fitness function")
     parser.add_argument('-val',
-                        '--validation_windows',
+                        '--validation_chr',
                         type=str,
-                        default='sv_chan.zarr',
-                        help="Windows used for validation")
-    parser.add_argument('-val_lab',
-                        '--validation_labels',
-                        type=str,
-                        default='labels/labels.json.gz',
-                        help="JSON.GZ file for labels")
+                        default='chr22',
+                        help="Chromosome used for validation")
     parser.add_argument('-s',
                         '--svtype',
                         type=str,
@@ -277,7 +279,9 @@ def main():
                         filemode='w',
                         level=logging.INFO)
     t0 = time()
+
     optimize(args)
+
     logging.info('Elapsed time = %f seconds' %
                  (time() - t0))
 
