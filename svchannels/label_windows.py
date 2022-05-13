@@ -267,11 +267,6 @@ def main():
                         type=str,
                         default='../data/test.bedpe',
                         help="Specify ground truth VCF/BEDPE file")
-    parser.add_argument('-o',
-                        '--out',
-                        type=str,
-                        default='labels.json.gz',
-                        help="Specify output")
     parser.add_argument('-p',
                         '--outputpath',
                         type=str,

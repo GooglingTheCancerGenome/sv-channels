@@ -199,6 +199,7 @@ def main(args=sys.argv[1:]):
         type=int,
         default=500,
         help="Specify width of single windows (default: %(default)s)")
+    p.add_argument("--prefix", help="output prefix", default="")
     p.add_argument(
         '--gap',
         type=int,
@@ -231,7 +232,7 @@ def main(args=sys.argv[1:]):
 
     sv_chan = []
     # write the lines considered to file
-    file_object = open('sv_positions.bedpe', 'w')
+    file_object = open(a.prefix + 'sv_positions.bedpe', 'w')
 
     dups_toks = set()
     for line in xopen(a.bedpe):
@@ -262,7 +263,7 @@ def main(args=sys.argv[1:]):
 
     print(f"shape of sv_chan array is {sv_chan.shape}", file=sys.stderr)
 
-    zarr.save('sv_chan.zarr', sv_chan)
+    zarr.save(a.prefix + 'sv_chan.zarr', sv_chan)
 
     t = time.time() - t0
     print(f"generated {n} channels in {t:.1f} seconds ({n/t:.0f} SVs/second)", file=sys.stderr)
