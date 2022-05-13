@@ -41,7 +41,7 @@ def find_signals_for_event(chrom, apos, bpos, signals2d_a, signals2d_b, signals1
     result['left-only'] = subset[~selection][["a_chrom", "a_pos", "event"]]
     result['left-only'].columns = ("chrom", "pos", "event")
     result['left-only'] = result['left-only'].to_dict(orient='records')
- 
+
     # now repeat for B side.
     bidxl = np.searchsorted(signals2d_b["b_pos"], bpos - expand, side="left")
     bidxr = np.searchsorted(signals2d_b["b_pos"], bpos + expand, side="right")
@@ -80,7 +80,7 @@ def fill_orphan_dicts(channels, dicts, opos, offset):
     pmax = channels.shape[1]
     m = max(Event) - 1
     for d in dicts:
-        
+
         pos = d['pos'] - opos + offset
         if pos < pmax and pos >= 0:
 
@@ -89,11 +89,14 @@ def fill_orphan_dicts(channels, dicts, opos, offset):
             else:
                 channels[d['event'], pos] += 1
 
+ONE_HOT = [np.array(l, dtype='c') for l in "ACTGN"]
+N_onehot = len(ONE_HOT) # ACTGN
 
 def generate_channels_for_event(chrom, apos, bpos, signals1d, signals2d_a, signals2d_b, expand, gap, depths, fasta):
     r = find_signals_for_event(chrom, apos, bpos, signals2d_a, signals2d_b, signals1d, expand=expand)
 
-    channels = np.zeros((max(Event) + 1 + len(orphanable_events) + N_onehot, 4 * expand + gap), dtype=np.int32)
+    ChannelShape = (max(Event) + 1 + len(orphanable_events) + N_onehot, 4 * expand + gap)
+    channels = np.zeros(ChannelShape, dtype=np.int32)
     # TODO: handle apos - expand < 0
     #channels[0, 2*expand: 2 * expand + gap] = 0 # -1
     channels[0, 0:2 * expand] = depths[apos - expand:apos + expand]
@@ -177,8 +180,6 @@ def plot_event(chan, toks, expand, gap):
     plt.tight_layout()
     plt.show()
 
-ONE_HOT = [np.array(l, dtype='c') for l in "ACTGN"]
-N_onehot = len(ONE_HOT) # ACTGN
 
 def onehot(fa, chrom, start, end, ATGC=ONE_HOT):
     fr = np.array(fa.get_seq(chrom, start + 1, end), dtype='c') # get_seq expects 1-based coords
@@ -226,15 +227,16 @@ def main(args=sys.argv[1:]):
                         dtype={"chrom": str})
     print(f"[svchannels] read {len(e2d_a)} 2D events and {len(e1d)} 1d events", file=sys.stderr)
     t0 = time.time()
-    n = 0
     expand = a.expand
     gap = a.gap
 
-    sv_chan = []
+
     # write the lines considered to file
     file_object = open(a.prefix + 'sv_positions.bedpe', 'w')
 
     dups_toks = set()
+    events = [] # we iterate over events first so we can size the zarr array.
+
     for line in xopen(a.bedpe):
 
         toks = line.strip().split()
@@ -244,29 +246,35 @@ def main(args=sys.argv[1:]):
         if int(toks[4]) < expand: continue
         if int(toks[4]) < int(toks[1]):
             toks[4], toks[1] = toks[1], toks[4]
-        n += 1
+
         clen = len(depths_by_chrom[toks[0]])
         if int(toks[4]) >= clen - expand: continue
         # here, sv_chan is shape (n_channels, 2 * expand + gap) can accumulate these and send to learner.
         toks_id = str(int(toks[1])) + '_' + str(int(toks[4]))
-        if toks_id not in dups_toks:
-            dups_toks.add(toks_id)
-            sv_chan.append(
-                generate_channels_for_event(toks[0], int(toks[1]), int(toks[4]), e1d, e2d_a, e2d_b,
-                                            expand, gap, depths_by_chrom[toks[0]], fasta)
-            )
-            #plot_event(sv_chan[-1], toks, expand, gap)
-            file_object.write(line)
+        if toks_id in dups_toks: continue
+        dups_toks.add(toks_id)
+        file_object.write(line)
+
+        events.append((toks[0], int(toks[1]), int(toks[4])))
 
     file_object.close()
-    sv_chan = np.stack(sv_chan, axis=0)
 
-    print(f"shape of sv_chan array is {sv_chan.shape}", file=sys.stderr)
+    print(f"[svchannels] creating array", file=sys.stderr)
+    ChannelShape = (0, max(Event) + 1 + len(orphanable_events) + N_onehot, 4 * expand + gap)
+    Z = zarr.open(a.prefix + 'sv_chan.zarr', mode='w', shape=ChannelShape,
+            chunks=(1, 1, 4 * expand + gap))
+    print(f"shape of sv_chan array will be {(len(events), Z.shape[0], Z.shape[1])}", file=sys.stderr)
+    for i, event in enumerate(events):
 
-    zarr.save(a.prefix + 'sv_chan.zarr', sv_chan)
+        ch = generate_channels_for_event(event[0], event[1], event[2], e1d, e2d_a, e2d_b,
+                                             expand, gap, depths_by_chrom[event[0]], fasta)
+        Z.append(ch.reshape((1, Z.shape[1], Z.shape[2])))
+        if i % 100 == 0:
+            print(f"{i}/{Z.shape}", file=sys.stderr)
+            sys.stderr.flush()
 
     t = time.time() - t0
-    print(f"generated {n} channels in {t:.1f} seconds ({n/t:.0f} SVs/second)", file=sys.stderr)
+    print(f"generated channels for {len(events)} SVs in {t:.1f} seconds ({n/t:.0f} SVs/second)", file=sys.stderr)
 
 
 if __name__ == "__main__":
