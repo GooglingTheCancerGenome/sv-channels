@@ -268,7 +268,7 @@ def main(args=sys.argv[1:]):
     Z = zarr.zeros(ChannelShape, chunks=chunks, dtype='i4')
     print(f"shape of sv_chan array will be {(len(events), Z.shape[0], Z.shape[1])}", file=sys.stderr)
     t1 = time.time()
-    n_vars = 5000
+    n_vars = 10000
     for i, event in enumerate(events):
 
         ch = generate_channels_for_event(event[0], event[1], event[2], e1d, e2d_a, e2d_b,
