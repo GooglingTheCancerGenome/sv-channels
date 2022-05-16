@@ -260,21 +260,29 @@ def main(args=sys.argv[1:]):
     file_object.close()
 
     print(f"[svchannels] creating array", file=sys.stderr)
-    ChannelShape = (0, max(Event) + 1 + len(orphanable_events) + N_onehot, 4 * expand + gap)
-    Z = zarr.open(a.prefix + 'sv_chan.zarr', mode='w', shape=ChannelShape,
-            chunks=(1, 1, 4 * expand + gap))
+    ChannelShape = (len(events), max(Event) + 1 + len(orphanable_events) + N_onehot, 4 * expand + gap)
+    #Z = zarr.open(a.prefix + 'sv_chan.zarr', mode='w', shape=ChannelShape,
+    #        chunks=(16, ChannelShape[1], ChannelShape[2]))
+    #chunks=(16, ChannelShape[1], ChannelShape[2])
+    chunks=(1, ChannelShape[1], ChannelShape[2])
+    Z = zarr.zeros(ChannelShape, chunks=chunks, dtype='i4')
     print(f"shape of sv_chan array will be {(len(events), Z.shape[0], Z.shape[1])}", file=sys.stderr)
+    t1 = time.time()
+    n_vars = 5000
     for i, event in enumerate(events):
 
         ch = generate_channels_for_event(event[0], event[1], event[2], e1d, e2d_a, e2d_b,
                                              expand, gap, depths_by_chrom[event[0]], fasta)
-        Z.append(ch.reshape((1, Z.shape[1], Z.shape[2])))
-        if i % 100 == 0:
-            print(f"{i}/{Z.shape}", file=sys.stderr)
+        Z[i] = ch #.reshape((1, Z.shape[1], Z.shape[2]))
+        if i % n_vars == 0 and i > 0:
+            td = time.time() - t1
+            print(f"{i}/{Z.shape}. in {td:.0f} seconds ({n_vars/td:.1f} SVs/second \n{Z.info}", file=sys.stderr)
             sys.stderr.flush()
+            t1 = time.time()
 
+    zarr.save_array(a.prefix + 'sv_chan.zarr.zip', Z)
     t = time.time() - t0
-    print(f"generated channels for {len(events)} SVs in {t:.1f} seconds ({n/t:.0f} SVs/second)", file=sys.stderr)
+    print(f"generated channels for {len(events)} SVs in {t:.1f} seconds ({len(events)/t:.0f} SVs/second)", file=sys.stderr)
 
 
 if __name__ == "__main__":
