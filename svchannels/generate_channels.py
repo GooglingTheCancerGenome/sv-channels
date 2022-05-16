@@ -200,7 +200,6 @@ def main(args=sys.argv[1:]):
         type=int,
         default=500,
         help="Specify width of single windows (default: %(default)s)")
-    p.add_argument("--prefix", help="output prefix", default="")
     p.add_argument(
         '--gap',
         type=int,
@@ -230,9 +229,8 @@ def main(args=sys.argv[1:]):
     expand = a.expand
     gap = a.gap
 
-
     # write the lines considered to file
-    file_object = open(a.prefix + 'sv_positions.bedpe', 'w')
+    file_object = open(os.path.join(a.directory, 'sv_positions.bedpe'), 'w')
 
     dups_toks = set()
     events = [] # we iterate over events first so we can size the zarr array.
@@ -261,7 +259,7 @@ def main(args=sys.argv[1:]):
 
     print(f"[svchannels] creating array", file=sys.stderr)
     ChannelShape = (len(events), max(Event) + 1 + len(orphanable_events) + N_onehot, 4 * expand + gap)
-    #Z = zarr.open(a.prefix + 'sv_chan.zarr', mode='w', shape=ChannelShape,
+    #Z = zarr.open(a.directory + 'sv_chan.zarr', mode='w', shape=ChannelShape,
     #        chunks=(16, ChannelShape[1], ChannelShape[2]))
     #chunks=(16, ChannelShape[1], ChannelShape[2])
     chunks=(1, ChannelShape[1], ChannelShape[2])
@@ -280,7 +278,7 @@ def main(args=sys.argv[1:]):
             sys.stderr.flush()
             t1 = time.time()
 
-    zarr.save_array(a.prefix + 'sv_chan.zarr.zip', Z)
+    zarr.save_array(os.path.join(a.directory, 'sv_chan.zarr.zip'), Z)
     t = time.time() - t0
     print(f"generated channels for {len(events)} SVs in {t:.1f} seconds ({len(events)/t:.0f} SVs/second)", file=sys.stderr)
 
