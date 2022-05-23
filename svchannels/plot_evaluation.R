@@ -104,7 +104,7 @@ p <-
 p <-
   add_argument(
     p,
-    "-svchannels",
+    "--svchannels",
     help = paste("path to the sv-channels VCF file"),
     type = "character",
     default = '/Users/lsantuari/Documents/Projects/GTCG/sv-channels/sv-channels_manuscript/1KG_trios/results/validation-220322/validation_HG01053_test_HG01114/sv-channels.DEL.vcf'
@@ -113,7 +113,7 @@ p <-
 p <-
   add_argument(
     p,
-    "-manta",
+    "--manta",
     help = paste("path to the Manta VCF file"),
     type = "character",
     default = '/Users/lsantuari/Documents/Projects/GTCG/sv-channels/sv-channels_manuscript/1KG_trios/results/manta_loocv/HG01114/results/manta.vcf'
@@ -122,7 +122,7 @@ p <-
 p <-
   add_argument(
     p,
-    "-gridss",
+    "--gridss",
     help = paste("path to the GRIDSS VCF file"),
     type = "character",
     default = '/Users/lsantuari/Documents/Projects/GTCG/sv-channels/sv-channels_manuscript/1KG_trios/results/manta_loocv/HG01114/results/gridss.vcf'
@@ -139,7 +139,7 @@ p <-
 
 p <-
   add_argument(p,
-               "-s",
+               "-n",
                help = "sample name",
                type = "character",
                default = 'HG01114')
@@ -265,6 +265,10 @@ eval.plot <- ggplot(
   geom_point() +
   geom_line() +
   theme(text = element_text(size=8)) +
+<<<<<<< HEAD
+=======
+  xlim(0.5, 1) +
+>>>>>>> add (updated) plot evaluation from refactor
   scale_y_continuous(labels = scales::percent) +
   scale_x_continuous(
     labels = scales::percent,
