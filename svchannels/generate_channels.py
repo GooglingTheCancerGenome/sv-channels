@@ -136,21 +136,6 @@ def xopen(filepath):
             return io.TextIOWrapper(open(filepath, 'rb'))
 
 
-def read_bins(directory):
-    import glob
-    bins = glob.glob(directory + "/depths*.bin")
-    bin_patt = f"^{directory.rstrip('/')}\/depths\.(.+)\.bin$"
-    bin_patt = re.compile(bin_patt)
-    depths_by_chrom = {}
-    for bin in bins:
-        try:
-            chrom = bin_patt.match(bin).groups(1)[0]
-            depths_by_chrom[chrom] = zarr.open(bin, mode='r')
-        except AttributeError:
-            raise ValueError(f"unable to find chrom in {bin}")
-    return depths_by_chrom
-
-
 def plot_event(chan, toks, expand, gap):
     depth = chan[0]
     mat = chan[1:].astype('float')
@@ -209,7 +194,8 @@ def main(args=sys.argv[1:]):
 
     a = p.parse_args(args)
 
-    depths_by_chrom = read_bins(a.directory)
+    depths_by_chrom = zarr.open_group(os.path.join(a.directory, "depths.zarr.zip"))
+
     e2d_a = pd.read_table(f"{a.directory}/sv-channels.events2d.txt.gz", compression="gzip",
                         usecols=list(range(5)),
                         names=["a_chrom", "a_pos", "b_chrom", "b_pos", "event"],
