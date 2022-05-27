@@ -1,8 +1,15 @@
 from os.path import join as opj
 SAMPLES = "HG00420 HG01053 HG01114 HG01881 HG02018 HG02924 HG03992 NA06991".split()
-
 OUTDIR = config["out_dir"]
 SVCHAN = config["svchan_dir"]
+
+
+validation_sample = "HG01053"
+test_sample = "HG00420"
+
+train_channels = ",".join(opj(OUTDIR, s, "channels", "channels.zarr.zip") for s in SAMPLES if s not in [validation_sample, test_sample])
+train_labels = ",".join(opj(OUTDIR, s, "labels", "labels.json.gz") for s in SAMPLES if s not in [validation_sample, test_sample]),
+
 
 DEBUG = "echo"
 DEBUG = "/usr/bin/time -v"
@@ -11,7 +18,8 @@ configfile: "sm.config.yml"
 
 rule all:
     input:
-        expand(opj(OUTDIR, "{sample}", "labels", "labels.json.gz"), sample=SAMPLES)
+        expand(opj(OUTDIR, "{sample}", "labels", "labels.json.gz"), sample=SAMPLES),
+        dir = directory(opj(OUTDIR, validation_sample, "validation")),
 
 
 rule extract_signals:
@@ -46,11 +54,12 @@ rule generate_channels:
 
     params:
         outdir = opj(OUTDIR, "{sample}", "channels"),
-        indir = opj(OUTDIR, "{sample}", "signals")
+        indir = opj(OUTDIR, "{sample}", "signals"),
 
     output:
         directory(opj(OUTDIR, "{sample}", "channels")),
-        sv_positions = opj(OUTDIR, "{sample}", "channels", "sv_positions.bedpe")
+        sv_positions = opj(OUTDIR, "{sample}", "channels", "sv_positions.bedpe"),
+        channels = opj(OUTDIR, "{sample}", "channels", "channels.zarr.zip"),
 
     shell:
         """
@@ -79,4 +88,40 @@ rule label_variants:
            --outputpath {params.dir} \
            --ground_truth {input.truth_bed} \
            --sv_positions {input.sv_positions}
+        """
+
+rule train:
+    resources:
+        time = "92:00:00",
+        memGB = 12,
+        partition = "gpu",
+
+    conda: "../environment.yaml"
+    wildcards.sample="validation_sample"
+    input:
+        # labels for all samples, the command excludes test and validation samples.
+        labels = expand(opj(OUTDIR, "{sample}", "labels", "labels.json.gz"), sample=SAMPLES),
+        channels = expand(opj(OUTDIR, "{sample}", "channels", "channels.zarr.zip"), sample=SAMPLES),
+
+    output:
+        dir = directory(opj(OUTDIR, validation_sample, "validation")),
+
+    params:
+        svtype = "DEL",
+        n = 100,
+        channels = train_channels,
+        labels = train_labels,
+
+    shell:
+        """
+{DEBUG} python {SVCHAN}/svchannels/create_model.py \
+        --windows {params.channels} \
+        --labels {params.labels} \
+        -s {params.svtype} \
+        -n {params.n} \
+        --validation_windows {OUTDIR}/{validation_sample}/channels.zarr.zip \
+        --validation_labels {OUTDIR}/{validation_sample}/labels.json.gz \
+        -m {output.dir}/manta_model.keras \
+        -l {output.dir}/manta_model.log \
+        -p {output.dir}/manta_model.hparams.npy"
         """
