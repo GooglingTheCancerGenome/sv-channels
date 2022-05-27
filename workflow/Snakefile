@@ -26,7 +26,7 @@ rule extract_signals:
     resources:
         time = "92:00:00",
         memGB = 12
-    conda: "environment.yaml"
+    conda: "../environment.yaml"
     input:
         bam=opj(config['bam_dir'], "{sample}.bam"),
         fa=config["fasta"],
@@ -95,7 +95,7 @@ rule train:
         time = "92:00:00",
         memGB = 256,
         partition = "gpu",
-        extras = "--gpus-per-node=RTX6000:1"
+        gpus_per_node = "RTX6000:1",
 
     conda: "../environment.yaml"
 
@@ -115,6 +115,8 @@ rule train:
 
     shell:
         """
+echo $CUDA_VISIBLE_DEVICES || true
+
 {DEBUG} python {SVCHAN}/svchannels/create_model.py \
         --windows {params.channels} \
         --labels {params.labels} \
