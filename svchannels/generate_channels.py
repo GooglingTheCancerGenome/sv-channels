@@ -2,6 +2,7 @@ import sys
 import os
 import re
 import time
+from pathlib import Path
 from pyfaidx import Fasta
 
 
@@ -37,6 +38,8 @@ def find_signals_for_event(chrom, apos, bpos, signals2d_a, signals2d_b, signals1
     # same chrom and with expected bounds on both ends.
     selection = (subset["b_pos"] >= (bpos - expand)) & (subset["b_pos"] <= (bpos + expand)) & (
             subset["a_chrom"] == chrom) & (subset["b_chrom"] == chrom)
+    # slower
+    #selection = subset.eval('(b_pos >= (@bpos - @expand)) & (b_pos <= (@bpos + @expand)) & (a_chrom == @chrom) & (b_chrom == @chrom)')
     result['shared'] = subset[selection]
     result['left-only'] = subset[~selection][["a_chrom", "a_pos", "event"]]
     result['left-only'].columns = ("chrom", "pos", "event")
@@ -178,7 +181,8 @@ def main(args=sys.argv[1:]):
     import argparse
     import pandas as pd
     p = argparse.ArgumentParser()
-    p.add_argument("directory", help="sample-specific directory created by svchannels extract")
+    p.add_argument("directory", help="sample-specific directory created by svchannels extract for input")
+    p.add_argument("output", help="sample-specific output directory")
     p.add_argument("bedpe")
     p.add_argument(
         '--expand',
@@ -193,6 +197,12 @@ def main(args=sys.argv[1:]):
     p.add_argument("--reference", help="reference fasta file", required=True)
 
     a = p.parse_args(args)
+
+    od = Path(a.output)
+    for parent in reversed(od.parents):
+        parent.mkdir(mode=0o774, exist_ok=True)
+    od.mkdir(mode=0o774, exist_ok=True)
+
 
     depths_by_chrom = zarr.open_group(os.path.join(a.directory, "depths.zarr.zip"))
 
@@ -216,7 +226,7 @@ def main(args=sys.argv[1:]):
     gap = a.gap
 
     # write the lines considered to file
-    file_object = open(os.path.join(a.directory, 'sv_positions.bedpe'), 'w')
+    file_object = open(os.path.join(a.output, 'sv_positions.bedpe'), 'w')
 
     dups_toks = set()
     events = [] # we iterate over events first so we can size the zarr array.
@@ -250,7 +260,7 @@ def main(args=sys.argv[1:]):
     #chunks=(16, ChannelShape[1], ChannelShape[2])
     chunks=(1, ChannelShape[1], ChannelShape[2])
     Z = zarr.zeros(ChannelShape, chunks=chunks, dtype='i4')
-    print(f"shape of sv_chan array will be {(len(events), Z.shape[0], Z.shape[1])}", file=sys.stderr)
+    print(f"[svchannels] shape of sv_chan array will be {Z.shape}", file=sys.stderr)
     t1 = time.time()
     n_vars = 10000
     for i, event in enumerate(events):
@@ -264,7 +274,7 @@ def main(args=sys.argv[1:]):
             sys.stderr.flush()
             t1 = time.time()
 
-    zarr.save_array(os.path.join(a.directory, 'sv_chan.zarr.zip'), Z)
+    zarr.save_array(os.path.join(a.output, 'channels.zarr.zip'), Z)
     t = time.time() - t0
     print(f"generated channels for {len(events)} SVs in {t:.1f} seconds ({len(events)/t:.0f} SVs/second)", file=sys.stderr)
 

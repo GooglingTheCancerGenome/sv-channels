@@ -121,9 +121,7 @@ def main():
         "-o", os.path.join(args.output, "sv-channels")
     ])
 
-    print(merge_sv_calls)
     cmd_out = subprocess.run(merge_sv_calls, shell=True, check=True)
-    print(cmd_out)
 
     assert os.path.join(args.sv_channels, "scripts/utils/bedpe_to_vcf.py")
     assert os.path.join(args.sv_channels, "scripts/genome_wide", args.output + '.bedpe')
