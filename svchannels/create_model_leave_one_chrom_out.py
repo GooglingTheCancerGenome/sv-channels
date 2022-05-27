@@ -1,3 +1,4 @@
+import os
 import argparse
 import logging
 import zarr
@@ -32,8 +33,7 @@ dimensions = [dim_cnn_filters, dim_cnn_layers, dim_cnn_kernel_size,
 
 default_parameters = [8, 1, 7, 6, 1e-4, 1e-1]
 
-global best_accuracy = 0.0
-
+best_accuracy = 0.0
 
 def load_windows(win_file, lab_file):
 
@@ -85,6 +85,8 @@ def create_model(X, outputdim, learning_rate, regularization_rate,
 @use_named_args(dimensions=dimensions)
 def fitness(cnn_filters, cnn_layers, cnn_kernel_size, cnn_fc_nodes,
             cnn_init_learning_rate, cnn_regularization_rate):
+
+    global best_accuracy
 
     print()
     print('cnn_filters: ', cnn_filters)
@@ -189,7 +191,9 @@ def optimize(args):
 
         print('Running optimization leaving chromosome {} out'.format(c))
 
-        path_best_model = c + '.' + args.model
+        model_dir = os.path.dirname(args.model)
+        model_base = os.path.basename(args.model)
+        path_best_model = model_dir + '/' + c + '.' + model_base
 
         chrom_idx = [i for i, k in enumerate(first_chrom) if k != c and k != args.validation_chr]
         chrom_idx = np.asarray(chrom_idx)
@@ -205,6 +209,8 @@ def optimize(args):
         class_weights = {i: v for i, v in enumerate(class_weights)}
 
         train_y = to_categorical(y_lab, num_classes=2)
+	
+        best_accuracy = 0.0
 
         search_result = gp_minimize(func=fitness, dimensions=dimensions, acq_func='EI',
                                     n_calls=args.ncalls, x0=default_parameters, random_state=7, n_jobs=-1)
