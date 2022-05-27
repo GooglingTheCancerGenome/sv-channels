@@ -1,0 +1,82 @@
+from os.path import join as opj
+SAMPLES = "HG00420 HG01053 HG01114 HG01881 HG02018 HG02924 HG03992 NA06991".split()
+
+OUTDIR = config["out_dir"]
+SVCHAN = config["svchan_dir"]
+
+DEBUG = "echo"
+DEBUG = "/usr/bin/time -v"
+
+configfile: "sm.config.yml"
+
+rule all:
+    input:
+        expand(opj(OUTDIR, "{sample}", "labels", "labels.json.gz"), sample=SAMPLES)
+
+
+rule extract_signals:
+    resources:
+        time = "92:00:00",
+        memGB = 12
+    conda: "environment.yaml"
+    input:
+        bam=opj(config['bam_dir'], "{sample}.bam"),
+        fa=config["fasta"],
+    params:
+        dir = opj(OUTDIR, "{sample}", "signals")
+
+    output:
+        directory(opj(OUTDIR, "{sample}", "signals")),
+        events = opj(OUTDIR, "{sample}", "signals", "sv-channels.events2d.txt.gz"),
+    shell:
+        """
+        {DEBUG} python {SVCHAN}/svchannels/extract_signals.py {input.fa} {input.bam} -o {params.dir}
+        """
+
+rule generate_channels:
+    resources:
+        time = "92:00:00",
+        memGB = 12
+    input:
+        opj(OUTDIR, "{sample}", "signals"),
+        fasta = config["fasta"],
+        events = opj(OUTDIR, "{sample}", "signals", "sv-channels.events2d.txt.gz"),
+	# create channels for this input bed file
+        bedpe = opj(config["bedpe_dir"], "{sample}", "manta.bedpe"),
+
+    params:
+        outdir = opj(OUTDIR, "{sample}", "channels"),
+        indir = opj(OUTDIR, "{sample}", "signals")
+
+    output:
+        directory(opj(OUTDIR, "{sample}", "channels")),
+        sv_positions = opj(OUTDIR, "{sample}", "channels", "sv_positions.bedpe")
+
+    shell:
+        """
+        {DEBUG} python {SVCHAN}/svchannels/generate_channels.py {params.indir} {params.outdir} {input.bedpe} --reference {input.fasta}
+        """
+
+rule label_variants:
+    resources:
+        time = "92:00:00",
+        memGB = 4
+    input: 
+        fai = config["fasta"] + ".fai",
+        truth_bed = opj(config["truth_bedpe_dir"], "{sample}.DEL.bedpe"),
+        sv_positions = opj(OUTDIR, "{sample}", "channels", "sv_positions.bedpe"),
+
+    output:
+        labels = opj(OUTDIR, "{sample}", "labels", "labels.json.gz"),
+
+    params:
+        dir = opj(OUTDIR, "{sample}", "labels")
+
+    shell:
+        """
+	{DEBUG} python {SVCHAN}/svchannels/label_windows.py \
+           --fai {input.fai} \
+           --outputpath {params.dir} \
+           --ground_truth {input.truth_bed} \
+           --sv_positions {input.sv_positions}
+        """
