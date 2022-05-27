@@ -97,7 +97,7 @@ rule train:
         partition = "gpu",
 
     conda: "../environment.yaml"
-    wildcards.sample="validation_sample"
+
     input:
         # labels for all samples, the command excludes test and validation samples.
         labels = expand(opj(OUTDIR, "{sample}", "labels", "labels.json.gz"), sample=SAMPLES),
