@@ -93,8 +93,9 @@ rule label_variants:
 rule train:
     resources:
         time = "92:00:00",
-        memGB = 12,
+        memGB = 256,
         partition = "gpu",
+        extras = "--gpus-per-node=RTX6000:1"
 
     conda: "../environment.yaml"
 
@@ -119,9 +120,9 @@ rule train:
         --labels {params.labels} \
         -s {params.svtype} \
         -n {params.n} \
-        --validation_windows {OUTDIR}/{validation_sample}/channels.zarr.zip \
-        --validation_labels {OUTDIR}/{validation_sample}/labels.json.gz \
+        --validation_windows {OUTDIR}/{validation_sample}/channels/channels.zarr.zip \
+        --validation_labels {OUTDIR}/{validation_sample}/labels/labels.json.gz \
         -m {output.dir}/manta_model.keras \
         -l {output.dir}/manta_model.log \
-        -p {output.dir}/manta_model.hparams.npy"
+        -p {output.dir}/manta_model.hparams.npy
         """

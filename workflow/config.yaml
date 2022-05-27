@@ -8,9 +8,11 @@ cluster:
     --output=logs/{rule}/{rule}-{wildcards}-%j.out
     --error=logs/{rule}/{rule}-{wildcards}-%j.err
     --partition={resources.partition}
+    {resources.extras}
 default-resources:
   - memGB=8
   - partition=cpu
+  - extras=""
 restart-times: 3
 max-jobs-per-second: 10
 max-status-checks-per-second: 1
