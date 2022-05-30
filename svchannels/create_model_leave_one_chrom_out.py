@@ -187,36 +187,39 @@ def optimize(args):
     if args.validation_chr in chrom_set:
         chrom_set.remove(args.validation_chr)
 
-    for c in chrom_set:
+    print('Running optimization leaving chromosome {} out'.format(args.test_chr))
 
-        print('Running optimization leaving chromosome {} out'.format(c))
+    model_dir = os.path.dirname(args.model)
+    model_base = os.path.basename(args.model)
+    path_best_model = model_dir + '/' + args.test_chr + '.' + model_base
 
-        model_dir = os.path.dirname(args.model)
-        model_base = os.path.basename(args.model)
-        path_best_model = model_dir + '/' + c + '.' + model_base
+    chrom_idx = [i for i, k in enumerate(first_chrom) if k != args.test_chr and k != args.validation_chr]
+    chrom_idx = np.asarray(chrom_idx)
 
-        chrom_idx = [i for i, k in enumerate(first_chrom) if k != c and k != args.validation_chr]
-        chrom_idx = np.asarray(chrom_idx)
+    train_X = X[chrom_idx]
+    y_nochrom = [y[i] for i in chrom_idx]
 
-        train_X = X[chrom_idx]
-        y_nochrom = [y[i] for i in chrom_idx]
+    y_nochrom = np.array([mapclasses[i] for i in y_nochrom])
+    classes = np.array(np.unique(y_nochrom))
+    y_lab = np.asarray(y_nochrom)
 
-        y_nochrom = np.array([mapclasses[i] for i in y_nochrom])
-        classes = np.array(np.unique(y_nochrom))
-        y_lab = np.asarray(y_nochrom)
+    class_weights = compute_class_weight('balanced', classes, y_lab)
+    class_weights = {i: v for i, v in enumerate(class_weights)}
 
-        class_weights = compute_class_weight('balanced', classes, y_lab)
-        class_weights = {i: v for i, v in enumerate(class_weights)}
+    train_y = to_categorical(y_lab, num_classes=2)
 
-        train_y = to_categorical(y_lab, num_classes=2)
-	
-        best_accuracy = 0.0
+    best_accuracy = 0.0
 
-        search_result = gp_minimize(func=fitness, dimensions=dimensions, acq_func='EI',
-                                    n_calls=args.ncalls, x0=default_parameters, random_state=7, n_jobs=-1)
+    search_result = gp_minimize(func=fitness, dimensions=dimensions, acq_func='EI',
+                                n_calls=args.ncalls, x0=default_parameters, random_state=7, n_jobs=-1)
 
-        hyps = np.asarray(search_result.x)
-        np.save(c + '_' + args.hparams, hyps, allow_pickle=False)
+    hyps = np.asarray(search_result.x)
+
+    hparams_dir = os.path.dirname(args.hparams)
+    hparams_base = os.path.basename(args.hparams)
+    path_hparams = hparams_dir + '/' + args.test_chr + '.' + hparams_base
+
+    np.save(path_hparams, hyps, allow_pickle=False)
 
 
 def main():
@@ -257,6 +260,11 @@ def main():
                         type=int,
                         default=50,
                         help="Number of calls of the fitness function")
+    parser.add_argument('-test',
+                        '--test_chr',
+                        type=str,
+                        default='chr1',
+                        help="Chromosome used for testing")
     parser.add_argument('-val',
                         '--validation_chr',
                         type=str,
@@ -279,9 +287,13 @@ def main():
                         help="File with hyperparameters")
     args = parser.parse_args()
 
+    log_dir = os.path.dirname(args.logfile)
+    log_base = os.path.basename(args.logfile)
+    path_log = log_dir + '/' + args.test_chr + '.' + log_base
+
     log_format = '%(asctime)s %(message)s'
     logging.basicConfig(format=log_format,
-                        filename=args.logfile,
+                        filename=path_log,
                         filemode='w',
                         level=logging.INFO)
     t0 = time()
