@@ -6,6 +6,7 @@ The channels used in `sv-channels` are somewhat self-documented in the Enum used
 
 ```python
 class Event(enum.IntEnum):
+    # NOTE that python enums start at 1. The 0th track is depth.
 
     # single-read 1-position.
     # these do not include reads that are soft-clipped on both ends.
@@ -50,3 +51,6 @@ These are the signals extracted. When considering a specific SV, the final 8 cha
 paired or "orphaned". For example, a paired split read would be when the ends (splits) of the split read are close to the break-points
 defined by the SV. An orphaned split would occur when, for example, the left-end fell within the window, but that split went to another
 location in the genome that did not support the event.
+
+Reads are extracted according to the --min-mapping-quality parameter given on the command-line. Reads with a lower mapping-quality are not
+used expect for `SPLIT_LOW_QUALITY`.
