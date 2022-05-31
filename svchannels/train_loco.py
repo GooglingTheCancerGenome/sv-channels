@@ -133,10 +133,10 @@ def train(args):
 
     hparams = np.load(args.hparams)
 
-    cnn_filters = hparams[0]
-    cnn_layers = hparams[1]
-    cnn_kernel_size = hparams[2]
-    cnn_fc_nodes = hparams[3]
+    cnn_filters = int(hparams[0])
+    cnn_layers = int(hparams[1])
+    cnn_kernel_size = int(hparams[2])
+    cnn_fc_nodes = int(hparams[3])
     cnn_init_learning_rate = hparams[4]
     cnn_regularization_rate = hparams[5]
 
