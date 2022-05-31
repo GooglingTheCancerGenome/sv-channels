@@ -12,7 +12,7 @@ from tensorflow.keras.utils import to_categorical
 from model_functions import evaluate_model, get_data
 
 
-def predict(windows_list, labels_list, samples_list, svtype, models, output_dir):
+def predict(windows_list, labels_list, samples_list, model_names_list, svtype, models, output_dir):
 
     def load_windows(win_file, lab_file):
         X = zarr.load(win_file)
@@ -21,6 +21,8 @@ def predict(windows_list, labels_list, samples_list, svtype, models, output_dir)
         return X, y
 
     os.makedirs(output_dir, exist_ok=True)
+
+    mapclasses = {svtype: 0, 'no' + svtype: 1}
 
     X = []
     y = []
@@ -39,12 +41,13 @@ def predict(windows_list, labels_list, samples_list, svtype, models, output_dir)
 
     # X, y, win_ids = get_data(input_data, input_labels, svtype)
 
+    y = np.array([mapclasses[i] for i in y])
     y_binary = to_categorical(y, num_classes=params['n_classes'])
 
     first_chrom = [w.split('_')[0] for w in win_ids]
 
     for s in set(samples):
-        for c in set(first_chrom):
+        for c in model_names_list:
 
             chrom_idx = [i for i, k in enumerate(zip(first_chrom, samples)) if k[0] == c and k[1] == s]
             chrom_idx = np.asarray(chrom_idx)
@@ -149,12 +152,15 @@ def main():
     model_names_list = args.model_names.split(',')
     models = {k: v for k, v in zip(model_names_list, models_list)}
 
-    predict(windows_list, labels_list, samples_list, args.svtype,
+    predict(windows_list, labels_list, samples_list, model_names_list, args.svtype,
             models, args.output)
 
     for s in samples_list:
 
-        concat_chroms = 'cat ' + args.output + '_' + s + '_*.bedpe > ' + args.output + '_' + s + '.bedpe'
+        os.makedirs(args.output + '_' + s, exist_ok=True)
+
+        concat_chroms = 'cat ' + args.output + '_' + s + '_*/predictions/correct.bedpe > ' + args.output + '_' + s + \
+                        '/predictions/correct.bedpe'
 
         print(concat_chroms)
         cmd_out = subprocess.run(concat_chroms, shell=True, check=True)
@@ -164,11 +170,11 @@ def main():
         merge_sv_calls = ' '.join([
             "cd ", os.path.join(args.sv_channels, "scripts/R") + "; ",
             "Rscript merge_sv_calls.R",
-            "-i", os.path.join("../../svchannels", args.output + '_' + s),
+            "-i", os.path.join(args.output + '_' + s),
             "-f", args.encode_blacklist,
             "-n", args.n_regions,
             "-m split_reads",
-            "-o", os.path.join(args.output, "sv-channels" + "." + s)
+            "-o", os.path.join(args.output + '_' + s, "sv-channels" + "." + s)
         ])
 
         print(merge_sv_calls)
