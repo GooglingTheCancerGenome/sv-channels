@@ -157,7 +157,7 @@ def main():
 
     for s in samples_list:
 
-        os.makedirs(args.output + '_' + s, exist_ok=True)
+        os.makedirs(args.output + '_' + s + '/predictions', exist_ok=True)
 
         concat_chroms = 'cat ' + args.output + '_' + s + '_*/predictions/correct.bedpe > ' + args.output + '_' + s + \
                         '/predictions/correct.bedpe'
@@ -188,10 +188,10 @@ def main():
         bedpe_to_vcf = ' '.join([
             "conda activate sv-channels; pwd; python ",
             os.path.join(args.sv_channels, "scripts/utils/bedpe_to_vcf.py"),
-            "-i", os.path.join(args.output, "sv-channels" + "." + s + ".DEL.bedpe"),
+            "-i", os.path.join(args.output + '_' + s, "sv-channels" + "." + s + ".DEL.bedpe"),
             "-b", args.twobit,
-            "-s", args.sample_name,
-            "-o", os.path.join(args.output, "sv-channels" + "." + s + ".DEL.vcf")
+            "-s", s,
+            "-o", os.path.join(args.output + '_' + s, "sv-channels" + "." + s + ".DEL.vcf")
         ])
         print(bedpe_to_vcf)
         cmd_out = subprocess.run(bedpe_to_vcf, shell=True, check=True)
