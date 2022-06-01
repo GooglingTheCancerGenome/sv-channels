@@ -1,3 +1,7 @@
+"""
+Leave one chromosome out procedure
+"""
+
 import os
 import argparse
 import logging
@@ -65,6 +69,7 @@ def create_model(X, outputdim, learning_rate, regularization_rate,
 
 
 def train(args):
+
     global train_X, val_X, train_y, val_y, class_weights, batch_size, max_epoch, path_best_model
 
     mapclasses = {args.svtype: 0, 'no' + args.svtype: 1}
