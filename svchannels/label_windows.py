@@ -72,7 +72,7 @@ def read_svcaller_bedpe(inbedpe):
                 columns[1]), int(columns[2])
             chrom2, pos2_start, pos2_end = str(columns[3]), int(
                 columns[4]), int(columns[5])
-            cr_pos.append((chrom1, pos1_start, chrom2, pos2_start, '**'))
+            cr_pos.append((chrom1, pos1_start, chrom2, pos2_start, '**', columns[6]))
     logging.info("%d candidate positions" % len(cr_pos))
     return cr_pos
 
@@ -108,7 +108,7 @@ def search_tree_with_cpos(cpos, trees_start, trees_end, win_hlen):
                          (i, n_r / (time() - last_t)))
             last_t = time()
 
-        chrom1, pos1, chrom2, pos2, strand_info = p
+        chrom1, pos1, chrom2, pos2, strand_info, svt = p
         lookup_start.append(trees_start[chrom1].envelop(
             pos1 - win_hlen, pos1 + win_hlen + 1))
         lookup_end.append(trees_end[chrom2].envelop(
@@ -129,8 +129,8 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
     labels = dict()
     sv_covered = set()
     for p, lu_start, lu_end in zip(cpos_list, lookup_start, lookup_end):
-        chrom1, pos1, chrom2, pos2, strand_info = p
-        pos_id = '_'.join((chrom1, str(pos1), chrom2, str(pos2), strand_info))
+        chrom1, pos1, chrom2, pos2, strand_info, svt = p
+        pos_id = '_'.join((chrom1, str(pos1), chrom2, str(pos2), strand_info, svt))
         l1 = len(lu_start)
         l2 = len(lu_end)
         if l1 == 1 and l1 == l2:
@@ -208,8 +208,8 @@ def get_labels(chr_dict, win_len, svtype, ground_truth, sv_positions, channelDat
 
     # Keep only positions that can be used to create windows
     cpos_list = [
-        (chrom1, pos1, chrom2, pos2, strand_info)
-        for chrom1, pos1, chrom2, pos2, strand_info, in cpos_list if chrom1 in chr_dict.keys()
+        (chrom1, pos1, chrom2, pos2, strand_info, svt)
+        for chrom1, pos1, chrom2, pos2, strand_info, svt in cpos_list if chrom1 in chr_dict.keys()
                                                                      and chrom2 in chr_dict.keys() and win_hlen <= pos1 <=
                                                                      chr_dict[chrom1] -
                                                                      win_hlen and win_hlen <= pos2 <= chr_dict[

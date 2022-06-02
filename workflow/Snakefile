@@ -50,7 +50,8 @@ rule generate_channels:
         fasta = config["fasta"],
         events = opj(OUTDIR, "{sample}", "signals", "sv-channels.events2d.txt.gz"),
 	# create channels for this input bed file
-        bedpe = opj(config["bedpe_dir"], "{sample}", "manta.bedpe"),
+	#bedpe = opj(config["bedpe_dir"], "{sample}", "manta.bedpe"),
+        bedpe = "/hpc/compgen/users/bpedersen/sv-channels-tnsv/{sample}.bedpe"
 
     params:
         outdir = opj(OUTDIR, "{sample}", "channels"),
