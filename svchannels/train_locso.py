@@ -208,6 +208,11 @@ def main():
                         default='labels/labels.json.gz,labels/labels.json.gz',
                         help="Comma separated list of JSON.GZ file for labels")
     parser.add_argument('-sm',
+                        '--samples',
+                        type=str,
+                        default='SAMPLE1,SAMPLE2',
+                        help="Comma separated list of sample names")
+    parser.add_argument('-so',
                         '--sample_out',
                         type=str,
                         default='SAMPLE',
