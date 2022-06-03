@@ -265,10 +265,7 @@ eval.plot <- ggplot(
   geom_point() +
   geom_line() +
   theme(text = element_text(size=8)) +
-<<<<<<< HEAD
-=======
   xlim(0.5, 1) +
->>>>>>> add (updated) plot evaluation from refactor
   scale_y_continuous(labels = scales::percent) +
   scale_x_continuous(
     labels = scales::percent,
