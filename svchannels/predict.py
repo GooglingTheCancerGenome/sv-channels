@@ -112,9 +112,8 @@ def main():
     out_prefix = os.path.join(args.output, "sv-channels")
 
     merge_sv_calls = ' '.join([
-        "cd ", os.path.join(args.sv_channels, "scripts/R") + "; ",
-        "Rscript merge_sv_calls.R",
-        "-i", os.path.join("../../svchannels", args.output),
+        "Rscript", os.path.join(args.sv_channels, "scripts", "R", "merge_sv_calls.R"),
+        "-i", os.path.join("../../svchannels", args.output), # BSP-TODO: what do do here?
         "-f", args.encode_blacklist,
         "-n", args.n_regions,
         "-m split_reads",
@@ -127,7 +126,6 @@ def main():
     assert os.path.join(args.sv_channels, "scripts/genome_wide", args.output + '.bedpe')
 
     bedpe_to_vcf = ' '.join([
-        "conda activate sv-channels; pwd; python ",
         os.path.join(args.sv_channels, "scripts/utils/bedpe_to_vcf.py"),
         "-i", os.path.join(args.output, "sv-channels.DEL.bedpe"),
         "-b", args.twobit,
