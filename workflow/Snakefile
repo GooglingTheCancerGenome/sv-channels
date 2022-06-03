@@ -16,10 +16,10 @@ DEBUG = "/usr/bin/time -v"
 
 configfile: "sm.config.yml"
 
-rule all:
-    input:
-        expand(opj(OUTDIR, "{sample}", "labels", "labels.json.gz"), sample=SAMPLES),
-        dir = directory(opj(OUTDIR, validation_sample, "validation")),
+#rule all:
+#    input:
+#        expand(opj(OUTDIR, "{sample}", "labels", "labels.json.gz"), sample=SAMPLES),
+#        dir = directory(opj(OUTDIR, validation_sample, "validation")),
 
 
 rule extract_signals:
