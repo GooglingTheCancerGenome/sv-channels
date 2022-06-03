@@ -131,6 +131,8 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
     for p, lu_start, lu_end in zip(cpos_list, lookup_start, lookup_end):
         chrom1, pos1, chrom2, pos2, strand_info, svt = p
         pos_id = '_'.join((chrom1, str(pos1), chrom2, str(pos2), strand_info, svt))
+        if pos_id in labels:
+            raise KeyError(f'duplicate id: {pos_id}')
         l1 = len(lu_start)
         l2 = len(lu_end)
         if l1 == 1 and l1 == l2:
@@ -249,7 +251,7 @@ def main():
     parser.add_argument('-w',
                         '--window',
                         type=int,
-                        default=250,
+                        default=62, # should this be 124? code uses window/2
                         help="Specify window size")
     parser.add_argument('-s',
                         '--svtype',
