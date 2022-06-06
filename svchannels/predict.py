@@ -113,7 +113,7 @@ def main():
 
     merge_sv_calls = ' '.join([
         "Rscript", os.path.join(args.sv_channels, "scripts", "R", "merge_sv_calls.R"),
-        "-i", os.path.join("../../svchannels", args.output), # BSP-TODO: what do do here?
+        "-i", args.output,
         "-f", args.encode_blacklist,
         "-n", args.n_regions,
         "-m split_reads",

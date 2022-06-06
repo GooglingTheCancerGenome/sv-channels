@@ -50,7 +50,7 @@ def filter_bedpe(inbedpe, sv_id_list, outDir):
                 columns[4]), int(columns[5])
             svtype = columns[-1]
             svtype = "DEL" if svtype == "TYPE:DELETION" else svtype
-            sv_id = '_'.join((svtype, chrom1, str(
+            sv_id = '/'.join((svtype, chrom1, str(
                 pos1_start), chrom2, str(pos2_start)))
             if svtype in ['DEL', 'INS', 'INV', 'DUP', 'CTX'] and sv_id not in sv_id_list:
                 lines_to_keep.append(line)
@@ -86,7 +86,7 @@ def make_gtrees_from_svlist(sv_list):
     # Populate tree
     for sv in sv_list:
         chrom1, pos1_start, pos1_end, chrom2, pos2_start, pos2_end, svtype = sv
-        sv_id = '_'.join(
+        sv_id = '/'.join(
             (svtype, chrom1, str(pos1_start), chrom2, str(pos2_start)))
         trees_start[chrom1][pos1_start:pos1_end] = (svtype, sv_id)
         trees_end[chrom2][pos2_start:pos2_end] = (svtype, sv_id)
@@ -130,7 +130,7 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
     sv_covered = set()
     for p, lu_start, lu_end in zip(cpos_list, lookup_start, lookup_end):
         chrom1, pos1, chrom2, pos2, strand_info, svt = p
-        pos_id = '_'.join((chrom1, str(pos1), chrom2, str(pos2), strand_info, svt))
+        pos_id = '/'.join((chrom1, str(pos1), chrom2, str(pos2), strand_info, svt))
         if pos_id in labels:
             raise KeyError(f'duplicate id: {pos_id}')
         l1 = len(lu_start)

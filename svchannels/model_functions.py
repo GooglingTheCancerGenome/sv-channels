@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 from collections import Counter
 from itertools import cycle
 import gzip
@@ -15,8 +16,9 @@ from sklearn.metrics import (average_precision_score, f1_score,
 
 def unfold_win_id(win_id):
 
-    if len(win_id.split('_')) == 5:
-        chr1, pos1, chr2, pos2, strand_info = win_id.split('_')
+    if len(win_id.split('/')) >= 5:
+        # NOTE: we are combining sv-type with strand_info!!!
+        chr1, pos1, chr2, pos2, strand_info = win_id.split('/', 4)
         return chr1, pos1, chr2, pos2, strand_info
     else:
         return None
@@ -98,6 +100,7 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test,
         outdir = os.path.join(output_dir, 'predictions')
         os.makedirs(outdir, exist_ok=True)
         outfile = os.path.join(outdir, 'correct.bedpe')
+        print(f"[svchannels] writing correct to {outfile}", file=sys.stderr)
         lines = []
         j = 1
         for prob, p, r, w in zip(probs, predicted, y_index, win_ids_test):
@@ -105,6 +108,7 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test,
                 sv_score = prob[0]
 
                 if unfold_win_id(w) is not None:
+                    print("got svctype")
 
                     chr1, pos1, chr2, pos2, strand_info = unfold_win_id(w)
 
@@ -134,6 +138,7 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test,
     probs = model.predict(X_test, batch_size=1000, verbose=False)
     # columns are predicted, rows are truth
     predicted = probs.argmax(axis=1)
+    print(f"predicted shape: {predicted.shape}")
     y_index = ytest_binary.argmax(axis=1)
     write_wrong_predictions(probs, predicted, y_index, win_ids_test,
                             class_labels)
