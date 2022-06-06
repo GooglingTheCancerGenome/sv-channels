@@ -8,6 +8,7 @@ import array
 
 import sys
 import os
+from pathlib import Path
 import argparse
 import zarr
 from pyfaidx import Fasta
@@ -49,7 +50,7 @@ class Event(enum.IntEnum):
     SOFT_BOTH = enum.auto()
 
     # single-read 2-position
-    DEL_FWD = enum.auto() 
+    DEL_FWD = enum.auto()
     DEL_REV = enum.auto() # 10
 
     # read-pair 2-position
@@ -102,7 +103,7 @@ def add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right):
     sa_left = cigar[len(cigar) - 1] != 'S'
 
     mapq = int(mapq)
-    #if mapq < min_mapping_quality: return
+    if min(mapq, aln.mapping_quality) == 0: return
     pos = int(pos)
 
     interchromosomal = rname != aln.reference_name
@@ -120,7 +121,7 @@ def add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right):
 
     if pos < aln.reference_start:
         if sa_left:
-            li.append((rname, pos, 
+            li.append((rname, pos,
                        aln.reference_name, (aln.reference_start if self_left else aln.reference_end),
                        lookup[(strand, aln.is_reverse)], aln.qname))
         else:
@@ -136,7 +137,7 @@ def add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right):
             li.append((aln.reference_name, aln.reference_start if self_left else aln.reference_end,
                        rname, sa_end(pos, cigar),
                        lookup[(aln.is_reverse, strand)], aln.qname))
-    if mapq < min_mapping_quality or aln.mapping_quality < min_mapping_quality: 
+    if 0 < min(mapq, aln.mapping_quality) < min_mapping_quality:
         t = list(li[-1])
         t[4] = Event.SPLIT_LOW_QUALITY
         li[-1] = tuple(t)
@@ -144,7 +145,7 @@ def add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right):
         t = list(li[-1])
         t[4] = Event.SPLIT_INTER_CHROMOSOMAL
         li[-1] = tuple(t)
-   
+
 
 def proper_pair(aln, max_insert_size):
     if (aln.flag & SAM_FLAGS.FPROPER_PAIR) == 0: return False
@@ -154,7 +155,6 @@ def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_qu
 
     for aln in (a, b):
         offset = aln.reference_start
-        # NOTE: we skip, but could add these as e.g. SPLIT_LOW_QUALITY
         # we store if this read is left or right clipped here to avoid double
         # iteration over cigar.
         self_left = False
@@ -173,9 +173,11 @@ def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_qu
                 if op in CONSUME_REF:
                     offset += length
 
+        # TODO: move this to soft_and_ins so we can drop all tags and save memory
+        # also require calling soft_and_ins earlier
         if aln.has_tag("SA"):
             sa_tag = aln.get_tag("SA")
- 
+
             for sa in sa_tag.strip(';').split(";"):
                 add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right)
                 #break # only add first split read event.
@@ -214,25 +216,25 @@ def best_position(aln, side):
 
     return aln.reference_end
 
-def write_depths(depths, outdir):
+def write_depths(depths, zarr_root):
     for chrom, array in depths.items():
         # convert back to numpy array for cumsum
         array = np.asarray(array, dtype='i4')
         np.cumsum(array, out=array)
+        d = zarr_root.empty(chrom, shape=array.shape, chunks=(10000,), dtype='i4')
         if len(array) > 10000000:
-            print(f"[sv-channels] writing: {chrom}", file=sys.stderr)
-        d = zarr.open(f"{outdir}/depths.{chrom}.bin", mode='w',
-                      shape=array.shape, chunks=(10000,), dtype='i4')
+            print(f"[sv-channels] writing: {d}", file=sys.stderr)
         d[:] = array
+        zarr_root.chunk_store.flush()
         del d
 
-def set_depth(aln, depths, chrom_lengths, outdir, min_mapq):
+def set_depth(aln, depths, chrom_lengths, zarr_root, min_mapq):
     if aln.mapping_quality < min_mapq: return
     if aln.flag & SAM_FLAGS.FUNMAP: return
 
     chrom = aln.reference_name
     if chrom not in depths:
-        write_depths(depths, outdir)
+        write_depths(depths, zarr_root)
         depths.clear()
         depths[chrom] = np.zeros((chrom_lengths[chrom],), dtype='i4')
         # faster to set individual values in array.array
@@ -284,10 +286,12 @@ def soft_and_ins(aln, li, events2d, min_event_len, min_mapping_quality=15, high_
         if op in CONSUME_REF:
             offset += length
 
-def chop(li, n):
-    for i, v in enumerate(li):
+def chop(li, n, look_back):
+    if look_back == 0: return
+    for i, v in enumerate(li[-look_back:], start=max(0, len(li) - look_back)):
        if len(v) == n: continue
-       li[i] = tuple(list(v)[:n])
+       assert li[i] == v
+       li[i] = v[:n]
 
 def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
         min_mapping_quality=10, max_insert_size=None, debug=False, high_nm=11):
@@ -296,9 +300,12 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
 
     t0 = time.time()
 
+    z = zarr.ZipStore(f'{outdir}/depths.zarr.zip', mode='w')
+    zarr_root = zarr.group(store=z, overwrite=True)
+
     # keep reads in here. only do anything with pairs. if a read is already in
     # here we have a pair since we are skipping supplementary and secondary.
-    pairs = {} 
+    pairs = {}
 
     chrom_lengths = dict(zip(bam.references, bam.lengths))
 
@@ -310,23 +317,31 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
 
     fail_flags = (SAM_FLAGS.FQCFAIL | SAM_FLAGS.FDUP | SAM_FLAGS.FSECONDARY | SAM_FLAGS.FSUPPLEMENTARY)
 
+    # this is stupid, but helps performance
+    # by default we store read name and other diagnostic info in softs and
+    # events. if --debug is not used, then we use `chop` to remove that.
+    # this tells chop how far back to look so it doesn't need to iterate over
+    # the entire list.
+    chop_mod = 400000
+
     # instead of incrementing numpy array for every cigar event.
     # add here, then when it gets large-enough we can do something faster.
     for i, b in enumerate(bam): # TODO add option to iterate over VCF of putative SV sites.
 
-        if i == 2000000 or (i % 2000000 == 0 and i > 0):
+        if i == 2000000 or (i % 10000000 == 0 and i > 0):
             print(f"[sv-channels] i:{i} ({b.reference_name}:{b.reference_start}) processed-pairs:{processed_pairs} len pairs:{len(pairs)} events:{len(events)} reads/second:{i/(time.time() - t0):.0f}", file=sys.stderr)
+            sys.stderr.flush()
+
+        if not debug:
             # removing the debugging stuff, otherwise memory ballons.
-            if not debug:
-                chop(softs, 3)
-                chop(events, 5)
-        elif (not debug) and (i % 100000 == 0):
-            chop(softs, 3)
-            chop(events, 5)
+            if len(softs) % chop_mod == 0:
+                chop(softs, 3, chop_mod)
+            if len(events) % chop_mod == 0:
+                chop(events, 5, chop_mod)
 
-        if b.flag & fail_flags: continue 
+        if b.flag & fail_flags: continue
 
-        set_depth(b, depths, chrom_lengths, outdir, min_mapping_quality)
+        set_depth(b, depths, chrom_lengths, zarr_root, min_mapping_quality)
 
         if b.query_name in pairs:
             processed_pairs += 1
@@ -335,18 +350,25 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
             soft_and_ins(b, softs, events, min_clip_len, min_mapping_quality, high_nm)
             add_events(a, b, events, min_clip_len, min_cigar_event_length=10, max_insert_size=max_insert_size)
         else:
+            # we dont use sequence or base-qualities so set them to empty to reduce memory.
+            # only do it for stuff that's far away.
+            if b.reference_id != b.next_reference_id or (b.next_reference_start - b.reference_start) > 100000:
+              b.query_sequence = None
+              b.query_qualities = None
             pairs[b.query_name] = b
 
     print(f"[sv-channels] processed-pairs:{processed_pairs} len pairs:{len(pairs)} events:{len(events)}", file=sys.stderr)
-    write_depths(depths, outdir)
-
-    return dict(soft_and_insertions=softs, events=events, depths=depths)
+    write_depths(depths, zarr_root)
+    if not debug:
+        chop(softs, 3, chop_mod)
+        chop(events, 5, chop_mod)
+    write_text(softs, f"{outdir}/sv-channels.soft_and_insertions.txt.gz")
+    write_text(events, f"{outdir}/sv-channels.events2d.txt.gz")
+    z.close()
 
 def find_max_insert_size(bam_path, reference, p=0.985):
     assert p < 1 and p > 0, "expected value between 0 and 1 in find_max_insert_size"
-    reqd = SAM_FLAG | SAM_RNAME | SAM_POS | SAM_MAPQ | SAM_RNEXT | SAM_PNEXT
     bam = pysam.AlignmentFile(bam_path, "r", threads=2,
-            format_options=[("required_fields=%d" % reqd).encode()],
             reference_filename=reference)
     fail_flags = (SAM_FLAGS.FREAD2 | SAM_FLAGS.FQCFAIL | SAM_FLAGS.FDUP | SAM_FLAGS.FSECONDARY | SAM_FLAGS.FSUPPLEMENTARY | SAM_FLAGS.FUNMAP | SAM_FLAGS.FMUNMAP)
 
@@ -392,8 +414,8 @@ def main():
     assert os.path.isfile(a.bam), "[svchannels] a file (or link) is required for the [bam] argument"
 
     reqd = SAM_QNAME | SAM_FLAG | SAM_RNAME | SAM_POS | SAM_MAPQ | SAM_CIGAR | SAM_RNEXT | SAM_PNEXT | SAM_TLEN | SAM_AUX
-    p = 0.99
-    
+    p = 0.995
+
     max_insert = find_max_insert_size(a.bam, a.reference, p)
     print(f"[sv-channels] calculated insert size of {p * 100:.2f}th percentile as: {max_insert}", file=sys.stderr)
 
@@ -403,9 +425,15 @@ def main():
 
     fai = Fasta(a.reference)
 
-    d = iterate(bam, fai, a.out_dir, min_mapping_quality=a.min_mapping_quality, max_insert_size=max_insert, debug=a.debug, high_nm=10)
-    write_text(d["soft_and_insertions"], f"{a.out_dir}/sv-channels.soft_and_insertions.txt.gz")
-    write_text(d["events"], f"{a.out_dir}/sv-channels.events2d.txt.gz")
+    # WTAF: https://stackoverflow.com/a/67299169
+    od = Path(a.out_dir)
+    for parent in reversed(od.parents):
+        parent.mkdir(mode=0o774, exist_ok=True)
+    od.mkdir(mode=0o774, exist_ok=True)
+
+
+    iterate(bam, fai, a.out_dir, min_mapping_quality=a.min_mapping_quality, max_insert_size=max_insert, debug=a.debug, high_nm=10)
+    print("[sv-channels] done with iteration", file=sys.stderr)
 
 
 if __name__ == "__main__":

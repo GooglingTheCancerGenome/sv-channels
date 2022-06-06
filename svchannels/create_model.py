@@ -3,6 +3,7 @@ import logging
 import zarr
 import gzip
 import json
+from pathlib import Path
 from skopt import gp_minimize
 from skopt.space import Real, Integer, Categorical
 from skopt.utils import use_named_args
@@ -155,11 +156,13 @@ def optimize(args):
 
     windows = args.windows.split(',')
     labels = args.labels.split(',')
+    assert len(windows) == len(labels)
 
     X = []
     y = []
     for w, l in zip(windows, labels):
         partial_X, partial_y = load_windows(w, l)
+        assert partial_X.shape[0] == len(partial_y), (w, l, partial_X.shape, len(partial_y))
         X.extend(partial_X)
         y.extend(partial_y.values())
 
@@ -255,6 +258,12 @@ def main():
                         default='hyperparams.npy',
                         help="File with hyperparameters")
     args = parser.parse_args()
+
+
+    for p in (args.model, args.hparams, args.logfile):
+        od = Path(p)
+        for parent in reversed(od.parents):
+            parent.mkdir(mode=0o774, exist_ok=True)
 
     log_format = '%(asctime)s %(message)s'
     logging.basicConfig(format=log_format,

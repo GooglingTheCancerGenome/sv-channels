@@ -112,24 +112,20 @@ def main():
     out_prefix = os.path.join(args.output, "sv-channels")
 
     merge_sv_calls = ' '.join([
-        "cd ", os.path.join(args.sv_channels, "scripts/R") + "; ",
-        "Rscript merge_sv_calls.R",
-        "-i", os.path.join("../../svchannels", args.output),
+        "Rscript", os.path.join(args.sv_channels, "scripts", "R", "merge_sv_calls.R"),
+        "-i", args.output,
         "-f", args.encode_blacklist,
         "-n", args.n_regions,
         "-m split_reads",
         "-o", os.path.join(args.output, "sv-channels")
     ])
 
-    print(merge_sv_calls)
     cmd_out = subprocess.run(merge_sv_calls, shell=True, check=True)
-    print(cmd_out)
 
     assert os.path.join(args.sv_channels, "scripts/utils/bedpe_to_vcf.py")
     assert os.path.join(args.sv_channels, "scripts/genome_wide", args.output + '.bedpe')
 
     bedpe_to_vcf = ' '.join([
-        "conda activate sv-channels; pwd; python ",
         os.path.join(args.sv_channels, "scripts/utils/bedpe_to_vcf.py"),
         "-i", os.path.join(args.output, "sv-channels.DEL.bedpe"),
         "-b", args.twobit,

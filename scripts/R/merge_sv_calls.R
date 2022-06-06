@@ -1,6 +1,23 @@
 #!/usr/bin/env Rscript
 
-source('./aux_functions.R')
+
+args = commandArgs()
+
+scriptName = args[substr(args,1,7) == '--file=']
+
+if (length(scriptName) == 0) {
+  scriptName <- rstudioapi::getSourceEditorContext()$path
+} else {
+  scriptName <- substr(scriptName, 8, nchar(scriptName))
+}
+
+pathName = substr(
+  scriptName, 
+  1, 
+  nchar(scriptName) - nchar(strsplit(scriptName, '.*[/|\\]')[[1]][2])
+)
+
+source(paste(pathName, 'aux_functions.R', sep='/', collapse=NULL))
 
 # create a parser and add command-line arguments
 p <-
@@ -46,6 +63,7 @@ if (is.na(argv$i))
 }
 
 input_path <- argv$i
+print(input_path)
 regions_for_filtering <- argv$f
 ref_regions <- argv$n
 mode <- argv$m
@@ -80,6 +98,7 @@ cmd <-
     '>',
     bedpe.file
   )
+print(cmd)
 system(cmd)
 
   print('Loading predictions...')
