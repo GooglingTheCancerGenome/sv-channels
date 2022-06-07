@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 import subprocess
 import numpy as np
 import pandas as pd
@@ -184,10 +185,12 @@ def main():
         "-o", os.path.join(args.output, "sv-channels")
     ])
 
-    cmd_out = subprocess.run(merge_sv_calls, shell=True, check=True)
+    cmd_out = subprocess.run(merge_sv_calls, shell=True, check=True,
+            stderr=sys.stderr)
+    print(cmd_out)
 
-    assert os.path.join(args.sv_channels, "scripts/utils/bedpe_to_vcf.py")
-    assert os.path.join(args.sv_channels, "scripts/genome_wide", args.output + '.bedpe')
+    #assert os.path.join(args.sv_channels, "scripts/utils/bedpe_to_vcf.py")
+    #assert os.path.join(args.sv_channels, "scripts/genome_wide", args.output + '.bedpe')
 
     bedpe_to_vcf = ' '.join([
         os.path.join(args.sv_channels, "scripts/utils/bedpe_to_vcf.py"),
@@ -197,7 +200,7 @@ def main():
         "-o", os.path.join(args.output, "sv-channels.DEL.vcf")
     ])
     print(bedpe_to_vcf)
-    cmd_out = subprocess.run(bedpe_to_vcf, shell=True, check=True)
+    cmd_out = subprocess.run(bedpe_to_vcf, shell=True, check=True, stderr=sys.stderr)
     print(cmd_out)
 
 

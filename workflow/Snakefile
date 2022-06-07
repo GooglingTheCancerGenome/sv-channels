@@ -84,7 +84,7 @@ rule label_variants:
 
     shell:
         """
-	{DEBUG} python {SVCHAN}/svchannels/label_windows.py \
+{DEBUG} python {SVCHAN}/svchannels/label_windows.py \
            --fai {input.fai} \
            --outputpath {params.dir} \
            --ground_truth {input.truth_bed} \
@@ -116,8 +116,6 @@ rule train:
 
     shell:
         """
-echo $CUDA_VISIBLE_DEVICES || true
-
 {DEBUG} python {SVCHAN}/svchannels/create_model.py \
         --windows {params.channels} \
         --labels {params.labels} \
@@ -129,3 +127,41 @@ echo $CUDA_VISIBLE_DEVICES || true
         -l {output.dir}/manta_model.log \
         -p {output.dir}/manta_model.hparams.npy
         """
+
+
+rule predict:
+    resources:
+        time = "92:00:00",
+        memGB = 256,
+        partition = "gpu",
+        gpus_per_node = "RTX6000:1",
+
+    conda: "../environment.yaml"
+
+    output:
+       dir = directory(opj(OUTDIR, "validation"))
+
+    params:
+        model = config["model"],
+        labels = config["labels"],
+        test_sample = config["test_sample"],
+        channels = config["channels"],
+        encode = config["encode"],
+        n_regions = config["n_regions"],
+        twobit = config["twobit"],
+
+    shell:
+       """
+{DEBUG} python {SVCHAN}/svchannels/predict.py \
+        -m {params.model} \
+        --labels {params.labels} \
+        -n trained \
+        -sn {params.test_sample} \
+        -i {params.channels} \
+        -s DEL \
+        -o {output.dir} \
+        --sv_channels {SVCHAN} \
+        -fn {params.n_regions} \
+        --encode_blacklist {params.encode} \
+        -tb {params.twobit}
+       """
