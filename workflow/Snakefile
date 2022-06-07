@@ -134,7 +134,7 @@ rule train:
 rule predict:
     resources:
         time = "92:00:00",
-        memGB = 256,
+        memGB = 32,
         partition = "gpu",
         gpus_per_node = "RTX6000:1",
 
@@ -145,25 +145,23 @@ rule predict:
 
     params:
         model = config["model"],
-        labels = config["labels"],
         test_sample = config["test_sample"],
         channels = config["channels"],
-        encode = config["encode"],
-        n_regions = config["n_regions"],
+        bedpe = config["test_bedpe"],
+        exclude = config["exclude"],
         twobit = config["twobit"],
 
     shell:
        """
 {DEBUG} python {SVCHAN}/svchannels/predict.py \
+        -b {params.bedpe} \
         -m {params.model} \
-        --labels {params.labels} \
         -n trained \
         -sn {params.test_sample} \
         -i {params.channels} \
         -s DEL \
         -o {output.dir} \
         --sv_channels {SVCHAN} \
-        -fn {params.n_regions} \
-        --encode_blacklist {params.encode} \
+        --exclude {params.exclude} \
         -tb {params.twobit}
        """
