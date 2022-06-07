@@ -1,96 +1,32 @@
 import argparse
 import os
 import subprocess
-import numpy as np
+
 import pandas as pd
-import zarr
-import sys
 from tensorflow.keras.models import load_model
-from model_functions import unfold_win_id
+from tensorflow.keras.utils import to_categorical
+
+from model_functions import evaluate_model, get_data
 
 
-def evaluate(model, X_test, win_ids_test, output_dir):
-
-    def write_predictions(probs, predicted, win_ids_test):
-
-        outdir = os.path.join(output_dir, 'predictions')
-        os.makedirs(outdir, exist_ok=True)
-        outfile = os.path.join(outdir, 'correct.bedpe')
-        print(f"[svchannels] writing correct to {outfile}", file=sys.stderr)
-        lines = []
-        j = 1
-        for prob, p, w in zip(probs, predicted, win_ids_test):
-
-            sv_score = prob[0]
-
-            if unfold_win_id(w) is not None:
-                print("got svctype")
-
-                chr1, pos1, chr2, pos2, strand_info = unfold_win_id(w)
-
-                lines.append('\t'.join([
-                    str(chr1),
-                    str(pos1),
-                    str(int(pos1) + 1),
-                    str(chr2),
-                    str(pos2),
-                    str(int(pos2) + 1),
-                    'PRED_' + class_labels[p] + '_' + str(j),
-                    str(sv_score),
-                    strand_info[0],
-                    strand_info[1]
-                ]) + '\n')
-                j += 1
-
-        with open(outfile, 'w') as f:
-            # use set to make lines unique
-            for ln in lines:
-                f.write(ln)
-
-    dict_sorted = sorted(params["mapclasses"].items(), key=lambda x: x[1])
-    class_labels = [i[0] for i in dict_sorted]
-
-    probs = model.predict(X_test, batch_size=1000, verbose=False)
-    # columns are predicted, rows are truth
-    predicted = probs.argmax(axis=1)
-    print(f"predicted shape: {predicted.shape}")
-
-    write_predictions(probs, predicted, win_ids_test)
-
-
-def predict(input_data, input_bedpe, sample_name, model_fn, model_name, output_dir):
+def predict(input_data, input_labels, sample_name, svtype, model_fn, model_name, output_dir):
 
     os.makedirs(output_dir, exist_ok=True)
-
-    # Load input data for test sample
-    X = []
-    for t in input_data:
-        print('Loading data from {}...'.format(t))
-        X_partial = zarr.load(t)
-        X.extend(X_partial)
-    X = np.stack(X, axis=0)
-
-    # Load Manta calls for test sample
-    win_ids = []
-    with (open(input_bedpe, 'r')) as bed:
-
-        for line in bed:
-            columns = line.rstrip().split("\t")
-            chrom1, pos1_start, pos1_end = str(columns[0]), int(
-                columns[1]), int(columns[2])
-            chrom2, pos2_start, pos2_end = str(columns[3]), int(
-                columns[4]), int(columns[5])
-            svtype = columns[-1]
-            win_ids.append('_'.join((chrom1, pos1_start, pos1_end,
-                                    chrom2, pos2_start, pos2_end,
-                                    "**")))
-    win_ids = np.array(win_ids)
-
+    X, y, win_ids = get_data(input_data, input_labels, svtype)
+    y_binary = to_categorical(y, num_classes=params['n_classes'])
     print('Predicting {} with model trained on {}...'.format(
         sample_name, model_name))
-
     model = load_model(model_fn)
-    evaluate(model, X, win_ids,output_dir)
+    results = pd.DataFrame()
+
+    intermediate_results, metrics = evaluate_model(model,
+                                                   X, y_binary, win_ids,
+                                                   results,
+                                                   params['mapclasses'],
+                                                   output_dir, svtype)
+
+    results = results.append(intermediate_results)
+    results.to_csv(os.path.join(output_dir, 'metrics.csv'), sep='\t')
 
 
 def main():
@@ -114,11 +50,11 @@ def main():
                         default='sv_chan.zarr',
                         help="Specify list of windows"
                         )
-    parser.add_argument('-b',
-                        '--bedpe',
+    parser.add_argument('-lab',
+                        '--labels',
                         type=str,
-                        default='manta.bedpe',
-                        help="Specify Manta calls of the test sample"
+                        default='labels/labels.json.gz',
+                        help="Specify list of labels"
                         )
     parser.add_argument('-sn',
                         '--sample_name',
@@ -170,7 +106,7 @@ def main():
     windows_list = args.input.split(',')
     labels_list = args.labels.split(',')
 
-    predict(windows_list, labels_list, args.sample_name,
+    predict(windows_list, labels_list, args.sample_name, args.svtype,
             args.model, args.model_name, args.output)
 
     out_prefix = os.path.join(args.output, "sv-channels")
