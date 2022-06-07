@@ -4,3 +4,10 @@ fasta: "/hpc/compgen/projects/googling-the-cancer-genome/sv-channels/analysis/SP
 bedpe_dir: "/hpc/compgen/projects/googling-the-cancer-genome/sv-channels/analysis/SPIDER/1KG/sv-channels-data/"
 truth_bedpe_dir: "/hpc/compgen/projects/googling-the-cancer-genome/sv-channels/analysis/SPIDER/1KG/truth-sets/1KG/"
 svchan_dir: "/hpc/compgen/users/bpedersen/src/sv-channels/"
+model: "/hpc/compgen/users/bpedersen/src/sv-channels/svchan/HG01053/validation/manta_model.keras" # trained model.
+test_sample: "HG00420"
+labels: "/hpc/compgen/users/bpedersen/src/sv-channels/svchan/HG00420/labels/labels.json.gz"
+channels: "/hpc/compgen/users/bpedersen/src/sv-channels/svchan/HG00420/channels/channels.zarr.zip"
+n_regions: "/hpc/compgen/projects/googling-the-cancer-genome/sv-channels/analysis/SPIDER/1KG/reference/reference_N_regions.bed"
+encode: "/hpc/compgen/projects/googling-the-cancer-genome/sv-channels/analysis/SPIDER/1KG/reference/ENCFF001TDO.bed"
+twobit: "/hpc/compgen/projects/googling-the-cancer-genome/sv-channels/analysis/SPIDER/1KG/reference/GRCh38_full_analysis_set_plus_decoy_hla.2bit"
