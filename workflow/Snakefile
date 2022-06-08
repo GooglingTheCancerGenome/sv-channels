@@ -16,10 +16,10 @@ DEBUG = "/usr/bin/time -v"
 
 configfile: "sm.config.yml"
 
-#rule all:
-#    input:
-#        expand(opj(OUTDIR, "{sample}", "labels", "labels.json.gz"), sample=SAMPLES),
-#        dir = directory(opj(OUTDIR, validation_sample, "validation")),
+rule all:
+    input:
+        expand(opj(OUTDIR, "{sample}", "labels", "labels.json.gz"), sample=SAMPLES),
+        dir = directory(opj(OUTDIR, validation_sample, "validation")),
 
 
 rule extract_signals:
@@ -45,6 +45,7 @@ rule generate_channels:
     resources:
         time = "92:00:00",
         memGB = 12
+    conda: "../environment.yaml"
     input:
         opj(OUTDIR, "{sample}", "signals"),
         fasta = config["fasta"],
@@ -71,7 +72,8 @@ rule label_variants:
     resources:
         time = "92:00:00",
         memGB = 4
-    input: 
+    conda: "../environment.yaml"
+    input:
         fai = config["fasta"] + ".fai",
         truth_bed = opj(config["truth_bedpe_dir"], "{sample}.DEL.bedpe"),
         sv_positions = opj(OUTDIR, "{sample}", "channels", "sv_positions.bedpe"),
