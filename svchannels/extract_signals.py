@@ -401,7 +401,7 @@ def write_text(li, path, debug=False):
             print("\t".join(str(x) for x in row), file=fh)
     fh.close()
 
-def main():
+def main(args=sys.argv[1:]):
     p = argparse.ArgumentParser()
     p.add_argument("-o", "--out-dir", help="sample-specific output directory",
             default="sv-channels")
@@ -410,7 +410,7 @@ def main():
     p.add_argument("reference")
     p.add_argument("bam")
 
-    a = p.parse_args()
+    a = p.parse_args(args)
     assert os.path.isfile(a.bam), "[svchannels] a file (or link) is required for the [bam] argument"
 
     reqd = SAM_QNAME | SAM_FLAG | SAM_RNAME | SAM_POS | SAM_MAPQ | SAM_CIGAR | SAM_RNEXT | SAM_PNEXT | SAM_TLEN | SAM_AUX
