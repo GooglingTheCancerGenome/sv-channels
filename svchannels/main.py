@@ -11,7 +11,9 @@ commands = {
 
 def main(args=sys.argv[1:] if len(sys.argv) > 0 else []):
     if len(args) == 0 or not args[0] in commands:
-        print(f"Command '{args[0]}' not found.\n Available commands are:", file=sys.stderr)
+        print("svchannels:", file=sys.stderr)
+        if len(args) > 0 and args[0] not in ('-h', '--help'):
+            print(f"Command '{args[0]}' not found.\n Available commands are:", file=sys.stderr)
         for cmd in commands:
             print(f'\t{cmd}: {commands[cmd][0]}', file=sys.stderr)
         sys.exit(1)
