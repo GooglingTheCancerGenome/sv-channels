@@ -4,6 +4,7 @@ import re
 import time
 from pathlib import Path
 from pyfaidx import Fasta
+from pysam import VariantFile
 
 import numpy as np
 np.set_printoptions(threshold=5000)
@@ -19,6 +20,25 @@ from svchannels.extract_signals import Event, orphanable_events
 
 DISCORDANTS = [Event.DISCORDANT_PLUS_MINUS, Event.DISCORDANT_PLUS_PLUS, Event.DISCORDANT_MINUS_MINUS, Event.DISCORDANT_MINUS_PLUS]
 
+
+def breakpoints(bedpe):
+    if bedpe.endswith((".vcf", ".vcf.gz", ".bcf")):
+        for v in VariantFile(bedpe):
+            svt = ""
+            try:
+                svt = v.info["SVTYPE"]
+            except KeyError:
+                pass
+            yield (v.chrom, v.start, v.stop, svt)
+    else:
+        for line in xopen(bedpe):
+            toks = line.strip().split()
+            # if toks[6] != 'DEL': continue
+            if toks[0] != toks[3]: continue
+
+            chrom = toks[0]
+            l, r = int(toks[1]), int(toks[4])
+            yield (chrom, l, r, toks[6])
 
 def find_signals_for_event(chrom, apos, bpos, signals2d_a, signals2d_b, signals1d, disc_a, disc_b, expand=250):
     # signals2d_a is sorted by A psoition, so we can use search-sorted
@@ -222,12 +242,12 @@ def main(args=sys.argv[1:]):
     p = argparse.ArgumentParser()
     p.add_argument("directory", help="sample-specific directory created by svchannels extract for input")
     p.add_argument("output", help="sample-specific output directory")
-    p.add_argument("bedpe")
+    p.add_argument("bedpe", help="bedpe or VCF of structural variants")
     p.add_argument(
         '--expand',
         type=int,
         default=62,
-        help="Specify expansion around breakpoints (default: %(default)s). This will automatically extend 8x the specified value for discordant reads")
+        help="Specify expansion around breakpoints (default: %(default)s) for creating the channel. This will automatically extend 8x the specified value for discordant reads")
     p.add_argument(
         '--gap',
         type=int,
@@ -271,40 +291,35 @@ def main(args=sys.argv[1:]):
     e1d = pd.read_table(f"{a.directory}/sv-channels.soft_and_insertions.txt.gz", compression="gzip",
                         usecols=list(range(3)),
                         names=["chrom", "pos", "event"],
-                        dtype={"chrom": str})
+                        dtype={"chrom": str, "pos": np.int32, "event": np.int8})
     print(f"[svchannels] read {len(e2d_a)} 2D events and {len(e1d)} 1d events", file=sys.stderr)
     t0 = time.time()
     expand = a.expand
     gap = a.gap
 
     # write the lines considered to file
-    file_object = open(os.path.join(a.output, 'sv_positions.bedpe'), 'w')
+    fh_svp = open(os.path.join(a.output, 'sv_positions.bedpe'), 'w')
 
     dups_toks = set()
     events = [] # we iterate over events first so we can size the zarr array.
 
-    for line in xopen(a.bedpe):
+    for chrom, l, r, svt in breakpoints(a.bedpe):
 
-        toks = line.strip().split()
-        # if toks[6] != 'DEL': continue
-        if toks[0] != toks[3]: continue
-        l, r = int(toks[1]), int(toks[4])
         if l < expand: continue
         if r < expand: continue
         if r < l:
             l, r = r, l
 
-        clen = len(depths_by_chrom[toks[0]])
+        clen = len(depths_by_chrom[chrom])
         if r >= clen - expand: continue
         # here, sv_chan is shape (n_channels, 2 * expand + gap) can accumulate these and send to learner.
-        toks_id = str(l) + '_' + str(r)
+        toks_id = f'{chrom}_{l}_{r}'
         if toks_id in dups_toks: continue
         dups_toks.add(toks_id)
-        file_object.write(line)
+        fh_svp.write(f'{chrom}\t{l}\t{l+1}\t{chrom}\t{r}\t{r+1}\t{svt}\n')
+        events.append((chrom, l, r))
 
-        events.append((toks[0], l, r))
-
-    file_object.close()
+    fh_svp.close()
 
     print(f"[svchannels] creating array", file=sys.stderr)
     ChannelShape = (len(events), max(Event) + 1 + len(orphanable_events) + N_onehot, 4 * expand + gap)
