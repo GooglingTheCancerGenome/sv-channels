@@ -11,23 +11,22 @@ from .model_functions import unfold_win_id
 
 
 
-def predict(zarr_zip, model_fn):
+def predict(d, model_fn):
 
-
+    zarr_zip = f'{d}/channels.zarr.zip'
+    assert os.path.exists(zarr_zip), f'unable to access channels file in directory {d}'
     X = zarr.load(zarr_zip)
     model = load_model(model_fn)
-    probs = model.predict(X_test, batch_size=1000, verbose=False)
-    predicted = probs.argmax(axis=1)
-
+    probs = model.predict(X, batch_size=100, verbose=True)
+    return probs
 
 
 def main(argv=sys.argv[1:]):
 
     parser = argparse.ArgumentParser(description='Use model to score a set of variants')
-    parser.add_argument('channels',
+    parser.add_argument('channels_directory',
                         type=str,
-                        default='channels.zarr.zip',
-                        help="channels.zarr.zip containing SVs",
+                        help="directory containing channels.zarr.zip and sv_positions.bedpe",
                         )
     parser.add_argument('model',
                         type=str,
@@ -37,11 +36,16 @@ def main(argv=sys.argv[1:]):
 
     args = parser.parse_args(argv)
 
-    windows_list = args.input.split(',')
-
-    probs = predict(args.channels, args.model)
+    probs = predict(args.channels_directory, args.model)
     predicted = probs.argmax(axis=1)
-
+    n = 0
+    for i, line in enumerate(open(f'{args.channels_directory}/sv_positions.bedpe')):
+        p = predicted[i]
+        # TODO: not sure if we need probs[i][0] here.
+        line = line.strip() + f'\t{probs[i][0]}:{p}'
+        print(line)
+        n += 1
+    assert n == len(predicted), "number of variants and channel-sets should match"
 
 
 
