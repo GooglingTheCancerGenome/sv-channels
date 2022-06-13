@@ -198,7 +198,8 @@ def xopen(filepath):
             return io.TextIOWrapper(open(filepath, 'rb'))
 
 
-def plot_event(chan, toks, expand, gap):
+def plot_event(chan, event, expand, gap):
+    chrom, l, r = event
     depth = chan[0]
     mat = chan[1:].astype('float')
     counts = mat.sum(axis=1).astype(int)
@@ -222,7 +223,7 @@ def plot_event(chan, toks, expand, gap):
     axes[1].axvspan(2*expand, 2*expand + gap, color='lightgray', edgecolor=None)
     axes[0].set_ylabel("depth")
 
-    fig.suptitle(f"{toks[0]}:{toks[1]}-{toks[4]}")
+    fig.suptitle(f"{chrom}:{l}-{r}")
 
     plt.tight_layout()
     plt.show()
@@ -342,7 +343,7 @@ def main(args=sys.argv[1:]):
             print(f"{i}/{Z.shape}. in {td:.0f} seconds ({n_vars/td:.1f} SVs/second \n{Z.info}", file=sys.stderr)
             sys.stderr.flush()
             t1 = time.time()
-        #plot_event(ch, toks, expand, gap)
+        #plot_event(ch, event, expand, gap)
 
     zarr.save_array(os.path.join(a.output, 'channels.zarr.zip'), Z)
     t = time.time() - t0
