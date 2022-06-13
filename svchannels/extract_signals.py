@@ -219,14 +219,18 @@ def best_position(aln, side):
 def write_depths(depths, zarr_root):
     for chrom, array in depths.items():
         # convert back to numpy array for cumsum
+        tx = time.time()
         array = np.asarray(array, dtype='i4')
         np.cumsum(array, out=array)
         d = zarr_root.empty(chrom, shape=array.shape, chunks=(10000,), dtype='i4')
-        if len(array) > 10000000:
-            print(f"[sv-channels] writing: {d}", file=sys.stderr)
+        if len(array) > 500_000:
+            print(f"[sv-channels] writing: {d}", file=sys.stderr, end="...")
         d[:] = array
-        zarr_root.chunk_store.flush()
+        if len(array) > 5_000_000:
+            zarr_root.chunk_store.flush()
         del d
+        if len(array) > 500_000:
+            print(f" wrote in {time.time()-tx:.2f} seconds", file=sys.stderr)
 
 def set_depth(aln, depths, chrom_lengths, zarr_root, min_mapq):
     if aln.mapping_quality < min_mapq: return
@@ -235,6 +239,7 @@ def set_depth(aln, depths, chrom_lengths, zarr_root, min_mapq):
     chrom = aln.reference_name
     if chrom not in depths:
         write_depths(depths, zarr_root)
+
         depths.clear()
         depths[chrom] = np.zeros((chrom_lengths[chrom],), dtype='i4')
         # faster to set individual values in array.array
@@ -328,7 +333,7 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
     # add here, then when it gets large-enough we can do something faster.
     for i, b in enumerate(bam): # TODO add option to iterate over VCF of putative SV sites.
 
-        if i == 2000000 or (i % 10000000 == 0 and i > 0):
+        if i == 2000000 or (i % 25000000 == 0 and i > 0):
             print(f"[sv-channels] i:{i} ({b.reference_name}:{b.reference_start}) processed-pairs:{processed_pairs} len pairs:{len(pairs)} events:{len(events)} reads/second:{i/(time.time() - t0):.0f}", file=sys.stderr)
             sys.stderr.flush()
 
@@ -343,25 +348,28 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
 
         set_depth(b, depths, chrom_lengths, zarr_root, min_mapping_quality)
 
-        if b.query_name in pairs:
+        qn = b.query_name
+        try:
+            a = pairs.pop(qn)
             processed_pairs += 1
-            a = pairs.pop(b.query_name)
             soft_and_ins(a, softs, events, min_clip_len, min_mapping_quality, high_nm)
             soft_and_ins(b, softs, events, min_clip_len, min_mapping_quality, high_nm)
             add_events(a, b, events, min_clip_len, min_cigar_event_length=10, max_insert_size=max_insert_size)
-        else:
+        except KeyError:
             # we dont use sequence or base-qualities so set them to empty to reduce memory.
             # only do it for stuff that's far away.
             if b.reference_id != b.next_reference_id or (b.next_reference_start - b.reference_start) > 100000:
               b.query_sequence = None
               b.query_qualities = None
-            pairs[b.query_name] = b
+            pairs[qn] = b
 
     print(f"[sv-channels] processed-pairs:{processed_pairs} len pairs:{len(pairs)} events:{len(events)}", file=sys.stderr)
     write_depths(depths, zarr_root)
     if not debug:
         chop(softs, 3, chop_mod)
         chop(events, 5, chop_mod)
+    
+    print(f"[sv-channels] writing text output", file=sys.stderr)
     write_text(softs, f"{outdir}/sv-channels.soft_and_insertions.txt.gz")
     write_text(events, f"{outdir}/sv-channels.events2d.txt.gz")
     z.close()
