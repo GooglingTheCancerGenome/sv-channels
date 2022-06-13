@@ -123,20 +123,20 @@ def add_split_event(aln, sa, li, min_mapping_quality, self_left, self_right):
         if sa_left:
             li.append((rname, pos,
                        aln.reference_name, (aln.reference_start if self_left else aln.reference_end),
-                       lookup[(strand, aln.is_reverse)], aln.qname))
+                       lookup[(strand, aln.is_reverse)])) #, aln.qname))
         else:
             li.append((rname, sa_end(pos, cigar) - 1,
                        aln.reference_name, aln.reference_start if self_left else aln.reference_end - 1,
-                       lookup[(strand, aln.is_reverse)], aln.qname))
+                       lookup[(strand, aln.is_reverse)])) # , aln.qname))
     else:
         if sa_left:
             li.append((aln.reference_name, aln.reference_start - 1 if self_left else aln.reference_end,
                        rname, pos - 1,
-                       lookup[(aln.is_reverse, strand)], aln.qname))
+                       lookup[(aln.is_reverse, strand)])) # , aln.qname))
         else:
             li.append((aln.reference_name, aln.reference_start if self_left else aln.reference_end,
                        rname, sa_end(pos, cigar),
-                       lookup[(aln.is_reverse, strand)], aln.qname))
+                       lookup[(aln.is_reverse, strand)])) # , aln.qname))
     if 0 < min(mapq, aln.mapping_quality) < min_mapping_quality:
         t = list(li[-1])
         t[4] = Event.SPLIT_LOW_QUALITY
@@ -169,7 +169,7 @@ def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_qu
 
                 if op == BAM_CDEL and length >= min_cigar_event_length:
                     li.append((chrom, offset, chrom, offset + length,
-                        Event.DEL_REV if aln.is_reverse else Event.DEL_FWD, aln.qname))
+                        Event.DEL_REV if aln.is_reverse else Event.DEL_FWD)) #, aln.qname))
                 if op in CONSUME_REF:
                     offset += length
 
@@ -194,15 +194,15 @@ def add_events(a, b, li, min_clip_len, min_cigar_event_length=10, min_mapping_qu
     if a.is_unmapped and not b.is_unmapped:
         # "right" and "left" don't make sense here, but "right" gives start and "left" gives end, which works.
         chrom = b.reference_name
-        li.append((chrom, best_position(b, "right"), chrom, best_position(b, "left"), Event.MATE_UNMAPPED, a.qname))
+        li.append((chrom, best_position(b, "right"), chrom, best_position(b, "left"), Event.MATE_UNMAPPED)) #, a.qname))
         return
     if b.is_unmapped and not a.is_unmapped:
         chrom = a.reference_name
-        li.append((chrom, best_position(a, "right"), chrom, best_position(a, "left"), Event.MATE_UNMAPPED, a.qname))
+        li.append((chrom, best_position(a, "right"), chrom, best_position(a, "left"), Event.MATE_UNMAPPED)) #, a.qname))
         return
 
     # we know that a < b because it came first in the bam
-    li.append((a.reference_name, best_position(a, "left"), b.reference_name, best_position(b, "right"), lookup[(a.is_reverse, b.is_reverse)], a.qname))
+    li.append((a.reference_name, best_position(a, "left"), b.reference_name, best_position(b, "right"), lookup[(a.is_reverse, b.is_reverse)])) #, a.qname))
 
 def best_position(aln, side):
     cigar = aln.cigartuples
@@ -265,13 +265,13 @@ def soft_and_ins(aln, li, events2d, min_event_len, min_mapping_quality=15, high_
                     if op == BAM_CINS or op == BAM_CDEL:
                         nm -= length
                 if nm >= high_nm:
-                    li.append((chrom, int((aln.reference_start + aln.reference_end) / 2), Event.HIGH_NM, aln.qname))
+                    li.append((chrom, int((aln.reference_start + aln.reference_end) / 2), Event.HIGH_NM)) #, aln.qname))
         except KeyError:
             pass
 
     if cigar is None or len(cigar) < 2: return
     if cigar[0][0] == BAM_CSOFT_CLIP and cigar[-1][0] == BAM_CSOFT_CLIP:
-        events2d.append((chrom, aln.reference_start, chrom, aln.reference_end, Event.SOFT_BOTH, aln.qname))
+        events2d.append((chrom, aln.reference_start, chrom, aln.reference_end, Event.SOFT_BOTH)) #, aln.qname))
 
     if aln.mapping_quality < min_mapping_quality: return
     # check each end of read
@@ -283,15 +283,16 @@ def soft_and_ins(aln, li, events2d, min_event_len, min_mapping_quality=15, high_
                 event = Event.SOFT_LEFT_REV if aln.is_reverse else Event.SOFT_LEFT_FWD
             else:
                 event = Event.SOFT_RIGHT_REV if aln.is_reverse else Event.SOFT_RIGHT_FWD
-            li.append((chrom, offset, event, aln.qname))
+            li.append((chrom, offset, event)) #, aln.qname))
 
         if op == BAM_CINS and length >= min_event_len:
-            li.append((chrom, offset, Event.INS_REV if aln.is_reverse else Event.INS_FWD, aln.qname))
+            li.append((chrom, offset, Event.INS_REV if aln.is_reverse else Event.INS_FWD)) #, aln.qname))
 
         if op in CONSUME_REF:
             offset += length
 
 def chop(li, n, look_back):
+    return
     if look_back == 0: return
     for i, v in enumerate(li[-look_back:], start=max(0, len(li) - look_back)):
        if len(v) == n: continue
