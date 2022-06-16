@@ -12,6 +12,53 @@ import zarr
 # from mcfly import modelgen, find_architecture
 from sklearn.metrics import (average_precision_score, f1_score,
                              precision_recall_curve)
+from tensorflow.keras.regularizers import l2
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.layers import (Activation, BatchNormalization,
+                                     Convolution1D, Dense, Flatten,
+                                     Dropout)
+from tensorflow.keras.models import Sequential
+
+
+def create_model(X, outputdim, learning_rate, regularization_rate,
+                 filters, layers, kernel_size, fc_nodes):
+    weightinit = 'lecun_uniform'  # weight initialization
+
+    model = Sequential()
+
+    model.add(BatchNormalization(input_shape=(X.shape[1], X.shape[2])))
+
+    filters_list = [filters] * layers
+
+    for filter_number in filters_list:
+        model.add(
+            Convolution1D(filter_number,
+                          kernel_size=(kernel_size,),
+                          padding='same',
+                          kernel_regularizer=l2(regularization_rate),
+                          kernel_initializer=weightinit))
+        model.add(BatchNormalization())
+        model.add(Activation('relu'))
+        model.add(Dropout(rate=0.2))
+
+    model.add(Flatten())
+
+    model.add(
+        Dense(units=fc_nodes,
+              kernel_regularizer=l2(regularization_rate),
+              kernel_initializer=weightinit))  # Fully connected layer
+    model.add(Activation('relu'))  # Relu activation
+    model.add(Dropout(rate=0.2))
+
+    model.add(Dense(units=outputdim, kernel_initializer=weightinit))
+    model.add(BatchNormalization())
+    model.add(Activation("sigmoid"))  # Final classification layer
+
+    model.compile(loss='categorical_crossentropy',
+                  optimizer=Adam(lr=learning_rate),
+                  metrics=['accuracy'])
+
+    return model
 
 
 def unfold_win_id(win_id):

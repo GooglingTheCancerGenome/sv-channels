@@ -13,13 +13,9 @@ import numpy as np
 from time import time
 from sklearn.utils.class_weight import compute_class_weight
 from tensorflow.keras.utils import to_categorical
-from tensorflow.keras.regularizers import l2
-from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import (EarlyStopping, ModelCheckpoint,
                                         TensorBoard)
-from tensorflow.keras.layers import (Activation, BatchNormalization,
-                                     Convolution1D, Dense, Flatten)
-from tensorflow.keras.models import Sequential, load_model
+from model_functions import create_model
 
 
 def load_windows(win_file, lab_file):
@@ -29,51 +25,13 @@ def load_windows(win_file, lab_file):
     return X, y
 
 
-def create_model(X, outputdim, learning_rate, regularization_rate,
-                 filters, layers, kernel_size, fc_nodes):
-    weightinit = 'lecun_uniform'  # weight initialization
-
-    model = Sequential()
-
-    model.add(BatchNormalization(input_shape=(X.shape[1], X.shape[2])))
-
-    filters_list = [filters] * layers
-
-    for filter_number in filters_list:
-        model.add(
-            Convolution1D(filter_number,
-                          kernel_size=(kernel_size,),
-                          padding='same',
-                          kernel_regularizer=l2(regularization_rate),
-                          kernel_initializer=weightinit))
-        model.add(BatchNormalization())
-        model.add(Activation('relu'))
-
-    model.add(Flatten())
-
-    model.add(
-        Dense(units=fc_nodes,
-              kernel_regularizer=l2(regularization_rate),
-              kernel_initializer=weightinit))  # Fully connected layer
-    model.add(Activation('relu'))  # Relu activation
-
-    model.add(Dense(units=outputdim, kernel_initializer=weightinit))
-    model.add(BatchNormalization())
-    model.add(Activation("sigmoid"))  # Final classification layer
-
-    model.compile(loss='categorical_crossentropy',
-                  optimizer=Adam(lr=learning_rate),
-                  metrics=['accuracy'])
-
-    return model
-
-
 def train(args):
+
     global train_X, val_X, train_y, val_y, class_weights, batch_size, max_epoch, path_best_model
 
     mapclasses = {args.svtype: 0, 'no' + args.svtype: 1}
 
-    randomState = 46
+    randomState = 42
 
     np.random.seed(randomState)
     tf.random.set_seed(randomState)
@@ -103,7 +61,7 @@ def train(args):
 
     X = np.stack(X, axis=0)
 
-    first_chrom = [w.split('_')[0] for w in win_pos]
+    first_chrom = [w.split('/')[0] for w in win_pos]
 
     val_chrom_idx = [i for i, k in enumerate(first_chrom) if k == args.validation_chr]
     val_X = X[val_chrom_idx]
@@ -111,17 +69,13 @@ def train(args):
     val_y = np.array([mapclasses[i] for i in val_y])
     val_y = to_categorical(val_y, num_classes=2)
 
-    chrom_set = sorted(set(first_chrom))
-    if args.validation_chr in chrom_set:
-        chrom_set.remove(args.validation_chr)
-
     print('Running training leaving chromosome {} out'.format(args.test_chr))
 
     model_dir = os.path.dirname(args.model)
     model_base = os.path.basename(args.model)
     path_best_model = model_dir + '/' + args.test_chr + '.' + model_base
 
-    chrom_idx = [i for i, k in enumerate(first_chrom) if k != args.test_chr and k != args.validation_chr]
+    chrom_idx = [i for i, k in enumerate(first_chrom) if k != args.test_chr]
     chrom_idx = np.asarray(chrom_idx)
 
     train_X = X[chrom_idx]
@@ -136,14 +90,15 @@ def train(args):
 
     train_y = to_categorical(y_lab, num_classes=2)
 
-    hparams = np.load(args.hparams)
+    #hparams = np.load(args.hparams)
 
-    cnn_filters = int(hparams[0])
-    cnn_layers = int(hparams[1])
-    cnn_kernel_size = int(hparams[2])
-    cnn_fc_nodes = int(hparams[3])
-    cnn_init_learning_rate = hparams[4]
-    cnn_regularization_rate = hparams[5]
+    cnn_init_learning_rate = 1e-4
+    cnn_regularization_rate = 1e-1
+    cnn_filters = 4
+    cnn_layers = 1
+    cnn_kernel_size = 7
+    cnn_fc_nodes = 4
+    outputdim = 2
 
     print()
     print('cnn_filters: ', cnn_filters)
@@ -154,18 +109,14 @@ def train(args):
     print('cnn_regularization_rate: ', cnn_regularization_rate)
     print()
 
-    model = create_model(train_X, 2,
-                         learning_rate=cnn_init_learning_rate, regularization_rate=cnn_regularization_rate,
-                         filters=cnn_filters, layers=cnn_layers, kernel_size=cnn_kernel_size, fc_nodes=cnn_fc_nodes)
+    model = create_model(train_X, outputdim,
+                         learning_rate=cnn_init_learning_rate,
+                         regularization_rate=cnn_regularization_rate,
+                         filters=cnn_filters,
+                         layers=cnn_layers,
+                         kernel_size=cnn_kernel_size,
+                         fc_nodes=cnn_fc_nodes)
     print(model.summary())
-
-    callback_log = TensorBoard(
-        log_dir='log_dir',
-        histogram_freq=0,
-        batch_size=32,
-        write_graph=True,
-        write_grads=True,
-        write_images=False)
 
     earlystop = EarlyStopping(monitor='val_loss',
                               min_delta=0,
@@ -173,17 +124,16 @@ def train(args):
                               verbose=1,
                               restore_best_weights=True)
 
-    callbacks = [callback_log, earlystop]
+    callbacks = [earlystop]
 
     validation_data = (val_X, val_y)
 
     history = model.fit(x=train_X, y=train_y,
                         epochs=max_epoch, batch_size=batch_size,
                         shuffle=True,
-                        validation_data=validation_data,
+                        validation_split=0.3,
                         class_weight=class_weights,
-                        verbose=0,
-                        callbacks=callbacks)
+                        verbose=0)
 
     accuracy = history.history['val_accuracy'][-1]
     print()
@@ -236,11 +186,6 @@ def main():
                         type=str,
                         default='chr1',
                         help="Chromosome used for testing")
-    parser.add_argument('-val',
-                        '--validation_chr',
-                        type=str,
-                        default='chr22',
-                        help="Chromosome used for validation")
     parser.add_argument('-s',
                         '--svtype',
                         type=str,
