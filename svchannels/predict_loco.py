@@ -44,7 +44,7 @@ def predict(windows_list, labels_list, samples_list, model_names_list, svtype, m
     y = np.array([mapclasses[i] for i in y])
     y_binary = to_categorical(y, num_classes=params['n_classes'])
 
-    first_chrom = [w.split('_')[0] for w in win_ids]
+    first_chrom = [w.split('/')[0] for w in win_ids]
 
     for s in set(samples):
         for c in model_names_list:
