@@ -22,6 +22,14 @@ DISCORDANTS = [Event.DISCORDANT_PLUS_MINUS, Event.DISCORDANT_PLUS_PLUS, Event.DI
 
 
 def breakpoints(bedpe):
+
+    gt_lookup = {
+            (1, 1): "1/1",
+            (0, 1): "0/1",
+            (0, 0): "0/0",
+            (None, None): "./."
+    }
+
     if bedpe.endswith((".vcf", ".vcf.gz", ".bcf")):
         for v in VariantFile(bedpe):
             svt = ""
@@ -29,6 +37,12 @@ def breakpoints(bedpe):
                 svt = v.info["SVTYPE"]
             except KeyError:
                 pass
+            samples = v.samples
+            if len(samples) == 1:
+                try:
+                    svt += "\t" + gt_lookup[samples[0]['GT']]
+                except:
+                    svt += "\t./."
             yield (v.chrom, v.start, v.stop, svt)
     else:
         for line in xopen(bedpe):
