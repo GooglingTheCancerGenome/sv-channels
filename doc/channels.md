@@ -54,3 +54,27 @@ location in the genome that did not support the event.
 
 Reads are extracted according to the --min-mapping-quality parameter given on the command-line. Reads with a lower mapping-quality are not
 used expect for `SPLIT_LOW_QUALITY`.
+
+## Signal Positions
+
+## Split Reads
+
+For each signal, we use a single informative position (for each end). So, for
+example on a split read for a deletion signal:
+
+```
+pos :                          A                               B
+read:           ----------------SSSSSSSSSSS>        HHHHHHHHHHH-------------->
+```
+
+## Discordant reads
+
+we would record position A, and B as the break-points.
+
+For discordant reads, we use the right-most mapped position of the left read
+(A) and the left-most mapped position of the right read (B):
+
+```
+pos:                            A                  B
+read:        -------------------->                <-----------------------
+```
