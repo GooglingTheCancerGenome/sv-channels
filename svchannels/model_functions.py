@@ -155,7 +155,6 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test,
                 sv_score = prob[0]
 
                 if unfold_win_id(w) is not None:
-                    print("got svctype")
 
                     chr1, pos1, chr2, pos2, strand_info = unfold_win_id(w)
 

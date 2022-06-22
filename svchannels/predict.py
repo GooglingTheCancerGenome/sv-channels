@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 import subprocess
 import numpy as np
 import pandas as pd
@@ -24,7 +25,6 @@ def evaluate(model, X_test, win_ids_test, output_dir):
             sv_score = prob[0]
 
             if unfold_win_id(w) is not None:
-                print("got svctype")
 
                 chr1, pos1, chr2, pos2, strand_info = unfold_win_id(w)
 
@@ -53,7 +53,6 @@ def evaluate(model, X_test, win_ids_test, output_dir):
     probs = model.predict(X_test, batch_size=1000, verbose=False)
     # columns are predicted, rows are truth
     predicted = probs.argmax(axis=1)
-    print(f"predicted shape: {predicted.shape}")
 
     write_predictions(probs, predicted, win_ids_test)
 
@@ -118,7 +117,8 @@ def main():
                         '--bedpe',
                         type=str,
                         default='manta.bedpe',
-                        help="Specify Manta calls of the test sample"
+                        help="Specify Manta calls of the test sample",
+                        required=True
                         )
     parser.add_argument('-sn',
                         '--sample_name',
@@ -131,16 +131,9 @@ def main():
                         type=str,
                         default='DEL',
                         help="Specify SV type")
-    parser.add_argument('-fe',
-                        '--encode_blacklist',
+    parser.add_argument('--exclude',
                         type=str,
-                        default='../../data/ENCFF001TDO.bed',
-                        help="ENCODE blacklist")
-    parser.add_argument('-fn',
-                        '--n_regions',
-                        type=str,
-                        default='../../data/reference_N_regions.bed',
-                        help="Regions in the genome containing Ns")
+                        help='BED file or regions to exclude')
     parser.add_argument('-tb',
                         '--twobit',
                         type=str,
@@ -168,9 +161,8 @@ def main():
     }
 
     windows_list = args.input.split(',')
-    labels_list = args.labels.split(',')
 
-    predict(windows_list, labels_list, args.sample_name,
+    predict(windows_list, args.bedpe, args.sample_name,
             args.model, args.model_name, args.output)
 
     out_prefix = os.path.join(args.output, "sv-channels")
@@ -178,16 +170,17 @@ def main():
     merge_sv_calls = ' '.join([
         "Rscript", os.path.join(args.sv_channels, "scripts", "R", "merge_sv_calls.R"),
         "-i", args.output,
-        "-f", args.encode_blacklist,
-        "-n", args.n_regions,
+        "-f", args.exclude,
         "-m split_reads",
         "-o", os.path.join(args.output, "sv-channels")
     ])
 
-    cmd_out = subprocess.run(merge_sv_calls, shell=True, check=True)
+    cmd_out = subprocess.run(merge_sv_calls, shell=True, check=True,
+            stderr=sys.stderr)
+    print(cmd_out)
 
-    assert os.path.join(args.sv_channels, "scripts/utils/bedpe_to_vcf.py")
-    assert os.path.join(args.sv_channels, "scripts/genome_wide", args.output + '.bedpe')
+    #assert os.path.join(args.sv_channels, "scripts/utils/bedpe_to_vcf.py")
+    #assert os.path.join(args.sv_channels, "scripts/genome_wide", args.output + '.bedpe')
 
     bedpe_to_vcf = ' '.join([
         os.path.join(args.sv_channels, "scripts/utils/bedpe_to_vcf.py"),
@@ -197,7 +190,7 @@ def main():
         "-o", os.path.join(args.output, "sv-channels.DEL.vcf")
     ])
     print(bedpe_to_vcf)
-    cmd_out = subprocess.run(bedpe_to_vcf, shell=True, check=True)
+    cmd_out = subprocess.run(bedpe_to_vcf, shell=True, check=True, stderr=sys.stderr)
     print(cmd_out)
 
 
