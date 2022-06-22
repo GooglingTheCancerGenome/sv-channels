@@ -21,7 +21,7 @@ from tensorflow.keras.models import Sequential
 
 
 def create_model(X, outputdim, learning_rate, regularization_rate,
-                 filters, layers, kernel_size, fc_nodes):
+                 filters, layers, kernel_size, fc_nodes, dropout_rate):
     weightinit = 'lecun_uniform'  # weight initialization
 
     model = Sequential()
@@ -39,7 +39,7 @@ def create_model(X, outputdim, learning_rate, regularization_rate,
                           kernel_initializer=weightinit))
         model.add(BatchNormalization())
         model.add(Activation('relu'))
-        model.add(Dropout(rate=0.2))
+        model.add(Dropout(rate=dropout_rate))
 
     model.add(Flatten())
 
@@ -48,7 +48,7 @@ def create_model(X, outputdim, learning_rate, regularization_rate,
               kernel_regularizer=l2(regularization_rate),
               kernel_initializer=weightinit))  # Fully connected layer
     model.add(Activation('relu'))  # Relu activation
-    model.add(Dropout(rate=0.2))
+    model.add(Dropout(rate=dropout_rate))
 
     model.add(Dense(units=outputdim, kernel_initializer=weightinit))
     model.add(BatchNormalization())
