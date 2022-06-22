@@ -23,13 +23,14 @@ dim_cnn_filters = Integer(low=1, high=8, name='cnn_filters')
 dim_cnn_layers = Integer(low=1, high=2, name='cnn_layers')
 dim_cnn_kernel_size = Integer(low=1, high=8, name='cnn_kernel_size')
 dim_cnn_fc_nodes = Integer(low=3, high=6, name='cnn_fc_nodes')
+dim_dropout_rate = Integer(low=0, high=0.9, name='dropout_rate')
 dim_init_learning_rate = Real(low=1e-4, high=1e-1, prior='log-uniform', name='cnn_init_learning_rate')
 dim_regularization_rate = Real(low=1e-4, high=1e-1, prior='log-uniform', name='cnn_regularization_rate')
 
 dimensions = [dim_cnn_filters, dim_cnn_layers, dim_cnn_kernel_size,
-              dim_cnn_fc_nodes, dim_init_learning_rate, dim_regularization_rate]
+              dim_cnn_fc_nodes, dim_dropout_rate, dim_init_learning_rate, dim_regularization_rate]
 
-default_parameters = [4, 1, 7, 4, 1e-4, 1e-1]
+default_parameters = [4, 1, 7, 4, 0.2, 1e-4, 1e-1]
 
 best_accuracy = 0.0
 
@@ -42,7 +43,7 @@ def load_windows(win_file, lab_file):
 
 
 @use_named_args(dimensions=dimensions)
-def fitness(cnn_filters, cnn_layers, cnn_kernel_size, cnn_fc_nodes,
+def fitness(cnn_filters, cnn_layers, cnn_kernel_size, cnn_fc_nodes, dropout_rate,
             cnn_init_learning_rate, cnn_regularization_rate):
 
     global best_accuracy
@@ -52,6 +53,7 @@ def fitness(cnn_filters, cnn_layers, cnn_kernel_size, cnn_fc_nodes,
     print('cnn_layers: ', cnn_layers)
     print('cnn_kernel_size: ', cnn_kernel_size)
     print('cnn_fc_nodes: ', cnn_fc_nodes)
+    print('dropout_rate: ', dropout_rate)
     print('cnn_init_learning_rate: ', cnn_init_learning_rate)
     print('cnn_regularization_rate: ', cnn_regularization_rate)
     print()
@@ -62,7 +64,8 @@ def fitness(cnn_filters, cnn_layers, cnn_kernel_size, cnn_fc_nodes,
                          filters=cnn_filters,
                          layers=cnn_layers,
                          kernel_size=cnn_kernel_size,
-                         fc_nodes=cnn_fc_nodes)
+                         fc_nodes=cnn_fc_nodes,
+                         dropout_rate=dropout_rate)
     print(model.summary())
 
     history = model.fit(x=train_X, y=train_y,
