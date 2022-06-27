@@ -63,12 +63,6 @@ def train(args):
 
     first_chrom = [w.split('/')[0] for w in win_pos]
 
-    val_chrom_idx = [i for i, k in enumerate(first_chrom) if k == args.validation_chr]
-    val_X = X[val_chrom_idx]
-    val_y = [y[i] for i in val_chrom_idx]
-    val_y = np.array([mapclasses[i] for i in val_y])
-    val_y = to_categorical(val_y, num_classes=2)
-
     print('Running training leaving chromosome {} out'.format(args.test_chr))
 
     model_dir = os.path.dirname(args.model)
@@ -129,16 +123,6 @@ def train(args):
                          fc_nodes=cnn_fc_nodes,
                          dropout_rate=dropout_rate)
     print(model.summary())
-
-    earlystop = EarlyStopping(monitor='val_loss',
-                              min_delta=0,
-                              patience=3,
-                              verbose=1,
-                              restore_best_weights=True)
-
-    callbacks = [earlystop]
-
-    validation_data = (val_X, val_y)
 
     history = model.fit(x=train_X, y=train_y,
                         epochs=max_epoch, batch_size=batch_size,
