@@ -96,10 +96,10 @@ def train(args):
 
     cnn_init_learning_rate = hparams[0]
     cnn_regularization_rate = hparams[1]
-    cnn_filters = hparams[2]
-    cnn_layers = hparams[3]
-    cnn_kernel_size = hparams[4]
-    cnn_fc_nodes = hparams[5]
+    cnn_filters = np.int(hparams[2])
+    cnn_layers = np.int(hparams[3])
+    cnn_kernel_size = np.int(hparams[4])
+    cnn_fc_nodes = np.int(hparams[5])
     dropout_rate = hparams[6]
 
     outputdim = 2
