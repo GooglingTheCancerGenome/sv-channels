@@ -90,14 +90,24 @@ def train(args):
 
     train_y = to_categorical(y_lab, num_classes=2)
 
-    #hparams = np.load(args.hparams)
+    hparams = np.load(args.hparams)
 
-    cnn_init_learning_rate = 1e-4
-    cnn_regularization_rate = 1e-1
-    cnn_filters = 4
-    cnn_layers = 1
-    cnn_kernel_size = 7
-    cnn_fc_nodes = 4
+    # cnn_init_learning_rate = 1e-4
+    # cnn_regularization_rate = 1e-1
+    # cnn_filters = 4
+    # cnn_layers = 1
+    # cnn_kernel_size = 7
+    # cnn_fc_nodes = 4
+    # dropout_rate = 0.2
+
+    cnn_init_learning_rate = hparams[0]
+    cnn_regularization_rate = hparams[1]
+    cnn_filters = hparams[2]
+    cnn_layers = hparams[3]
+    cnn_kernel_size = hparams[4]
+    cnn_fc_nodes = hparams[5]
+    dropout_rate = hparams[6]
+
     outputdim = 2
 
     print()
@@ -107,6 +117,7 @@ def train(args):
     print('cnn_fc_nodes: ', cnn_fc_nodes)
     print('cnn_init_learning_rate: ', cnn_init_learning_rate)
     print('cnn_regularization_rate: ', cnn_regularization_rate)
+    print('dropout_rate: ', dropout_rate)
     print()
 
     model = create_model(train_X, outputdim,
@@ -115,7 +126,8 @@ def train(args):
                          filters=cnn_filters,
                          layers=cnn_layers,
                          kernel_size=cnn_kernel_size,
-                         fc_nodes=cnn_fc_nodes)
+                         fc_nodes=cnn_fc_nodes,
+                         dropout_rate=dropout_rate)
     print(model.summary())
 
     earlystop = EarlyStopping(monitor='val_loss',
