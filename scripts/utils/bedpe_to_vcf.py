@@ -110,7 +110,7 @@ def convert_bedpe(input_bedpe_fn, output_vcf_fn, sample_name, genome):
         filtered = "PASS"
         # extract format field elements
         format_field = "GT"
-        sample_field_elems = ["1/1"]
+        sample_field_elems = ["./."]
         sample_field = ":".join(sample_field_elems)
         ref = genome[str(chrom)][sv_calls[1]].upper()
 
