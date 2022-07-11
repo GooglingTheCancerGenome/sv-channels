@@ -173,6 +173,9 @@ if (any(bedpe_svtype[, 1] == bedpe_svtype[, 4] &
 print('SVTYPEs in BEDPE output:')
 print(table(bedpe_svtype$SVTYPE))
 
+#only write deletions
+bedpe_svtype <- bedpe_svtype[which(bedpe_svtype$SVTYPE=='DEL'),]
+
 # write output in BEDPE
 write.table(
   file = argv$o,
