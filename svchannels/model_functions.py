@@ -151,27 +151,27 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test,
         lines = []
         j = 1
         for prob, p, r, w in zip(probs, predicted, y_index, win_ids_test):
-            if class_labels[p] == svtype:
-                sv_score = prob[0]
+            #if class_labels[p] == svtype:
+            sv_score = prob[0]
 
-                if unfold_win_id(w) is not None:
+            if unfold_win_id(w) is not None:
 
-                    chr1, pos1, chr2, pos2, strand_info = unfold_win_id(w)
+                chr1, pos1, chr2, pos2, strand_info = unfold_win_id(w)
 
-                    lines.append('\t'.join([
-                        str(chr1),
-                        str(pos1),
-                        str(int(pos1) + 1),
-                        str(chr2),
-                        str(pos2),
-                        str(int(pos2) + 1),
-                        'PRED_' + class_labels[p] + '_TRUE_' +
-                        class_labels[r] + '_' + str(j),
-                        str(sv_score),
-                        strand_info[0],
-                        strand_info[1]
-                    ]) + '\n')
-                    j += 1
+                lines.append('\t'.join([
+                    str(chr1),
+                    str(pos1),
+                    str(int(pos1) + 1),
+                    str(chr2),
+                    str(pos2),
+                    str(int(pos2) + 1),
+                    'PRED_' + class_labels[p] + '_TRUE_' +
+                    class_labels[r] + '_' + str(j),
+                    str(sv_score),
+                    strand_info[0],
+                    strand_info[1]
+                ]) + '\n')
+                j += 1
 
         with open(outfile, 'w') as f:
             # use set to make lines unique
