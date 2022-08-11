@@ -342,12 +342,24 @@ def main(args=sys.argv[1:]):
         events.append((chrom, l, r))
         # shift outwards
         shift_out1 = np.random.randint(low=0, high=shift + 1)
+        while shift_out1 != l:
+            shift_out1 = np.random.randint(low=0, high=shift + 1)
+
         shift_out2 = np.random.randint(low=0, high=shift + 1)
+        while shift_out2 != r:
+            shift_out1 = np.random.randint(low=0, high=shift + 1)
+
         fh_svp.write(f'{chrom}\t{l - shift_out1}\t{l - shift_out2 + 1}\t{chrom}\t{r + shift_out1}\t{r + shift_out2 + 1}\t{svt}\n')
         events.append((chrom, l - shift_out1, r + shift_out2))
         # shift inwards
         shift_in1 = np.random.randint(low=0, high=shift + 1)
+        while shift_in1 != l:
+            shift_in1 = np.random.randint(low=0, high=shift + 1)
+
         shift_in2 = np.random.randint(low=0, high=shift + 1)
+        while shift_in2 != r:
+            shift_in2 = np.random.randint(low=0, high=shift + 1)
+
         fh_svp.write(f'{chrom}\t{l + shift_in1}\t{l + shift_in2 + 1}\t{chrom}\t{r - shift_in1}\t{r - shift_in2 + 1}\t{svt}\n')
         events.append((chrom, l + shift_in1, r - shift_in2))
 
