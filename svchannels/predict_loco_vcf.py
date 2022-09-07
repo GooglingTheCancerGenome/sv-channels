@@ -56,7 +56,7 @@ def predict(windows_list, labels_list, samples_list, model_names_list,
             n = 0
             for i, line in enumerate(win_ids_chrom):
 
-                chrom1, pos1a, chrom2, pos2a, svtype = line.split('/')
+                chrom1, pos1a, chrom2, pos2a, *_ = line.split('/')
                 # TODO: not sure if we need probs[i][0] here.
                 pos_dict[chrom1 + '_' + str(pos1a)] = str(probs[i][0] - probs[i][1])
                 n += 1
