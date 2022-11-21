@@ -22,10 +22,16 @@ from collections import Counter
 import sys
 
 # setting path
-sys.path.append('../svchannels')
+if '__file__' in vars():
+    # print("We are running the script non interactively")
+    path = os.path.join(os.path.dirname(__file__), os.pardir)
+    sys.path.append(path)
+else:
+    # print('We are running the script interactively')
+    sys.path.append("..")
 
 # importing
-from svchannels.model_functions import create_model
+from model_functions import create_model
 
 # Search space for the hyperparameters
 
@@ -477,9 +483,12 @@ def main():
                         help="Batch size")
     args = parser.parse_args()
 
+    if os.path.exists(args.output):
+        os.makedirs(args.output)
+
     log_format = '%(asctime)s %(message)s'
     logging.basicConfig(format=log_format,
-                        filename=args.logfile,
+                        filename=os.path.join(args.output, args.logfile),
                         filemode='w',
                         level=logging.INFO)
 
