@@ -34,6 +34,15 @@ def load_channels(channels_dir):
     X = np.stack(X, axis=0)
     y = np.array(y)
 
+    # select only chromosomes from chr1 to chr22
+    chr_list = ['chr' + str(i) for i in np.arange(1, 23)]
+    chr_list_y1 = y[:, 1]
+    chr_list_y2 = y[:, 3]
+    idx_chrlist = [i for i in np.arange(len(chr_list_y1)) if chr_list_y1[i] in chr_list and
+                   chr_list_y2[i] in chr_list]
+    X = X[idx_chrlist, ]
+    y = y[idx_chrlist, ]
+
     print('----------------')
     print('shape of X is {}'.format(X.shape))
     print('shape of y is {}'.format(y.shape))
@@ -58,7 +67,7 @@ def main():
                         '--output',
                         type=str,
                         default='multisample_svchan',
-                        help="Output folder")
+                        help="Output filename")
     args = parser.parse_args()
 
     t0 = time()
