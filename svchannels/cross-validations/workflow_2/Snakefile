@@ -1,0 +1,34 @@
+
+rule all:
+  input:
+    expand("results/{chrName}/{chrName}_pos_dict.json", chrName=["chr"+str(i) for i in range(1,2)])
+
+rule locso_per_chrom:
+  input:
+    '/Users/lsantuari/Documents/Projects/GTCG/sv-channels/sv-channels_manuscript/UMCU_hpc/8_samples_channels.npz'
+  params:
+    outercv_test_sample='HG00420',
+    innercv_test_sample='HG01053',
+    val_chrom='chr22',
+    epochs=1,
+    ncalls=12,
+    batch_size=32
+  output:
+    outdir="results/{chrName}",
+    pos_dict="results/{chrName}/{chrName}_pos_dict.json"
+  conda:
+    "refactor"
+  shell:
+    """
+    set -xe
+    python nested_2fold_locso_cv.py \
+        -i "{input}" \
+        -o "{output.outdir}" \
+        --outercv_test_sample {params.outercv_test_sample} \
+        --innercv_test_sample {params.innercv_test_sample} \
+        --test_chrom {wildcards.chrName} \
+        --val_chrom {params.val_chrom} \
+        -e {params.epochs} \
+        -n {params.ncalls} \
+        --batch_size {params.batch_size}
+    """
