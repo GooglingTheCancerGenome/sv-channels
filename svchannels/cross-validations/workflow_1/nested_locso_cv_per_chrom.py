@@ -4,6 +4,9 @@ import logging
 
 import matplotlib.pyplot as plt
 import pandas as pd
+import json
+import vcf
+from matplotlib import pyplot as plt
 import tensorflow as tf
 import numpy as np
 from time import time
@@ -13,15 +16,22 @@ from skopt.utils import use_named_args
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.metrics import auc, precision_recall_curve
 from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.models import load_model
 from collections import Counter
 
 import sys
 
 # setting path
-sys.path.append('../svchannels')
+if '__file__' in vars():
+    # print("We are running the script non interactively")
+    path = os.path.join(os.path.dirname(__file__), os.pardir)
+    sys.path.append(path)
+else:
+    # print('We are running the script interactively')
+    sys.path.append("../..")
 
 # importing
-from svchannels.model_functions import create_model
+from model_functions import create_model
 
 # Search space for the hyperparameters
 
@@ -41,6 +51,8 @@ default_parameters = [4, 1, 7, 4, 0.2, 1e-4, 1e-1]
 
 # Create a global variable that stores the current best area under the ROC curve (AUC), our metric. Initialize it to 0
 best_auc = 0.0
+
+best_hyperparameters = {}
 
 
 def load_data(inputfile):
@@ -98,15 +110,14 @@ def select_by_sample_and_chrom(X, y, sample, chrom):
 @use_named_args(dimensions=dimensions)
 def fitness(cnn_filters, cnn_layers, cnn_filter_size, fc_nodes,
             dropout_rate, learning_rate, regularization_rate):
-
     # Print the current combination of hyperparameters
     print('cnn_filters: {}'.format(cnn_filters))
     print('cnn_layers: {}'.format(cnn_layers))
-    print('cnn_kernel_size: {}'.format(cnn_filter_size))
+    print('cnn_filter_size: {}'.format(cnn_filter_size))
     print('fc_nodes: {}'.format(fc_nodes))
-    print('cnn_kernel_size: {}'.format(dropout_rate))
-    print('fc_nodes: {}'.format(learning_rate))
-    print('cnn_kernel_size: {}'.format(regularization_rate))
+    print('dropout_rate: {}'.format(dropout_rate))
+    print('learning_rate: {}'.format(learning_rate))
+    print('regularization_rate: {}'.format(regularization_rate))
 
     model = create_model(inner_X_train, 2,
                          learning_rate=learning_rate,
@@ -116,7 +127,7 @@ def fitness(cnn_filters, cnn_layers, cnn_filter_size, fc_nodes,
                          kernel_size=cnn_filter_size,
                          fc_nodes=fc_nodes,
                          dropout_rate=dropout_rate)
-    print(model.summary())
+    # print(model.summary())
 
     history = model.fit(x=inner_X_train, y=y_train,
                         epochs=n_epochs,
@@ -124,10 +135,7 @@ def fitness(cnn_filters, cnn_layers, cnn_filter_size, fc_nodes,
                         shuffle=True,
                         validation_data=(inner_X_val, y_val),
                         class_weight=class_weights_train,
-                        verbose=1)
-
-    pd.DataFrame(history.history).plot(figsize=(8, 5))
-    plt.savefig('acc_loss.png')
+                        verbose=0)
 
     # Get the predicited probability of testing data
     y_score = model.predict(inner_X_test)[:, 0]
@@ -139,31 +147,75 @@ def fitness(cnn_filters, cnn_layers, cnn_filter_size, fc_nodes,
 
     # Save the model if it improves on the best found performance which is stored by the global variable best_auc
     global best_auc
+    global best_hyperparameters
 
     # If the AUC of the saved model is greater than the current best performance
     if auc_precision_recall > best_auc:
         # Save the new model
         model.save(path_best_model)
 
+        # Store the best hyperparameters
+        best_hyperparameters = {
+            'innercv_test_sample': innercv_test_sample,
+            'outer_i': outer_i,
+            'outer_chrom': outer_c,
+            'inner_i': inner_i,
+            'inner_chrom': inner_c,
+            'cnn_filters': cnn_filters,
+            'cnn_layers': cnn_layers,
+            'cnn_filter_size': cnn_filter_size,
+            'fc_nodes': fc_nodes,
+            'dropout_rate': dropout_rate,
+            'learning_rate': learning_rate,
+            'regularization_rate': regularization_rate,
+            'auc_precision_recall': auc_precision_recall
+        }
+        best_hyperparameters = {k: [v] for k, v in best_hyperparameters.items()}
+
         # Update the current greatest AUC score
         best_auc = auc_precision_recall
 
-    # Else delete the model that just finishing training from meomory
-    del model
+        prefix = '_'.join(['outer', outer_c, 'inner', inner_c, 'cnn-filt', str(cnn_filters),
+                           'cnn-lay', str(cnn_layers), 'cnn-filt-size', str(cnn_filter_size),
+                           'fc-nodes', str(fc_nodes), 'dropout', str(dropout_rate),
+                           'lr', str(learning_rate), 'rr', str(regularization_rate),
+                           'pr-auc', str(auc_precision_recall)])
+        accuracy_plot = os.path.join(os.path.dirname(path_best_model),
+                                     ''.join([prefix, '_accuracy.png']))
+        loss_plot = os.path.join(os.path.dirname(path_best_model),
+                                 ''.join([prefix, '_loss.png']))
 
-    # Clear the Keras session, otherwise it will keep adding new
-    # models to the same TensorFlow graph each time we create
-    # a model with a different set of hyperparameters.
-    tf.keras.backend.clear_session()
+        plt.plot(history.history['accuracy'])
+        plt.plot(history.history['val_accuracy'])
+        plt.title('model accuracy')
+        plt.ylabel('accuracy')
+        plt.xlabel('epoch')
+        plt.legend(['train', 'val'], loc='upper right')
+        plt.savefig(accuracy_plot)
 
-    # Scikit-optimize does minimization so it tries to
-    # find a set the combination of hyperparameters with the lowest fitness value.
-    # We want to maximize AUC so we negate this number.
+        plt.plot(history.history['loss'])
+        plt.plot(history.history['val_loss'])
+        plt.title('model loss')
+        plt.ylabel('loss')
+        plt.xlabel('epoch')
+        plt.legend(['train', 'val'], loc='upper left')
+        plt.savefig(loss_plot)
+
+        # Else delete the model that just finishing training from meomory
+        del model
+
+        # Clear the Keras session, otherwise it will keep adding new
+        # models to the same TensorFlow graph each time we create
+        # a model with a different set of hyperparameters.
+        tf.keras.backend.clear_session()
+
+        # Scikit-optimize does minimization so it tries to
+        # find a set the combination of hyperparameters with the lowest fitness value.
+        # We want to maximize AUC so we negate this number.
     return -auc_precision_recall
 
 
 def train(input_args):
-
     def get_labels(y):
 
         svtype = 'DEL'
@@ -177,22 +229,30 @@ def train(input_args):
 
         return y_lab, y_cat, class_weights
 
+    # Store chromosome and position of DELs as keys and difference of posterior probabilities as values
+    pos_dict = {}
+    model_df = pd.DataFrame()
+
     X, y = load_data(input_args.input)
 
     # test sample for the outer cross-validation
-    outercv_test_sample = 'HG00420'
+    outercv_test_sample = input_args.outercv_test_sample
     # test sample for the inner cross-validation
-    innercv_test_sample = 'HG01053'
+    global innercv_test_sample
+    innercv_test_sample = input_args.innercv_test_sample
     # chromosome for validation
-    val_chrom = 'chr22'
+    val_chrom = input_args.val_chrom
 
     # list of chromosomes
     outer_chr_list = ['chr' + str(i) for i in np.arange(1, 23)]
     outer_chr_list.remove(val_chrom)
 
     logging.info('Outer CV')
+    global outer_i, outer_c
 
-    for outer_c in outer_chr_list:
+    global best_auc
+    best_auc = 0.0
+    for outer_i, outer_c in enumerate([input_args.test_chrom]):
 
         logging.info('Considering outer test chromosome {}'.format(outer_c))
 
@@ -237,23 +297,29 @@ def train(input_args):
             outer_y_val.shape[0]
         )
 
-
         inner_chr_list = outer_chr_list
         inner_chr_list.remove(outer_c)
 
         logging.info('Inner CV')
 
-        for inner_c in inner_chr_list:
+        global inner_i, inner_c
 
+        for inner_i, inner_c in enumerate(inner_chr_list):
             logging.info('Considering inner test chromosome {}'.format(inner_c))
 
-            global inner_X_train, inner_X_val, inner_X_test, y_train, class_weights_train, \
-                y_val, class_weights_val, y_test, class_weights_test, n_epochs, model_batch_size, \
-                path_best_model
+            global inner_X_train, inner_X_val, inner_X_test, \
+                y_train, y_val, y_test, \
+                class_weights_train, class_weights_val, class_weights_test, \
+                n_epochs, model_batch_size, path_best_model
 
             n_epochs = input_args.epochs
             model_batch_size = input_args.batch_size
-            path_best_model = os.path.join(input_args.output, 'best_model.h5')
+            path_best_model = os.path.join(input_args.output, ''.join([input_args.test_chrom, '_best_model.h5']))
+
+            accuracy_plot_file = os.path.join(input_args.output,
+                                              ''.join([input_args.test_chrom, '_model_accuracy.png']))
+            loss_plot_file = os.path.join(input_args.output,
+                                          ''.join([input_args.test_chrom, '_model_loss.png']))
 
             inner_X_train, inner_X_test, \
             inner_y_train, inner_y_test, = train_test_split_by_sample_and_chrom(
@@ -312,6 +378,44 @@ def train(input_args):
                                         random_state=42,
                                         n_jobs=-1)
 
+        # out of the inner CV loop
+        df = pd.DataFrame.from_dict(best_hyperparameters)
+        model_df = model_df.append(df, ignore_index=True)
+
+        model = create_model(outer_X_train, 2,
+                             learning_rate=float(best_hyperparameters['learning_rate'][0]),
+                             regularization_rate=float(best_hyperparameters['regularization_rate'][0]),
+                             filters=int(best_hyperparameters['cnn_filters'][0]),
+                             layers=int(best_hyperparameters['cnn_layers'][0]),
+                             kernel_size=int(best_hyperparameters['cnn_filter_size'][0]),
+                             fc_nodes=int(best_hyperparameters['fc_nodes'][0]),
+                             dropout_rate=float(best_hyperparameters['dropout_rate'][0])
+                             )
+        # print(model.summary())
+
+        _, y_train, class_weights_train = get_labels(outer_y_train)
+        _, y_val, class_weights_val = get_labels(outer_y_val)
+
+        history = model.fit(x=outer_X_train, y=y_train,
+                            epochs=n_epochs,
+                            batch_size=model_batch_size,
+                            shuffle=True,
+                            validation_data=(outer_X_val, y_val),
+                            class_weight=class_weights_train,
+                            verbose=1)
+
+        probs = model.predict(outer_X_test, batch_size=100, verbose=True)
+
+        for i in np.arange(outer_y_val.shape[0]):
+            chrom1 = outer_y_val[i, 1]
+            pos1a = outer_y_val[i, 2]
+            pos_dict[chrom1 + '_' + str(int(pos1a) + 1)] = str(probs[i][0] - probs[i][1])
+
+    model_df_file = os.path.join(input_args.output, ''.join([input_args.test_chrom, '_model_df.csv']))
+    model_df.to_csv(model_df_file)
+
+    return pos_dict
+
 
 def main():
     randomState = 42
@@ -320,6 +424,9 @@ def main():
 
     input_dir = '/Users/lsantuari/Documents/Projects/GTCG/sv-channels' + \
                 '/sv-channels_manuscript/UMCU_hpc/'
+    output_dir = '/Users/lsantuari/Documents/Projects/GTCG/sv-channels' + \
+                 '/sv-channels_manuscript/UMCU_hpc/nested_locso-cv'
+
     svchans = os.path.join(input_dir, '8_samples_channels.npz')
 
     parser = argparse.ArgumentParser(description='Optimize the hyperparameters of the model using a nested'
@@ -335,6 +442,26 @@ def main():
                         type=str,
                         default='.',
                         help="Output folder")
+    parser.add_argument('-ots',
+                        '--outercv_test_sample',
+                        type=str,
+                        default='HG00420',
+                        help="Test sample for outer CV")
+    parser.add_argument('-its',
+                        '--innercv_test_sample',
+                        type=str,
+                        default='HG01053',
+                        help="Test sample for inner CV")
+    parser.add_argument('-t',
+                        '--test_chrom',
+                        type=str,
+                        default='chr1',
+                        help="Chromosome for testing in outerCV")
+    parser.add_argument('-v',
+                        '--val_chrom',
+                        type=str,
+                        default='chr22',
+                        help="Chromosome for validation in outerCV and innerCV depending on sample")
     parser.add_argument('-l',
                         '--logfile',
                         default='optimize.log',
@@ -356,15 +483,22 @@ def main():
                         help="Batch size")
     args = parser.parse_args()
 
+    if not os.path.exists(args.output):
+        os.makedirs(args.output)
+
     log_format = '%(asctime)s %(message)s'
     logging.basicConfig(format=log_format,
-                        filename=args.logfile,
+                        filename=os.path.join(args.output, args.logfile),
                         filemode='w',
                         level=logging.INFO)
 
     t0 = time()
 
-    train(args)
+    pos_dict = train(args)
+
+    pos_dict_file = os.path.join(args.output, ''.join([args.test_chrom, '_pos_dict.json']))
+    with open(pos_dict_file, 'w') as fp:
+        json.dump(pos_dict, fp)
 
     logging.info('Elapsed time = %f seconds' %
                  (time() - t0))

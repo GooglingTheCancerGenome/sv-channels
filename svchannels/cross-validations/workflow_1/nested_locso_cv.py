@@ -4,7 +4,6 @@ import logging
 
 import matplotlib.pyplot as plt
 import pandas as pd
-import json
 import vcf
 from matplotlib import pyplot as plt
 import tensorflow as tf
@@ -22,16 +21,10 @@ from collections import Counter
 import sys
 
 # setting path
-if '__file__' in vars():
-    # print("We are running the script non interactively")
-    path = os.path.join(os.path.dirname(__file__), os.pardir)
-    sys.path.append(path)
-else:
-    # print('We are running the script interactively')
-    sys.path.append("..")
+sys.path.append('../svchannels')
 
 # importing
-from model_functions import create_model
+from svchannels.model_functions import create_model
 
 # Search space for the hyperparameters
 
@@ -135,7 +128,23 @@ def fitness(cnn_filters, cnn_layers, cnn_filter_size, fc_nodes,
                         shuffle=True,
                         validation_data=(inner_X_val, y_val),
                         class_weight=class_weights_train,
-                        verbose=0)
+                        verbose=1)
+
+    plt.plot(history.history['accuracy'])
+    plt.plot(history.history['val_accuracy'])
+    plt.title('model accuracy')
+    plt.ylabel('accuracy')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'val'], loc='upper right')
+    plt.savefig('./model_accuracy.png')
+
+    plt.plot(history.history['loss'])
+    plt.plot(history.history['val_loss'])
+    plt.title('model loss')
+    plt.ylabel('loss')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'val'], loc='upper left')
+    plt.savefig('./model_loss.png')
 
     # Get the predicited probability of testing data
     y_score = model.predict(inner_X_test)[:, 0]
@@ -175,43 +184,17 @@ def fitness(cnn_filters, cnn_layers, cnn_filter_size, fc_nodes,
         # Update the current greatest AUC score
         best_auc = auc_precision_recall
 
-        prefix = '_'.join(['outer', outer_c, 'inner', inner_c, 'cnn-filt', str(cnn_filters),
-                           'cnn-lay', str(cnn_layers), 'cnn-filt-size', str(cnn_filter_size),
-                           'fc-nodes', str(fc_nodes), 'dropout', str(dropout_rate),
-                           'lr', str(learning_rate), 'rr', str(regularization_rate),
-                           'pr-auc', str(auc_precision_recall)])
-        accuracy_plot = os.path.join(os.path.dirname(path_best_model),
-                                     ''.join([prefix, '_accuracy.png']))
-        loss_plot = os.path.join(os.path.dirname(path_best_model),
-                                 ''.join([prefix, '_loss.png']))
+    # Else delete the model that just finishing training from meomory
+    del model
 
-        plt.plot(history.history['accuracy'])
-        plt.plot(history.history['val_accuracy'])
-        plt.title('model accuracy')
-        plt.ylabel('accuracy')
-        plt.xlabel('epoch')
-        plt.legend(['train', 'val'], loc='upper right')
-        plt.savefig(accuracy_plot)
+    # Clear the Keras session, otherwise it will keep adding new
+    # models to the same TensorFlow graph each time we create
+    # a model with a different set of hyperparameters.
+    tf.keras.backend.clear_session()
 
-        plt.plot(history.history['loss'])
-        plt.plot(history.history['val_loss'])
-        plt.title('model loss')
-        plt.ylabel('loss')
-        plt.xlabel('epoch')
-        plt.legend(['train', 'val'], loc='upper left')
-        plt.savefig(loss_plot)
-
-        # Else delete the model that just finishing training from meomory
-        del model
-
-        # Clear the Keras session, otherwise it will keep adding new
-        # models to the same TensorFlow graph each time we create
-        # a model with a different set of hyperparameters.
-        tf.keras.backend.clear_session()
-
-        # Scikit-optimize does minimization so it tries to
-        # find a set the combination of hyperparameters with the lowest fitness value.
-        # We want to maximize AUC so we negate this number.
+    # Scikit-optimize does minimization so it tries to
+    # find a set the combination of hyperparameters with the lowest fitness value.
+    # We want to maximize AUC so we negate this number.
     return -auc_precision_recall
 
 
@@ -252,7 +235,7 @@ def train(input_args):
 
     global best_auc
     best_auc = 0.0
-    for outer_i, outer_c in enumerate([input_args.test_chrom]):
+    for outer_i, outer_c in enumerate(outer_chr_list):
 
         logging.info('Considering outer test chromosome {}'.format(outer_c))
 
@@ -305,6 +288,7 @@ def train(input_args):
         global inner_i, inner_c
 
         for inner_i, inner_c in enumerate(inner_chr_list):
+
             logging.info('Considering inner test chromosome {}'.format(inner_c))
 
             global inner_X_train, inner_X_val, inner_X_test, \
@@ -314,12 +298,7 @@ def train(input_args):
 
             n_epochs = input_args.epochs
             model_batch_size = input_args.batch_size
-            path_best_model = os.path.join(input_args.output, ''.join([input_args.test_chrom, '_best_model.h5']))
-
-            accuracy_plot_file = os.path.join(input_args.output,
-                                              ''.join([input_args.test_chrom, '_model_accuracy.png']))
-            loss_plot_file = os.path.join(input_args.output,
-                                          ''.join([input_args.test_chrom, '_model_loss.png']))
+            path_best_model = os.path.join(input_args.output, 'best_model.h5')
 
             inner_X_train, inner_X_test, \
             inner_y_train, inner_y_test, = train_test_split_by_sample_and_chrom(
@@ -411,13 +390,13 @@ def train(input_args):
             pos1a = outer_y_val[i, 2]
             pos_dict[chrom1 + '_' + str(int(pos1a) + 1)] = str(probs[i][0] - probs[i][1])
 
-    model_df_file = os.path.join(input_args.output, ''.join([input_args.test_chrom, '_model_df.csv']))
-    model_df.to_csv(model_df_file)
+    model_df.to_csv('model_df.csv')
 
     return pos_dict
 
 
 def main():
+
     randomState = 42
     np.random.seed(randomState)
     tf.random.set_seed(randomState)
@@ -442,6 +421,17 @@ def main():
                         type=str,
                         default='.',
                         help="Output folder")
+    parser.add_argument('-mi',
+                        '--manta_vcf_in',
+                        type=str,
+                        default='~/Documents/Projects/GTCG/sv-channels/sv-channels_manuscript/'
+                                '1KG_trios/Manta/HG00420/manta.vcf',
+                        help="Manta callset in input for the test sample in the outer CV")
+    parser.add_argument('-mo',
+                        '--manta_vcf_out',
+                        type=str,
+                        default=os.path.join(output_dir, 'HG00420.sv-channels.vcf'),
+                        help="Manta callset in output for the test sample in the outer CV")
     parser.add_argument('-ots',
                         '--outercv_test_sample',
                         type=str,
@@ -452,11 +442,6 @@ def main():
                         type=str,
                         default='HG01053',
                         help="Test sample for inner CV")
-    parser.add_argument('-t',
-                        '--test_chrom',
-                        type=str,
-                        default='chr1',
-                        help="Chromosome for testing in outerCV")
     parser.add_argument('-v',
                         '--val_chrom',
                         type=str,
@@ -483,12 +468,9 @@ def main():
                         help="Batch size")
     args = parser.parse_args()
 
-    if os.path.exists(args.output):
-        os.makedirs(args.output)
-
     log_format = '%(asctime)s %(message)s'
     logging.basicConfig(format=log_format,
-                        filename=os.path.join(args.output, args.logfile),
+                        filename=args.logfile,
                         filemode='w',
                         level=logging.INFO)
 
@@ -496,9 +478,14 @@ def main():
 
     pos_dict = train(args)
 
-    pos_dict_file = os.path.join(args.output, ''.join([args.test_chrom, '_pos_dict.json']))
-    with open(pos_dict_file, 'w') as fp:
-        json.dump(pos_dict, fp)
+    reader = vcf.Reader(open(args.manta_vcf_in, 'r'))
+    writer = vcf.Writer(open(args.manta_vcf_out, 'w'), reader)
+
+    for record in reader:
+        k = record.CHROM + '_' + str(record.POS)
+        if k in pos_dict.keys():
+            record.QUAL = str(pos_dict[k])
+            writer.write_record(record)
 
     logging.info('Elapsed time = %f seconds' %
                  (time() - t0))
