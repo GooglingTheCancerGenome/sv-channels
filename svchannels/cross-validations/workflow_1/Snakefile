@@ -10,8 +10,8 @@ rule locso_per_chrom:
     outercv_test_sample='HG00420',
     innercv_test_sample='HG01053',
     val_chrom='chr22',
-    epochs=1,
-    ncalls=12,
+    epochs=100,
+    ncalls=100,
     batch_size=32
   output:
     outdir="results/{chrName}",
@@ -21,7 +21,7 @@ rule locso_per_chrom:
   shell:
     """
     set -xe
-    python nested_locso_cv_per_chrom.py \
+    python nested_locso_cv_per_chrom_v2.py \
         -i "{input}" \
         -o "{output.outdir}" \
         --outercv_test_sample {params.outercv_test_sample} \

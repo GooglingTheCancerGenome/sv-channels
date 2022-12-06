@@ -18,10 +18,12 @@ from tensorflow.keras.layers import (Activation, BatchNormalization,
                                      Convolution1D, Dense, Flatten,
                                      Dropout)
 from tensorflow.keras.models import Sequential
+from tensorflow.keras.metrics import AUC
 
 
 def create_model(X, outputdim, learning_rate, regularization_rate,
                  filters, layers, kernel_size, fc_nodes, dropout_rate):
+
     weightinit = 'lecun_uniform'  # weight initialization
 
     model = Sequential()
@@ -52,11 +54,11 @@ def create_model(X, outputdim, learning_rate, regularization_rate,
 
     model.add(Dense(units=outputdim, kernel_initializer=weightinit))
     model.add(BatchNormalization())
-    model.add(Activation("sigmoid"))  # Final classification layer
+    model.add(Activation("softmax"))  # Final classification layer
 
     model.compile(loss='categorical_crossentropy',
                   optimizer=Adam(lr=learning_rate),
-                  metrics=['accuracy'])
+                  metrics=[AUC(name='auc', curve='PR')])
 
     return model
 
