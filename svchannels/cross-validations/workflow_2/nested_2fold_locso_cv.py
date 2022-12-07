@@ -1,4 +1,5 @@
 import os
+from os import path
 import argparse
 import logging
 
@@ -15,7 +16,6 @@ from skopt.utils import use_named_args
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.metrics import auc, precision_recall_curve
 from tensorflow.keras.utils import to_categorical
-from tensorflow.keras.models import load_model
 from collections import Counter
 
 import sys
@@ -76,7 +76,7 @@ def train_test_val_split_by_sample_and_chrom_list(X, y, test_sample, test_chrom_
 
     idx_len_dict = {'train': len(idx_train), 'test': len(idx_test), 'val': len(idx_val)}
 
-    print('Lengths: {}'.format(idx_len_dict))
+    logging.info('Lengths: {}'.format(idx_len_dict))
 
     return X[idx_train], X[idx_test], X[idx_val], y[idx_train], y[idx_test], y[idx_val]
 
@@ -88,7 +88,7 @@ def train_test_split_by_sample_and_chrom(X, y, test_sample, test_chrom):
 
     idx_len_dict = {'train': len(idx_train), 'test': len(idx_test)}
 
-    print('Lengths: {}'.format(idx_len_dict))
+    logging.info('Lengths: {}'.format(idx_len_dict))
 
     return X[idx_train], X[idx_test], y[idx_train], y[idx_test]
 
@@ -99,7 +99,7 @@ def select_by_sample_and_chrom(X, y, sample, chrom):
 
     idx_len_dict = {'set': len(idx)}
 
-    print('Lengths: {}'.format(idx_len_dict))
+    logging.info('Lengths: {}'.format(idx_len_dict))
 
     return X[idx], y[idx]
 
@@ -108,65 +108,110 @@ def select_by_sample_and_chrom(X, y, sample, chrom):
 def fitness(cnn_filters, cnn_layers, cnn_filter_size, fc_nodes,
             dropout_rate, learning_rate, regularization_rate):
     # Print the current combination of hyperparameters
-    print('cnn_filters: {}'.format(cnn_filters))
-    print('cnn_layers: {}'.format(cnn_layers))
-    print('cnn_filter_size: {}'.format(cnn_filter_size))
-    print('fc_nodes: {}'.format(fc_nodes))
-    print('dropout_rate: {}'.format(dropout_rate))
-    print('learning_rate: {}'.format(learning_rate))
-    print('regularization_rate: {}'.format(regularization_rate))
+    current_hyperparameters = {
+        'cnn_filters': cnn_filters,
+        'cnn_layers': cnn_layers,
+        'cnn_filter_size': cnn_filter_size,
+        'fc_nodes': fc_nodes,
+        'dropout_rate': dropout_rate,
+        'learning_rate': learning_rate,
+        'regularization_rate': regularization_rate
+    }
+    logging.info(current_hyperparameters)
 
-    model = create_model(inner_X_train, 2,
-                         learning_rate=learning_rate,
-                         regularization_rate=regularization_rate,
-                         filters=cnn_filters,
-                         layers=cnn_layers,
-                         kernel_size=cnn_filter_size,
-                         fc_nodes=fc_nodes,
-                         dropout_rate=dropout_rate)
-    # print(model.summary())
+    logging.info('Inner CV')
 
-    history = model.fit(x=inner_X_train, y=y_train,
-                        epochs=n_epochs,
-                        batch_size=model_batch_size,
-                        shuffle=True,
-                        validation_data=(inner_X_val, y_val),
-                        class_weight=class_weights_train,
-                        verbose=1)
+    auc_precision_recall = []
 
-    plt.plot(history.history['accuracy'])
-    plt.plot(history.history['val_accuracy'])
-    plt.title('model accuracy')
-    plt.ylabel('accuracy')
-    plt.xlabel('epoch')
-    plt.legend(['train', 'val'], loc='upper right')
-    plt.savefig('./model_accuracy.png')
+    # for inner_i, inner_c in enumerate(inner_chr_list):
+    # only for test purposes
+    for inner_i, inner_c in enumerate([inner_chr_list[0]]):
 
-    plt.plot(history.history['loss'])
-    plt.plot(history.history['val_loss'])
-    plt.title('model loss')
-    plt.ylabel('loss')
-    plt.xlabel('epoch')
-    plt.legend(['train', 'val'], loc='upper left')
-    plt.savefig('./model_loss.png')
+        logging.info('Considering inner test chromosome {}'.format(inner_c))
 
-    # Get the predicited probability of testing data
-    y_score = model.predict(inner_X_test)[:, 0]
-    # Data to plot precision - recall curve
-    precision, recall, thresholds = precision_recall_curve(y_test, y_score)
-    # Use AUC function to calculate the area under the curve of precision recall curve
-    auc_precision_recall = auc(recall, precision)
-    print('auc_precision_recall = {}'.format(auc_precision_recall))
+        inner_X_train, inner_X_test, \
+        inner_y_train, inner_y_test, = train_test_split_by_sample_and_chrom(
+            outer_X_train, outer_y_train, innercv_test_sample, inner_c
+        )
+
+        assert innercv_test_sample not in inner_y_train[:, 0], "Test sample {} in training set: {}".format(
+            innercv_test_sample, np.unique(inner_y_train[:, 0])
+        )
+        assert innercv_test_sample == np.unique(inner_y_test[:, 0]), "Test sample {} not in test set: {}".format(
+            innercv_test_sample, np.unique(inner_y_test[:, 0])
+        )
+
+        assert inner_c not in inner_y_train[:, 1], "Test chrom {} in training set: {}".format(
+            inner_c, np.unique(inner_y_train[:, 1])
+        )
+        assert inner_c == np.unique(inner_y_test[:, 1]), "Test chrom {} not in test set: {}".format(
+            inner_c, np.unique(inner_y_test[:, 1])
+        )
+
+        assert inner_X_train.shape[0] == inner_y_train.shape[0], "inner_X_train shape:{} different from" \
+                                                                 "inner_y_train shape:{}".format(
+            inner_X_train.shape[0],
+            inner_y_train.shape[0]
+        )
+        assert inner_X_test.shape[0] == inner_y_test.shape[0], "inner_X_test shape:{} different from" \
+                                                               "inner_y_test shape:{}".format(
+            inner_X_test.shape[0],
+            inner_y_test.shape[0]
+        )
+
+        inner_X_val, inner_y_val = select_by_sample_and_chrom(
+            X, y, innercv_test_sample, val_chrom
+        )
+        assert innercv_test_sample == np.unique(inner_y_val[:, 0]), "Test sample {} not in val set: {}".format(
+            innercv_test_sample, np.unique(inner_y_val[:, 0])
+        )
+        assert val_chrom == np.unique(inner_y_val[:, 1]), "Test chrom {} not in test set: {}".format(
+            val_chrom, np.unique(inner_y_val[:, 1])
+        )
+        assert inner_X_val.shape[0] == inner_y_val.shape[0], "inner_X_val shape:{} different from" \
+                                                             "inner_y_val shape:{}".format(
+            inner_X_val.shape[0],
+            inner_y_val.shape[0]
+        )
+
+        _, y_train, class_weights_train = get_labels(inner_y_train)
+        _, y_val, class_weights_val = get_labels(inner_y_val)
+        y_test, _, class_weights_test = get_labels(inner_y_test)
+
+        model = create_model(inner_X_train, 2,
+                             learning_rate=learning_rate,
+                             regularization_rate=regularization_rate,
+                             filters=cnn_filters,
+                             layers=cnn_layers,
+                             kernel_size=cnn_filter_size,
+                             fc_nodes=fc_nodes,
+                             dropout_rate=dropout_rate)
+        # print(model.summary())
+
+        history = model.fit(x=inner_X_train, y=y_train,
+                            epochs=n_epochs,
+                            batch_size=batch_size,
+                            shuffle=True,
+                            validation_data=(inner_X_val, y_val),
+                            class_weight=class_weights_train,
+                            verbose=0)
+
+        # Get the predicited probability of testing data
+        y_score = model.predict(inner_X_test)[:, 0]
+        # Data to plot precision - recall curve
+        precision, recall, thresholds = precision_recall_curve(y_test, y_score)
+        # Use AUC function to calculate the area under the curve of precision recall curve
+        auc_precision_recall.append(auc(recall, precision))
+
+    mean_auc = np.mean(auc_precision_recall)
+    logging.info('mean_auc_precision_recall = {}'.format(mean_auc))
 
     # Save the model if it improves on the best found performance which is stored by the global variable best_auc
     global best_auc
     global best_hyperparameters
 
     # If the AUC of the saved model is greater than the current best performance
-    if auc_precision_recall > best_auc:
-        # Save the new model
-        model.save(path_best_model)
-
+    if mean_auc > best_auc:
         # Store the best hyperparameters
         best_hyperparameters = {
             'innercv_test_sample': innercv_test_sample,
@@ -181,45 +226,75 @@ def fitness(cnn_filters, cnn_layers, cnn_filter_size, fc_nodes,
             'dropout_rate': dropout_rate,
             'learning_rate': learning_rate,
             'regularization_rate': regularization_rate,
-            'auc_precision_recall': auc_precision_recall
+            'mean_auc_precision_recall': mean_auc
         }
         best_hyperparameters = {k: [v] for k, v in best_hyperparameters.items()}
 
         # Update the current greatest AUC score
-        best_auc = auc_precision_recall
+        best_auc = mean_auc
 
-    # Else delete the model that just finishing training from meomory
-    del model
+        prefix = '_'.join(['outer', outer_c, 'inner', inner_c, 'cnn-filt', str(cnn_filters),
+                           'cnn-lay', str(cnn_layers), 'cnn-filt-size', str(cnn_filter_size),
+                           'fc-nodes', str(fc_nodes), 'dropout', str(dropout_rate),
+                           'lr', str(learning_rate), 'rr', str(regularization_rate),
+                           'pr-auc', str(best_auc)])
+        accuracy_plot = os.path.join(output,
+                                     ''.join([prefix, '_auc_pr.png']))
+        loss_plot = os.path.join(output,
+                                 ''.join([prefix, '_loss.png']))
 
-    # Clear the Keras session, otherwise it will keep adding new
-    # models to the same TensorFlow graph each time we create
-    # a model with a different set of hyperparameters.
-    tf.keras.backend.clear_session()
+        # print(history.history)
+        plt.plot(history.history['auc'])
+        plt.plot(history.history['val_auc'])
+        plt.title('model auc PR')
+        plt.ylabel('AUC PR')
+        plt.xlabel('epoch')
+        plt.legend(['train', 'val'], loc='upper right')
+        plt.savefig(accuracy_plot)
 
-    # Scikit-optimize does minimization so it tries to
-    # find a set the combination of hyperparameters with the lowest fitness value.
-    # We want to maximize AUC so we negate this number.
-    return -auc_precision_recall
+        plt.plot(history.history['loss'])
+        plt.plot(history.history['val_loss'])
+        plt.title('model loss')
+        plt.ylabel('loss')
+        plt.xlabel('epoch')
+        plt.legend(['train', 'val'], loc='upper left')
+        plt.savefig(loss_plot)
+
+        # Else delete the model that just finishing training from meomory
+        del model
+
+        # Clear the Keras session, otherwise it will keep adding new
+        # models to the same TensorFlow graph each time we create
+        # a model with a different set of hyperparameters.
+        tf.keras.backend.clear_session()
+
+        # Scikit-optimize does minimization so it tries to
+        # find a set the combination of hyperparameters with the lowest fitness value.
+        # We want to maximize AUC so we negate this number.
+    return -mean_auc
+
+
+def get_labels(y):
+
+    svtype = 'DEL'
+    mapclasses = {svtype: 0, 'no' + svtype: 1}
+    y_mapped = np.array([mapclasses[i] for i in y[:, 6]])
+    classes = np.array(np.unique(y_mapped))
+    y_lab = np.asarray(y_mapped)
+    class_weights = compute_class_weight(class_weight='balanced', classes=classes, y=y_lab)
+    class_weights = {i: v for i, v in enumerate(class_weights)}
+    y_cat = to_categorical(y=y_lab, num_classes=2)
+
+    return y_lab, y_cat, class_weights
 
 
 def train(input_args):
-    def get_labels(y):
-
-        svtype = 'DEL'
-        mapclasses = {svtype: 0, 'no' + svtype: 1}
-        y_mapped = np.array([mapclasses[i] for i in y[:, 6]])
-        classes = np.array(np.unique(y_mapped))
-        y_lab = np.asarray(y_mapped)
-        class_weights = compute_class_weight(class_weight='balanced', classes=classes, y=y_lab)
-        class_weights = {i: v for i, v in enumerate(class_weights)}
-        y_cat = to_categorical(y=y_lab, num_classes=2)
-
-        return y_lab, y_cat, class_weights
 
     # Store chromosome and position of DELs as keys and difference of posterior probabilities as values
     pos_dict = {}
     model_df = pd.DataFrame()
 
+    global X, y
     X, y = load_data(input_args.input)
 
     # test sample for the outer cross-validation
@@ -228,6 +303,7 @@ def train(input_args):
     global innercv_test_sample
     innercv_test_sample = input_args.innercv_test_sample
     # chromosome for validation
+    global val_chrom
     val_chrom = input_args.val_chrom
 
     # list of chromosomes
@@ -236,16 +312,19 @@ def train(input_args):
 
     first_list = np.random.choice(outer_chr_list, 10, replace=False)
     second_list = [c for c in outer_chr_list if c not in first_list]
-    print("First list:{}\nSecond list:{}".format(first_list, second_list))
+    logging.info("First list:{}\nSecond list:{}".format(first_list, second_list))
 
     logging.info('Outer CV')
     global outer_i, outer_c
 
     global best_auc
     best_auc = 0.0
+
     for outer_i, outer_c_list in enumerate([first_list, second_list]):
 
         logging.info('Considering outer test chromosome list {}'.format(outer_c_list))
+
+        global outer_X_train, outer_y_train
 
         outer_X_train, outer_X_test, outer_X_val, \
         outer_y_train, outer_y_test, outer_y_val = train_test_val_split_by_sample_and_chrom_list(
@@ -290,81 +369,16 @@ def train(input_args):
             outer_y_val.shape[0]
         )
 
+        global inner_chr_list
         inner_chr_list = [c for c in outer_chr_list if c not in outer_c_list]
 
-        logging.info('Inner CV')
-
-        global inner_i, inner_c
-
-        for inner_i, inner_c in enumerate(inner_chr_list):
-
-            logging.info('Considering inner test chromosome {}'.format(inner_c))
-
-            global inner_X_train, inner_X_val, inner_X_test, \
-                y_train, y_val, y_test, \
-                class_weights_train, class_weights_val, class_weights_test, \
-                n_epochs, model_batch_size, path_best_model
-
-            n_epochs = input_args.epochs
-            model_batch_size = input_args.batch_size
-            path_best_model = os.path.join(input_args.output, 'best_model.h5')
-
-            inner_X_train, inner_X_test, \
-            inner_y_train, inner_y_test, = train_test_split_by_sample_and_chrom(
-                outer_X_train, outer_y_train, innercv_test_sample, inner_c
-            )
-
-            assert innercv_test_sample not in inner_y_train[:, 0], "Test sample {} in training set: {}".format(
-                innercv_test_sample, np.unique(inner_y_train[:, 0])
-            )
-            assert innercv_test_sample == np.unique(inner_y_test[:, 0]), "Test sample {} not in test set: {}".format(
-                innercv_test_sample, np.unique(inner_y_test[:, 0])
-            )
-
-            assert inner_c not in inner_y_train[:, 1], "Test chrom {} in training set: {}".format(
-                inner_c, np.unique(inner_y_train[:, 1])
-            )
-            assert inner_c == np.unique(inner_y_test[:, 1]), "Test chrom {} not in test set: {}".format(
-                inner_c, np.unique(inner_y_test[:, 1])
-            )
-
-            assert inner_X_train.shape[0] == inner_y_train.shape[0], "inner_X_train shape:{} different from" \
-                                                                     "inner_y_train shape:{}".format(
-                inner_X_train.shape[0],
-                inner_y_train.shape[0]
-            )
-            assert inner_X_test.shape[0] == inner_y_test.shape[0], "inner_X_test shape:{} different from" \
-                                                                   "inner_y_test shape:{}".format(
-                inner_X_test.shape[0],
-                inner_y_test.shape[0]
-            )
-
-            inner_X_val, inner_y_val = select_by_sample_and_chrom(
-                X, y, innercv_test_sample, val_chrom
-            )
-            assert innercv_test_sample == np.unique(inner_y_val[:, 0]), "Test sample {} not in val set: {}".format(
-                innercv_test_sample, np.unique(inner_y_val[:, 0])
-            )
-            assert val_chrom == np.unique(inner_y_val[:, 1]), "Test chrom {} not in test set: {}".format(
-                val_chrom, np.unique(inner_y_val[:, 1])
-            )
-            assert inner_X_val.shape[0] == inner_y_val.shape[0], "inner_X_val shape:{} different from" \
-                                                                 "inner_y_val shape:{}".format(
-                inner_X_val.shape[0],
-                inner_y_val.shape[0]
-            )
-
-            _, y_train, class_weights_train = get_labels(inner_y_train)
-            _, y_val, class_weights_val = get_labels(inner_y_val)
-            y_test, _, class_weights_test = get_labels(inner_y_test)
-
-            search_result = gp_minimize(func=fitness,
-                                        dimensions=dimensions,
-                                        acq_func='EI',
-                                        n_calls=input_args.ncalls,
-                                        x0=default_parameters,
-                                        random_state=42,
-                                        n_jobs=-1)
+        search_result = gp_minimize(func=fitness,
+                                    dimensions=dimensions,
+                                    acq_func='EI',
+                                    n_calls=input_args.ncalls,
+                                    x0=default_parameters,
+                                    random_state=42,
+                                    n_jobs=-1)
 
         # out of the inner CV loop
         df = pd.DataFrame.from_dict(best_hyperparameters)
@@ -386,18 +400,18 @@ def train(input_args):
 
         history = model.fit(x=outer_X_train, y=y_train,
                             epochs=n_epochs,
-                            batch_size=model_batch_size,
+                            batch_size=batch_size,
                             shuffle=True,
                             validation_data=(outer_X_val, y_val),
                             class_weight=class_weights_train,
-                            verbose=1)
+                            verbose=0)
 
-        probs = model.predict(outer_X_test, batch_size=100, verbose=True)
+        probs = model.predict(outer_X_test, batch_size=100, verbose=False)
 
-        for i in np.arange(outer_y_val.shape[0]):
-            chrom1 = outer_y_val[i, 1]
-            pos1a = outer_y_val[i, 2]
-            pos_dict[chrom1 + '_' + str(int(pos1a) + 1)] = str(probs[i][0] - probs[i][1])
+        for i in np.arange(outer_y_test.shape[0]):
+            chrom1 = outer_y_test[i, 1]
+            pos1a = outer_y_test[i, 2]
+            pos_dict[chrom1 + '_' + str(int(pos1a) + 1)] = str(probs[i][0])
 
     model_df.to_csv('model_df.csv')
 
@@ -433,8 +447,8 @@ def main():
     parser.add_argument('-mi',
                         '--manta_vcf_in',
                         type=str,
-                        default='~/Documents/Projects/GTCG/sv-channels/sv-channels_manuscript/'
-                                '1KG_trios/Manta/HG00420/manta.vcf',
+                        default='/Users/lsantuari/Documents/Projects/GTCG/sv-channels/'
+                                'sv-channels_manuscript/1KG_trios/Manta/HG00420/manta.vcf',
                         help="Manta callset in input for the test sample in the outer CV")
     parser.add_argument('-mo',
                         '--manta_vcf_out',
@@ -477,11 +491,19 @@ def main():
                         help="Batch size")
     args = parser.parse_args()
 
+    assert path.exists(args.manta_vcf_in), f"{args.manta_vcf_in} does not exist!"
+
     log_format = '%(asctime)s %(message)s'
     logging.basicConfig(format=log_format,
                         filename=args.logfile,
                         filemode='w',
                         level=logging.INFO)
+
+    global n_epochs, batch_size, output
+
+    n_epochs = args.epochs
+    batch_size = args.batch_size
+    output = args.output
 
     t0 = time()
 
