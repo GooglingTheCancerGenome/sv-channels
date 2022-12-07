@@ -1,11 +1,12 @@
 
 rule all:
   input:
-    expand("results/{chrName}/{chrName}_pos_dict.json", chrName=["chr"+str(i) for i in range(1,2)])
+    "results_wf2/sv-channels.vcf"
 
 rule locso_per_chrom:
   input:
-    '/Users/lsantuari/Documents/Projects/GTCG/sv-channels/sv-channels_manuscript/UMCU_hpc/8_samples_channels.npz'
+    svchan='multisample.npz',
+    vcf='manta.vcf'
   params:
     outercv_test_sample='HG00420',
     innercv_test_sample='HG01053',
@@ -14,21 +15,24 @@ rule locso_per_chrom:
     ncalls=12,
     batch_size=32
   output:
-    outdir="results/{chrName}",
-    pos_dict="results/{chrName}/{chrName}_pos_dict.json"
+    outdir="results_wf2",
+    vcf="results_wf2/sv-channels.vcf",
+    log="results_wf2/optimize.log"
   conda:
     "refactor"
   shell:
     """
     set -xe
     python nested_2fold_locso_cv.py \
-        -i "{input}" \
+        -i "{input.svchan}" \
         -o "{output.outdir}" \
+        --manta_vcf_in "{input.vcf}" \
+        --manta_vcf_out "{output.vcf}" \
         --outercv_test_sample {params.outercv_test_sample} \
         --innercv_test_sample {params.innercv_test_sample} \
-        --test_chrom {wildcards.chrName} \
         --val_chrom {params.val_chrom} \
         -e {params.epochs} \
         -n {params.ncalls} \
-        --batch_size {params.batch_size}
+        --batch_size {params.batch_size} \
+        --logfile {output.log}
     """
