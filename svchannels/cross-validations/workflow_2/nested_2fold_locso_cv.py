@@ -1,5 +1,4 @@
 import os
-from os import path
 import argparse
 import logging
 
@@ -21,10 +20,19 @@ from collections import Counter
 import sys
 
 # setting path
-sys.path.append('../svchannels')
+if '__file__' in vars():
+    # print("We are running the script non interactively")
+    module_path = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir)
+    print("Adding {} to sys".format(module_path))
+    sys.path.append(module_path)
+else:
+    # print('We are running the script interactively')
+    module_path = "../.."
+    print("Adding {} to sys".format(module_path))
+    sys.path.append(module_path)
 
 # importing
-from svchannels.model_functions import create_model
+from model_functions import create_model
 
 # Search space for the hyperparameters
 
@@ -491,7 +499,7 @@ def main():
                         help="Batch size")
     args = parser.parse_args()
 
-    assert path.exists(args.manta_vcf_in), f"{args.manta_vcf_in} does not exist!"
+    assert os.path.exists(args.manta_vcf_in), f"{args.manta_vcf_in} does not exist!"
 
     log_format = '%(asctime)s %(message)s'
     logging.basicConfig(format=log_format,
