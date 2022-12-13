@@ -14,7 +14,7 @@ rule locso_per_chrom:
     ncalls=100,
     batch_size=32
   output:
-    outdir="results/{chrName}",
+    outdir=directory("results/{chrName}"),
     pos_dict="results/{chrName}/{chrName}_pos_dict.json"
   conda:
     "refactor"

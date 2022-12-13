@@ -15,7 +15,7 @@ rule locso_per_chrom:
     ncalls=12,
     batch_size=32
   output:
-    outdir="results_wf2",
+    outdir=directory("results_wf2"),
     vcf="results_wf2/sv-channels.vcf",
     log="results_wf2/optimize.log"
   conda:
