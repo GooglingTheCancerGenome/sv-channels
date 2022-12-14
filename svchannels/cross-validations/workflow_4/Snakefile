@@ -1,0 +1,38 @@
+
+rule all:
+  input:
+    "results_wf4/sv-channels.vcf"
+
+rule locso_per_chrom:
+  input:
+    svchan='multisample.npz',
+    vcf='manta.vcf'
+  params:
+    outercv_test_sample='HG00420',
+    innercv_test_sample='HG01053',
+    val_chrom='chr22',
+    epochs=1,
+    ncalls=12,
+    batch_size=32
+  output:
+    outdir=directory("results_wf4"),
+    vcf="results_wf4/sv-channels.vcf",
+    log="results_wf4/optimize.log"
+  conda:
+    "refactor"
+  shell:
+    """
+    set -xe
+    python nested_2fold_lobso_cv.py \
+        -i "{input.svchan}" \
+        -o "{output.outdir}" \
+        --manta_vcf_in "{input.vcf}" \
+        --manta_vcf_out "{output.vcf}" \
+        --outercv_test_sample {params.outercv_test_sample} \
+        --innercv_test_sample {params.innercv_test_sample} \
+        --val_chrom {params.val_chrom} \
+        -e {params.epochs} \
+        -n {params.ncalls} \
+        --batch_size {params.batch_size} \
+        --logfile {output.log}
+    """
