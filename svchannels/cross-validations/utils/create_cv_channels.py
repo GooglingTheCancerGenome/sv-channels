@@ -34,6 +34,26 @@ def load_channels(channels_dir):
     X = np.stack(X, axis=0)
     y = np.array(y)
 
+    # add bins
+    bins = np.zeros(shape=y.shape[0])
+    # print(bins.shape)
+    n_bin = 1
+    for k in np.unique(y[:, 3]):
+        idx = np.where(y[:, 3] == k)[0]
+        pos_sorted = np.sort(y[idx, 4].astype(int))
+        # print(f'{k}:{len(idx)},pos_sorted:{len(pos_sorted)}')
+        pos_sorted = np.array_split(pos_sorted, 3)
+        # print(pos_sorted)
+        for pos_bin in pos_sorted:
+            idx2 = np.where(np.logical_and(y[:, 3] == k,
+                                           np.isin(y[:, 4].astype(int), pos_bin)))[0]
+            # print(f'{i}:{len(pos_bin)},{len(idx2)}')
+            bins[idx2] = n_bin
+            n_bin += 1
+    bins = np.asarray(bins, dtype=np.int8)
+    y = np.append(y, bins.reshape((bins.shape[0], 1)), axis=1)
+    print(y[1, :])
+
     # select only chromosomes from chr1 to chr22
     chr_list = ['chr' + str(i) for i in np.arange(1, 23)]
     chr_list_y1 = y[:, 1]
