@@ -131,9 +131,9 @@ def fitness(cnn_filters, cnn_layers, cnn_filter_size, fc_nodes,
 
     auc_precision_recall = []
 
-    # for inner_i, inner_c in enumerate(inner_chr_list):
+    for inner_i, inner_c in enumerate(inner_chr_list):
     # only for test purposes
-    for inner_i, inner_c in enumerate([inner_chr_list[0]]):
+    # for inner_i, inner_c in enumerate([inner_chr_list[0]]):
         logging.info('Considering inner test chromosome {}'.format(inner_c))
 
         inner_X_train, inner_X_test, \
@@ -169,10 +169,10 @@ def fitness(cnn_filters, cnn_layers, cnn_filter_size, fc_nodes,
         inner_X_val, inner_y_val = select_by_sample_and_chrom(
             X, y, innercv_test_sample, val_chrom
         )
-        assert innercv_test_sample == np.unique(inner_y_val[:, 0]), "Test sample {} not in val set: {}".format(
+        assert innercv_test_sample == np.unique(inner_y_val[:, 0]), "Val sample {} not in val set: {}".format(
             innercv_test_sample, np.unique(inner_y_val[:, 0])
         )
-        assert val_chrom == np.unique(inner_y_val[:, 1]), "Test chrom {} not in test set: {}".format(
+        assert val_chrom == np.unique(inner_y_val[:, 1]), "Val chrom {} not in val set: {}".format(
             val_chrom, np.unique(inner_y_val[:, 1])
         )
         assert inner_X_val.shape[0] == inner_y_val.shape[0], "inner_X_val shape:{} different from" \
