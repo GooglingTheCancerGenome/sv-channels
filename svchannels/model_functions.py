@@ -57,7 +57,7 @@ def create_model(X, outputdim, learning_rate, regularization_rate,
     model.add(Activation("softmax"))  # Final classification layer
 
     model.compile(loss='categorical_crossentropy',
-                  optimizer=Adam(lr=learning_rate),
+                  optimizer=Adam(learning_rate=learning_rate),
                   metrics=[AUC(name='auc', curve='PR')])
 
     return model
