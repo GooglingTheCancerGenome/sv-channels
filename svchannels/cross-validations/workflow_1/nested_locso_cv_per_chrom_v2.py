@@ -15,6 +15,7 @@ from skopt.space import Real, Integer
 from skopt.utils import use_named_args
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.metrics import auc, precision_recall_curve
+from sklearn.metrics import average_precision_score, accuracy_score, balanced_accuracy_score
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.callbacks import EarlyStopping
 from collections import Counter
@@ -53,11 +54,13 @@ dimensions = [search_space_dict[k] for k in search_space_dict.keys()]
 default_parameters = [4, 1, 7, 4, 0.2, 1e-4, 1e-1]
 
 # Create a global variable that stores the current best area under the ROC curve (AUC), our metric. Initialize it to 0
-best_auc = 0.0
+best_performance = 0.0
 
 best_hyperparameters = {}
 
-callback = EarlyStopping(monitor='loss', patience=3)
+verbose_level = 0
+
+# callback = EarlyStopping(monitor='val_loss', patience=3)
 
 
 def load_data(inputfile):
@@ -115,6 +118,11 @@ def select_by_sample_and_chrom(X, y, sample, chrom):
 @use_named_args(dimensions=dimensions)
 def fitness(cnn_filters, cnn_layers, cnn_filter_size, fc_nodes,
             dropout_rate, learning_rate, regularization_rate):
+
+    # Save the model if it improves on the best found performance which is stored by the global variable best_auc
+    global best_performance
+    global best_hyperparameters
+
     # Print the current combination of hyperparameters
     current_hyperparameters = {
         'cnn_filters': cnn_filters,
@@ -130,6 +138,9 @@ def fitness(cnn_filters, cnn_layers, cnn_filter_size, fc_nodes,
     logging.info('Inner CV')
 
     auc_precision_recall = []
+    accuracy = []
+    balanced_accuracy = []
+    validation_auc_pr = []
 
     for inner_i, inner_c in enumerate(inner_chr_list):
     # only for test purposes
@@ -201,25 +212,53 @@ def fitness(cnn_filters, cnn_layers, cnn_filter_size, fc_nodes,
                             shuffle=True,
                             validation_data=(inner_X_val, y_val),
                             class_weight=class_weights_train,
-                            callbacks=[callback],
-                            verbose=0)
+                            # callbacks=[callback],
+                            verbose=verbose_level)
 
-        # Get the predicited probability of testing data
-        y_score = model.predict(inner_X_test)[:, 0]
+        # Get the predicted probability of testing data
+        y_probs = model.predict(inner_X_test)
+        y_score = y_probs[:, 0]
+
         # Data to plot precision - recall curve
-        precision, recall, thresholds = precision_recall_curve(y_test, y_score)
+        # precision, recall, thresholds = precision_recall_curve(y_test, y_score)
         # Use AUC function to calculate the area under the curve of precision recall curve
-        auc_precision_recall.append(auc(recall, precision))
+        # auc_precision_recall.append(auc(recall, precision))
+        # calculate average precision score
+        avg_prec = average_precision_score(y_test, y_score)
+        auc_precision_recall.append(avg_prec)
+
+        y_predicted = y_probs.argmax(axis=1)
+        acc_score = accuracy_score(y_test, y_predicted)
+        accuracy.append(acc_score)
+
+        bal_acc_score = balanced_accuracy_score(y_test, y_predicted)
+        balanced_accuracy.append(bal_acc_score)
+
+        val_auc = history.history['val_auc'][-1]
+        validation_auc_pr.append(val_auc)
+
+        # Delete the model that just finishing training from memory
+        del model
+
+        # Clear the Keras session, otherwise it will keep adding new
+        # models to the same TensorFlow graph each time we create
+        # a model with a different set of hyperparameters.
+        tf.keras.backend.clear_session()
 
     mean_auc = np.mean(auc_precision_recall)
-    logging.info('mean_auc_precision_recall = {}'.format(mean_auc))
+    mean_accuracy = np.mean(accuracy)
+    mean_balanced_accuracy = np.mean(balanced_accuracy)
+    mean_validation_auc_pr = np.mean(validation_auc_pr)
 
-    # Save the model if it improves on the best found performance which is stored by the global variable best_auc
-    global best_auc
-    global best_hyperparameters
+    logging.info('mean_auc_precision_recall = {}'.format(mean_auc))
+    logging.info('mean_accuracy = {}'.format(mean_accuracy))
+    logging.info('mean_balanced_accuracy = {}'.format(mean_balanced_accuracy))
+    logging.info('mean_validation_auc_pr = {}'.format(mean_validation_auc_pr))
+
+    mean_performance = mean_balanced_accuracy
 
     # If the AUC of the saved model is greater than the current best performance
-    if mean_auc > best_auc:
+    if mean_performance > best_performance:
         # Store the best hyperparameters
         best_hyperparameters = {
             'innercv_test_sample': innercv_test_sample,
@@ -238,9 +277,6 @@ def fitness(cnn_filters, cnn_layers, cnn_filter_size, fc_nodes,
         }
         best_hyperparameters = {k: [v] for k, v in best_hyperparameters.items()}
 
-        # Update the current greatest AUC score
-        best_auc = mean_auc
-
         prefix = '_'.join(['outer', outer_c, 'inner', inner_c, 'cnn-filt', str(cnn_filters),
                            'cnn-lay', str(cnn_layers), 'cnn-filt-size', str(cnn_filter_size),
                            'fc-nodes', str(fc_nodes), 'dropout', str(dropout_rate),
@@ -258,7 +294,9 @@ def fitness(cnn_filters, cnn_layers, cnn_filter_size, fc_nodes,
         plt.ylabel('AUC PR')
         plt.xlabel('epoch')
         plt.legend(['train', 'val'], loc='upper right')
+        plt.tight_layout()
         plt.savefig(accuracy_plot)
+        plt.close()
 
         plt.plot(history.history['loss'])
         plt.plot(history.history['val_loss'])
@@ -266,20 +304,17 @@ def fitness(cnn_filters, cnn_layers, cnn_filter_size, fc_nodes,
         plt.ylabel('loss')
         plt.xlabel('epoch')
         plt.legend(['train', 'val'], loc='upper left')
+        plt.tight_layout()
         plt.savefig(loss_plot)
+        plt.close()
 
-        # Else delete the model that just finishing training from meomory
-        del model
+        # Update the current greatest AUC score
+        best_performance = mean_performance
 
-        # Clear the Keras session, otherwise it will keep adding new
-        # models to the same TensorFlow graph each time we create
-        # a model with a different set of hyperparameters.
-        tf.keras.backend.clear_session()
-
-        # Scikit-optimize does minimization so it tries to
-        # find a set the combination of hyperparameters with the lowest fitness value.
-        # We want to maximize AUC so we negate this number.
-    return -mean_auc
+    # Scikit-optimize does minimization so it tries to
+    # find a set the combination of hyperparameters with the lowest fitness value.
+    # We want to maximize the model performance so we negate this number.
+    return -mean_performance
 
 
 def get_labels(y):
@@ -384,20 +419,38 @@ def train(input_args):
                                     n_calls=input_args.ncalls,
                                     x0=default_parameters,
                                     random_state=42,
-                                    n_jobs=-1)
+                                    n_jobs=-1,
+                                    verbose=True)
+
+        # logging.info(search_result)
+
+        # for debugging purpose
+        # best_hyperparameters = {
+        #     'innercv_test_sample': -1,
+        #     'outer_i': -1,
+        #     'outer_chrom': outer_c,
+        #     'cnn_filters': 4,
+        #     'cnn_layers': 1,
+        #     'cnn_filter_size': 7,
+        #     'fc_nodes': 4,
+        #     'dropout_rate': 0.1,
+        #     'learning_rate': 1e-4,
+        #     'regularization_rate': 1e-1
+        # }
+        # best_hyperparameters = {k: [v] for k, v in best_hyperparameters.items()}
 
         # out of the inner CV loop
         df = pd.DataFrame.from_dict(best_hyperparameters)
         model_df = model_df.append(df, ignore_index=True)
 
         model = create_model(outer_X_train, 2,
-                             learning_rate=float(best_hyperparameters['learning_rate'][0]),
-                             regularization_rate=float(best_hyperparameters['regularization_rate'][0]),
-                             filters=int(best_hyperparameters['cnn_filters'][0]),
-                             layers=int(best_hyperparameters['cnn_layers'][0]),
-                             kernel_size=int(best_hyperparameters['cnn_filter_size'][0]),
-                             fc_nodes=int(best_hyperparameters['fc_nodes'][0]),
-                             dropout_rate=float(best_hyperparameters['dropout_rate'][0])
+                             learning_rate=best_hyperparameters['learning_rate'][0],
+                             regularization_rate=best_hyperparameters['regularization_rate'][0],
+                             filters=best_hyperparameters['cnn_filters'][0],
+                             layers=best_hyperparameters['cnn_layers'][0],
+                             kernel_size=best_hyperparameters['cnn_filter_size'][0],
+                             fc_nodes=best_hyperparameters['fc_nodes'][0],
+                             dropout_rate=best_hyperparameters['dropout_rate'][0]
                              )
         # print(model.summary())
 
@@ -410,8 +463,44 @@ def train(input_args):
                             shuffle=True,
                             validation_data=(outer_X_val, y_val),
                             class_weight=class_weights_train,
-                            callbacks=[callback],
-                            verbose=0)
+                            # callbacks=[callback],
+                            verbose=verbose_level)
+
+        prefix = '_'.join(['outerCV',
+                           'outer', outer_c,
+                           'cnn-filt', str(best_hyperparameters['cnn_filters'][0]),
+                           'cnn-lay', str(best_hyperparameters['cnn_layers'][0]),
+                           'cnn-filt-size', str(best_hyperparameters['cnn_filter_size'][0]),
+                           'fc-nodes', str(best_hyperparameters['fc_nodes'][0]),
+                           'dropout', str(best_hyperparameters['dropout_rate'][0]),
+                           'lr', str(best_hyperparameters['learning_rate'][0]),
+                           'rr', str(best_hyperparameters['regularization_rate'][0]),
+                           'pr-auc', str(best_auc)])
+        accuracy_plot = os.path.join(output,
+                                     ''.join([prefix, '_auc_pr.png']))
+        loss_plot = os.path.join(output,
+                                 ''.join([prefix, '_loss.png']))
+
+        # print(history.history)
+        plt.plot(history.history['auc'])
+        plt.plot(history.history['val_auc'])
+        plt.title('model auc PR')
+        plt.ylabel('AUC PR')
+        plt.xlabel('epoch')
+        plt.legend(['train', 'val'], loc='upper right')
+        plt.tight_layout()
+        plt.savefig(accuracy_plot)
+        plt.close()
+
+        plt.plot(history.history['loss'])
+        plt.plot(history.history['val_loss'])
+        plt.title('model loss')
+        plt.ylabel('loss')
+        plt.xlabel('epoch')
+        plt.legend(['train', 'val'], loc='upper left')
+        plt.tight_layout()
+        plt.savefig(loss_plot)
+        plt.close()
 
         probs = model.predict(outer_X_test, batch_size=100, verbose=False)
 
@@ -479,7 +568,7 @@ def main():
     parser.add_argument('-e',
                         '--epochs',
                         type=int,
-                        default=1,
+                        default=10,
                         help="Number of epochs")
     parser.add_argument('-n',
                         '--ncalls',
