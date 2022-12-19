@@ -32,3 +32,20 @@ SCH=local  # gridengine or slurm
 BAM=../data/test.bam
 ./run.sh $SCH $BAM # run jobs locally or on a compute cluster
 ```
+### Run sv-channels on test data
+Install sv-channels:
+```commandline
+python setup.py install
+```
+Process test set:
+```commandline
+svchannels extract-signals data/test.fasta data/test.bam test
+Rscript svchannels/utils/R/vcf2bedpe.R -i data/test.vcf -o data/test.bedpe
+Rscript svchannels/utils/R/vcf2bedpe.R -i data/vcf/manta_out/manta.vcf -o test/manta.bedpe
+svchannels generate-channels --reference data/test.fasta test channels test/manta.bedpe
+svchannels label -v channels/sv_positions.bedpe -g data/test.bedpe -f data/test.fasta.fai -p labels
+svchannels train channels/channels.zarr.zip labels/labels.json.gz channels/channels.zarr.zip labels/labels.json.gz \
+    -m model.keras
+svchannels score channels model.keras data/vcf/manta_out/manta.vcf sv-channels.vcf
+```
+

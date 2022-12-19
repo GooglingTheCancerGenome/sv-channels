@@ -8,7 +8,7 @@ from . import train
 commands = {
         'extract-signals': ("extract SV signals from a BAM/CRAM", extract_signals.main),
         'generate-channels': ("generate matricies (channels) from signals and a set of SVs", generate_channels.main),
-        'label': ("Label SVs", label.main),
+        'label': ("Label SVs according to truth set", label.main),
         'score': ("score a set of variants (channels) given a trained model", score.main),
         'train': ("train a model from a set of variants (channels)", train.main)
     }

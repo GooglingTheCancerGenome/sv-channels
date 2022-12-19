@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 import logging
 import zarr
 import gzip
@@ -59,16 +60,18 @@ def train(args):
     y = np.array([mapclasses[i] for i in y])
     classes = np.array(np.unique(y))
     y_lab = np.asarray(y)
-    class_weights = compute_class_weight('balanced', classes, y_lab)
+    class_weights = compute_class_weight(class_weight='balanced',
+                                         classes=classes,
+                                         y=y_lab)
     train_class_weights = {i: v for i, v in enumerate(class_weights)}
 
-    train_y = to_categorical(y, num_classes=2)
+    train_y = to_categorical(y=y, num_classes=2)
 
     val_X, y = load_windows(args.validation_windows, args.validation_labels)
     y = y.values()
     mapclasses = {args.svtype: 0, 'no' + args.svtype: 1}
     y = np.array([mapclasses[i] for i in y])
-    val_y = to_categorical(y, num_classes=2)
+    val_y = to_categorical(y=y, num_classes=2)
 
     model = create_model(train_X, 2,
                          learning_rate=default_parameters_dict['learning_rate'],
@@ -120,19 +123,25 @@ def train(args):
     plt.close()
 
 
-def main():
+def main(argv=sys.argv[1:]):
     parser = argparse.ArgumentParser(description='Optimize model')
 
-    parser.add_argument('-w',
-                        '--windows',
+    parser.add_argument('windows',
                         type=str,
                         default='sv_chan.zarr,sv_chan.zarr',
                         help="Comma separated list of training data")
-    parser.add_argument('-lab',
-                        '--labels',
+    parser.add_argument('labels',
                         type=str,
                         default='labels/labels.json.gz,labels/labels.json.gz',
                         help="Comma separated list of JSON.GZ file for labels")
+    parser.add_argument('validation_windows',
+                        type=str,
+                        default='sv_chan.zarr',
+                        help="Windows used for validation")
+    parser.add_argument('validation_labels',
+                        type=str,
+                        default='labels/labels.json.gz',
+                        help="JSON.GZ file for labels")
     parser.add_argument('-l',
                         '--logfile',
                         default='optimize.log',
@@ -140,28 +149,13 @@ def main():
     parser.add_argument('-e',
                         '--epochs',
                         type=int,
-                        default=50,
+                        default=10,
                         help="Number of epochs")
     parser.add_argument('-b',
                         '--batch_size',
                         type=int,
                         default=32,
                         help="Batch size")
-    parser.add_argument('-n',
-                        '--ncalls',
-                        type=int,
-                        default=50,
-                        help="Number of calls of the fitness function")
-    parser.add_argument('-val',
-                        '--validation_windows',
-                        type=str,
-                        default='sv_chan.zarr',
-                        help="Windows used for validation")
-    parser.add_argument('-val_lab',
-                        '--validation_labels',
-                        type=str,
-                        default='labels/labels.json.gz',
-                        help="JSON.GZ file for labels")
     parser.add_argument('-s',
                         '--svtype',
                         type=str,
@@ -172,7 +166,7 @@ def main():
                         type=str,
                         default='best_model.keras',
                         help="Output model")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     for p in (args.model, args.logfile):
         od = Path(p)

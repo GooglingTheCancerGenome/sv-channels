@@ -227,7 +227,7 @@ def get_labels(chr_dict, win_len, svtype, ground_truth, sv_positions, channelDat
         fout.write(json.dumps(labels).encode('utf-8'))
 
 
-def main():
+def main(argv=sys.argv[1:]):
     parser = argparse.ArgumentParser(description='Create labels')
     parser.add_argument('-f',
                         '--fai',
@@ -249,24 +249,22 @@ def main():
                         type=str,
                         default='DEL',
                         help="Specify SV type")
-    parser.add_argument('-sv',
-                        '--sv_positions',
+    parser.add_argument('sv_positions',
                         type=str,
                         default=os.path.join(
                             'sv_positions.bedpe'),
                         help="Specify Manta/GRIDSS BEDPE file")
-    parser.add_argument('-gt',
-                        '--ground_truth',
+    parser.add_argument('ground_truth',
                         type=str,
                         default='../data/test.bedpe',
                         help="Specify ground truth VCF/BEDPE file")
-    parser.add_argument('-p',
+    parser.add_argument('-o',
                         '--outputpath',
                         type=str,
                         default='labels',
                         help="Specify output path")
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     os.makedirs(args.outputpath, exist_ok=True)
 
