@@ -38,14 +38,32 @@ Install sv-channels:
 python setup.py install
 ```
 Process test set:
+1. Extract signals:
 ```commandline
 svchannels extract-signals data/test.fasta data/test.bam test
-Rscript svchannels/utils/R/vcf2bedpe.R -i data/test.vcf -o data/test.bedpe
-Rscript svchannels/utils/R/vcf2bedpe.R -i data/vcf/manta_out/manta.vcf -o test/manta.bedpe
+```
+2. Convert VCF files (Manta callset and truth set) to BEDPE format:
+```commandline
+Rscript svchannels/utils/R/vcf2bedpe.R -i data/test.vcf \
+                                       -o data/test.bedpe
+Rscript svchannels/utils/R/vcf2bedpe.R -i data/vcf/manta_out/manta.vcf \
+                                       -o test/manta.bedpe
+```
+3. Generate channels:
+```commandline
 svchannels generate-channels --reference data/test.fasta test channels test/manta.bedpe
+```
+4. Label SVs:
+```commandline
 svchannels label -v channels/sv_positions.bedpe -g data/test.bedpe -f data/test.fasta.fai -p labels
+```
+5. Train the model:
+```commandline
 svchannels train channels/channels.zarr.zip labels/labels.json.gz channels/channels.zarr.zip labels/labels.json.gz \
     -m model.keras
+```
+6. Score SVs:
+```commandline
 svchannels score channels model.keras data/vcf/manta_out/manta.vcf sv-channels.vcf
 ```
 
