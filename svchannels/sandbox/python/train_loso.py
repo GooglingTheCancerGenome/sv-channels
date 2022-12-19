@@ -31,6 +31,7 @@ def load_windows(win_file, lab_file):
 
 def create_model(X, outputdim, learning_rate, regularization_rate,
                  filters, layers, kernel_size, fc_nodes):
+
     weightinit = 'lecun_uniform'  # weight initialization
 
     model = Sequential()
@@ -182,7 +183,17 @@ def main():
                         '--labels',
                         type=str,
                         default='labels/labels.json.gz,labels/labels.json.gz',
-                        help="Comma separated list of JSON.GZ file for labels")
+                        help="Comma separated list of JSON.GZ file for training labels")
+    parser.add_argument('-val_win',
+                        '--validation_windows',
+                        type=str,
+                        default='sv_chan.zarr,sv_chan.zarr',
+                        help="Comma separated list of validation data")
+    parser.add_argument('-val_lab',
+                        '--validation_labels',
+                        type=str,
+                        default='labels/labels.json.gz,labels/labels.json.gz',
+                        help="Comma separated list of JSON.GZ file for validation labels")
     parser.add_argument('-sm',
                         '--samples',
                         type=str,
@@ -202,16 +213,6 @@ def main():
                         type=int,
                         default=32,
                         help="Batch size")
-    parser.add_argument('-test',
-                        '--test_chr',
-                        type=str,
-                        default='chr1',
-                        help="Chromosome used for testing")
-    parser.add_argument('-val',
-                        '--validation_chr',
-                        type=str,
-                        default='chr22',
-                        help="Chromosome used for validation")
     parser.add_argument('-s',
                         '--svtype',
                         type=str,

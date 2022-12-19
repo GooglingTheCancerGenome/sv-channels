@@ -7,7 +7,7 @@ import pandas as pd
 import zarr
 import sys
 from tensorflow.keras.models import load_model
-import vcf
+from svchannels.model_functions import unfold_win_id
 
 
 
@@ -33,42 +33,20 @@ def main(argv=sys.argv[1:]):
                         default='best_model.keras',
                         help="TensorFlow model in HDF5 format"
                         )
-    parser.add_argument('manta_vcf',
-                        type=str,
-                        default='manta.vcf',
-                        help="Manta VCF file"
-                        )
-    parser.add_argument('manta_vcf_out',
-                        type=str,
-                        default='manta_out.vcf',
-                        help="Manta VCF file for output"
-                        )
 
     args = parser.parse_args(argv)
 
     probs = predict(args.channels_directory, args.model)
     predicted = probs.argmax(axis=1)
-
-    pos_dict = {}
     n = 0
     for i, line in enumerate(open(f'{args.channels_directory}/sv_positions.bedpe')):
         p = predicted[i]
-        chrom1, pos1a, pos1b, chrom2, pos2a, pos2b, svtype = line.split('\t')
         # TODO: not sure if we need probs[i][0] here.
-        pos_dict[chrom1+'_'+str(pos1a)] = str(probs[i][0] - probs[i][1])
+        line = line.strip() + f'\t{probs[i][0]-probs[i][1]}:{p}'
+        print(line)
         n += 1
     assert n == len(predicted), "number of variants and channel-sets should match"
 
-    #print(pos_dict)
-
-    reader = vcf.Reader(open(args.manta_vcf, 'r'))
-    writer = vcf.Writer(open(args.manta_vcf_out, 'w'), reader)
-
-    for record in reader:
-        k = record.CHROM+'_'+str(record.POS)
-        if k in pos_dict.keys():
-            record.QUAL = str(pos_dict[k])
-            writer.write_record(record)
 
 
 if __name__ == '__main__':

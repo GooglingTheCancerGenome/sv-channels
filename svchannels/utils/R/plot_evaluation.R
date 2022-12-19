@@ -337,6 +337,8 @@ my.data %>% dplyr::select(caller, recall) %>% dplyr::group_by(caller) %>%
 min.y = min(my.data$precision[my.data$caller=='manta'])
 max.y = max(my.data$precision[my.data$caller=='manta'])
 
+hist(my.data$QUAL[my.data$caller=='sv-channels'])
+
 my.x.intercept <- my.data$recall[my.data$caller=='sv-channels'][
   which.min(abs(my.data$QUAL[my.data$caller=='sv-channels']-0.5))]
 

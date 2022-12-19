@@ -47,21 +47,21 @@ infer_svtype <- function(gr)
 
 load_vcf <- function(vcf_file, svtype, caller)
 {
-  
+
   message(paste('Loading ', svtype, 'calls for', caller))
-  
+
   # Load VCF file
   vcf_gr <-
     VariantAnnotation::readVcf(vcf_file)
-  
+
   # Keep only SVs that passed the filtering (PASS or .)
-  vcf_gr <- vcf_gr[rowRanges(vcf_gr)$FILTER %in% c("PASS", ".")]
+  vcf_gr <- vcf_gr[rowRanges(vcf_gr)$FILTER %in% c("PASS", "../..")]
 
   #if(caller=='truth_set')
   #{
     #vcf_gr <- vcf_gr[which(unlist(info(vcf_gr)$ALGORITHMS)!='manta')]
   #}
-  
+
   if (caller == 'lumpy')
   {
     # Read evidence support as a proxy for QUAL
@@ -75,10 +75,10 @@ load_vcf <- function(vcf_file, svtype, caller)
     fixed(vcf_gr)$QUAL <-
       sr_support + info(vcf_gr)$PE
   }
-  
+
   vcf_gr <- breakpointRanges(vcf_gr)
   vcf_gr <- infer_svtype(vcf_gr)
-  
+
   # Select only one SV type
   print(table(vcf_gr$svtype))
   vcf_gr <- vcf_gr[which(vcf_gr$svtype == svtype)]
@@ -92,7 +92,7 @@ load_vcf <- function(vcf_file, svtype, caller)
   vcf_gr <-
     vcf_gr[seqnames(vcf_gr) %in% paste('chr', c(1:22), sep = '')]
   vcf_gr <- vcf_gr[vcf_gr$partner %in% names(vcf_gr)]
-  
+
   return(vcf_gr)
 }
 
@@ -163,7 +163,7 @@ callsets <- data.frame(cbind(
   c('sv-channels', 'manta', 'gridss'),
   c(argv$svchannels, argv$manta, argv$gridss)
 ))
-  
+
 sv_regions <- list()
 for (i in 1:nrow(callsets))
 {
@@ -210,7 +210,7 @@ for (c in names(sv_regions))
         # countOnlyBest cannot be used for insertions
         countOnlyBest = TRUE
       )
-    
+
   } else{
     sv_regions[[c]]$truth_matches <-
       countBreakpointOverlaps(

@@ -17,10 +17,10 @@ p <-
   arg_parser("Convert VCF output of Manta, DELLY, LUMPY or GRIDSS to BEDPE format.")
 p <-
   add_argument(p, "-i", help = "Input in VCF", type = "character",
-               default = '../data/vcf/manta_out/manta.vcf')
+               default = '~/Documents/Projects/GTCG/sv-channels/sv-channels_manuscript/1KG_trios/Manta/HG00420/manta.vcf')
 p <-
   add_argument(p, "-o", help = "Output in BEDPE", type = "character",
-               default = '../data/manta.bedpe')
+               default = '~/Documents/Projects/GTCG/sv-channels/sv-channels_manuscript/1KG_trios/Manta/HG00420/manta.bedpe')
 p <-
   add_argument(p,
                "-p",
@@ -44,7 +44,7 @@ if (is.na(argv$i))
 
 if (is.na(argv$o))
 {
-  argv$o = paste(file_path_sans_ext(argv$i), "bedpe", sep = '.')
+  argv$o = paste(file_path_sans_ext(argv$i), "bedpe", sep = '../..')
 }
 
 # SV types assigned according to

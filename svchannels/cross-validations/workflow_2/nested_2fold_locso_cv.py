@@ -32,7 +32,7 @@ else:
     sys.path.append(module_path)
 
 # importing
-from model_functions import create_model
+from model import create_model
 
 # Search space for the hyperparameters
 

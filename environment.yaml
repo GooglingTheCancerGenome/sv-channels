@@ -1,20 +1,22 @@
 ---
 channels:
+  - anaconda
   - conda-forge
   - bioconda
   - nlesc
 dependencies:
+  - snakemake=7.18.2
   - intervaltree=3.1.0
-  - pysam=0.16.0
+  - pysam=0.20.0
+  - matplotlib
+  - numpy
   - pandas=1.1.4
   - bz2file=0.98
   - plotnine=0.7.1
   - pybigwig=0.3.17
   - twobitreader=3.1.7
-  - bcolz=1.2.1
   - scikit-learn=0.23.2
   - tensorflow>=2.0.0
-  - tensorflow-gpu
   - r-base=4.0.3
   - r-argparser=0.6
   - bioconductor-structuralvariantannotation=1.6
@@ -29,3 +31,5 @@ dependencies:
   - scikit-optimize
   - pyfaidx
   - zarr
+  - pyvcf
+  - codecov

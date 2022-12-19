@@ -6,8 +6,6 @@ import os
 import sys
 from collections import Counter, defaultdict
 from time import time
-
-import pysam
 from intervaltree import IntervalTree
 
 
@@ -190,8 +188,6 @@ def overlap(svtype, sv_list, cpos_list, win_hlen, ground_truth, outDir):
 
     if file_extension == '.bedpe':
         filter_bedpe(ground_truth, sv_covered, outDir)
-    elif file_extension == '.sur':
-        filter_survivor_output(ground_truth, sv_covered, outDir)
     return labels
 
 
@@ -243,11 +239,6 @@ def main():
                         type=str,
                         default='labels.log',
                         help="Specify log file")
-    parser.add_argument('-c',
-                        '--chrlist',
-                        type=str,
-                        default='12,22',
-                        help="Comma separated list of chromosomes to consider")
     parser.add_argument('-w',
                         '--window',
                         type=int,

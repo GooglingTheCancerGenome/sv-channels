@@ -1,5 +1,5 @@
 """
-Leave one chromosome and one sample out procedure with hyperparameters optimization
+Leave one chromosome out procedure
 """
 
 import os
@@ -11,28 +11,16 @@ import json
 import tensorflow as tf
 import numpy as np
 from time import time
-from skopt import gp_minimize
-from skopt.space import Real, Integer
-from skopt.utils import use_named_args
 from sklearn.utils.class_weight import compute_class_weight
 from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.regularizers import l2
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import (EarlyStopping, ModelCheckpoint,
+                                        TensorBoard)
+from tensorflow.keras.layers import (Activation, BatchNormalization,
+                                     Convolution1D, Dense, Flatten)
+from tensorflow.keras.models import Sequential, load_model
 from model_functions import create_model
-
-# Ranges for the hyperparameters
-dim_cnn_filters = Integer(low=1, high=8, name='cnn_filters')
-dim_cnn_layers = Integer(low=1, high=2, name='cnn_layers')
-dim_cnn_kernel_size = Integer(low=1, high=8, name='cnn_kernel_size')
-dim_cnn_fc_nodes = Integer(low=3, high=6, name='cnn_fc_nodes')
-dim_dropout_rate = Integer(low=0, high=0.9, name='dropout_rate')
-dim_init_learning_rate = Real(low=1e-4, high=1e-1, prior='log-uniform', name='cnn_init_learning_rate')
-dim_regularization_rate = Real(low=1e-4, high=1e-1, prior='log-uniform', name='cnn_regularization_rate')
-
-dimensions = [dim_cnn_filters, dim_cnn_layers, dim_cnn_kernel_size,
-              dim_cnn_fc_nodes, dim_dropout_rate, dim_init_learning_rate, dim_regularization_rate]
-
-default_parameters = [4, 1, 7, 4, 0.2, 1e-4, 1e-1]
-
-best_accuracy = 0.0
 
 
 def load_windows(win_file, lab_file):
@@ -40,50 +28,6 @@ def load_windows(win_file, lab_file):
     with gzip.GzipFile(lab_file, 'r') as fin:
         y = json.loads(fin.read().decode('utf-8'))
     return X, y
-
-
-@use_named_args(dimensions=dimensions)
-def fitness(cnn_filters, cnn_layers, cnn_kernel_size, cnn_fc_nodes, dropout_rate,
-            cnn_init_learning_rate, cnn_regularization_rate):
-
-    global best_accuracy
-
-    print()
-    print('cnn_filters: ', cnn_filters)
-    print('cnn_layers: ', cnn_layers)
-    print('cnn_kernel_size: ', cnn_kernel_size)
-    print('cnn_fc_nodes: ', cnn_fc_nodes)
-    print('dropout_rate: ', dropout_rate)
-    print('cnn_init_learning_rate: ', cnn_init_learning_rate)
-    print('cnn_regularization_rate: ', cnn_regularization_rate)
-    print()
-
-    model = create_model(train_X, 2,
-                         learning_rate=cnn_init_learning_rate,
-                         regularization_rate=cnn_regularization_rate,
-                         filters=cnn_filters,
-                         layers=cnn_layers,
-                         kernel_size=cnn_kernel_size,
-                         fc_nodes=cnn_fc_nodes,
-                         dropout_rate=dropout_rate)
-    print(model.summary())
-
-    history = model.fit(x=train_X, y=train_y,
-                        epochs=max_epoch, batch_size=batch_size,
-                        shuffle=True,
-                        validation_split=0.3,
-                        class_weight=class_weights,
-                        verbose=0)
-
-    accuracy = history.history['val_accuracy'][-1]
-    print()
-    print('Accuracy: {0:.2%}'.format(accuracy))
-    if accuracy > best_accuracy:
-        model.save(path_best_model)
-        best_accuracy = accuracy
-    del model
-    tf.keras.backend.clear_session()
-    return -accuracy
 
 
 def train(args):
@@ -112,17 +56,26 @@ def train(args):
     samples_list = []
 
     for w, l, s in zip(windows, labels, samples):
-        if s != args.sample_out:
-            partial_X, partial_y = load_windows(w, l)
-            X.extend(partial_X)
-            y.extend(partial_y.values())
-            win_pos.extend(partial_y.keys())
-            # add sample name
-            samples_list.extend([s] * len(partial_y))
+        partial_X, partial_y = load_windows(w, l)
+        X.extend(partial_X)
+        y.extend(partial_y.values())
+        win_pos.extend(partial_y.keys())
+        # add sample name
+        samples_list.extend([s] * len(partial_y))
 
     X = np.stack(X, axis=0)
 
-    first_chrom = [w.split('/')[0] for w in win_pos]
+    first_chrom = [w.split('_')[0] for w in win_pos]
+
+    val_chrom_idx = [i for i, k in enumerate(first_chrom) if k == args.validation_chr]
+    val_X = X[val_chrom_idx]
+    val_y = [y[i] for i in val_chrom_idx]
+    val_y = np.array([mapclasses[i] for i in val_y])
+    val_y = to_categorical(val_y, num_classes=2)
+
+    chrom_set = sorted(set(first_chrom))
+    if args.validation_chr in chrom_set:
+        chrom_set.remove(args.validation_chr)
 
     print('Running training leaving chromosome {} out'.format(args.test_chr))
 
@@ -130,7 +83,7 @@ def train(args):
     model_base = os.path.basename(args.model)
     path_best_model = model_dir + '/' + args.test_chr + '.' + model_base
 
-    chrom_idx = [i for i, k in enumerate(first_chrom) if k != args.test_chr]
+    chrom_idx = [i for i, k in enumerate(first_chrom) if k != args.test_chr and k != args.validation_chr]
     chrom_idx = np.asarray(chrom_idx)
 
     train_X = X[chrom_idx]
@@ -145,16 +98,62 @@ def train(args):
 
     train_y = to_categorical(y_lab, num_classes=2)
 
-    search_result = gp_minimize(func=fitness, dimensions=dimensions, acq_func='EI',
-                                n_calls=args.ncalls, x0=default_parameters, random_state=7, n_jobs=-1)
+    hparams = np.load(args.hparams)
 
-    hyps = np.asarray(search_result.x)
+    cnn_filters = int(hparams[0])
+    cnn_layers = int(hparams[1])
+    cnn_kernel_size = int(hparams[2])
+    cnn_fc_nodes = int(hparams[3])
+    cnn_init_learning_rate = hparams[4]
+    cnn_regularization_rate = hparams[5]
 
-    hparams_dir = os.path.dirname(args.hparams)
-    hparams_base = os.path.basename(args.hparams)
-    path_hparams = hparams_dir + '/' + args.test_chr + '.' + hparams_base
+    print()
+    print('cnn_filters: ', cnn_filters)
+    print('cnn_layers: ', cnn_layers)
+    print('cnn_kernel_size: ', cnn_kernel_size)
+    print('cnn_fc_nodes: ', cnn_fc_nodes)
+    print('cnn_init_learning_rate: ', cnn_init_learning_rate)
+    print('cnn_regularization_rate: ', cnn_regularization_rate)
+    print()
 
-    np.save(path_hparams, hyps, allow_pickle=False)
+    model = create_model(train_X, 2,
+                         learning_rate=cnn_init_learning_rate, regularization_rate=cnn_regularization_rate,
+                         filters=cnn_filters, layers=cnn_layers, kernel_size=cnn_kernel_size, fc_nodes=cnn_fc_nodes)
+    print(model.summary())
+
+    callback_log = TensorBoard(
+        log_dir='log_dir',
+        histogram_freq=0,
+        batch_size=32,
+        write_graph=True,
+        write_grads=True,
+        write_images=False)
+
+    earlystop = EarlyStopping(monitor='val_loss',
+                              min_delta=0,
+                              patience=3,
+                              verbose=1,
+                              restore_best_weights=True)
+
+    callbacks = [callback_log, earlystop]
+
+    validation_data = (val_X, val_y)
+
+    history = model.fit(x=train_X, y=train_y,
+                        epochs=max_epoch, batch_size=batch_size,
+                        shuffle=True,
+                        validation_data=validation_data,
+                        class_weight=class_weights,
+                        verbose=0,
+                        callbacks=callbacks)
+
+    accuracy = history.history['val_accuracy'][-1]
+    print()
+    print('Accuracy: {0:.2%}'.format(accuracy))
+
+    model.save(path_best_model)
+
+    tf.keras.backend.clear_session()
 
 
 def main():
@@ -175,11 +174,6 @@ def main():
                         type=str,
                         default='SAMPLE1,SAMPLE2',
                         help="Comma separated list of sample names")
-    parser.add_argument('-so',
-                        '--sample_out',
-                        type=str,
-                        default='SAMPLE',
-                        help="Comma separated list of sample names")
     parser.add_argument('-l',
                         '--logfile',
                         default='optimize.log',
@@ -189,11 +183,6 @@ def main():
                         type=int,
                         default=50,
                         help="Number of epochs")
-    parser.add_argument('-n',
-                        '--ncalls',
-                        type=int,
-                        default=50,
-                        help="Number of calls of the fitness function")
     parser.add_argument('-b',
                         '--batch_size',
                         type=int,
@@ -204,6 +193,11 @@ def main():
                         type=str,
                         default='chr1',
                         help="Chromosome used for testing")
+    parser.add_argument('-val',
+                        '--validation_chr',
+                        type=str,
+                        default='chr22',
+                        help="Chromosome used for validation")
     parser.add_argument('-s',
                         '--svtype',
                         type=str,

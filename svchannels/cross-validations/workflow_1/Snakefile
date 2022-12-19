@@ -21,7 +21,7 @@ rule locso_per_chrom:
   shell:
     """
     set -xe
-    python nested_locso_cv_per_chrom_v2.py \
+    python nested_locso_cv.py \
         -i "{input}" \
         -o "{output.outdir}" \
         --outercv_test_sample {params.outercv_test_sample} \

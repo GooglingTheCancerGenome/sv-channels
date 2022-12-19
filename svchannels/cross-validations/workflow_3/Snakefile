@@ -29,7 +29,7 @@ rule locso_per_bin:
   shell:
     """
     set -xe
-    python nested_lobso_cv_per_bin.py \
+    python nested_lobso_cv.py \
         -i "{input.npz}" \
         -o "{output.outdir}" \
         --outercv_test_sample {wildcards.outercv_test_sample} \

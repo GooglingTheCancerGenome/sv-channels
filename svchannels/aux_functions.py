@@ -9,62 +9,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import zarr
-# from mcfly import modelgen, find_architecture
 from sklearn.metrics import (average_precision_score, f1_score,
                              precision_recall_curve)
-from tensorflow.keras.regularizers import l2
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.layers import (Activation, BatchNormalization,
-                                     Convolution1D, Dense, Flatten,
-                                     Dropout)
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.metrics import AUC
-
-
-def create_model(X, outputdim, learning_rate, regularization_rate,
-                 filters, layers, kernel_size, fc_nodes, dropout_rate):
-
-    weightinit = 'lecun_uniform'  # weight initialization
-
-    model = Sequential()
-
-    model.add(BatchNormalization(input_shape=(X.shape[1], X.shape[2])))
-
-    filters_list = [filters] * layers
-
-    for filter_number in filters_list:
-        model.add(
-            Convolution1D(filter_number,
-                          kernel_size=(kernel_size,),
-                          padding='same',
-                          kernel_regularizer=l2(regularization_rate),
-                          kernel_initializer=weightinit))
-        model.add(BatchNormalization())
-        model.add(Activation('relu'))
-        model.add(Dropout(rate=dropout_rate))
-
-    model.add(Flatten())
-
-    model.add(
-        Dense(units=fc_nodes,
-              kernel_regularizer=l2(regularization_rate),
-              kernel_initializer=weightinit))  # Fully connected layer
-    model.add(Activation('relu'))  # Relu activation
-    model.add(Dropout(rate=dropout_rate))
-
-    model.add(Dense(units=outputdim, kernel_initializer=weightinit))
-    model.add(BatchNormalization())
-    model.add(Activation("softmax"))  # Final classification layer
-
-    model.compile(loss='categorical_crossentropy',
-                  optimizer=Adam(learning_rate=learning_rate),
-                  metrics=[AUC(name='auc', curve='PR')])
-
-    return model
 
 
 def unfold_win_id(win_id):
-
     if len(win_id.split('/')) >= 5:
         # NOTE: we are combining sv-type with strand_info!!!
         chr1, pos1, chr2, pos2, strand_info = win_id.split('/', 4)
@@ -74,7 +23,6 @@ def unfold_win_id(win_id):
 
 
 def get_data(windows_list, labels_list, svtype):
-
     def filter_labels(X, y, win_ids):
         keep = [i for i, v in enumerate(y) if v in [svtype, 'no' + svtype]]
         X = X[np.array(keep)]
@@ -109,7 +57,6 @@ def get_data(windows_list, labels_list, svtype):
 
 def evaluate_model(model, X_test, ytest_binary, win_ids_test,
                    results, mapclasses, output_dir, svtype):
-
     def write_wrong_predictions(probs, predicted, y_index, win_ids_test,
                                 class_labels):
         outdir = os.path.join(output_dir, 'predictions')
@@ -122,7 +69,6 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test,
                 sv_score = prob[0]
 
                 if unfold_win_id(w) is not None:
-
                     chr1, pos1, chr2, pos2, strand_info = unfold_win_id(w)
 
                     # print('{0}_{1}:{2}_{3}'.format(chr1, pos1, chr2, pos2))
@@ -133,7 +79,7 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test,
                         str(chr2),
                         str(pos2),
                         str(int(pos2) + 1), 'PRED:' +
-                        class_labels[p] + '_TRUE:' + class_labels[r],
+                                            class_labels[p] + '_TRUE:' + class_labels[r],
                         str(sv_score),
                         strand_info[0],
                         strand_info[1]
@@ -153,11 +99,10 @@ def evaluate_model(model, X_test, ytest_binary, win_ids_test,
         lines = []
         j = 1
         for prob, p, r, w in zip(probs, predicted, y_index, win_ids_test):
-            #if class_labels[p] == svtype:
+            # if class_labels[p] == svtype:
             sv_score = prob[0]
 
             if unfold_win_id(w) is not None:
-
                 chr1, pos1, chr2, pos2, strand_info = unfold_win_id(w)
 
                 lines.append('\t'.join([
