@@ -59,7 +59,7 @@ svchannels label -v channels/sv_positions.bedpe -g data/test.bedpe -f data/test.
 ```
 5. Train the model:
 ```commandline
-svchannels train channels/channels.zarr.zip labels/labels.json.gz channels/channels.zarr.zip labels/labels.json.gz \
+svchannels train channels/channels.zarr.zip labels/labels.json.gz \
     -m model.keras
 ```
 6. Score SVs:

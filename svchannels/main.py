@@ -4,13 +4,15 @@ from . import generate_channels
 from . import label
 from . import score
 from . import train
+from . import cv
 
 commands = {
         'extract-signals': ("extract SV signals from a BAM/CRAM", extract_signals.main),
         'generate-channels': ("generate matricies (channels) from signals and a set of SVs", generate_channels.main),
         'label': ("Label SVs according to truth set", label.main),
         'score': ("score a set of variants (channels) given a trained model", score.main),
-        'train': ("train a model from a set of variants (channels)", train.main)
+        'train': ("train a model from a set of variants (channels)", train.main),
+        'cv': ("perform cross-validation", cv.main)
     }
 
 

@@ -1,22 +1,22 @@
 import argparse
-import os
-import sys
-import logging
-import zarr
 import gzip
 import json
-import matplotlib.pyplot as plt
-from pathlib import Path
-import tensorflow as tf
-import numpy as np
+import logging
+import os
+import sys
 from time import time
+
+import matplotlib.pyplot as plt
+import numpy as np
+import tensorflow as tf
+import vcf
+import zarr
 from sklearn.metrics import average_precision_score, accuracy_score, balanced_accuracy_score
+from sklearn.model_selection import KFold
+from sklearn.utils.class_weight import compute_class_weight
 from skopt import gp_minimize
 from skopt.space import Real, Integer
 from skopt.utils import use_named_args
-from sklearn.model_selection import KFold
-import numpy as np
-from sklearn.utils.class_weight import compute_class_weight
 from tensorflow.keras.utils import to_categorical
 
 from svchannels.model import create_model
@@ -83,7 +83,6 @@ def load_windows(win_file, lab_file):
 @use_named_args(dimensions=dimensions)
 def fitness(cnn_filters, cnn_layers, cnn_filter_size, fc_nodes,
             dropout_rate, learning_rate, regularization_rate):
-
     # Save the model if it improves on the best found performance which is stored by the global variable best_auc
     global best_performance
     global best_hyperparameters
@@ -109,14 +108,13 @@ def fitness(cnn_filters, cnn_layers, cnn_filter_size, fc_nodes,
 
     kf = KFold(n_splits=kfolds)
 
-    for i, (train_index, test_index) in enumerate(kf.split(X_train)):
-
+    for i, (train_index, test_index) in enumerate(kf.split(outer_X_train)):
         logging.info(f"Fold {i}:")
 
-        inner_X_train = X_train[train_index]
-        inner_y_train = y_train[train_index]
-        inner_X_test = X_train[test_index]
-        inner_y_test = y_train[test_index]
+        inner_X_train = outer_X_train[train_index]
+        inner_y_train = outer_y_train[train_index]
+        inner_X_test = outer_X_train[test_index]
+        inner_y_test = outer_y_train[test_index]
 
         logging.info(f"inner_X_train shape:{inner_X_train.shape}")
         logging.info(f"inner_y_train shape:{inner_y_train.shape}")
@@ -124,7 +122,7 @@ def fitness(cnn_filters, cnn_layers, cnn_filter_size, fc_nodes,
         logging.info(f"inner_y_test shape:{inner_y_test.shape}")
 
         _, inner_y_train, class_weights_train = get_labels(inner_y_train)
-        inner_y_test, _, class_weights_test = get_labels(inner_y_test)
+        y_test, _, class_weights_test = get_labels(inner_y_test)
 
         model = create_model(inner_X_train, 2,
                              learning_rate=learning_rate,
@@ -154,14 +152,14 @@ def fitness(cnn_filters, cnn_layers, cnn_filter_size, fc_nodes,
         # Use AUC function to calculate the area under the curve of precision recall curve
         # auc_precision_recall.append(auc(recall, precision))
         # calculate average precision score
-        avg_prec = average_precision_score(inner_y_test, y_score)
+        avg_prec = average_precision_score(y_test, y_score)
         auc_precision_recall.append(avg_prec)
 
         y_predicted = y_probs.argmax(axis=1)
-        acc_score = accuracy_score(inner_y_test, y_predicted)
+        acc_score = accuracy_score(y_test, y_predicted)
         accuracy.append(acc_score)
 
-        bal_acc_score = balanced_accuracy_score(inner_y_test, y_predicted)
+        bal_acc_score = balanced_accuracy_score(y_test, y_predicted)
         balanced_accuracy.append(bal_acc_score)
 
         val_auc = history.history['val_auc'][-1]
@@ -242,17 +240,19 @@ def fitness(cnn_filters, cnn_layers, cnn_filter_size, fc_nodes,
     return -mean_performance
 
 
-def train(args):
-
+def cross_validate(args):
     randomState = 42
     np.random.seed(randomState)
     tf.random.set_seed(randomState)
+
+    pos_dict = {}
+    n = 0
 
     windows = args.windows.split(',')
     labels = args.labels.split(',')
     assert len(windows) == len(labels)
 
-    global X_train, y_train, n_epochs, batch_size, validation_split, output, kfolds
+    global outer_X_train, outer_y_train, n_epochs, batch_size, validation_split, output, kfolds
 
     n_epochs = args.epochs
     batch_size = args.batch_size
@@ -263,86 +263,124 @@ def train(args):
     # Load channels and labels
     X = []
     y_train = []
+    k_train = []
     for w, l in zip(windows, labels):
         partial_X, partial_y = load_windows(w, l)
         assert partial_X.shape[0] == len(partial_y), (w, l, partial_X.shape, len(partial_y))
         X.extend(partial_X)
         y_train.extend(partial_y.values())
+        k_train.extend(partial_y.keys())
     X_train = np.stack(X, axis=0)
     y_train = np.array(y_train)
+    k_train = np.array(k_train)
 
-    search_result = gp_minimize(func=fitness,
-                                dimensions=dimensions,
-                                acq_func='EI',
-                                n_calls=args.ncalls,
-                                x0=default_parameters,
-                                random_state=42,
-                                n_jobs=-1,
-                                verbose=verbose_level)
+    kf = KFold(n_splits=kfolds)
 
-    model = create_model(X_train, 2,
-                         learning_rate=best_hyperparameters['learning_rate'][0],
-                         regularization_rate=best_hyperparameters['regularization_rate'][0],
-                         filters=best_hyperparameters['cnn_filters'][0],
-                         layers=best_hyperparameters['cnn_layers'][0],
-                         kernel_size=best_hyperparameters['cnn_filter_size'][0],
-                         fc_nodes=best_hyperparameters['fc_nodes'][0],
-                         dropout_rate=best_hyperparameters['dropout_rate'][0]
-                         )
-    # print(model.summary())
+    for i, (train_index, test_index) in enumerate(kf.split(X_train)):
 
-    _, y_train, class_weights_train = get_labels(y_train)
+        logging.info(f"OuterCV fold {i}:")
 
-    history = model.fit(x=X_train, y=y_train,
-                        epochs=n_epochs,
-                        batch_size=batch_size,
-                        shuffle=True,
-                        validation_split=validation_split,
-                        class_weight=class_weights_train,
-                        # callbacks=[callback],
-                        verbose=verbose_level)
+        outer_X_train = X_train[train_index]
+        outer_y_train = y_train[train_index]
+        outer_X_test = X_train[test_index]
+        outer_y_test = y_train[test_index]
+        outer_k_test = k_train[test_index]
 
-    prefix = '_'.join(['cnn-filt', str(best_hyperparameters['cnn_filters'][0]),
-                       'cnn-lay', str(best_hyperparameters['cnn_layers'][0]),
-                       'cnn-filt-size', str(best_hyperparameters['cnn_filter_size'][0]),
-                       'fc-nodes', str(best_hyperparameters['fc_nodes'][0]),
-                       'dropout', str(best_hyperparameters['dropout_rate'][0]),
-                       'lr', str(best_hyperparameters['learning_rate'][0]),
-                       'rr', str(best_hyperparameters['regularization_rate'][0]),
-                       'pr-auc', str(best_performance)])
+        search_result = gp_minimize(func=fitness,
+                                    dimensions=dimensions,
+                                    acq_func='EI',
+                                    n_calls=args.ncalls,
+                                    x0=default_parameters,
+                                    random_state=42,
+                                    n_jobs=-1,
+                                    verbose=verbose_level)
 
-    accuracy_plot = os.path.join(args.output,
-                                 ''.join([prefix, '_auc_pr.png']))
-    loss_plot = os.path.join(args.output,
-                             ''.join([prefix, '_loss.png']))
+        model = create_model(outer_X_train, 2,
+                             learning_rate=best_hyperparameters['learning_rate'][0],
+                             regularization_rate=best_hyperparameters['regularization_rate'][0],
+                             filters=best_hyperparameters['cnn_filters'][0],
+                             layers=best_hyperparameters['cnn_layers'][0],
+                             kernel_size=best_hyperparameters['cnn_filter_size'][0],
+                             fc_nodes=best_hyperparameters['fc_nodes'][0],
+                             dropout_rate=best_hyperparameters['dropout_rate'][0]
+                             )
+        # print(model.summary())
 
-    # print(history.history)
-    plt.plot(history.history['auc'])
-    plt.plot(history.history['val_auc'])
-    plt.title('model auc PR')
-    plt.ylabel('AUC PR')
-    plt.xlabel('epoch')
-    plt.legend(['train', 'val'], loc='upper right')
-    plt.tight_layout()
-    plt.savefig(accuracy_plot)
-    plt.close()
+        _, outer_y_train, class_weights_train = get_labels(outer_y_train)
 
-    plt.plot(history.history['loss'])
-    plt.plot(history.history['val_loss'])
-    plt.title('model loss')
-    plt.ylabel('loss')
-    plt.xlabel('epoch')
-    plt.legend(['train', 'val'], loc='upper left')
-    plt.tight_layout()
-    plt.savefig(loss_plot)
-    plt.close()
+        history = model.fit(x=outer_X_train, y=outer_y_train,
+                            epochs=n_epochs,
+                            batch_size=batch_size,
+                            shuffle=True,
+                            validation_split=validation_split,
+                            class_weight=class_weights_train,
+                            # callbacks=[callback],
+                            verbose=verbose_level)
 
-    # save model
-    model.save(args.model)
+        prefix = '_'.join(['outer-cv-fold', str(i),
+                           'cnn-filt', str(best_hyperparameters['cnn_filters'][0]),
+                           'cnn-lay', str(best_hyperparameters['cnn_layers'][0]),
+                           'cnn-filt-size', str(best_hyperparameters['cnn_filter_size'][0]),
+                           'fc-nodes', str(best_hyperparameters['fc_nodes'][0]),
+                           'dropout', str(best_hyperparameters['dropout_rate'][0]),
+                           'lr', str(best_hyperparameters['learning_rate'][0]),
+                           'rr', str(best_hyperparameters['regularization_rate'][0]),
+                           'pr-auc', str(best_performance)])
+
+        accuracy_plot = os.path.join(args.output,
+                                     ''.join([prefix, '_auc_pr.png']))
+        loss_plot = os.path.join(args.output,
+                                 ''.join([prefix, '_loss.png']))
+
+        # print(history.history)
+        plt.plot(history.history['auc'])
+        plt.plot(history.history['val_auc'])
+        plt.title('model auc PR')
+        plt.ylabel('AUC PR')
+        plt.xlabel('epoch')
+        plt.legend(['train', 'val'], loc='upper right')
+        plt.tight_layout()
+        plt.savefig(accuracy_plot)
+        plt.close()
+
+        plt.plot(history.history['loss'])
+        plt.plot(history.history['val_loss'])
+        plt.title('model loss')
+        plt.ylabel('loss')
+        plt.xlabel('epoch')
+        plt.legend(['train', 'val'], loc='upper left')
+        plt.tight_layout()
+        plt.savefig(loss_plot)
+        plt.close()
+
+        model_file = os.path.join(args.output,
+                                  ''.join([prefix, '_model.keras']))
+        # save model
+        model.save(model_file)
+
+        probs = model.predict(outer_X_test, batch_size=100, verbose=True)
+        # predicted = probs.argmax(axis=1)
+
+        # print(outer_k_test)
+        for t in outer_k_test:
+            coord = t.split('/')
+            chrom1 = coord[0]
+            pos1a = coord[1]
+            pos_dict[chrom1 + '_' + str(int(pos1a) + 1)] = str(probs[i][0])
+
+    # Writing VCF file
+    reader = vcf.Reader(open(args.manta_vcf, 'r'))
+    writer = vcf.Writer(open(args.vcf_out, 'w'), reader)
+
+    for record in reader:
+        k = record.CHROM + '_' + str(record.POS)
+        if k in pos_dict.keys():
+            record.QUAL = str(pos_dict[k])
+            writer.write_record(record)
 
 
 def main(argv=sys.argv[1:]):
-    parser = argparse.ArgumentParser(description='Optimize model')
+    parser = argparse.ArgumentParser(description='Run cross-validation')
 
     parser.add_argument('windows',
                         type=str,
@@ -373,7 +411,7 @@ def main(argv=sys.argv[1:]):
     parser.add_argument('-e',
                         '--epochs',
                         type=int,
-                        default=10,
+                        default=50,
                         help="Number of epochs")
     parser.add_argument('-n',
                         '--ncalls',
@@ -390,18 +428,17 @@ def main(argv=sys.argv[1:]):
                         type=str,
                         default='DEL',
                         help="Type of SV")
-    parser.add_argument('-m',
-                        '--model',
+    parser.add_argument('--manta_vcf',
                         type=str,
-                        default='best_model.keras',
-                        help="Output model")
-
+                        default='data/vcf/manta_out/manta.vcf',
+                        help="Manta VCF file"
+                        )
+    parser.add_argument('--vcf_out',
+                        type=str,
+                        default='sv-channels.vcf',
+                        help="VCF file for output"
+                        )
     args = parser.parse_args(argv)
-
-    for p in (args.model, args.logfile):
-        od = Path(p)
-        for parent in reversed(od.parents):
-            parent.mkdir(mode=0o774, exist_ok=True)
 
     log_format = '%(asctime)s %(message)s'
     logging.basicConfig(format=log_format,
@@ -409,7 +446,7 @@ def main(argv=sys.argv[1:]):
                         filemode='w',
                         level=logging.INFO)
     t0 = time()
-    train(args)
+    cross_validate(args)
     logging.info('Elapsed time = %f seconds' %
                  (time() - t0))
 
