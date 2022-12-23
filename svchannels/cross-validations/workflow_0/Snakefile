@@ -1,0 +1,65 @@
+from snakemake.utils import min_version
+min_version("3.2")
+
+SAMPLE_LIST=['HG01053', 'HG01114', 'HG01881', 'HG02018',
+             'HG02924', 'HG03992', 'NA06991']
+TEST_SAMPLE_LIST=['HG00420']
+
+rule all:
+  input:
+    expand("results_wf0/{test_sample}/{test_sample}.sv-channels.vcf",
+      test_sample=TEST_SAMPLE_LIST)
+
+rule train:
+  input:
+    svchan=','.join(expand("/project/gcg/Data/1KG/channels/svchan/{sample}/channels/channels.zarr.gz",
+      sample=SAMPLE_LIST)),
+    svlab=','.join(expand("/project/gcg/Data/1KG/channels/svchan/{sample}/labels/labels.json.gz",
+      sample=SAMPLE_LIST))
+  params:
+    epochs=1,
+    ncalls=12,
+    batch_size=32,
+    validation_split=0.3,
+    kfolds=10,
+    svtype='DEL'
+  output:
+    outdir=directory("results_wf0/{test_sample}"),
+    vcf="results_wf0/{test_sample}/{test_sample}.sv-channels.vcf",
+    log="results_wf0/{test_sample}/{test_sample}.optimize.log",
+    model="results_wf0/{test_sample}/{test_sample}.model.keras",
+  conda:
+    "refactor"
+  shell:
+    """
+      set -xe
+      python ../../../setup.py install;
+      sv-channels train \
+        {input.svchan} \
+        {input.svlab} \
+        -o {output.outdir} \
+        -l {output.log} \
+        --validation_split {params.validation_split} \
+        --kfolds {params.kfolds} \
+        --epochs {params.epochs} \
+        --ncalls {params.ncalls} \
+        --batch_size {params.batch_size} \
+        --svtype {params.svtype} \
+        -m {output.model}
+    """
+
+rule score:
+  input:
+    channels = "/project/gcg/Data/1KG/channels/svchan/{test_sample}/channels",
+    model = "results_wf0/{test_sample}/{test_sample}.model.keras",
+    vcf ='/project/gcg/Data/1KG/Manta/{test_sample}_manta.vcf'
+  output:
+    vcf = "results_wf0/{test_sample}/{test_sample}.sv-channels.vcf"
+  conda:
+    "refactor"
+  shell:
+    """
+      set -xe
+      sv-channels score \
+        {input.channels} {input.model} {input.vcf} {output.vcf}
+    """
