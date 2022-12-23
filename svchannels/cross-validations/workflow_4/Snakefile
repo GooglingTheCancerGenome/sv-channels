@@ -1,23 +1,28 @@
+from snakemake.utils import min_version
+min_version("3.2")
+
+input_channels = '/project/gcg/Data/1KG/multisample_bins.npz'
 
 rule all:
   input:
-    "results_wf4/sv-channels.vcf"
+    expand("results_wf4/{outercv_test_sample}/{outercv_test_sample}.sv-channels.vcf",
+      outercv_test_sample=['HG00420'])
 
 rule locso_per_chrom:
   input:
-    svchan='multisample.npz',
-    vcf='manta.vcf'
+    svchan=input_channels,
+    vcf='/project/gcg/Data/1KG/Manta/{outercv_test_sample}_manta.vcf'
   params:
-    outercv_test_sample='HG00420',
+    outercv_test_sample="{outercv_test_sample}",
     innercv_test_sample='HG01053',
     val_chrom='chr22',
     epochs=1,
     ncalls=12,
     batch_size=32
   output:
-    outdir=directory("results_wf4"),
-    vcf="results_wf4/sv-channels.vcf",
-    log="results_wf4/optimize.log"
+    outdir=directory("results_wf4/{outercv_test_sample}"),
+    vcf="results_wf4/{outercv_test_sample}/{outercv_test_sample}.sv-channels.vcf",
+    log="results_wf4/{outercv_test_sample}/{outercv_test_sample}.optimize.log"
   conda:
     "refactor"
   shell:
