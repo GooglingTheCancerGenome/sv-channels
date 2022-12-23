@@ -350,10 +350,14 @@ def train(input_args):
     val_chrom = input_args.val_chrom
 
     # list of bins
-    # bins are from 1 to 66, bins 64,65,66 are of chr22, the validation chromosome
-    outer_chr_list = [str(i) for i in np.arange(1, 64)]
+    # bins are from 1 to 66
+    outer_chr_list = [str(i) for i in np.sort(np.unique(y[:, 7]))]
+    # remove bins of the validation chromosome
+    val_bins = np.unique(y[np.where(y[:, 3] == val_chrom)[0], 7])
+    logging.info('Bins for validation chromosome {} are {}'.format(val_chrom, val_bins))
+    outer_chr_list = [b for b in outer_chr_list if b not in val_bins]
 
-    first_list = np.random.choice(outer_chr_list, 32, replace=False)
+    first_list = np.random.choice(outer_chr_list, int(len(outer_chr_list)/2), replace=False)
     second_list = [c for c in outer_chr_list if c not in first_list]
     logging.info("First list:{}\nSecond list:{}".format(first_list, second_list))
 
