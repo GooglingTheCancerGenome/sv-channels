@@ -6,10 +6,13 @@ manta_in =   '/Users/lsantuari/Documents/Projects/GTCG/sv-channels/sv-channels_m
 multisample = '/Users/lsantuari/Documents/Projects/GTCG/sv-channels/'\
               'sv-channels_manuscript/UMCU_hpc/8_samples_channels.npz'
 
+# remove bins of validation chromosome chr22
+bin_list = [str(i) for i in range(1,67) if i not in [43,44,45]]
+
 rule all:
   input:
     expand("results_wf3/{outercv_test_sample}/{bin}/{bin}_pos_dict.json",
-      bin=[str(i) for i in range(1,64)], outercv_test_sample=['HG00420']),
+      bin=bin_list, outercv_test_sample=['HG00420']),
 
 rule locso_per_bin:
   input:
