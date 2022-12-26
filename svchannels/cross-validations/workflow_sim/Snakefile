@@ -101,7 +101,7 @@ rule all:
           gt=get_genotype(),
       ),
       expand([os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
-          "manta", "manta.vcf")],
+          "manta")],
           zip,
           ptype=get_param_type(),
           cov=get_cov(),
@@ -120,16 +120,18 @@ rule manta:
     fasta=reference
   output:
     dir=directory(os.path.join('{ptype}', 'c{cov}','i{isize}',
-        'r{rlen}', '{genotype}', 'manta'))
+        'r{rlen}', '{gt}', 'manta'))
   conda:
     "manta"
   shell:
     '''
-    ${debug} configManta.py  \
+    set -euo pipefail;
+    debug = "/usr/bin/time -v";
+    {debug} configManta.py  \
         --referenceFasta {params.fasta} \
         --bam {input.bam} \
         --runDir {output.dir}
-    ${debug} {output.dir}/runWorkflow.py \
+    {debug} {output.dir}/runWorkflow.py \
         -m local -j {params.threads}
     '''
 
@@ -149,10 +151,11 @@ rule gridss:
     conda:
         "gridss2"
     shell:
-        '''set -euo pipefail;
+        '''
+        set -euo pipefail;
         debug = "/usr/bin/time -v";
         export_JAVA_OPTIONS = "-Xmx31g";
-        ${debug} gridss gridss.CallVariants \
+        {debug} gridss gridss.CallVariants \
             REFERENCE_SEQUENCE={params.fasta} \
             OUTPUT={output.vcf} \
             ASSEMBLY={output.assembly} \
