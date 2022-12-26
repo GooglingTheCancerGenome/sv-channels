@@ -255,11 +255,11 @@ rule label:
 rule cv:
     input:
         svchan=os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
-               "svchannels","channels", "channel.zarr.zip"),
+               "svchannels","channels"),
         svlab=os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
-            "svchannels","labels","labels.json.gz"),
+            "svchannels","labels"),
         vcf=os.path.join('{ptype}', 'c{cov}','i{isize}',
-        'r{rlen}', '{gt}', 'manta', 'diploidSV.vcf')
+        'r{rlen}', '{gt}', 'manta', 'manta.vcf')
     params:
         epochs=1,
         ncalls=12,
@@ -276,8 +276,8 @@ rule cv:
         '''
         set -euo pipefail;
         svchannels cv \
-          {svchan_list} \
-          {svlab_list} \
+          {svchan_list}"/channels.zarr.zip" \
+          {svlab_list}"/labels.json.gz" \
           -o {outdir} \
           -l {output.log} \
           --validation_split {params.validation_split} \
