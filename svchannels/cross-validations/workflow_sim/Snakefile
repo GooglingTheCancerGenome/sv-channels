@@ -80,15 +80,17 @@ def get_bamfile(p):
 
 rule all:
   input:
-      expand(os.path.join('c' + str({cov}),'i' + str({isize}),
-                   'r' + str({rlen}),{gt}, 'gridss', 'gridss.vcf.gz'),
+      expand([os.path.join("c{cov}", "i{isize}", "r{rlen}", "{gt}",
+          "gridss", "gridss.vcf.gz")],
+          zip,
           cov=get_cov(),
           isize=get_isize(),
           rlen=get_rlen(),
           gt=get_genotype(),
       ),
-      expand(os.path.join('c' + str({cov}),'i' + str({isize}),
-                   'r' + str({rlen}),{gt}, 'manta', 'manta.vcf'),
+      expand([os.path.join("c{cov}", "i{isize}", "r{rlen}", "{gt}",
+          "manta", "manta.vcf")],
+          zip,
           cov=get_cov(),
           isize=get_isize(),
           rlen=get_rlen(),
@@ -103,8 +105,8 @@ rule manta:
     threads=24,
     fasta=reference
   output:
-    dir=directory(os.path.join('cov'+str({cov}),'isize'+str({isize}),
-        'rlen'+str({rlen}), {genotype},'manta'))
+    dir=directory(os.path.join('c{cov}','i{isize}',
+        'r{rlen}', '{genotype}', 'manta'))
   conda:
     "manta"
   shell:
