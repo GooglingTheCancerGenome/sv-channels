@@ -8,19 +8,7 @@ excl_list="/project/gcg/Data/1KG/github/sv-channels_141222/data/exclude.N-and-en
 
 PARAMS=['coverage', 'insert-size', 'read-length']
 
-def get_basedir():
-    return [os.path.join(basedir,"coverage/sv-gen/snakemake/data/out/dup_indel_inv_tra/")] * 6 + \
-    [os.path.join(basedir,"insert-size/i150/sv-gen/snakemake/data/out/dup_indel_inv_tra/")] * 6 + \
-    [os.path.join(basedir,"read-length/sv-gen/snakemake/data/out/dup_indel_inv_tra/")] * 6
-
-def get_basedir(ptype):
-    if ptype == 'coverage':
-        return os.path.join(basedir,"coverage/sv-gen/snakemake/data/out/dup_indel_inv_tra/")
-    elif ptype == 'insert-size':
-        os.path.join(basedir,"insert-size/i150/sv-gen/snakemake/data/out/dup_indel_inv_tra/")
-    elif ptype == 'read-length':
-        os.path.join(basedir,"read-length/sv-gen/snakemake/data/out/dup_indel_inv_tra/")
-
+# auxiliary functions
 def get_param_type():
     return ['coverage'] * 8 + ['insert-size'] * 6 + ['read-length'] * 6
 
@@ -36,58 +24,6 @@ def get_rlen():
 def get_genotype():
     return ['hmz','htz']*18
 
-def get_params_list():
-    params_list = []
-    for g in ['hmz','htz']:
-        for d,c,i,r in zip(
-                        [os.path.join(basedir, "coverage/sv-gen/snakemake/data/out/dup_indel_inv_tra/")]* 6 +
-                        [os.path.join(basedir,"insert-size/i150/sv-gen/snakemake/data/out/dup_indel_inv_tra/")] * 6 +
-                        [os.path.join(basedir,"read-length/sv-gen/snakemake/data/out/dup_indel_inv_tra/")] * 6,
-                        [5, 10, 15, 30, 45, 60, 75, 90]+[30]*12,
-                        [500]*6+[200,250,300,400,500,600]+[500]*6,
-                        [150]*12+[36,50,75,100,150,250]
-        ):
-            params_list.append((d,c,i,r,g))
-
-    return params_list
-
-def get_bam(param):
-    bam_list = []
-    for gt in ['hmz','htz']:
-        if param == 'coverage':
-            for cov in [5,10,15,30,45,60,75,90]:
-                bam_list.append(
-                    os.path.join(
-                        basedir,
-                        "coverage/sv-gen/snakemake/data/out/dup_indel_inv_tra/"+\
-                        "r150_i500/cov"+str(cov)+"/"+gt+"-sv.bam"
-                ))
-        elif param == 'insert-size':
-            for isize in [200,250,300,400,500,600]:
-                bam_list.append(
-                    os.path.join(
-                        basedir,
-                        "insert-size/i150/sv-gen/snakemake/data/out/dup_indel_inv_tra/"+\
-                        "r150_i"+str(isize)+"/cov30/"+gt+"-sv.bam"
-                ))
-        elif param == 'read-length':
-            for rlen in [36,50,75,100,150,250]:
-                bam_list.append(
-                    os.path.join(
-                        basedir,
-                        "read-length/sv-gen/snakemake/data/out/dup_indel_inv_tra/"+\
-                        "r"+str(rlen)+"_i500/cov30/"+gt+"-sv.bam"
-                ))
-    return bam_list
-
-
-def get_bamfile(p):
-    d, c, i, r, g = p
-    return os.path.join(
-                        d,
-                        "r"+str(r)+"_i"+str(i)+"/cov"+str(c)+"/"+g+"-sv.bam"
-                )
-
 
 rule all:
   input:
@@ -101,7 +37,7 @@ rule all:
           gt=get_genotype()
       ),
       expand([os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
-          "manta")],
+          "manta", "manta.vcf")],
           zip,
           ptype=get_param_type(),
           cov=get_cov(),
@@ -121,28 +57,28 @@ rule all:
 
 
 rule manta:
-  input:
-    bam="/project/gcg/Data/simulated-data/{ptype}/sv-gen/snakemake/data/"
-        "out/dup_indel_inv_tra/r{rlen}_i{isize}/cov{cov}/{gt}-sv.bam",
-  params:
-    fasta=reference,
-    debug="/usr/bin/time -v"
-  output:
-    dir=directory(os.path.join('{ptype}', 'c{cov}','i{isize}',
-        'r{rlen}', '{gt}', 'manta', 'manta_output'))
-  threads: 24
-  conda:
-    "manta"
-  shell:
-    '''
-    set -euo pipefail;
-    {params.debug} configManta.py  \
-        --referenceFasta {params.fasta} \
-        --bam {input.bam} \
-        --runDir {output.dir};
-    {params.debug} {output.dir}/runWorkflow.py \
-        -m local -j {threads}
-    '''
+    input:
+        bam=os.path.join(basedir,"{ptype}/sv-gen/snakemake/data/",
+            "out/dup_indel_inv_tra/r{rlen}_i{isize}/cov{cov}/{gt}-sv.bam")
+    params:
+        fasta=reference,
+        debug="/usr/bin/time -v"
+    output:\
+       dir=directory(os.path.join('{ptype}', 'c{cov}','i{isize}',
+       'r{rlen}', '{gt}', 'manta', 'manta_output'))
+    threads: 24
+    conda:
+        "manta"
+    shell:
+        '''
+        set -euo pipefail;
+        {params.debug} configManta.py  \
+            --referenceFasta {params.fasta} \
+            --bam {input.bam} \
+            --runDir {output.dir};
+        {params.debug} {output.dir}/runWorkflow.py \
+            -m local -j {threads}
+        '''
 
 rule extract_manta:
     input:
@@ -172,8 +108,8 @@ rule manta_vcf2bedpe:
 
 rule gridss:
     input:
-        bam="/project/gcg/Data/simulated-data/{ptype}/sv-gen/snakemake/data/"
-            "out/dup_indel_inv_tra/r{rlen}_i{isize}/cov{cov}/{gt}-sv.bam",
+        bam=os.path.join(basedir, "{ptype}/sv-gen/snakemake/data/",
+            "out/dup_indel_inv_tra/r{rlen}_i{isize}/cov{cov}/{gt}-sv.bam"),
         bl=excl_list
     params:
         fasta=reference,
@@ -214,8 +150,8 @@ rule extract_gridss:
 
 rule extract_signals:
     input:
-        bam = "/project/gcg/Data/simulated-data/{ptype}/sv-gen/snakemake/data/"
-              "out/dup_indel_inv_tra/r{rlen}_i{isize}/cov{cov}/{gt}-sv.bam"
+        bam = os.path.join(basedir, "{ptype}/sv-gen/snakemake/data/",
+              "out/dup_indel_inv_tra/r{rlen}_i{isize}/cov{cov}/{gt}-sv.bam")
     params:
         fasta=reference,
         debug="/usr/bin/time -v"
@@ -252,9 +188,9 @@ rule label:
     input:
         channels=os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
             "svchannels","channels"),
-        truth_set="/project/gcg/Data/simulated-data/{ptype}/sv-gen/snakemake/data/"
-                  "out/dup_indel_inv_tra/{gt}-sv.proper.bedpe",
-        fai="/project/gcg/Data/simulated-data/{ptype}/sv-gen/snakemake/data/10_12_hs37d5.fasta.fai"
+        truth_set=os.path.join(basedir, "{ptype}/sv-gen/snakemake/data/"
+                  "out/dup_indel_inv_tra/{gt}-sv.proper.bedpe"),
+        fai=os.path.join(basedir, "{ptype}/sv-gen/snakemake/data/10_12_hs37d5.fasta.fai")
     params:
         debug = "/usr/bin/time -v"
     output:
