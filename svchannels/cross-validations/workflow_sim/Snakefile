@@ -117,7 +117,8 @@ rule manta:
         "out/dup_indel_inv_tra/r{rlen}_i{isize}/cov{cov}/{gt}-sv.bam",
   params:
     threads=24,
-    fasta=reference
+    fasta=reference,
+    debug="/usr/bin/time -v"
   output:
     dir=directory(os.path.join('{ptype}', 'c{cov}','i{isize}',
         'r{rlen}', '{gt}', 'manta'))
@@ -126,12 +127,11 @@ rule manta:
   shell:
     '''
     set -euo pipefail;
-    debug = "/usr/bin/time -v";
-    {debug} configManta.py  \
+    {params.debug} configManta.py  \
         --referenceFasta {params.fasta} \
         --bam {input.bam} \
-        --runDir {output.dir}
-    {debug} {output.dir}/runWorkflow.py \
+        --runDir {output.dir};
+    {params.debug} {output.dir}/runWorkflow.py \
         -m local -j {params.threads}
     '''
 
@@ -142,7 +142,8 @@ rule gridss:
             "out/dup_indel_inv_tra/r{rlen}_i{isize}/cov{cov}/{gt}-sv.bam",
         bl=excl_list
     params:
-        fasta=reference
+        fasta=reference,
+        debug="/usr/bin/time -v"
     output:
         vcf=os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
           "gridss", "gridss.vcf.gz"),
@@ -153,9 +154,8 @@ rule gridss:
     shell:
         '''
         set -euo pipefail;
-        debug = "/usr/bin/time -v";
         export_JAVA_OPTIONS = "-Xmx31g";
-        {debug} gridss gridss.CallVariants \
+        {params.debug} gridss gridss.CallVariants \
             REFERENCE_SEQUENCE={params.fasta} \
             OUTPUT={output.vcf} \
             ASSEMBLY={output.assembly} \
