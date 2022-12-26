@@ -113,12 +113,12 @@ rule all:
 
 rule manta:
   input:
-    bam=get_bamfile({indir}, {cov}, {isize}, {rlen}, {genotype})
+    bam=get_bamfile(get_basedir({ptype}), {cov}, {isize}, {rlen}, {genotype})
   params:
     threads=24,
     fasta=reference
   output:
-    dir=directory(os.path.join('c{cov}','i{isize}',
+    dir=directory(os.path.join('{ptype}', 'c{cov}','i{isize}',
         'r{rlen}', '{genotype}', 'manta'))
   conda:
     "manta"
