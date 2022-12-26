@@ -113,14 +113,14 @@ rule all:
 
 rule manta:
   input:
-    bam=get_bamfile(get_basedir({wildcards.ptype}), {wildcards.cov}, {wildcards.isize},
-        {wildcards.rlen}, {wildcards.genotype})
+    bam="/project/gcg/Data/simulated-data/{ptype}/sv-gen/snakemake/data/"
+        "out/dup_indel_inv_tra/r{rlen}_i{isize}/cov{cov}/{gt}-sv.bam",
   params:
     threads=24,
     fasta=reference
   output:
-    dir=directory(os.path.join('{wildcards.ptype}', 'c{wildcards.cov}','i{wildcards.isize}',
-        'r{wildcards.rlen}', '{wildcards.genotype}', 'manta'))
+    dir=directory(os.path.join('{ptype}', 'c{cov}','i{isize}',
+        'r{rlen}', '{genotype}', 'manta'))
   conda:
     "manta"
   shell:
@@ -136,8 +136,8 @@ rule manta:
 
 rule gridss:
     input:
-        bam=get_bamfile(get_basedir({wildcards.ptype}), {wildcards.cov}, {wildcards.isize},
-            {wildcards.rlen}, {wildcards.genotype}),
+        bam="/project/gcg/Data/simulated-data/{ptype}/sv-gen/snakemake/data/"
+            "out/dup_indel_inv_tra/r{rlen}_i{isize}/cov{cov}/{gt}-sv.bam",
         bl=excl_list
     params:
         fasta=reference
