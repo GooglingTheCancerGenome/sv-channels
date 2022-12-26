@@ -1,0 +1,150 @@
+from snakemake.utils import min_version
+min_version("3.2")
+import os
+
+basedir="/project/gcg/Data/simulated-data/"
+reference="/project/gcg/Data/1KG/reference/GRCh38_full_analysis_set_plus_decoy_hla.fa"
+excl_list="/project/gcg/Data/1KG/github/sv-channels_141222/data/exclude.N-and-encodebl.bed"
+
+PARAMS=['coverage', 'insert-size', 'read-length']
+
+def get_params_list():
+    params_list = []
+    for g in ['hmz','htz']:
+        for d,c,i,r in zip(
+                        [os.path.join(basedir, "coverage/sv-gen/snakemake/data/out/dup_indel_inv_tra/")]* 6 +
+                        [os.path.join(basedir,"insert-size/i150/sv-gen/snakemake/data/out/dup_indel_inv_tra/")] * 6 +
+                        [os.path.join(basedir,"read-length/sv-gen/snakemake/data/out/dup_indel_inv_tra/")] * 6,
+                        [5, 10, 15, 30, 45, 60, 75, 90]+[30]*12,
+                        [500]*6+[200,250,300,400,500,600]+[500]*6,
+                        [150]*12+[36,50,75,100,150,250]
+        ):
+            params_list.append((d,c,i,r,g))
+
+    return params_list
+
+def get_bam(param):
+    bam_list = []
+    for gt in ['hmz','htz']:
+        if param == 'coverage':
+            for cov in [5,10,15,30,45,60,75,90]:
+                bam_list.append(
+                    os.path.join(
+                        basedir,
+                        "coverage/sv-gen/snakemake/data/out/dup_indel_inv_tra/"+\
+                        "r150_i500/cov"+str(cov)+"/"+gt+"-sv.bam"
+                ))
+        elif param == 'insert-size':
+            for isize in [200,250,300,400,500,600]:
+                bam_list.append(
+                    os.path.join(
+                        basedir,
+                        "insert-size/i150/sv-gen/snakemake/data/out/dup_indel_inv_tra/"+\
+                        "r150_i"+str(isize)+"/cov30/"+gt+"-sv.bam"
+                ))
+        elif param == 'read-length':
+            for rlen in [36,50,75,100,150,250]:
+                bam_list.append(
+                    os.path.join(
+                        basedir,
+                        "read-length/sv-gen/snakemake/data/out/dup_indel_inv_tra/"+\
+                        "r"+str(rlen)+"_i500/cov30/"+gt+"-sv.bam"
+                ))
+    return bam_list
+
+
+def get_bamfile(p):
+    d, c, i, r, g = p
+    return os.path.join(
+                        d,
+                        "r"+str(r)+"_i"+str(i)+"/cov"+str(c)+"/"+g+"-sv.bam"
+                )
+
+
+rule all:
+  input:
+      expand(os.path.join('c' + {p[1]},'i' + {p[2]},
+                   'r' + {p[3]},{p[4]},'gridss','gridss.vcf.gz'), p=get_params_list()),
+      expand(os.path.join('c' + {p[1]},'i' + {p[2]},
+                   'r' + {p[3]},{p[4]},'manta'), p=get_params_list())
+
+
+rule manta:
+  input:
+    bam=get_bamfile({indir}, {cov}, {isize}, {rlen}, {genotype})
+  params:
+    threads=24,
+    fasta=reference
+  output:
+    dir=directory(os.path.join('cov'+str({cov}),'isize'+str({isize}),
+        'rlen'+str({rlen}), {genotype},'manta'))
+  conda:
+    "manta"
+  shell:
+    '''
+    ${debug} configManta.py  \
+        --referenceFasta {params.fasta} \
+        --bam {input.bam} \
+        --runDir {output.dir}
+    ${debug} {output.dir}/runWorkflow.py \
+        -m local -j {params.threads}
+    '''
+
+
+rule gridss:
+    input:
+        bam=get_bamfile({indir}, {cov}, {isize}, {rlen}, {genotype}),
+        bl=excl_list
+    params:
+        fasta=reference
+    output:
+        vcf=os.path.join('cov'+str({cov}),'isize'+str({isize}),
+        'rlen'+str({rlen}), {genotype},'gridss', 'gridss.vcf.gz'),
+        assembly=os.path.join('cov'+str({cov}),'isize'+str({isize}),
+        'rlen'+str({rlen}), {genotype},'gridss', 'assembly.bam')
+    conda:
+        "gridss2"
+    shell:
+        '''set -euo pipefail;
+        debug = "/usr/bin/time -v";
+        export_JAVA_OPTIONS = "-Xmx31g";
+        ${debug} gridss gridss.CallVariants \
+            REFERENCE_SEQUENCE={params.fasta} \
+            OUTPUT={output.vcf} \
+            ASSEMBLY={output.assembly} \
+            INPUT={input.bam} \
+            BLACKLIST={input.bl}
+        '''
+
+
+rule cv:
+  input:
+    svchan="channels/channels.zarr.zip",
+    svlab="labels/labels.json.gz"
+  params:
+    epochs=1,
+    ncalls=12,
+    batch_size=32,
+    validation_split=0.3,
+    kfolds=2,
+    svtype='DEL'
+  output:
+    log="results_wf0/{test_sample}/{test_sample}.optimize.log",
+    model="results_wf0/{test_sample}/{test_sample}.model.keras"
+  run:
+      svchan_list = ','.join(input.svchan)
+      svlab_list = ','.join(input.svlab)
+      outdir =  os.path.dirname(output.model)
+      shell("svchannels cv \
+        {svchan_list} \
+        {svlab_list} \
+        -o {outdir} \
+        -l {output.log} \
+        --validation_split {params.validation_split} \
+        --kfolds {params.kfolds} \
+        --epochs {params.epochs} \
+        --ncalls {params.ncalls} \
+        --batch_size {params.batch_size} \
+        --svtype {params.svtype} \
+        --manta_vcf {input.vcf} \
+        --vcf_out {output.vcf}")

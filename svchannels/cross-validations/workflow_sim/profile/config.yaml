@@ -1,0 +1,31 @@
+---
+snakefile: snakeFile
+cores: 1
+reason: True
+show-failed-logs: True
+cluster:
+  mkdir -p logs/{rule} &&
+  sbatch
+    --partition={resources.partition}
+    --cpus-per-task={threads}
+    --time={resources.time}
+    --mem={resources.mem_mb}
+    --gpus-per-node={resources.gpus}
+    --job-name=smk-{rule}-{wildcards}
+    --output=logs/{rule}/{rule}-{wildcards}-%j.out
+default-resources:
+  - partition=infinite
+  - time='72:00:00'
+  - mem_mb='32G'
+  - gpus=1
+restart-times: 3
+max-jobs-per-second: 10
+max-status-checks-per-second: 1
+local-cores: 1
+latency-wait: 60
+jobs: 500
+keep-going: True
+rerun-incomplete: True
+printshellcmds: True
+scheduler: greedy
+use-conda: True
