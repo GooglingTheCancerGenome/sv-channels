@@ -248,8 +248,8 @@ rule generate_channels:
 
 rule label:
     input:
-        sv_positions=os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
-            "svchannels","channels","sv_positions.bedpe"),
+        channels=os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
+            "svchannels","channels"),
         truth_set="/project/gcg/Data/simulated-data/{ptype}/sv-gen/snakemake/data/"
                   "out/dup_indel_inv_tra/{gt}-sv.proper.bedpe",
         fai="/project/gcg/Data/simulated-data/{ptype}/sv-gen/snakemake/data/10_12_hs37d5.fasta.fai"
@@ -259,7 +259,7 @@ rule label:
     shell:
         '''
         svchannels label \
-            -v {input.sv_positions} \
+            -v {input.channels}"/sv_positions.bedpe" \
             -g {input.truth_set} \
             -f {input.fai} \
             -p {output.dir}
