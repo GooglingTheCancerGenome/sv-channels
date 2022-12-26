@@ -129,7 +129,7 @@ rule manta:
     debug="/usr/bin/time -v"
   output:
     dir=directory(os.path.join('{ptype}', 'c{cov}','i{isize}',
-        'r{rlen}', '{gt}', 'manta'))
+        'r{rlen}', '{gt}', 'manta', 'manta_output'))
   threads: 24
   conda:
     "manta"
@@ -147,7 +147,7 @@ rule manta:
 rule extract_manta:
     input:
         os.path.join('{ptype}','c{cov}','i{isize}',
-            'r{rlen}','{gt}','manta')
+            'r{rlen}','{gt}','manta', 'manta_output')
     output:
         os.path.join('{ptype}','c{cov}','i{isize}',
             'r{rlen}','{gt}','manta','manta.vcf')
@@ -217,7 +217,8 @@ rule extract_signals:
         bam = "/project/gcg/Data/simulated-data/{ptype}/sv-gen/snakemake/data/"
               "out/dup_indel_inv_tra/r{rlen}_i{isize}/cov{cov}/{gt}-sv.bam"
     params:
-        fasta=reference
+        fasta=reference,
+        debug="/usr/bin/time -v"
     output:
         dir=directory(os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
             "svchannels","signals"))
@@ -226,7 +227,7 @@ rule extract_signals:
     shell:
         '''
         set -euo pipefail;
-        svchannels extract-signals {params.fasta} {input.bam} {output.dir}
+        {params.debug} svchannels extract-signals {params.fasta} {input.bam} {output.dir}
         '''
 
 rule generate_channels:
@@ -236,14 +237,15 @@ rule generate_channels:
         bedpe = os.path.join('{ptype}','c{cov}','i{isize}',
             'r{rlen}','{gt}','manta','manta.bedpe')
     params:
-        fasta=reference
+        fasta=reference,
+        debug="/usr/bin/time -v"
     output:
         dir=directory(os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
             "svchannels","channels"))
     shell:
         '''
         set -euo pipefail;
-        svchannels generate-channels --reference {params.fasta} {input.dir} {output.dir} {input.bedpe}
+        {params.debug} svchannels generate-channels --reference {params.fasta} {input.dir} {output.dir} {input.bedpe}
         '''
 
 rule label:
@@ -253,12 +255,14 @@ rule label:
         truth_set="/project/gcg/Data/simulated-data/{ptype}/sv-gen/snakemake/data/"
                   "out/dup_indel_inv_tra/{gt}-sv.proper.bedpe",
         fai="/project/gcg/Data/simulated-data/{ptype}/sv-gen/snakemake/data/10_12_hs37d5.fasta.fai"
+    params:
+        debug = "/usr/bin/time -v"
     output:
         dir=directory(os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
             "svchannels","labels"))
     shell:
         '''
-        svchannels label \
+        {params.debug} svchannels label \
             -v {input.channels}"/sv_positions.bedpe" \
             -g {input.truth_set} \
             -f {input.fai} \
@@ -274,6 +278,7 @@ rule cv:
         vcf=os.path.join('{ptype}', 'c{cov}','i{isize}',
         'r{rlen}', '{gt}', 'manta', 'manta.vcf')
     params:
+        debug = "/usr/bin/time -v",
         epochs=1,
         ncalls=12,
         batch_size=32,
@@ -288,7 +293,7 @@ rule cv:
     shell:
         '''
         set -euo pipefail;
-        svchannels cv \
+        {params.debug} svchannels cv \
           {svchan_list}"/channels.zarr.zip" \
           {svlab_list}"/labels.json.gz" \
           -o {outdir} \
