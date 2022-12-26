@@ -8,6 +8,23 @@ excl_list="/project/gcg/Data/1KG/github/sv-channels_141222/data/exclude.N-and-en
 
 PARAMS=['coverage', 'insert-size', 'read-length']
 
+def get_basedir():
+    return [os.path.join(basedir,"coverage/sv-gen/snakemake/data/out/dup_indel_inv_tra/")] * 6 + \
+    [os.path.join(basedir,"insert-size/i150/sv-gen/snakemake/data/out/dup_indel_inv_tra/")] * 6 + \
+    [os.path.join(basedir,"read-length/sv-gen/snakemake/data/out/dup_indel_inv_tra/")] * 6
+
+def get_cov():
+    return [5, 10, 15, 30, 45, 60, 75, 90]+[30]*12
+
+def get_isize():
+    return [500]*6+[200,250,300,400,500,600]+[500]*6
+
+def get_rlen():
+    return [150]*12+[36,50,75,100,150,250]
+
+def get_genotype():
+    return ['hmz','htz']*18
+
 def get_params_list():
     params_list = []
     for g in ['hmz','htz']:
@@ -63,10 +80,20 @@ def get_bamfile(p):
 
 rule all:
   input:
-      expand(os.path.join('c' + {p[1]},'i' + {p[2]},
-                   'r' + {p[3]},{p[4]},'gridss','gridss.vcf.gz'), p=get_params_list()),
-      expand(os.path.join('c' + {p[1]},'i' + {p[2]},
-                   'r' + {p[3]},{p[4]},'manta'), p=get_params_list())
+      expand(os.path.join('c' + str({cov}),'i' + str({isize}),
+                   'r' + str({rlen}),{gt}, 'gridss', 'gridss.vcf.gz'),
+          cov=get_cov(),
+          isize=get_isize(),
+          rlen=get_rlen(),
+          gt=get_genotype(),
+      ),
+      expand(os.path.join('c' + str({cov}),'i' + str({isize}),
+                   'r' + str({rlen}),{gt}, 'manta', 'manta.vcf'),
+          cov=get_cov(),
+          isize=get_isize(),
+          rlen=get_rlen(),
+          gt=get_genotype(),
+      )
 
 
 rule manta:
