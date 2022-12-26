@@ -5,7 +5,7 @@ import os
 DEBUG=True
 
 basedir="/project/gcg/Data/simulated-data/"
-excl_list="/project/gcg/Data/1KG/github/sv-channels_141222/data/exclude.N-and-encodebl.hg19.bed"
+excl_list="/project/gcg/Data/1KG/github/sv-channels_141222/data/exclude.N-and-encodebl.10_12_hs37d5.bed"
 
 PARAMS=['coverage', 'insert-size', 'read-length']
 
