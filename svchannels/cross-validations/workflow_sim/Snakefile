@@ -225,14 +225,16 @@ rule cv:
         log=os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
             "svchannels","cv.log"),
         vcf=os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
-            "svchannels","sv-channels.vcf")
+            "svchannels","sv-channels.vcf"),
+        dir=directory(os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
+            "svchannels"))
     shell:
         '''
         set -euo pipefail;
         {params.debug} svchannels cv \
           {input.svchan}"/channels.zarr.zip" \
           {input.svlab}"/labels.json.gz" \
-          -o {outdir} \
+          -o {output.dir} \
           -l {output.log} \
           --validation_split {params.validation_split} \
           --kfolds {params.kfolds} \
