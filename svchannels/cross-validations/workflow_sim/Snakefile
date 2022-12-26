@@ -227,7 +227,7 @@ rule cv:
         vcf=os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
             "svchannels","sv-channels.vcf"),
         dir=directory(os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
-            "svchannels"))
+            "svchannels", "cv"))
     shell:
         '''
         set -euo pipefail;
