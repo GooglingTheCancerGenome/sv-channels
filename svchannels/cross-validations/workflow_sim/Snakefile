@@ -230,8 +230,8 @@ rule cv:
         '''
         set -euo pipefail;
         {params.debug} svchannels cv \
-          {svchan_list}"/channels.zarr.zip" \
-          {svlab_list}"/labels.json.gz" \
+          {input.svchan}"/channels.zarr.zip" \
+          {input.svlab}"/labels.json.gz" \
           -o {outdir} \
           -l {output.log} \
           --validation_split {params.validation_split} \
