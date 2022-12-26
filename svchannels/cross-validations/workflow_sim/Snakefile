@@ -13,6 +13,17 @@ def get_basedir():
     [os.path.join(basedir,"insert-size/i150/sv-gen/snakemake/data/out/dup_indel_inv_tra/")] * 6 + \
     [os.path.join(basedir,"read-length/sv-gen/snakemake/data/out/dup_indel_inv_tra/")] * 6
 
+def get_basedir(ptype):
+    if ptype == 'coverage':
+        return os.path.join(basedir,"coverage/sv-gen/snakemake/data/out/dup_indel_inv_tra/")
+    elif ptype == 'insert-size':
+        os.path.join(basedir,"insert-size/i150/sv-gen/snakemake/data/out/dup_indel_inv_tra/")
+    elif ptype == 'read-length':
+        os.path.join(basedir,"read-length/sv-gen/snakemake/data/out/dup_indel_inv_tra/")
+
+def get_param_type():
+    return ['coverage'] * 6 + ['insert-size'] * 6 + ['read-length'] * 6
+
 def get_cov():
     return [5, 10, 15, 30, 45, 60, 75, 90]+[30]*12
 
@@ -80,17 +91,19 @@ def get_bamfile(p):
 
 rule all:
   input:
-      expand([os.path.join("c{cov}", "i{isize}", "r{rlen}", "{gt}",
+      expand([os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
           "gridss", "gridss.vcf.gz")],
           zip,
+          ptype=get_param_type(),
           cov=get_cov(),
           isize=get_isize(),
           rlen=get_rlen(),
           gt=get_genotype(),
       ),
-      expand([os.path.join("c{cov}", "i{isize}", "r{rlen}", "{gt}",
+      expand([os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
           "manta", "manta.vcf")],
           zip,
+          ptype=get_param_type(),
           cov=get_cov(),
           isize=get_isize(),
           rlen=get_rlen(),
@@ -122,15 +135,15 @@ rule manta:
 
 rule gridss:
     input:
-        bam=get_bamfile({indir}, {cov}, {isize}, {rlen}, {genotype}),
+        bam=get_bamfile(get_basedir({ptype}), {cov}, {isize}, {rlen}, {genotype}),
         bl=excl_list
     params:
         fasta=reference
     output:
-        vcf=os.path.join('cov'+str({cov}),'isize'+str({isize}),
-        'rlen'+str({rlen}), {genotype},'gridss', 'gridss.vcf.gz'),
-        assembly=os.path.join('cov'+str({cov}),'isize'+str({isize}),
-        'rlen'+str({rlen}), {genotype},'gridss', 'assembly.bam')
+        vcf=os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
+          "gridss", "gridss.vcf.gz"),
+        assembly=os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
+          "gridss", "assembly.bam")
     conda:
         "gridss2"
     shell:
