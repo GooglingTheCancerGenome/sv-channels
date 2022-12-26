@@ -10,14 +10,12 @@ cluster:
     --cpus-per-task={threads}
     --time={resources.time}
     --mem={resources.mem_mb}
-    --gpus-per-node={resources.gpus}
     --job-name=smk-{rule}-{wildcards}
     --output=logs/{rule}/{rule}-{wildcards}-%j.out
 default-resources:
   - partition=infinite
-  - time='72:00:00'
+  - time='6-00:00:00'
   - mem_mb='32G'
-  - gpus=1
 restart-times: 3
 max-jobs-per-second: 10
 max-status-checks-per-second: 1

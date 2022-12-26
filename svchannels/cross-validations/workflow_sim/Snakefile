@@ -116,12 +116,12 @@ rule manta:
     bam="/project/gcg/Data/simulated-data/{ptype}/sv-gen/snakemake/data/"
         "out/dup_indel_inv_tra/r{rlen}_i{isize}/cov{cov}/{gt}-sv.bam",
   params:
-    threads=24,
     fasta=reference,
     debug="/usr/bin/time -v"
   output:
     dir=directory(os.path.join('{ptype}', 'c{cov}','i{isize}',
         'r{rlen}', '{gt}', 'manta'))
+  threads: 24
   conda:
     "manta"
   shell:
@@ -132,7 +132,7 @@ rule manta:
         --bam {input.bam} \
         --runDir {output.dir};
     {params.debug} {output.dir}/runWorkflow.py \
-        -m local -j {params.threads}
+        -m local -j {threads}
     '''
 
 
@@ -149,6 +149,7 @@ rule gridss:
           "gridss", "gridss.vcf.gz"),
         assembly=os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
           "gridss", "assembly.bam")
+    threads: 24
     conda:
         "gridss2"
     shell:
@@ -156,6 +157,7 @@ rule gridss:
         set -euo pipefail;
         export_JAVA_OPTIONS = "-Xmx31g";
         {params.debug} gridss gridss.CallVariants \
+            WORKER_THREADS={threads} \
             REFERENCE_SEQUENCE={params.fasta} \
             OUTPUT={output.vcf} \
             ASSEMBLY={output.assembly} \
@@ -164,34 +166,89 @@ rule gridss:
         '''
 
 
+rule extract_signals:
+    input:
+        bam = "/project/gcg/Data/simulated-data/{ptype}/sv-gen/snakemake/data/"
+              "out/dup_indel_inv_tra/r{rlen}_i{isize}/cov{cov}/{gt}-sv.bam"
+    params:
+        fasta=reference
+    output:
+        dir=directory(os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
+            "svchannels","signals"))
+    conda:
+        "refactor"
+    shell:
+        '''
+        set -euo pipefail;
+        svchannels extract-signals {params.fasta} {input.bam} {output.dir}
+        '''
+
+rule generate_channels:
+    input:
+        dir = os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
+            "svchannels","signals"),
+        bedpe = os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
+            "svchannels","channels","sv_positions.bedpe")
+    params:
+        fasta=reference
+    output:
+        dir=directory(os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
+            "svchannels","channels"))
+    shell:
+        '''
+        set -euo pipefail;
+        svchannels generate-channels --reference {params.fasta} {input.dir} {output.dir} {input.bedpe}
+        '''
+
+rule label:
+    input:
+        sv_positions=os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
+            "svchannels","channels","sv_positions.bedpe"),
+        truth_set="/project/gcg/Data/simulated-data/{ptype}/sv-gen/snakemake/data/"
+                  "out/dup_indel_inv_tra/{gt}-sv.proper.bedpe",
+        fai="/project/gcg/Data/simulated-data/{ptype}/sv-gen/snakemake/data/10_12_hs37d5.fasta.fai"
+    output:
+        dir=directory(os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
+            "svchannels","labels"))
+    shell:
+        '''
+        svchannels label \
+            -v {input.sv_positions} \
+            -g {input.truth_set} \
+            -f {input.fai} \
+            -p {output.dir}
+        '''
+
 rule cv:
-  input:
-    svchan="channels/channels.zarr.zip",
-    svlab="labels/labels.json.gz"
-  params:
-    epochs=1,
-    ncalls=12,
-    batch_size=32,
-    validation_split=0.3,
-    kfolds=2,
-    svtype='DEL'
-  output:
-    log="results_wf0/{test_sample}/{test_sample}.optimize.log",
-    model="results_wf0/{test_sample}/{test_sample}.model.keras"
-  run:
-      svchan_list = ','.join(input.svchan)
-      svlab_list = ','.join(input.svlab)
-      outdir =  os.path.dirname(output.model)
-      shell("svchannels cv \
-        {svchan_list} \
-        {svlab_list} \
-        -o {outdir} \
-        -l {output.log} \
-        --validation_split {params.validation_split} \
-        --kfolds {params.kfolds} \
-        --epochs {params.epochs} \
-        --ncalls {params.ncalls} \
-        --batch_size {params.batch_size} \
-        --svtype {params.svtype} \
-        --manta_vcf {input.vcf} \
-        --vcf_out {output.vcf}")
+    input:
+        svchan=os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
+               "svchannels","channels", "channel.zarr.zip"),
+        svlab=os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
+            "svchannels","labels","labels.json.gz")
+    params:
+        epochs=1,
+        ncalls=12,
+        batch_size=32,
+        validation_split=0.3,
+        kfolds=2,
+        svtype='DEL'
+    output:
+        log="results_wf0/{test_sample}/{test_sample}.optimize.log",
+        model="results_wf0/{test_sample}/{test_sample}.model.keras"
+    shell:
+        '''
+        set -euo pipefail;
+        svchannels cv \
+          {svchan_list} \
+          {svlab_list} \
+          -o {outdir} \
+          -l {output.log} \
+          --validation_split {params.validation_split} \
+          --kfolds {params.kfolds} \
+          --epochs {params.epochs} \
+          --ncalls {params.ncalls} \
+          --batch_size {params.batch_size} \
+          --svtype {params.svtype} \
+          --manta_vcf {input.vcf} \
+          --vcf_out {output.vcf}
+          '''
