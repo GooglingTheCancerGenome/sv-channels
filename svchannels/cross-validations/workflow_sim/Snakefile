@@ -157,6 +157,19 @@ rule extract_manta:
         gunzip -c  {input}"/results/variants/diploidSV.vcf.gz" > {output}
         '''
 
+rule manta_vcf2bedpe:
+    input:
+        os.path.join('{ptype}','c{cov}','i{isize}',
+            'r{rlen}','{gt}','manta','manta.vcf')
+    output:
+        os.path.join('{ptype}','c{cov}','i{isize}',
+            'r{rlen}','{gt}','manta','manta.bedpe')
+    shell:
+        '''
+        set -euo pipefail;
+        Rscript ../../utils/R/vcf2bedpe.R -i {input} -o {output}
+        '''
+
 rule gridss:
     input:
         bam="/project/gcg/Data/simulated-data/{ptype}/sv-gen/snakemake/data/"
@@ -220,8 +233,8 @@ rule generate_channels:
     input:
         dir = os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
             "svchannels","signals"),
-        bedpe = os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
-            "svchannels","channels","sv_positions.bedpe")
+        bedpe = os.path.join('{ptype}','c{cov}','i{isize}',
+            'r{rlen}','{gt}','manta','manta.bedpe')
     params:
         fasta=reference
     output:
