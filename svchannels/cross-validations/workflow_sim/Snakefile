@@ -98,7 +98,7 @@ rule all:
           cov=get_cov(),
           isize=get_isize(),
           rlen=get_rlen(),
-          gt=get_genotype(),
+          gt=get_genotype()
       ),
       expand([os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
           "manta")],
@@ -107,7 +107,16 @@ rule all:
           cov=get_cov(),
           isize=get_isize(),
           rlen=get_rlen(),
-          gt=get_genotype(),
+          gt=get_genotype()
+      ),
+      expand([os.path.join("{ptype}","c{cov}","i{isize}","r{rlen}","{gt}",
+      "svchannels","sv-channels.vcf")],
+          zip,
+          ptype=get_param_type(),
+          cov=get_cov(),
+          isize=get_isize(),
+          rlen=get_rlen(),
+          gt=get_genotype()
       )
 
 
@@ -135,6 +144,18 @@ rule manta:
         -m local -j {threads}
     '''
 
+rule extract_manta:
+    input:
+        os.path.join('{ptype}','c{cov}','i{isize}',
+            'r{rlen}','{gt}','manta')
+    output:
+        os.path.join('{ptype}','c{cov}','i{isize}',
+            'r{rlen}','{gt}','manta','manta.vcf')
+    shell:
+        '''
+        set -euo pipefail;
+        gunzip -c  {input}"/results/variants/diploidSV.vcf.gz" > {output}
+        '''
 
 rule gridss:
     input:
@@ -165,6 +186,18 @@ rule gridss:
             BLACKLIST={input.bl}
         '''
 
+rule extract_gridss:
+    input:
+        os.path.join("{ptype}","c{cov}","i{isize}","r{rlen}","{gt}",
+            "gridss","gridss.vcf.gz")
+    output:
+        os.path.join("{ptype}","c{cov}","i{isize}","r{rlen}","{gt}",
+            "gridss","gridss.vcf")
+    shell:
+        '''
+        set -euo pipefail;
+        gunzip -c  {input} > {output}
+        '''
 
 rule extract_signals:
     input:
@@ -224,7 +257,9 @@ rule cv:
         svchan=os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
                "svchannels","channels", "channel.zarr.zip"),
         svlab=os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
-            "svchannels","labels","labels.json.gz")
+            "svchannels","labels","labels.json.gz"),
+        vcf=os.path.join('{ptype}', 'c{cov}','i{isize}',
+        'r{rlen}', '{gt}', 'manta', 'diploidSV.vcf')
     params:
         epochs=1,
         ncalls=12,
@@ -233,8 +268,10 @@ rule cv:
         kfolds=2,
         svtype='DEL'
     output:
-        log="results_wf0/{test_sample}/{test_sample}.optimize.log",
-        model="results_wf0/{test_sample}/{test_sample}.model.keras"
+        log=os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
+            "svchannels","cv.log"),
+        vcf=os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
+            "svchannels","sv-channels.vcf")
     shell:
         '''
         set -euo pipefail;
