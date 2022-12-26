@@ -63,7 +63,7 @@ rule manta:
     params:
         fasta=reference,
         debug="/usr/bin/time -v"
-    output:\
+    output:
        dir=directory(os.path.join('{ptype}', 'c{cov}','i{isize}',
        'r{rlen}', '{gt}', 'manta', 'manta_output'))
     threads: 24
