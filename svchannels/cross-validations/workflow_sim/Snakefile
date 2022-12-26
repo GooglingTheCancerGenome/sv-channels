@@ -124,7 +124,7 @@ rule gridss:
     shell:
         '''
         set -euo pipefail;
-        export_JAVA_OPTIONS = "-Xmx31g";
+        export _JAVA_OPTIONS="-Xmx31g";
         {params.debug} gridss gridss.CallVariants \
             WORKER_THREADS={threads} \
             REFERENCE_SEQUENCE={params.fasta} \
