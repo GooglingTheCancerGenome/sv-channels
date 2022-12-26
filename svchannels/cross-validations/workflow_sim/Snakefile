@@ -113,13 +113,14 @@ rule all:
 
 rule manta:
   input:
-    bam=get_bamfile(get_basedir({ptype}), {cov}, {isize}, {rlen}, {genotype})
+    bam=get_bamfile(get_basedir({wildcards.ptype}), {wildcards.cov}, {wildcards.isize},
+        {wildcards.rlen}, {wildcards.genotype})
   params:
     threads=24,
     fasta=reference
   output:
-    dir=directory(os.path.join('{ptype}', 'c{cov}','i{isize}',
-        'r{rlen}', '{genotype}', 'manta'))
+    dir=directory(os.path.join('{wildcards.ptype}', 'c{wildcards.cov}','i{wildcards.isize}',
+        'r{wildcards.rlen}', '{wildcards.genotype}', 'manta'))
   conda:
     "manta"
   shell:
@@ -135,7 +136,8 @@ rule manta:
 
 rule gridss:
     input:
-        bam=get_bamfile(get_basedir({ptype}), {cov}, {isize}, {rlen}, {genotype}),
+        bam=get_bamfile(get_basedir({wildcards.ptype}), {wildcards.cov}, {wildcards.isize},
+            {wildcards.rlen}, {wildcards.genotype}),
         bl=excl_list
     params:
         fasta=reference
