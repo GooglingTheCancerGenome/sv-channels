@@ -2,26 +2,45 @@ from snakemake.utils import min_version
 min_version("3.2")
 import os
 
+DEBUG=True
+
 basedir="/project/gcg/Data/simulated-data/"
-excl_list="/project/gcg/Data/1KG/github/sv-channels_141222/data/exclude.N-and-encodebl.bed"
+excl_list="/project/gcg/Data/1KG/github/sv-channels_141222/data/exclude.N-and-encodebl.hg19.bed"
 
 PARAMS=['coverage', 'insert-size', 'read-length']
 
 # auxiliary functions
 def get_param_type():
-    return ['coverage'] * 8 + ['insert-size'] * 6 + ['read-length'] * 6
+    if DEBUG:
+        return ['coverage']
+    else:
+        return ['coverage'] * 8 + ['insert-size'] * 6 + ['read-length'] * 6
 
 def get_cov():
-    return [5, 10, 15, 30, 45, 60, 75, 90]+[30]*12
+    if DEBUG:
+        return [5]
+    else:
+        return [5, 10, 15, 30, 45, 60, 75, 90]+[30]*12
+
 
 def get_isize():
-    return [500]*8+[200,250,300,400,500,600]+[500]*6
+    if DEBUG:
+        return [500]
+    else:
+        return [500]*8+[200,250,300,400,500,600]+[500]*6
+
 
 def get_rlen():
-    return [150]*14+[36,50,75,100,150,250]
+    if DEBUG:
+        return [150]
+    else:
+        return [150]*14+[36,50,75,100,150,250]
 
 def get_genotype():
-    return ['hmz','htz']*18
+    if DEBUG:
+        return ['hmz']
+    else:
+        return ['hmz','htz']*18
 
 
 rule all:
