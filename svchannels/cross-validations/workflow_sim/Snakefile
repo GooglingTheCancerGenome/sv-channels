@@ -22,16 +22,16 @@ def get_basedir(ptype):
         os.path.join(basedir,"read-length/sv-gen/snakemake/data/out/dup_indel_inv_tra/")
 
 def get_param_type():
-    return ['coverage'] * 6 + ['insert-size'] * 6 + ['read-length'] * 6
+    return ['coverage'] * 8 + ['insert-size'] * 6 + ['read-length'] * 6
 
 def get_cov():
     return [5, 10, 15, 30, 45, 60, 75, 90]+[30]*12
 
 def get_isize():
-    return [500]*6+[200,250,300,400,500,600]+[500]*6
+    return [500]*8+[200,250,300,400,500,600]+[500]*6
 
 def get_rlen():
-    return [150]*12+[36,50,75,100,150,250]
+    return [150]*14+[36,50,75,100,150,250]
 
 def get_genotype():
     return ['hmz','htz']*18
