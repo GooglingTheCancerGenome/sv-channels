@@ -111,7 +111,7 @@ rule gridss:
             "out/dup_indel_inv_tra/r{rlen}_i{isize}/cov{cov}/{gt}-sv.bam"),
         bl=excl_list
     params:
-        fasta=os.path.join(basedir, "{ptype}/sv-gen/snakemake/data/10_12_hs37d5.fasta"),
+        fasta=os.path.join(basedir, "coverage/sv-gen/snakemake/data/10_12_hs37d5.fasta"),
         debug="/usr/bin/time -v"
     output:
         vcf=os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
@@ -162,7 +162,7 @@ rule extract_signals:
     shell:
         '''
         set -euo pipefail;
-        {params.debug} svchannels extract-signals {params.fasta} {input.bam} {output.dir}
+        {params.debug} svchannels extract-signals {params.fasta} {input.bam} -o {output.dir}
         '''
 
 rule generate_channels:
