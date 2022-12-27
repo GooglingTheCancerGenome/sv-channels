@@ -104,7 +104,7 @@ rule manta:
             --referenceFasta {params.fasta} \
             --bam {input.bam} \
             --runDir {output.dir};
-        sed 's/isEmail = isLocalSmtp()/isEmail = None/' {output.dir}/runWorkflow.py > {output.dir}/runWorkflow.py;
+        sed -i 's/isEmail = isLocalSmtp()/isEmail = None/' {output.dir}/runWorkflow.py;
         {params.debug} {output.dir}/runWorkflow.py \
             -m local -j {threads};
         gunzip -c  {output.dir}/results/variants/diploidSV.vcf.gz > {output.vcf}
@@ -216,10 +216,10 @@ rule label:
     shell:
         '''
         {params.debug} svchannels label \
-            -v {input.channels}"/sv_positions.bedpe" \
-            -g {input.truth_set} \
             -f {input.fai} \
-            -p {output.dir}
+            -o {output.dir} \
+            {input.channels}/sv_positions.bedpe \
+            {input.truth_set}
         '''
 
 rule cv:
