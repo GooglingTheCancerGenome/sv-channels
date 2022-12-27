@@ -14,33 +14,41 @@ def get_param_type():
     if DEBUG:
         return ['coverage']
     else:
-        return ['coverage'] * 8 + ['insert-size'] * 6 + ['read-length'] * 6
+        l = ['coverage'] * 8 + ['insert-size'] * 6 + ['read-length'] * 6
+        l.extend(l)
+        return l
 
 def get_cov():
     if DEBUG:
         return [5]
     else:
-        return [5, 10, 15, 30, 45, 60, 75, 90]+[30]*12
+        l = [5, 10, 15, 30, 45, 60, 75, 90]+[30]*12
+        l.extend(l)
+        return l
 
 
 def get_isize():
     if DEBUG:
         return [500]
     else:
-        return [500]*8+[200,250,300,400,500,600]+[500]*6
+        l = [500]*8+[200,250,300,400,500,600]+[500]*6
+        l.extend(l)
+        return l
 
 
 def get_rlen():
     if DEBUG:
         return [150]
     else:
-        return [150]*14+[36,50,75,100,150,250]
+        l = [150]*14+[36,50,75,100,150,250]
+        l.extend(l)
+        return l
 
 def get_genotype():
     if DEBUG:
         return ['hmz']
     else:
-        return ['hmz','htz']*18
+        return ['hmz']*18+['htz']*18
 
 
 rule all:
