@@ -2,7 +2,7 @@ from snakemake.utils import min_version
 min_version("3.2")
 import os
 
-DEBUG=True
+DEBUG=False
 
 basedir="/project/gcg/Data/simulated-data/"
 excl_list="/project/gcg/Data/1KG/github/sv-channels_141222/data/exclude.N-and-encodebl.10_12_hs37d5.bed"
@@ -102,6 +102,7 @@ rule manta:
             --referenceFasta {params.fasta} \
             --bam {input.bam} \
             --runDir {output.dir};
+        sed 's/isEmail = isLocalSmtp()/isEmail = None/' {output.dir}/runWorkflow.py > {output.dir}/runWorkflow.py;
         {params.debug} {output.dir}/runWorkflow.py \
             -m local -j {threads}
         '''
