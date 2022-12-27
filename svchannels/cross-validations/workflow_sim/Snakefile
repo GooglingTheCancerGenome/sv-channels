@@ -106,7 +106,8 @@ rule manta:
             --runDir {output.dir};
         sed 's/isEmail = isLocalSmtp()/isEmail = None/' {output.dir}/runWorkflow.py > {output.dir}/runWorkflow.py;
         {params.debug} {output.dir}/runWorkflow.py \
-            -m local -j {threads}
+            -m local -j {threads};
+        ls {output.vcf}
         '''
 
 rule extract_manta:
@@ -119,7 +120,7 @@ rule extract_manta:
     shell:
         '''
         set -euo pipefail;
-        gunzip -c  {input}/results/variants/diploidSV.vcf.gz > {output}
+        gunzip -c  {input} > {output}
         '''
 
 rule manta_vcf2bedpe:
