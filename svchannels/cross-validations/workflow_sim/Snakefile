@@ -2,7 +2,7 @@ from snakemake.utils import min_version
 min_version("3.2")
 import os
 
-DEBUG=False
+DEBUG=True
 
 basedir="/project/gcg/Data/simulated-data/"
 excl_list="/project/gcg/Data/1KG/github/sv-channels_141222/data/exclude.N-and-encodebl.10_12_hs37d5.bed"
@@ -91,7 +91,9 @@ rule manta:
         debug="/usr/bin/time -v"
     output:
        dir=directory(os.path.join('{ptype}', 'c{cov}','i{isize}',
-       'r{rlen}', '{gt}', 'manta', 'manta_output'))
+       'r{rlen}', '{gt}', 'manta', 'manta_output')),
+       vcf=os.path.join('{ptype}','c{cov}','i{isize}',
+        'r{rlen}','{gt}','manta','manta_output','/results/variants/diploidSV.vcf.gz')
     threads: 24
     conda:
         "manta"
@@ -110,14 +112,14 @@ rule manta:
 rule extract_manta:
     input:
         os.path.join('{ptype}','c{cov}','i{isize}',
-            'r{rlen}','{gt}','manta', 'manta_output')
+            'r{rlen}','{gt}','manta', 'manta_output','/results/variants/diploidSV.vcf.gz')
     output:
         os.path.join('{ptype}','c{cov}','i{isize}',
             'r{rlen}','{gt}','manta','manta.vcf')
     shell:
         '''
         set -euo pipefail;
-        gunzip -c  {input}"/results/variants/diploidSV.vcf.gz" > {output}
+        gunzip -c  {input}/results/variants/diploidSV.vcf.gz > {output}
         '''
 
 rule manta_vcf2bedpe:
