@@ -2,13 +2,12 @@ from snakemake.utils import min_version
 min_version("3.2")
 import os
 
-TEST_SAMPLE_LIST=['HG00420']
+TEST_SAMPLE_LIST=['HG00420', 'HG03992', 'HG01881']
 SAMPLE_LIST=['HG01053', 'HG01114', 'HG01881', 'HG02018',
              'HG02924', 'HG03992', 'NA06991', 'HG00420']
-SAMPLE_LIST = [e for e in SAMPLE_LIST if e not in TEST_SAMPLE_LIST]
 
 svchan_dir = "/project/gcg/Data/1KG/channels/"
-#svchan_dir = "/Users/lsantuari/Documents/Projects/GTCG/sv-channels/sv-channels_manuscript/UMCU_hpc"
+# svchan_dir = "/Users/lsantuari/Documents/Projects/GTCG/sv-channels/sv-channels_manuscript/UMCU_hpc"
 
 rule all:
   input:
@@ -17,10 +16,12 @@ rule all:
 
 rule train:
   input:
-    svchan=expand(os.path.join(svchan_dir, "svchan/{sample}/channels/channels.zarr.zip"),
-      sample=SAMPLE_LIST),
-    svlab=expand(os.path.join(svchan_dir, "svchan/{sample}/labels/labels.json.gz"),
-      sample=SAMPLE_LIST)
+    svchan=lambda wildcards: \
+      [os.path.join(svchan_dir, "svchan/{0}/channels/channels.zarr.zip".format(sample)) \
+       for sample in SAMPLE_LIST if sample != wildcards.test_sample],
+    svlab=lambda wildcards: \
+      [os.path.join(svchan_dir,"svchan/{0}/labels/labels.json.gz".format(sample)) \
+      for sample in SAMPLE_LIST if sample != wildcards.test_sample]
   params:
     epochs=50,
     ncalls=50,
