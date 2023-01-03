@@ -1,0 +1,6 @@
+channels:
+  - bioconda
+  - anaconda
+dependencies:
+  - snakemake=7.18.2
+  - graphviz=v2.50.0

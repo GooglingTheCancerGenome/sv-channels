@@ -3,30 +3,39 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4584797.svg)](https://doi.org/10.5281/zenodo.4584797)
 [![Build Status](https://travis-ci.org/GooglingTheCancerGenome/sv-channels.svg?branch=master)](https://travis-ci.org/GooglingTheCancerGenome/sv-channels)
 
-*sv-channels* is a Deep Learning workflow for calling structural variants (SVs) in short read alignment data using one-dimensional Convolutional Neural Networks (CNN). It has been tested on a benchmark dataset with [three cell lines](https://doi.org/10.5281/zenodo.4001614): two samples (NA12878 and NA24385) from the [Genome in a Bottle](https://www.nist.gov/programs-projects/genome-bottle) consortium and one [synthetic diploid](https://doi.org/10.1038/s41592-018-0054-7) sample (CHM1_CHM13).
+*sv-channels* is a Deep Learning workflow for filtering structural variants (SVs) in short read alignment data using 
+one-dimensional Convolutional Neural Networks (CNN).
 
-*sv-channels* supports five SV types:
-- deletions (DEL)
-- insertions (INS)
-- inversions (INV)
-- tandem duplications (DUP)
-- inter-chromosomal translocations (CTX)
+*sv-channels* currently supports deletions (DEL) called with [Manta](https://github.com/Illumina/manta).
 
-The [workflow](doc/sv-channels.svg) includes the following key steps:
+The workflow includes the following key steps:
 
 **Transform read alignments into channels**
 
-First, split read positions are extracted from the BAM files as candidate regions for SV breakpoints. For each pair of split read positions (rightmost position of the first split part and leftmost position of the second split part) a 2D Numpy array called *window* is constructed. The shape of a window is [*window_size*, *number_of_channels*], where the genomic interval encompassing the window is centered on the split read position with a context of \[-100 bp, +100 bp\) for a *window_size* of 200 bp. From all the reads overlapping this genomic interval and from the relative segment subsequence of the reference sequence 79 (*number_of_channels*) channels are constructed, where each channel encode a signal that can be used for SV calling. The list of channels can be found [here](doc/channels_list.tsv). The two windows are joined as *linked-windows* with a zero padding 2D array of shape [10, *number_of_channels*] in between to avoid artifacts related to the CNN kernel in the part at the interface between the two windows. The linked-windows are labelled as *SV* when the split read positions overlap the SV callset used as the ground truth and *noSV* otherwise, where *SV* is either DEL,INS,INV,DUP or CTX according to the SV type.
+For each pair of SV breakpoints, a 2D Numpy array called *window-pair* is constructed. The shape of a window is
+[window_size*2+padding, number_of_channels], where the genomic interval encompassing each window is centered on the 
+breakpoint position with a context of [-window_size/2, +window_size/2]. From all the reads overlapping this genomic 
+interval and from the relative segment subsequence of the reference sequence *number_of_channels* channels are 
+constructed, where each channel encode a signal that can be used for SV calling. The list of channels can be 
+found [here](doc/channels_list.md). The two windows are joined as *linked-windows* with a zero padding 2D array of 
+shape [10, *number_of_channels*] in between to avoid artifacts related to the CNN kernel at the interface between the 
+two windows. The window-pairs are labelled as *DEL* when the breakpoint positions overlap the DEL callset used as 
+the ground truth and *noDEL* otherwise.
 
-![Figure1](doc/figure1.png)
+**Labelling**
+
+Window-pairs are labelled as DEL (a true deletion) or noDEL (a false positive call)
+based on the overlap of the DEL breakpoints of the window-pair with the truth set.
 
 **Model training**
 
-The labelled *linked-windows* are used to train a 1D CNN to learn to classify them as either SV or noSV. Two cross-validation strategies are possible: 10-fold cross-validation and cross-validation by chromosome, where one chromosome is used as the test set and the other chromosomes as the training set.
+The labelled *window-pairs* are used to train a 1D CNN to classify Manta SVs as either DEL (true deletions)
+or noDEL (false positives).
 
-**SV calling with a trained model**
+**Scoring Manta DELs**
 
-Once a trained model is generated and the BAM file for the test set is converted into *linked-windows*, the SV calling is performed using the [`predict.py`](/scripts/genome_wide/predict.py) script.
+The model is run on the window-pairs of a test sample. The SV qualities for the Manta DELs (QUAL) of the test
+sample are substituted with the posterior probabilities obtained by the model.
 
 ## Dependencies
 
@@ -62,12 +71,39 @@ conda activate sv-channels
 -   **output**:
     - SV callset in [VCF](https://samtools.github.io/hts-specs/VCFv4.3.pdf) format
 
-```bash
-SCH=local  # gridengine or slurm
-BAM=data/test.bam
-SEQIDS="12,22"
-SVTYPES="INV,DEL,INS,INV,DUP,CTX"
-./run.sh $SCH $BAM $SEQIDS $SVTYPES # run jobs locally or on a compute cluster
+### Run sv-channels on test data
+Install sv-channels:
+```commandline
+python setup.py install
+```
+Process test set:
+1. Extract signals:
+```commandline
+svchannels extract-signals data/test.fasta data/test.bam test
+```
+2. Convert VCF files (Manta callset and truth set) to BEDPE format:
+```commandline
+Rscript svchannels/utils/R/vcf2bedpe.R -i data/test.vcf \
+                                       -o data/test.bedpe
+Rscript svchannels/utils/R/vcf2bedpe.R -i data/vcf/manta_out/manta.vcf \
+                                       -o test/manta.bedpe
+```
+3. Generate channels:
+```commandline
+svchannels generate-channels --reference data/test.fasta test channels test/manta.bedpe
+```
+4. Label SVs:
+```commandline
+svchannels label -v channels/sv_positions.bedpe -g data/test.bedpe -f data/test.fasta.fai -p labels
+```
+5. Train the model:
+```commandline
+svchannels train channels/channels.zarr.zip labels/labels.json.gz \
+    -m model.keras
+```
+6. Score SVs:
+```commandline
+svchannels score channels model.keras data/vcf/manta_out/manta.vcf sv-channels.vcf
 ```
 
 ## Contributing
@@ -77,7 +113,7 @@ have a look at the [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-Copyright (c) 2020, Netherlands eScience Center
+Copyright (c) 2023, Netherlands eScience Center
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

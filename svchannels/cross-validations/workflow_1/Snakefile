@@ -1,0 +1,39 @@
+
+rule all:
+  input:
+    expand("{outercv_test_sample}/{innercv_test_sample}/{chrName}/{chrName}_pos_dict.json",
+      chrName=["chr"+str(i) for i in range(1,22)],
+      outercv_test_sample=['HG00420', 'HG03992', 'HG01881'],
+      innercv_test_sample=['HG01053', 'HG02018']
+    )
+
+rule locso_per_chrom:
+  input:
+    '/project/gcg/Data/1KG/multisample.npz'
+    #'/Users/lsantuari/Documents/Projects/GTCG/sv-channels/sv-channels_manuscript/UMCU_hpc/8_samples_channels.npz'
+  params:
+    outercv_test_sample="{outercv_test_sample}",
+    innercv_test_sample="{innercv_test_sample}",
+    val_chrom='chr22',
+    epochs=50,
+    ncalls=50,
+    batch_size=32
+  output:
+    outdir=directory("{outercv_test_sample}/{innercv_test_sample}/{chrName}"),
+    pos_dict="{outercv_test_sample}/{innercv_test_sample}/{chrName}/{chrName}_pos_dict.json"
+  conda:
+    "refactor"
+  shell:
+    """
+    set -xe
+    python nested_locso_cv.py \
+        -i "{input}" \
+        -o "{output.outdir}" \
+        --outercv_test_sample {params.outercv_test_sample} \
+        --innercv_test_sample {params.innercv_test_sample} \
+        --test_chrom {wildcards.chrName} \
+        --val_chrom {params.val_chrom} \
+        -e {params.epochs} \
+        -n {params.ncalls} \
+        --batch_size {params.batch_size}
+    """

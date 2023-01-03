@@ -1,6 +1,23 @@
 #!/usr/bin/env Rscript
 
-source('./aux_functions.R')
+
+args = commandArgs()
+
+scriptName = args[substr(args,1,7) == '--file=']
+
+if (length(scriptName) == 0) {
+  scriptName <- rstudioapi::getSourceEditorContext()$path
+} else {
+  scriptName <- substr(scriptName, 8, nchar(scriptName))
+}
+
+pathName = substr(
+  scriptName, 
+  1, 
+  nchar(scriptName) - nchar(strsplit(scriptName, '.*[/|\\]')[[1]][2])
+)
+
+source(paste(pathName, 'aux_functions.R', sep='/', collapse=NULL))
 
 # create a parser and add command-line arguments
 p <-
@@ -46,6 +63,7 @@ if (is.na(argv$i))
 }
 
 input_path <- argv$i
+print(input_path)
 regions_for_filtering <- argv$f
 ref_regions <- argv$n
 mode <- argv$m
@@ -56,49 +74,42 @@ sv_regions <- GRangesList()
 sv_types <- c('DEL', 'INS', 'INV', 'DUP', 'CTX')
 #for (svtype in )
 
-for (svtype in sv_types)
+if(file.exists(input_path))
 {
-  svtype_path <- file.path(input_path, svtype)
-  if(file.exists(svtype_path))
-  {
-  # svtype <- 'DEL'
-  print(svtype)
   filenames <-
     list.files(
-      path = svtype_path,
+      path = input_path,
       pattern = "correct.bedpe$",
       recursive = TRUE,
       full.names = TRUE
     )
+    print(filenames)
+}
 
-  print(filenames)
-  bedpe.file <-
-    file.path(input_path, paste(mode, '_', svtype, '.bedpe', sep = ''))
-  print(bedpe.file)
-  if (file.exists(bedpe.file)) {
-    file.remove(bedpe.file)
-  }
+f <- filenames[1]
 
-  for (f in filenames)
-  {
-    cmd <-
-      paste(
-        "awk '{if($1==$4){print $0\"\t*\t*\t\" $5-$2}else{print $0\"\t*\t*\t\"0}}'",
-        f,
-        '>>',
-        bedpe.file
-      )
-    system(cmd)
-  }
+bedpe.file <- file.path(input_path, 'results.bedpe')
+print(bedpe.file)
+
+cmd <-
+  paste(
+    "awk '{if($1==$4){print $0\"\t*\t*\t\" $5-$2}else{print $0\"\t*\t*\t\"0}}'",
+    f,
+    '>',
+    bedpe.file
+  )
+print(cmd)
+system(cmd)
 
   print('Loading predictions...')
+
+  svtype <- 'DEL'
 
   if(file.exists(bedpe.file))
   {
 
   sv_regions[[svtype]] <-
     load_bedpe(bedpe.file, regions_for_filtering, ref_regions)
-
 
   # Merge SVs
   if (svtype != 'INS')
@@ -138,20 +149,20 @@ for (svtype in sv_types)
   }
   }
   print(length(sv_regions[[svtype]]))
-  }
-}
+
 
 # Export to BEDPE
-for (svtype in sv_types)
-{
-  if(length(sv_regions[[svtype]])>0){
+#for (svtype in sv_types)
+#{
+if(length(sv_regions[[svtype]])>0){
+
     bp_pairs <- breakpointgr2pairs(sv_regions[[svtype]])
-    out_file = paste(output_fn, svtype, 'bedpe', sep='.')
-    print(out_file)
+    out_file = paste(output_fn, 'DEL', 'bedpe', sep='.')
     rtracklayer::export(bp_pairs, con = out_file)
-  }
+
 }
+#}
 #concatenate the BEDPE files
-system(paste("cat ", output_fn, ".*.bedpe", " > ", output_fn, ".bedpe", sep=""))
+#system(paste("cat ", output_fn, ".*.bedpe", " > ", output_fn, ".bedpe", sep=""))
 
 

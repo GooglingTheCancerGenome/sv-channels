@@ -1,0 +1,69 @@
+from snakemake.utils import min_version
+min_version("3.2")
+import os
+
+TEST_SAMPLE_LIST=['HG00420', 'HG03992', 'HG01881']
+SAMPLE_LIST=['HG01053', 'HG01114', 'HG01881', 'HG02018',
+             'HG02924', 'HG03992', 'NA06991', 'HG00420']
+
+svchan_dir = "/project/gcg/Data/1KG/channels/"
+# svchan_dir = "/Users/lsantuari/Documents/Projects/GTCG/sv-channels/sv-channels_manuscript/UMCU_hpc"
+
+rule all:
+  input:
+    expand("results_wf0/{test_sample}/{test_sample}.sv-channels.vcf",
+      test_sample=TEST_SAMPLE_LIST)
+
+rule train:
+  input:
+    svchan=lambda wildcards: \
+      [os.path.join(svchan_dir, "svchan/{0}/channels/channels.zarr.zip".format(sample)) \
+       for sample in SAMPLE_LIST if sample != wildcards.test_sample],
+    svlab=lambda wildcards: \
+      [os.path.join(svchan_dir,"svchan/{0}/labels/labels.json.gz".format(sample)) \
+      for sample in SAMPLE_LIST if sample != wildcards.test_sample]
+  params:
+    epochs=50,
+    ncalls=50,
+    batch_size=32,
+    validation_split=0.3,
+    kfolds=10,
+    svtype='DEL'
+  output:
+    # outdir=directory("results_wf0/{test_sample}"),
+    log="results_wf0/{test_sample}/{test_sample}.optimize.log",
+    model="results_wf0/{test_sample}/{test_sample}.model.keras"
+  run:
+      svchan_list = ','.join(input.svchan)
+      svlab_list = ','.join(input.svlab)
+      outdir =  os.path.dirname(output.model)
+      shell("svchannels train \
+        {svchan_list} \
+        {svlab_list} \
+        -o {outdir} \
+        -l {output.log} \
+        --validation_split {params.validation_split} \
+        --kfolds {params.kfolds} \
+        --epochs {params.epochs} \
+        --ncalls {params.ncalls} \
+        --batch_size {params.batch_size} \
+        --svtype {params.svtype} \
+        -m {output.model}")
+
+rule score:
+  input:
+    model = "results_wf0/{test_sample}/{test_sample}.model.keras"
+  params:
+    channels = directory(os.path.join(svchan_dir, "svchan/{test_sample}/channels")),
+    vcf ='/project/gcg/Data/1KG/Manta/{test_sample}_manta.vcf'
+    # vcf='/Users/lsantuari/Documents/Projects/GTCG/sv-channels/sv-channels_manuscript/1KG_trios/Manta/{test_sample}/manta.vcf'
+  output:
+    vcf = "results_wf0/{test_sample}/{test_sample}.sv-channels.vcf"
+  conda:
+    "sv-channels"
+  shell:
+    """
+      set -xe
+      svchannels score \
+        {params.channels} {input.model} {params.vcf} {output.vcf}
+    """

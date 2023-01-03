@@ -1,0 +1,265 @@
+from snakemake.utils import min_version
+min_version("3.2")
+import os
+
+DEBUG=True
+
+basedir="/project/gcg/Data/simulated-data/"
+excl_list="/project/gcg/Data/1KG/github/sv-channels_141222/data/exclude.N-and-encodebl.10_12_hs37d5.bed"
+
+PARAMS=['coverage', 'insert-size', 'read-length']
+
+# auxiliary functions
+def get_param_type():
+    if DEBUG:
+        return ['coverage']
+    else:
+        l = ['coverage'] * 8 + ['insert-size'] * 6 + ['read-length'] * 6
+        l.extend(l)
+        return l
+
+def get_cov():
+    if DEBUG:
+        return [5]
+    else:
+        l = [5, 10, 15, 30, 45, 60, 75, 90]+[30]*12
+        l.extend(l)
+        return l
+
+
+def get_isize():
+    if DEBUG:
+        return [500]
+    else:
+        l = [500]*8+[200,250,300,400,500,600]+[500]*6
+        l.extend(l)
+        return l
+
+
+def get_rlen():
+    if DEBUG:
+        return [150]
+    else:
+        l = [150]*14+[36,50,75,100,150,250]
+        l.extend(l)
+        return l
+
+def get_genotype():
+    if DEBUG:
+        return ['hmz']
+    else:
+        return ['hmz']*18+['htz']*18
+
+
+rule all:
+  input:
+      expand([os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
+          "gridss", "gridss.vcf.gz")],
+          zip,
+          ptype=get_param_type(),
+          cov=get_cov(),
+          isize=get_isize(),
+          rlen=get_rlen(),
+          gt=get_genotype()
+      ),
+      expand([os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
+          "manta", "manta.vcf")],
+          zip,
+          ptype=get_param_type(),
+          cov=get_cov(),
+          isize=get_isize(),
+          rlen=get_rlen(),
+          gt=get_genotype()
+      ),
+      expand([os.path.join("{ptype}","c{cov}","i{isize}","r{rlen}","{gt}",
+      "svchannels","sv-channels.vcf")],
+          zip,
+          ptype=get_param_type(),
+          cov=get_cov(),
+          isize=get_isize(),
+          rlen=get_rlen(),
+          gt=get_genotype()
+      )
+
+
+rule manta:
+    input:
+        bam=os.path.join(basedir,"{ptype}/sv-gen/snakemake/data/",
+            "out/dup_indel_inv_tra/r{rlen}_i{isize}/cov{cov}/{gt}-sv.bam")
+    params:
+        fasta=os.path.join(basedir, "{ptype}/sv-gen/snakemake/data/10_12_hs37d5.fasta"),
+        debug="/usr/bin/time -v"
+    output:
+       dir=directory(os.path.join('{ptype}', 'c{cov}','i{isize}',
+           'r{rlen}', '{gt}', 'manta', 'manta_output')),
+       vcf=os.path.join('{ptype}','c{cov}','i{isize}',
+        'r{rlen}','{gt}','manta','manta.vcf')
+    threads: 24
+    conda:
+        "manta"
+    shell:
+        '''
+        set -euo pipefail;
+        {params.debug} configManta.py  \
+            --referenceFasta {params.fasta} \
+            --bam {input.bam} \
+            --runDir {output.dir};
+        sed -i 's/isEmail = isLocalSmtp()/isEmail = None/' {output.dir}/runWorkflow.py;
+        {params.debug} {output.dir}/runWorkflow.py \
+            -m local -j {threads};
+        gunzip -c  {output.dir}/results/variants/diploidSV.vcf.gz > {output.vcf}
+        '''
+
+rule manta_vcf2bedpe:
+    input:
+        os.path.join('{ptype}','c{cov}','i{isize}',
+            'r{rlen}','{gt}','manta','manta.vcf')
+    output:
+        os.path.join('{ptype}','c{cov}','i{isize}',
+            'r{rlen}','{gt}','manta','manta.bedpe')
+    shell:
+        '''
+        set -euo pipefail;
+        Rscript ../../utils/R/vcf2bedpe.R -i {input} -o {output}
+        '''
+
+rule gridss:
+    input:
+        bam=os.path.join(basedir, "{ptype}/sv-gen/snakemake/data/",
+            "out/dup_indel_inv_tra/r{rlen}_i{isize}/cov{cov}/{gt}-sv.bam"),
+        bl=excl_list
+    params:
+        fasta=os.path.join(basedir, "coverage/sv-gen/snakemake/data/10_12_hs37d5.fasta"),
+        debug="/usr/bin/time -v"
+    output:
+        vcf=os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
+          "gridss", "gridss.vcf.gz"),
+        assembly=os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
+          "gridss", "assembly.bam")
+    threads: 24
+    conda:
+        "gridss2"
+    shell:
+        '''
+        set -euo pipefail;
+        export _JAVA_OPTIONS="-Xmx31g";
+        {params.debug} gridss gridss.CallVariants \
+            WORKER_THREADS={threads} \
+            REFERENCE_SEQUENCE={params.fasta} \
+            OUTPUT={output.vcf} \
+            ASSEMBLY={output.assembly} \
+            INPUT={input.bam} \
+            BLACKLIST={input.bl}
+        '''
+
+rule extract_gridss:
+    input:
+        os.path.join("{ptype}","c{cov}","i{isize}","r{rlen}","{gt}",
+            "gridss","gridss.vcf.gz")
+    output:
+        os.path.join("{ptype}","c{cov}","i{isize}","r{rlen}","{gt}",
+            "gridss","gridss.vcf")
+    shell:
+        '''
+        set -euo pipefail;
+        gunzip -c  {input} > {output}
+        '''
+
+rule extract_signals:
+    input:
+        bam = os.path.join(basedir, "{ptype}/sv-gen/snakemake/data/",
+              "out/dup_indel_inv_tra/r{rlen}_i{isize}/cov{cov}/{gt}-sv.bam")
+    params:
+        fasta=os.path.join(basedir, "{ptype}/sv-gen/snakemake/data/10_12_hs37d5.fasta"),
+        debug="/usr/bin/time -v"
+    output:
+        dir=directory(os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
+            "svchannels","signals"))
+    conda:
+        "refactor"
+    shell:
+        '''
+        set -euo pipefail;
+        {params.debug} svchannels extract-signals {params.fasta} {input.bam} -o {output.dir}
+        '''
+
+rule generate_channels:
+    input:
+        dir = os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
+            "svchannels","signals"),
+        bedpe = os.path.join('{ptype}','c{cov}','i{isize}',
+            'r{rlen}','{gt}','manta','manta.bedpe')
+    params:
+        fasta=os.path.join(basedir, "{ptype}/sv-gen/snakemake/data/10_12_hs37d5.fasta"),
+        debug="/usr/bin/time -v"
+    output:
+        dir=directory(os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
+            "svchannels","channels"))
+    shell:
+        '''
+        set -euo pipefail;
+        {params.debug} svchannels generate-channels --reference {params.fasta} {input.dir} {output.dir} {input.bedpe}
+        '''
+
+rule label:
+    input:
+        channels=os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
+            "svchannels","channels"),
+        truth_set=os.path.join(basedir, "{ptype}/sv-gen/snakemake/data/"
+                  "out/dup_indel_inv_tra/{gt}-sv.proper.bedpe"),
+        fai=os.path.join(basedir, "{ptype}/sv-gen/snakemake/data/10_12_hs37d5.fasta.fai")
+    params:
+        debug = "/usr/bin/time -v"
+    output:
+        dir=directory(os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
+            "svchannels","labels"))
+    shell:
+        '''
+        {params.debug} svchannels label \
+            -f {input.fai} \
+            -o {output.dir} \
+            {input.channels}/sv_positions.bedpe \
+            {input.truth_set}
+        '''
+
+rule cv:
+    input:
+        svchan=os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
+               "svchannels","channels"),
+        svlab=os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
+            "svchannels","labels"),
+        vcf=os.path.join('{ptype}', 'c{cov}','i{isize}',
+        'r{rlen}', '{gt}', 'manta', 'manta.vcf')
+    params:
+        debug = "/usr/bin/time -v",
+        epochs=1,
+        ncalls=12,
+        batch_size=32,
+        validation_split=0.3,
+        kfolds=2,
+        svtype='DEL'
+    output:
+        log=os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
+            "svchannels","cv.log"),
+        vcf=os.path.join("{ptype}", "c{cov}", "i{isize}", "r{rlen}", "{gt}",
+            "svchannels","sv-channels.vcf"),
+    shell:
+        '''
+        set -euo pipefail;
+
+        OUTDIR="$(dirname "{output.vcf}")"
+
+        {params.debug} svchannels cv \
+          {input.svchan}/channels.zarr.zip \
+          {input.svlab}/labels.json.gz \
+          -o ${{OUTDIR}} \
+          -l {output.log} \
+          --validation_split {params.validation_split} \
+          --kfolds {params.kfolds} \
+          --epochs {params.epochs} \
+          --ncalls {params.ncalls} \
+          --batch_size {params.batch_size} \
+          --svtype {params.svtype} \
+          --manta_vcf {input.vcf} \
+          --vcf_out {output.vcf}
+          '''

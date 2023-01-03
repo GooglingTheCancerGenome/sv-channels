@@ -1,1 +1,7 @@
 !**/__pycache__/
+.snakemake
+logs
+*egg-info
+*__pycache__
+.DS_Store
+

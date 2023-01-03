@@ -1,0 +1,167 @@
+from os.path import join as opj
+SAMPLES = "HG00420 HG01053 HG01114 HG01881 HG02018 HG02924 HG03992 NA06991".split()
+OUTDIR = config["out_dir"]
+SVCHAN = config["svchan_dir"]
+
+
+validation_sample = "HG01053"
+test_sample = "HG00420"
+
+train_channels = ",".join(opj(OUTDIR, s, "channels", "channels.zarr.zip") for s in SAMPLES if s not in [validation_sample, test_sample])
+train_labels = ",".join(opj(OUTDIR, s, "labels", "labels.json.gz") for s in SAMPLES if s not in [validation_sample, test_sample]),
+
+
+DEBUG = "echo"
+DEBUG = "/usr/bin/time -v"
+
+configfile: "sm.config.yml"
+
+rule all:
+    input:
+        expand(opj(OUTDIR, "{sample}", "labels", "labels.json.gz"), sample=SAMPLES),
+        dir = directory(opj(OUTDIR, validation_sample, "validation")),
+
+
+rule extract_signals:
+    resources:
+        time = "92:00:00",
+        memGB = 12
+    conda: "../environment.yaml"
+    input:
+        bam=opj(config['bam_dir'], "{sample}.bam"),
+        fa=config["fasta"],
+    params:
+        dir = opj(OUTDIR, "{sample}", "signals")
+
+    output:
+        directory(opj(OUTDIR, "{sample}", "signals")),
+        events = opj(OUTDIR, "{sample}", "signals", "sv-channels.events2d.txt.gz"),
+    shell:
+        """
+        {DEBUG} python {SVCHAN}/svchannels/extract_signals.py {input.fa} {input.bam} -o {params.dir}
+        """
+
+rule generate_channels:
+    resources:
+        time = "92:00:00",
+        memGB = 12
+    conda: "../environment.yaml"
+    input:
+        opj(OUTDIR, "{sample}", "signals"),
+        fasta = config["fasta"],
+        events = opj(OUTDIR, "{sample}", "signals", "sv-channels.events2d.txt.gz"),
+	# create channels for this input bed file
+	#bedpe = opj(config["bedpe_dir"], "{sample}", "manta.bedpe"),
+        bedpe = "/hpc/compgen/users/bpedersen/sv-channels-tnsv/{sample}.bedpe"
+
+    params:
+        outdir = opj(OUTDIR, "{sample}", "channels"),
+        indir = opj(OUTDIR, "{sample}", "signals"),
+
+    output:
+        directory(opj(OUTDIR, "{sample}", "channels")),
+        sv_positions = opj(OUTDIR, "{sample}", "channels", "sv_positions.bedpe"),
+        channels = opj(OUTDIR, "{sample}", "channels", "channels.zarr.zip"),
+
+    shell:
+        """
+        {DEBUG} python {SVCHAN}/svchannels/generate_channels.py {params.indir} {params.outdir} {input.bedpe} --reference {input.fasta}
+        """
+
+rule label_variants:
+    resources:
+        time = "92:00:00",
+        memGB = 4
+    conda: "../environment.yaml"
+    input:
+        fai = config["fasta"] + ".fai",
+        truth_bed = opj(config["truth_bedpe_dir"], "{sample}.DEL.bedpe"),
+        sv_positions = opj(OUTDIR, "{sample}", "channels", "sv_positions.bedpe"),
+
+    output:
+        labels = opj(OUTDIR, "{sample}", "labels", "labels.json.gz"),
+
+    params:
+        dir = opj(OUTDIR, "{sample}", "labels")
+
+    shell:
+        """
+{DEBUG} python {SVCHAN}/svchannels/label_windows.py \
+           --fai {input.fai} \
+           --outputpath {params.dir} \
+           --ground_truth {input.truth_bed} \
+           --sv_positions {input.sv_positions}
+        """
+
+rule train:
+    resources:
+        time = "92:00:00",
+        memGB = 256,
+        partition = "gpu",
+        gpus_per_node = "RTX6000:1",
+
+    conda: "../environment.yaml"
+
+    input:
+        # labels for all samples, the command excludes test and validation samples.
+        labels = expand(opj(OUTDIR, "{sample}", "labels", "labels.json.gz"), sample=SAMPLES),
+        channels = expand(opj(OUTDIR, "{sample}", "channels", "channels.zarr.zip"), sample=SAMPLES),
+
+    output:
+        dir = directory(opj(OUTDIR, validation_sample, "validation")),
+
+    params:
+        svtype = "DEL",
+        n = 100,
+        channels = train_channels,
+        labels = train_labels,
+
+    shell:
+        """
+{DEBUG} python {SVCHAN}/svchannels/create_model.py \
+        --windows {params.channels} \
+        --labels {params.labels} \
+        -s {params.svtype} \
+        -n {params.n} \
+        --validation_windows {OUTDIR}/{validation_sample}/channels/channels.zarr.zip \
+        --validation_labels {OUTDIR}/{validation_sample}/labels/labels.json.gz \
+        -m {output.dir}/manta_model.keras \
+        -l {output.dir}/manta_model.log \
+        -p {output.dir}/manta_model.hparams.npy
+        """
+
+
+rule predict:
+    resources:
+        time = "92:00:00",
+        memGB = 32,
+        partition = "gpu",
+        gpus_per_node = "RTX6000:1",
+
+    conda: "../environment.yaml"
+
+    output:
+       dir = directory(opj(OUTDIR, "validation"))
+
+    params:
+        model = config["model"],
+        test_sample = config["test_sample"],
+        channels = config["channels"],
+        bedpe = config["test_bedpe"],
+        exclude = config["exclude"],
+        twobit = config["twobit"],
+
+    shell:
+       """
+{DEBUG} python {SVCHAN}/svchannels/predict.py \
+        -b {params.bedpe} \
+        -m {params.model} \
+        -n trained \
+        -sn {params.test_sample} \
+        -i {params.channels} \
+        -s DEL \
+        -o {output.dir} \
+        --sv_channels {SVCHAN} \
+        --exclude {params.exclude} \
+        -tb {params.twobit}
+       """

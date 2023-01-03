@@ -1,0 +1,62 @@
+from snakemake.utils import min_version
+min_version("3.2")
+
+manta_in =   '/Users/lsantuari/Documents/Projects/GTCG/sv-channels/sv-channels_manuscript/'\
+             '1KG_trios/Manta/HG00420/manta.vcf'
+multisample = '/Users/lsantuari/Documents/Projects/GTCG/sv-channels/'\
+              'sv-channels_manuscript/UMCU_hpc/8_samples_channels.npz'
+
+# remove bins of validation chromosome chr22
+bin_list = [str(i) for i in range(1,67) if i not in [43,44,45]]
+
+rule all:
+  input:
+    expand("results_wf3/{outercv_test_sample}/{bin}/{bin}_pos_dict.json",
+      bin=bin_list, outercv_test_sample=['HG00420']),
+
+rule locso_per_bin:
+  input:
+    npz=multisample,
+  params:
+    innercv_test_sample='HG01053',
+    val_chrom='chr22',
+    bin='{bin}',
+    epochs=100,
+    ncalls=100,
+    batch_size=32
+  output:
+    outdir = directory("results_wf3/{outercv_test_sample}/{bin}"),
+    pos_dict="results_wf3/{outercv_test_sample}/{bin}/{bin}_pos_dict.json"
+  conda:
+    "refactor"
+  shell:
+    """
+    set -xe
+    python nested_lobso_cv.py \
+        -i "{input.npz}" \
+        -o "{output.outdir}" \
+        --outercv_test_sample {wildcards.outercv_test_sample} \
+        --innercv_test_sample {params.innercv_test_sample} \
+        --test_bin {params.bin} \
+        --val_chrom {params.val_chrom} \
+        -e {params.epochs} \
+        -n {params.ncalls} \
+        --batch_size {params.batch_size}
+    """
+
+# rule collect_results:
+#   input:
+#     resdir='results_wf3/{outercv_test_sample}',
+#     vcf=manta_in
+#   output:
+#     vcf='results_wf3/{outercv_test_sample}/{outercv_test_sample}.sv-channels.vcf'
+#   conda:
+#     "refactor"
+#   shell:
+#     """
+#     set -xe
+#     python ../utils/collect_results.py \
+#           -id {input.resdir} \
+#           -i {input.vcf} \
+#           -o {output.vcf}
+#     """

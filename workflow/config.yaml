@@ -1,0 +1,39 @@
+cluster:
+  mkdir -p logs/{rule} &&
+  sbatch
+    --cpus-per-task={threads}
+    --mem={resources.memGB}G
+    --job-name={wildcards}-{rule}-smk
+    --time={resources.time}
+    --output=logs/{rule}/{rule}-{wildcards}-%j.out
+    --error=logs/{rule}/{rule}-{wildcards}-%j.err
+    --partition={resources.partition}
+    --gpus-per-node={resources.gpus_per_node}
+
+default-resources:
+  - memGB=8
+  - partition=cpu
+  - gpus_per_node=0
+  - threads=1
+
+restart-times: 3
+max-jobs-per-second: 10
+max-status-checks-per-second: 1
+local-cores: 1
+latency-wait: 60
+jobs: 500
+keep-going: False
+rerun-incomplete: True
+printshellcmds: True
+scheduler: greedy
+use-conda: True
+
+
+#jobs: 50
+#cluster: slurm # sbatch -t {resources.time} --mem={resources.memGB}G -c 1 --error logs/sm.slurm.%j.$N.{rule}.err --output logs/sm.slurm.%j.$N.{rule}.out"
+#use-conda: true
+#use-singularity: false
+#latency-wait: 240
+#restart-times: 3
+#keep-going: false
+#rerun-incomplete: true
