@@ -58,9 +58,13 @@ wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O mi
 bash miniconda.sh
 # update Conda
 conda update -y conda
-# create & activate new env with installed deps
-conda env create -n sv-channels -f environment.yaml
+# install Mamba
+conda install -n base -c conda-forge -y mamba
+# create a new environment with dependencies & activate it
+mamba env create -n sv-channels -f environment.yaml
 conda activate sv-channels
+# install svchannels CLI
+python setup.py install
 ```
 
 **3. Execution.**
@@ -71,38 +75,36 @@ conda activate sv-channels
 -   **output**:
     - SV callset in [VCF](https://samtools.github.io/hts-specs/VCFv4.3.pdf) format
 
-### Run sv-channels on test data
-Install sv-channels:
-```commandline
-python setup.py install
+_1. Extract signals._
 ```
-Process test set:
-1. Extract signals:
-```commandline
-svchannels extract-signals data/test.fasta data/test.bam test
+svchannels extract-signals data/test.fasta data/test.bam -o test
 ```
-2. Convert VCF files (Manta callset and truth set) to BEDPE format:
-```commandline
+
+_2. Convert VCF files (Manta callset and truth set) to BEDPE format._
+```
 Rscript svchannels/utils/R/vcf2bedpe.R -i data/test.vcf \
                                        -o data/test.bedpe
 Rscript svchannels/utils/R/vcf2bedpe.R -i data/vcf/manta_out/manta.vcf \
                                        -o test/manta.bedpe
 ```
-3. Generate channels:
-```commandline
+
+_3. Generate channels._
+```
 svchannels generate-channels --reference data/test.fasta test channels test/manta.bedpe
 ```
-4. Label SVs:
-```commandline
-svchannels label -v channels/sv_positions.bedpe -g data/test.bedpe -f data/test.fasta.fai -p labels
+
+_4. Label SVs._
 ```
-5. Train the model:
-```commandline
-svchannels train channels/channels.zarr.zip labels/labels.json.gz \
-    -m model.keras
+svchannels label -f data/test.fasta.fai -o labels channels/sv_positions.bedpe data/test.bedpe
 ```
-6. Score SVs:
-```commandline
+
+_5. Train the model._
+```
+svchannels train channels/channels.zarr.zip labels/labels.json.gz -m model.keras
+```
+
+_6. Score SVs._
+```
 svchannels score channels model.keras data/vcf/manta_out/manta.vcf sv-channels.vcf
 ```
 
