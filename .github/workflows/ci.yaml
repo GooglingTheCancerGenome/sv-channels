@@ -14,7 +14,6 @@ jobs:
     env:
       REGISTRY: ghcr.io
       NAME: sv-channels-${{ matrix.schedulers }}
-      IMAGE: ${{ github.repository_owner }}/sv-channels-${{ matrix.schedulers }}
       TAG: "dev"
     steps:
       - name: Log into registry
@@ -25,7 +24,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Run workflow
         run: |
-          docker run -d -p 10000:22 --name $NAME ${REGISTRY}/${IMAGE,,}:${TAG}
+          docker run -d -p 10000:22 --name $NAME ${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/${NAME}:${TAG}
           sleep 10
           docker ps -a
           docker exec -u xenon -t $NAME bash -c "cd sv-channels && ./run.sh"
