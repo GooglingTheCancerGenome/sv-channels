@@ -94,7 +94,7 @@ svchannels generate-channels --reference data/test.fasta test channels test/mant
 ```
 4. Label SVs:
 ```commandline
-svchannels label -v channels/sv_positions.bedpe -g data/test.bedpe -f data/test.fasta.fai -p labels
+svchannels label -f data/test.fasta.fai -o labels channels/sv_positions.bedpe data/test.bedpe
 ```
 5. Train the model:
 ```commandline
