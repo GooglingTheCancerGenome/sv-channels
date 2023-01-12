@@ -2,6 +2,13 @@
 
 set -e
 
+MY_ENV=wf
+
+# activate conda env
+eval "$(conda shell.bash hook)"
+conda activate "$MY_ENV"
+conda list
+
 # Extract signals
 svchannels extract-signals data/test.fasta data/test.bam -o test
 # Convert VCF files (Manta callset and truth set) to BEDPE format
