@@ -67,13 +67,11 @@ p=vcf2bedpe
 cmd="Rscript svchannels/utils/R/$p.R -i data/test.vcf -o data/test.bedpe"
 JOB_ID=$(submit "$cmd" "$p")
 JOBS+=($JOB_ID)
-waiting
 
 p=vcf2bedpe
-cmd="Rscript svchannels/utils/R/$p.R -i -i data/vcf/manta_out/manta.vcf -o data/test.bedpe -o test/manta.bedpe"
+cmd="Rscript svchannels/utils/R/$p.R -i data/vcf/manta_out/manta.vcf -o test/manta.bedpe"
 JOB_ID=$(submit "$cmd" "$p")
 JOBS+=($JOB_ID)
-waiting
 
 # Extract signals
 p=svchannels
