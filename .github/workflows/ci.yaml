@@ -27,4 +27,4 @@ jobs:
           docker run -d -p 10000:22 --name $NAME ${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/${NAME}:${TAG}
           sleep 10
           docker ps -a
-          docker exec -u xenon -t $NAME bash -c "cd sv-channels && ./run.sh"
+          docker exec -u xenon -t $NAME bash -c "cd sv-channels && ./run.sh ${{ matrix.schedulers }}"
