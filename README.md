@@ -106,6 +106,29 @@ svchannels train channels/channels.zarr.zip labels/labels.json.gz \
 svchannels score channels model.keras data/vcf/manta_out/manta.vcf sv-channels.vcf
 ```
 
+7. Plot results:
+```commandline
+faToTwoBit data/test.fasta data/test.2bit
+grep 'DEL' data/test.bedpe > data/test.DEL.bedpe
+python svchannels/utils/python/bedpe_to_vcf.py -i data/test.DEL.bedpe -o data/test.proper.vcf -b data/test.2bit
+
+Rscript svchannels/utils/R/plot_evaluation_test_data.R \
+    --svchannels sv-channels.vcf \
+    --manta data/vcf/manta_out/manta.vcf \
+    --gridss data/vcf/gridss_out/gridss.vcf \
+    -t data/test.proper.vcf \
+    -f sv-channels.metric
+```
+
+Results:
+
+| caller        | calls | TP | FP | precision (%) | recall (%) | F1 score (%) |
+|---------------|-------|----|----|---------------|---------|-----------|
+| gridss        |  1422  | 1174  | 248 | 82.56         | 59.78   | 69.35     |
+| manta         |  1530  | 1494  | 36 | 97.65         | 76.07   | 85.52     |
+| sv-channels   |  1528  | 1528  | 34 | 97.77         | 76.07   |  85.57       |
+
+
 ## Contributing
 
 If you want to contribute to the development of _sv-channels_,
