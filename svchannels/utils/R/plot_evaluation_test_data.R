@@ -148,7 +148,7 @@ p <-
 p <-
   add_argument(
     p,
-    "-gridss",
+    "--gridss",
     help = paste("path to the GRIDSS VCF file"),
     type = "character",
     default = 'data/vcf/gridss_out/gridss.vcf'
@@ -175,7 +175,7 @@ p <-
 
 p <-
   add_argument(p,
-               "-s",
+               "--sample",
                help = "sample name",
                type = "character",
                default = 'HTZ')
@@ -199,7 +199,7 @@ p <-
 # parse the command line arguments
 argv <- parse_args(p)
 
-sampleID <- argv$s
+sampleID <- argv$sample
 svtype <- 'DEL'
 
 callsets <- data.frame(cbind(
