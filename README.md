@@ -58,9 +58,13 @@ wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O mi
 bash miniconda.sh
 # update Conda
 conda update -y conda
-# create & activate new env with installed deps
-conda env create -n sv-channels -f environment.yaml
+# install Mamba
+conda install -n base -c conda-forge -y mamba
+# create a new environment with dependencies & activate it
+mamba env create -n sv-channels -f environment.yaml
 conda activate sv-channels
+# install svchannels CLI
+python setup.py install
 ```
 
 **3. Execution.**
@@ -71,47 +75,44 @@ conda activate sv-channels
 -   **output**:
     - SV callset in [VCF](https://samtools.github.io/hts-specs/VCFv4.3.pdf) format
 
-### Run sv-channels on test data
-Install sv-channels:
-```commandline
-python setup.py install
+_1. Convert VCF files (Manta callset and truth set) to BEDPE format._
 ```
-Process test set:
-1. Extract signals:
-```commandline
-svchannels extract-signals data/test.fasta data/test.bam -o test
-```
-2. Convert VCF files (Manta callset and truth set) to BEDPE format:
-```commandline
 Rscript svchannels/utils/R/vcf2bedpe.R -i data/test.vcf \
                                        -o data/test.bedpe
 Rscript svchannels/utils/R/vcf2bedpe.R -i data/vcf/manta_out/manta.vcf \
                                        -o test/manta.bedpe
 ```
-3. Generate channels:
-```commandline
+
+_2. Extract signals._
+```
+svchannels extract-signals data/test.fasta data/test.bam -o test
+```
+
+_3. Generate channels._
+```
 svchannels generate-channels --reference data/test.fasta test channels test/manta.bedpe
 ```
-4. Label SVs:
-```commandline
+
+_4. Label SVs._
+```
 svchannels label -f data/test.fasta.fai -o labels channels/sv_positions.bedpe data/test.bedpe
 ```
-5. Train the model:
-```commandline
-svchannels train channels/channels.zarr.zip labels/labels.json.gz \
-    -m model.keras
+
+_5. Train the model._
 ```
-6. Score SVs. Note that _channels_ should be the channels folder generated from the hold-out test sample and _manta.vcf_ should be the Manta callset called on the hold-out test sample. For the Continuous Integration, we are using the same test data as in the training step for testing purpose.
-```commandline
+svchannels train channels/channels.zarr.zip labels/labels.json.gz -m model.keras
+```
+
+_6. Score SVs._
+```
 svchannels score channels model.keras data/vcf/manta_out/manta.vcf sv-channels.vcf
 ```
 
-7. Plot results:
-```commandline
+_7. Evaluate results._
+```
 faToTwoBit data/test.fasta data/test.2bit
 grep 'DEL' data/test.bedpe > data/test.DEL.bedpe
 python svchannels/utils/python/bedpe_to_vcf.py -i data/test.DEL.bedpe -o data/test.proper.vcf -b data/test.2bit
-
 Rscript svchannels/utils/R/plot_evaluation_test_data.R \
     --svchannels sv-channels.vcf \
     --manta data/vcf/manta_out/manta.vcf \
@@ -120,14 +121,11 @@ Rscript svchannels/utils/R/plot_evaluation_test_data.R \
     -f sv-channels.metric
 ```
 
-Results:
-
-| caller        | calls | TP | FP | precision (%) | recall (%) | F1 score (%) |
-|---------------|-------|----|----|---------------|---------|-----------|
-| gridss        |  1422  | 1174  | 248 | 82.56         | 59.78   | 69.35     |
-| manta         |  1530  | 1494  | 36 | 97.65         | 76.07   | 85.52     |
-| sv-channels   |  1528  | 1528  | 34 | 97.77         | 76.07   |  85.57       |
-
+| caller      | calls | TP | FP   | precision (%) | recall (%) | F1 score (%) |
+|-------------|-------|----|------|---------------|------------|-----------|
+| gridss      | 1422 | 1174 | 248 | 82.56         | 59.78      | 69.35     |
+| manta       | 1530 | 1494 | 36  | 97.65         | 76.07      | 85.52     |
+| sv-channels | 1528 | 1528 | 34  | 97.77         | 76.07      |  85.57    |
 
 ## Contributing
 

@@ -22,10 +22,15 @@ authors:
     family-names: Shneider
     given-names: Carl
     orcid: https://orcid.org/0000-0002-3689-6959
+  -
+    affiliation: "University Medical Center Utrecht"
+    family-names: Brent
+    given-names: Pedersen
+    orcid: https://orcid.org/0000-0003-1786-2216
 
 cff-version: "1.0.3"
-date-released: "2021-03-05"
-doi: 10.5281/zenodo.4584797
+date-released: 2023-01-16
+doi: 10.5281/zenodo.4584796
 keywords:
   - "bioinformatics"
   - "deep learning"
@@ -44,4 +49,4 @@ license: Apache-2.0
 message: "If you use this software, please cite it using these metadata"
 repository-code: "https://github.com/GooglingTheCancerGenome/sv-channels"
 title: sv-channels
-version: "0.1.0"
+version: "0.2.0"

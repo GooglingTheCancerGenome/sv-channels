@@ -1,0 +1,30 @@
+name: CI
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "0 0 1 * *"  # run monthly
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        schedulers: ["gridengine", "slurm"]
+    env:
+      REGISTRY: ghcr.io
+      NAME: sv-channels-${{ matrix.schedulers }}
+      TAG: "dev"
+    steps:
+      - name: Log into registry
+        uses: docker/login-action@v1
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run workflow
+        run: |
+          docker run -d -p 10000:22 --name $NAME ${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/${NAME}:${TAG}
+          sleep 10
+          docker ps -a
+          docker exec -u xenon -t $NAME bash -c "cd sv-channels && ./run.sh ${{ matrix.schedulers }}"

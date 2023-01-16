@@ -1,41 +1,48 @@
 {
-    "creators": [
-        {
-            "affiliation": "University Medical Center Utrecht",
-            "name": "Santuari, Luca",
-            "orcid": "0000-0001-8784-2507"
-        },
-        {
-            "affiliation": "Netherlands eScience Center",
-            "name": "Kuzniar, Arnold",
-            "orcid": "0000-0003-1711-7961"
-        },
-        {
-            "affiliation": "Netherlands eScience Center",
-            "name": "Georgievska, Sonja"
-        },
-        {
-            "affiliation": "University Medical Center Utrecht",
-            "name": "Shneider, Carl",
-            "orcid": "0000-0002-3689-6959"
-        }
-    ],
-    "keywords": [
-        "bioinformatics",
-        "deep learning",
-        "cancer genomics",
-        "whole genome sequencing",
-        "structural variants",
-        "variant calling",
-        "SV detection",
-        "SV calling",
-        "WGS",
-        "BAM",
-        "VCF",
-        "CNN"
-    ],
-    "license": {
-        "id": "Apache-2.0"
+  "creators": [
+    {
+      "affiliation": "University Medical Center Utrecht",
+      "name": "Santuari, Luca",
+      "orcid": "0000-0001-8784-2507"
     },
-    "title": "sv-channels"
+    {
+      "affiliation": "Netherlands eScience Center",
+      "name": "Kuzniar, Arnold",
+      "orcid": "0000-0003-1711-7961"
+    },
+    {
+      "affiliation": "Netherlands eScience Center",
+      "name": "Georgievska, Sonja"
+    },
+    {
+      "affiliation": "University Medical Center Utrecht",
+      "name": "Shneider, Carl",
+      "orcid": "0000-0002-3689-6959"
+    },
+    {
+      "affiliation": "University Medical Center Utrecht",
+      "name": "Brent, Pedersen",
+      "orcid": "0000-0003-1786-2216"
+    }
+  ],
+  "keywords": [
+    "bioinformatics",
+    "deep learning",
+    "cancer genomics",
+    "whole genome sequencing",
+    "structural variants",
+    "variant calling",
+    "SV detection",
+    "SV calling",
+    "WGS",
+    "BAM",
+    "VCF",
+    "CNN"
+  ],
+  "license": {
+    "id": "Apache-2.0"
+  },
+  "publication_date": "2023-01-01",
+  "title": "sv-channels",
+  "version": "0.2.0"
 }
