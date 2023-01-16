@@ -101,7 +101,7 @@ svchannels label -f data/test.fasta.fai -o labels channels/sv_positions.bedpe da
 svchannels train channels/channels.zarr.zip labels/labels.json.gz \
     -m model.keras
 ```
-6. Score SVs:
+6. Score SVs. Note that _channels_ should be the channels folder generated from the hold-out test sample and _manta.vcf_ should be the Manta callset called on the hold-out test sample. For the Continuous Integration, we are using the same test data as in the training step for testing purpose.
 ```commandline
 svchannels score channels model.keras data/vcf/manta_out/manta.vcf sv-channels.vcf
 ```
