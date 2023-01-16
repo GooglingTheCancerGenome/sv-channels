@@ -17,6 +17,7 @@ dependencies:
   - tensorflow>=2.0.0
   - r-base
   - r-argparser
+  - r-ggplot2
   - bioconductor-structuralvariantannotation=1.6
   - xenon-cli
   - jq
