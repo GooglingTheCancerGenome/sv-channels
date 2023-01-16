@@ -79,7 +79,7 @@ python setup.py install
 Process test set:
 1. Extract signals:
 ```commandline
-svchannels extract-signals data/test.fasta data/test.bam test
+svchannels extract-signals data/test.fasta data/test.bam -o test
 ```
 2. Convert VCF files (Manta callset and truth set) to BEDPE format:
 ```commandline
