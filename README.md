@@ -11,16 +11,16 @@ The workflow includes the following key steps:
 **Transform read alignments into channels**
 
 For each pair of SV breakpoints, a 2D Numpy array called *window-pair* is constructed.
-The shape of a window is [window_size*2+padding, number_of_channels], where the
+The shape of a window is [window_size*2+buffer_size, number_of_channels], where the
 genomic interval encompassing each window is centered on the breakpoint position with
-a context of [-window_size/2, +window_size/2]. From all the reads overlapping this
-genomic interval and from the relative segment subsequence of the reference sequence
+a context of [-window_size/2, +window_size/2]. window_size is 124 bp by default.
+From all the reads overlapping this genomic interval and from the relative segment subsequence of the reference sequence
 *number_of_channels* channels are constructed, where each channel encode a signal that
 can be used for SV calling. The list of channels can be found [here](doc/channels_list.md).
-The two windows are joined as *linked-windows* with a zero padding 2D array of shape
-[10, number_of_channels] in between to avoid artifacts related to the CNN kernel
+The two windows are joined as *window-pair* with a buffer, a 2D array of zeros with shape
+[8, number_of_channels] in between to avoid artifacts related to the CNN kernel passing
 at the interface between the two windows. The window-pairs are labelled as *DEL* when
-the breakpoint positions overlap the DEL callset used as the ground truth and *noDEL* otherwise.
+the breakpoint positions overlap the DEL callset used as ground truth and *noDEL* otherwise.
 
 **Labelling**
 
