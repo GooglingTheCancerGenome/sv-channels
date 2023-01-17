@@ -37,7 +37,7 @@ or noDEL (false positives).
 The model is run on the window-pairs of a test sample. The SV qualities for the Manta DELs (QUAL) of the test
 sample are substituted with the posterior probabilities obtained by the model.
 
-## Dependencies
+### Dependencies
 
 -   [Conda](https://conda.io/)
 -   listed in [`environment.yaml`](/environment.yaml)
@@ -72,72 +72,81 @@ conda activate sv-channels
 -   **output**:
     - SV callset in [VCF](https://samtools.github.io/hts-specs/VCFv4.3.pdf) format
 
-### Run sv-channels on test data
-Install sv-channels:
-```commandline
-python setup.py install
+### Run on test data
+
+1. Extract signals.
+
 ```
-Run sv-channels:
-1. Extract signals:
-```commandline
 svchannels extract-signals reference.fasta sample.bam -o signals
 ```
-2. Convert Manta VCF file (Manta callset) to BEDPE format:
-```commandline
-Rscript svchannels/utils/R/vcf2bedpe.R -i manta.vcf \
-                                       -o manta.bedpe
+
+2. Convert VCF file (Manta callset) to BEDPE format.
+
 ```
-3. Generate channels:
-```commandline
+Rscript svchannels/utils/R/vcf2bedpe.R -i manta.vcf -o manta.bedpe
+```
+
+3. Generate channels.
+
+```
 svchannels generate-channels --reference reference.fasta signals channels manta.bedpe
 ```
-4. Download the [pretrained model](https://github.com/GooglingTheCancerGenome/sv-channels/tree/master/svchannels/trained_model):
-```commandline
-wget https://github.com/GooglingTheCancerGenome/sv-channels/blob/master/svchannels/trained_model/model.keras
+
+4. Use the [pretrained model](svchannels/trained_model).
+
+5. Score SVs.
+
 ```
-5. Score SVs:
-```commandline
 svchannels score channels model.keras manta.vcf sv-channels.vcf
 ```
 
 ### Train a new model
-1. Extract signals:
-```commandline
+
+1. Extract signals.
+
+```
 svchannels extract-signals reference.fasta training_sample.bam -o signals
 ```
-2. Convert VCF files (Manta callset and truth set) to BEDPE format:
-```commandline
+
+2. Convert VCF files (Manta callset and truth set) to BEDPE format.
+
+```
 Rscript svchannels/utils/R/vcf2bedpe.R -i training_sample_ground_truth.vcf \
                                        -o training_sample_ground_truth.bedpe
 Rscript svchannels/utils/R/vcf2bedpe.R -i training_sample_manta.vcf \
                                        -o training_sample_manta.bedpe
 ```
-3. Generate channels:
-```commandline
+
+3. Generate channels.
+
+```
 svchannels generate-channels --reference reference.fasta signals channels training_sample_manta.bedpe
 ```
-4. Label SVs:
-```commandline
+
+4. Label SVs.
+
+```
 svchannels label -f reference.fasta.fai -o labels channels/sv_positions.bedpe training_sample_ground_truth.bedpe
 ```
-5. Train the model:
-```commandline
-svchannels train channels/channels.zarr.zip labels/labels.json.gz \
-    -m model.keras
+
+5. Train the model.
+
 ```
-If there are multiple training samples, step 1 to 4 are repeated for each sample to generate channels and labels.
-Channels and labels for the training samples are added as comma separated arguments in step 5.
-For instance, for two training samples:
-```commandline
+svchannels train channels/channels.zarr.zip labels/labels.json.gz -m model.keras
+```
+
+If there are multiple training samples, step 1-4 are repeated for each sample to
+generate channels and labels. The channels and labels for the training samples are
+added as comma-separated arguments in step 5. See an example below:
+
+```
 svchannels train \
     channels_sample1/channels.zarr.zip,channels_sample2/channels.zarr.zip \
     labels_sample1/labels.json.gz,labels_sample2/labels.json.gz \
     -m model.keras
 ```
 
-### Continuous Integration (CI)
-Note that only for CI testing we use the same BAM file
-_data/test.bam_ for model training and testing.
+_Note_: For the purpose of CI testing, we used the same BAM file (_[data/test.bam_](data/)) for both model training and testing.
 
 ## Contributing
 
