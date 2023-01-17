@@ -23,15 +23,15 @@
 21. number of SPLIT reads with MINUS MINUS orientation
 22. number of SPLIT reads with MINUS PLUS orientation
 23. number of SPLIT reads with PLUS MINUS orientation
-24. number of DISCORDANT reads with PLUS MINUS orientation, each cell covers 10 bp
-25. number of DISCORDANT reads with PLUS PLUS orientation, each cell covers 10 bp
-26. number of DISCORDANT reads with MINUS MINUS orientation, each cell covers 10 bp
-27. number of DISCORDANT reads with MINUS PLUS orientation, each cell covers 10 bp
+24. number of DISCORDANT reads with PLUS MINUS orientation
+25. number of DISCORDANT reads with PLUS PLUS orientation
+26. number of DISCORDANT reads with MINUS MINUS orientation
+27. number of DISCORDANT reads with MINUS PLUS orientation
 28. (orphans) number of SPLIT reads with PLUS PLUS orientation
 29. (orphans) number of SPLIT reads with MINUS MINUS orientation
 30. (orphans) number of SPLIT reads with MINUS PLUS orientation
 31. (orphans) number of SPLIT reads with PLUS MINUS orientation
-32. (orphans) number of DISCORDANT reads with PLUS MINUS orientation, each cell covers 10 bp
-33. (orphans) number of DISCORDANT reads with PLUS PLUS orientation, each cell covers 10 bp
-34. (orphans) number of DISCORDANT reads with MINUS MINUS orientation, each cell covers 10 bp
-35. (orphans) number of DISCORDANT reads with MINUS PLUS orientation, each cell covers 10 bp
+32. (orphans) number of DISCORDANT reads with PLUS MINUS orientation
+33. (orphans) number of DISCORDANT reads with PLUS PLUS orientation
+34. (orphans) number of DISCORDANT reads with MINUS MINUS orientation
+35. (orphans) number of DISCORDANT reads with MINUS PLUS orientation
