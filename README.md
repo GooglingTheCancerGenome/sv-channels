@@ -1,6 +1,6 @@
 # sv-channels
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4584797.svg)](https://doi.org/10.5281/zenodo.4584797)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4584796.svg)](https://doi.org/10.5281/zenodo.4584796)
 [![CI](https://github.com/GooglingTheCancerGenome/sv-channels/actions/workflows/ci.yaml/badge.svg)](https://github.com/GooglingTheCancerGenome/sv-channels/actions/workflows/ci.yaml)
 
 *sv-channels* is a Deep Learning workflow for filtering structural variants (SVs)
