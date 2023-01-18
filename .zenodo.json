@@ -30,8 +30,9 @@
     "deep learning",
     "cancer genomics",
     "whole genome sequencing",
-    "structural variants",
     "variant calling",
+    "variant filtering",
+    "structural variants",
     "SV detection",
     "SV calling",
     "WGS",
@@ -42,7 +43,7 @@
   "license": {
     "id": "Apache-2.0"
   },
-  "publication_date": "2023-01-17",
+  "publication_date": "2023-01-18",
   "title": "sv-channels",
   "version": "0.2.0"
 }
