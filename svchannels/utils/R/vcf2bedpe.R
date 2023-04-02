@@ -17,10 +17,10 @@ p <-
   arg_parser("Convert VCF output of Manta, DELLY, LUMPY or GRIDSS to BEDPE format.")
 p <-
   add_argument(p, "-i", help = "Input in VCF", type = "character",
-               default = '~/Documents/Projects/GTCG/sv-channels/sv-channels_manuscript/1KG_trios/Manta/HG00420/manta.vcf')
+               default = '~/Documents/Projects/GTCG/sv-channels/sv-channels_manuscript/HG002/HG002_SVs_Tier1_v0.6.vcf.gz')
 p <-
   add_argument(p, "-o", help = "Output in BEDPE", type = "character",
-               default = '~/Documents/Projects/GTCG/sv-channels/sv-channels_manuscript/1KG_trios/Manta/HG00420/manta.bedpe')
+               default = '~/Documents/Projects/GTCG/sv-channels/sv-channels_manuscript/HG002/HG002_SVs_Tier1_v0.6.bedpe')
 p <-
   add_argument(p,
                "-p",
@@ -115,9 +115,7 @@ if ('source' %in% names(meta(header(sv_callset_vcf)))){
 
 # generate SV IDs as 'svtype_chromosome_position'
 sv_callset_vcf.ids <-
-  paste(substr(as.character(mcols(
-    rowRanges(sv_callset_vcf)
-  )$ALT), 2, 4),
+  paste(info(sv_callset_vcf)$SVTYPE,
   seqnames(rowRanges(sv_callset_vcf)),
   start(rowRanges(sv_callset_vcf)),
   sep = "_")
@@ -129,9 +127,7 @@ gr <- StructuralVariantAnnotation::breakpointRanges(sv_callset_vcf)
 #print(table(gr$svtype))
 
 gr.ids <-
-  paste(substr(as.character(mcols(
-    rowRanges(sv_callset_vcf)
-  )$ALT), 2, 4),
+  paste(info(sv_callset_vcf)$SVTYPE,
   seqnames(rowRanges(sv_callset_vcf)),
   start(rowRanges(sv_callset_vcf)),
   sep = "_")
