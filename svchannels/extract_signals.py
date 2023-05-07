@@ -264,7 +264,8 @@ def soft_and_ins(aln, li, events2d, min_event_len, min_mapping_quality=15, high_
                 for op, length in cigar:
                     if op == BAM_CINS or op == BAM_CDEL:
                         nm -= length
-                if nm >= high_nm:
+                if nm >= high_nm and aln.reference_start is not None and \
+                    aln.reference_end is not None:
                     li.append((chrom, int((aln.reference_start + aln.reference_end) / 2), Event.HIGH_NM)) #, aln.qname))
         except KeyError:
             pass
@@ -369,7 +370,7 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
     if not debug:
         chop(softs, 3, chop_mod)
         chop(events, 5, chop_mod)
-    
+
     print(f"[sv-channels] writing text output", file=sys.stderr)
     write_text(softs, f"{outdir}/sv-channels.soft_and_insertions.txt.gz")
     write_text(events, f"{outdir}/sv-channels.events2d.txt.gz")
