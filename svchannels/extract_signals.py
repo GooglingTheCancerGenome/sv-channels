@@ -371,6 +371,11 @@ def iterate(bam, fai, outdir="sv-channels", min_clip_len=14,
         chop(softs, 3, chop_mod)
         chop(events, 5, chop_mod)
 
+    # remove chromosomes that are None
+    softs = [(chr, pos, Event) for (chr, pos, Event) in softs if chr is not None and pos is not None]
+    events = [(chrA, posA, chrB, posB, Event) for (chrA, posA, chrB, posB, Event) in events if chrA is not None and \
+        chrB is not None and posA is not None and posB is not None]
+
     print(f"[sv-channels] writing text output", file=sys.stderr)
     write_text(softs, f"{outdir}/sv-channels.soft_and_insertions.txt.gz")
     write_text(events, f"{outdir}/sv-channels.events2d.txt.gz")
