@@ -37,6 +37,11 @@ or noDEL (false positives).
 The model is run on the window-pairs of a test sample. The SV qualities for the Manta DELs (QUAL) of the test
 sample are substituted with the posterior probabilities obtained by the model.
 
+**Output**
+
+The output of _sv-channels_ is a VCF file with the SV calls called by Manta, with the difference that the VCF quality field (QUAL)
+contains the posterior probabilities of a SV call being a deletion obtained with the _sv-channels_ model.
+
 ### Dependencies
 - [Python 3](https://www.python.org/)
 - [Conda](https://conda.io/) including [`environment.yaml`](/environment.yaml)
