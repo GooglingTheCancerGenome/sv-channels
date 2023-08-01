@@ -99,7 +99,7 @@ def convert_bedpe(input_bedpe_fn, output_vcf_fn, sample_name, genome):
     # loop through bedpe file writing each variant to the vcf
     for sv_calls in input_bedpe.itertuples(index=False, name='Pandas'):
         chrom = str(sv_calls[0])
-        start = str(sv_calls[1])
+        start = str(sv_calls[1]+1)
         chrom2 = str(sv_calls[3])
         end = str(sv_calls[4])
         svlen = sv_calls[4] - sv_calls[1]
