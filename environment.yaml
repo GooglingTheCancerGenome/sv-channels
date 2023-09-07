@@ -16,7 +16,7 @@ dependencies:
   - pybigwig=0.3.17
   - twobitreader=3.1.7
   - scikit-learn=0.23.2
-  - tensorflow>=2.0.0
+  - tensorflow-mkl>=2.0.0
   - r-base=4.0.3
   - r-argparser=0.6
   - bioconductor-structuralvariantannotation=1.6
@@ -32,4 +32,5 @@ dependencies:
   - pyfaidx
   - zarr
   - pyvcf
-  - codecov
+  - - pip:
+        - netcal

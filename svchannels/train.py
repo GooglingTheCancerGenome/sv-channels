@@ -18,6 +18,11 @@ from sklearn.model_selection import KFold
 import numpy as np
 from sklearn.utils.class_weight import compute_class_weight
 from tensorflow.keras.utils import to_categorical
+from sklearn.model_selection import train_test_split
+
+from netcal.scaling import TemperatureScaling
+from netcal.presentation import ReliabilityDiagram
+from netcal.metrics import ECE
 
 from svchannels.model import create_model
 
@@ -51,6 +56,24 @@ dimensions = [search_space_dict[k] for k in search_space_dict.keys()]
 best_performance = 0.0
 best_hyperparameters = {}
 verbose_level = 0
+
+
+class TemperatureScalingLayer(tf.keras.layers.Layer, temperature):
+
+  def __init__(self, num_outputs, temperature):
+    super(TemperatureScalingLayer, self).__init__()
+    self.num_outputs = num_outputs
+    self.temperature = temperature
+
+  def build(self, input_shape):
+
+    self.kernel = self.add_weight("kernel",
+                                  shape=[int(input_shape[-1]),
+                                         self.num_outputs])
+
+  def call(self, inputs):
+
+    return self.temperature.transform(input)
 
 
 def get_labels(y):
@@ -293,11 +316,15 @@ def train(args):
 
     _, y_train, class_weights_train = get_labels(y_train)
 
-    history = model.fit(x=X_train, y=y_train,
+    X_train_fit, X_val, y_train_fit, y_val = train_test_split(X_train, y_train,
+                                                              test_size=validation_split,
+                                                              random_state=42)
+
+    history = model.fit(x=X_train_fit, y=y_train_fit,
                         epochs=n_epochs,
                         batch_size=batch_size,
                         shuffle=True,
-                        validation_split=validation_split,
+                        validation_data=(X_val, y_val),
                         class_weight=class_weights_train,
                         # callbacks=[callback],
                         verbose=verbose_level)
@@ -310,6 +337,41 @@ def train(args):
                        'lr', str(best_hyperparameters['learning_rate'][0]),
                        'rr', str(best_hyperparameters['regularization_rate'][0]),
                        'pr-auc', str(best_performance)])
+
+    # Temperature scaling
+    confidences_val = model.predict(X_val, batch_size=100, verbose=True)
+    ground_truth = y_val
+
+    temperature = TemperatureScaling()
+    temperature.fit(confidences_val, ground_truth)
+
+    confidences_train = model.predict(X_train, batch_size=100, verbose=True)
+    calibrated = temperature.transform(confidences_train)
+
+    n_bins = 10
+
+    ece = ECE(n_bins)
+    uncalibrated_score = ece.measure(confidences_train, ground_truth)
+    calibrated_score = ece.measure(calibrated, ground_truth)
+    logging.info('Temperature scaling: ECE uncalibrated_score = {}'.format(uncalibrated_score))
+    logging.info('Temperature scaling: ECE calibrated_score = {}'.format(calibrated_score))
+
+    diagram = ReliabilityDiagram(n_bins)
+
+    uncalibrated_plot = os.path.join(args.output,
+                                     ''.join([prefix, '_uncalibrated.png']))
+    calibrated_plot = os.path.join(args.output,
+                                   ''.join([prefix, '_calibrated.png']))
+
+    diagram.plot(confidences_train, ground_truth)  # visualize miscalibration of uncalibrated
+    plt.tight_layout()
+    plt.savefig(uncalibrated_plot)
+    plt.close()
+
+    diagram.plot(calibrated, ground_truth)  # visualize miscalibration of calibrated
+    plt.tight_layout()
+    plt.savefig(calibrated_plot)
+    plt.close()
 
     accuracy_plot = os.path.join(args.output,
                                  ''.join([prefix, '_auc_pr.png']))
@@ -386,7 +448,7 @@ def main(argv=sys.argv[1:]):
                         default=32,
                         help="Batch size")
     parser.add_argument('-s',
-                        '--svtype',
+                        'python3 -m pip install netcal',
                         type=str,
                         default='DEL',
                         help="Type of SV")
