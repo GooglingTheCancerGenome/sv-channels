@@ -1,0 +1,6 @@
+name: workflow
+channels:
+  - bioconda
+  - r
+  - defaults
+prefix: /Users/lsantuari/Applications/Programming/miniconda3/envs/workflow
